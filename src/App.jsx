@@ -140,6 +140,47 @@ const SENSOR_REGISTRY = {
       return [(raw >> 8) & 0xff, raw & 0xff];
     },
   },
+
+  // ── Masimo SET Sensörleri ─────────────────
+  MASIMO_SPO2: {
+    name: "MASIMO_SPO2",
+    label: "Masimo SpO₂",
+    unit: "%",
+    icon: "🩸",
+    min: 80, max: 100, resolution: 0.1,
+    color: "#ff3f34",
+    generate: (t) => 98.2 + 0.8 * Math.sin(t * 0.03) + (Math.random() - 0.5) * 0.2,
+    encodeBytes: (val) => {
+      const raw = Math.round(val * 10);
+      return [(raw >> 8) & 0xff, raw & 0xff];
+    },
+  },
+  MASIMO_PR: {
+    name: "MASIMO_PR",
+    label: "Masimo PR",
+    unit: "bpm",
+    icon: "🫀",
+    min: 30, max: 240, resolution: 1,
+    color: "#ff5e57",
+    generate: (t) => 75 + 5 * Math.sin(t * 0.05) + (Math.random() - 0.5) * 1.5,
+    encodeBytes: (val) => {
+      const raw = Math.round(val);
+      return [(raw >> 8) & 0xff, raw & 0xff];
+    },
+  },
+  MASIMO_PI: {
+    name: "MASIMO_PI",
+    label: "Masimo PI",
+    unit: "%",
+    icon: "🌊",
+    min: 0.02, max: 20, resolution: 0.01,
+    color: "#0be881",
+    generate: (t) => 2.5 + 0.5 * Math.sin(t * 0.1) + (Math.random() - 0.5) * 0.1,
+    encodeBytes: (val) => {
+      const raw = Math.round(val * 100);
+      return [(raw >> 8) & 0xff, raw & 0xff];
+    },
+  },
 };
 
 const BAUD_RATES = [9600, 19200, 38400, 57600, 115200];
@@ -197,12 +238,39 @@ const PROTOCOLS = {
         0x12: { key: "MAX30102_HR",   scale: 1         }, // raw = bpm
         0x13: { key: "MLX90614",      scale: 0.02      }, // raw * 0.02 = °C
         0x14: { key: "GSR",           scale: 0.1       }, // raw * 0.1 = kΩ
+        // Masimo
+        0x20: { key: "MASIMO_SPO2",   scale: 0.1       }, // raw * 0.1 = %
+        0x21: { key: "MASIMO_PR",     scale: 1         }, // raw = bpm
+        0x22: { key: "MASIMO_PI",     scale: 0.01      }, // raw * 0.01 = %
       };
       const raw = (buf[2] << 8) | buf[3];
       const entry = BINARY_MAP[buf[1]];
       return entry
         ? { key: entry.key, value: raw * entry.scale }
         : { key: `SENSOR_${buf[1].toString(16).toUpperCase().padStart(2, "0")}`, value: raw };
+    },
+  },
+  slcan: {
+    label: "CAN (SLCAN)",
+    example: "t12381122334455667788",
+    color: "#ff7675",
+    parse: (line) => {
+      const match = line.trim().match(/^t([0-9A-Fa-f]{3})([0-8])(.*)/);
+      if (!match) return null;
+      const id = parseInt(match[1], 16);
+      const dataHex = match[3];
+      
+      if (id === 0x011 && dataHex.length >= 2) {
+        return { key: "MASIMO_SPO2", value: parseInt(dataHex.slice(0,2), 16) };
+      }
+      if (id === 0x012 && dataHex.length >= 2) {
+        return { key: "MASIMO_PR", value: parseInt(dataHex.slice(0,2), 16) };
+      }
+      
+      const val = dataHex.length >= 4 ? parseInt(dataHex.slice(0,4), 16) :
+                  dataHex.length >= 2 ? parseInt(dataHex.slice(0,2), 16) : 0;
+      
+      return { key: `CAN_0x${match[1].toUpperCase()}`, value: val };
     },
   },
 };
@@ -448,13 +516,18 @@ function Oscilloscope({ frames, baudRate, width = 700, height = 180, playing, ac
 
         const isActive = fi === activeFrame && bi === activeBit;
         const isPast = fi < activeFrame || (fi === activeFrame && bi < activeBit);
-        const color = frame.hasError ? "#ff4757" : frame.bits === undefined ? "#00ff88" : "#00ff88";
         const alpha = playing ? (isPast || isActive ? 1 : 0.2) : 0.8;
+        const isErrorBit = frame.hasError && (
+          (frame.errorType === "parity" && frame.labels[bi] === "PAR") ||
+          (frame.errorType === "framing" && frame.labels[bi] === "STOP")
+        );
 
         // Signal line
-        ctx.strokeStyle = frame.hasError && isActive
+        ctx.strokeStyle = isErrorBit
           ? `rgba(255, 71, 87, ${alpha})`
-          : `rgba(0, 255, 136, ${alpha})`;
+          : frame.hasError
+            ? `rgba(255, 150, 50, ${alpha})`
+            : `rgba(0, 255, 136, ${alpha})`;
         ctx.lineWidth = isActive ? 3 : 2;
         ctx.beginPath();
         ctx.moveTo(x, y);
@@ -466,7 +539,7 @@ function Oscilloscope({ frames, baudRate, width = 700, height = 180, playing, ac
 
         // Glow for active bit
         if (isActive && playing) {
-          gctx.shadowColor = frame.hasError ? "#ff4757" : "#00ff88";
+          gctx.shadowColor = isErrorBit ? "#ff4757" : frame.hasError ? "#ff9626" : "#00ff88";
           gctx.shadowBlur = 20;
           gctx.strokeStyle = frame.hasError ? "#ff4757" : "#00ff88";
           gctx.lineWidth = 4;
@@ -502,10 +575,10 @@ function Oscilloscope({ frames, baudRate, width = 700, height = 180, playing, ac
 
   return (
     <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #1a2a22" }}>
-      <canvas ref={canvasRef} style={{ width, height, display: "block" }} />
+      <canvas ref={canvasRef} style={{ width, height, display: "block", maxWidth: "100%" }} />
       <canvas
         ref={glowRef}
-        style={{ width, height, position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+        style={{ width, height, position: "absolute", top: 0, left: 0, pointerEvents: "none", maxWidth: "100%" }}
       />
     </div>
   );
@@ -539,14 +612,33 @@ function SensorGraph({ history, sensor, width = 300, height = 100 }) {
     const range = sensor.max - sensor.min;
     const pad = 10;
 
+    const points = history.map((val, i) => ({
+      x: (i / (history.length - 1)) * width,
+      y: pad + ((sensor.max - val) / range) * (height - 2 * pad),
+    }));
+
+    // Gradient fill under the line
+    const gradient = ctx.createLinearGradient(0, pad, 0, height - pad);
+    gradient.addColorStop(0, `${sensor.color}55`);
+    gradient.addColorStop(1, `${sensor.color}00`);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    points.forEach(({ x, y }, i) => {
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(points[points.length - 1].x, height - pad);
+    ctx.lineTo(points[0].x, height - pad);
+    ctx.closePath();
+    ctx.fill();
+
+    // Line stroke on top
     ctx.strokeStyle = sensor.color;
     ctx.lineWidth = 2;
     ctx.shadowColor = sensor.color;
     ctx.shadowBlur = 6;
     ctx.beginPath();
-    history.forEach((val, i) => {
-      const x = (i / (history.length - 1)) * width;
-      const y = pad + ((sensor.max - val) / range) * (height - 2 * pad);
+    points.forEach(({ x, y }, i) => {
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
@@ -569,77 +661,52 @@ function SensorGraph({ history, sensor, width = 300, height = 100 }) {
   );
 }
 
-// ── Bit Frame Display ───────────────────────
-function BitFrameDisplay({ frame, activeBit, playing }) {
+function BitFrameDisplay({ frame, activeBit, playing, onBitToggle }) {
   return (
-    <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+    <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
       {frame.bits.map((bit, i) => {
-        const isStart = i === 0;
         const label = frame.labels[i];
         const isActive = playing && i === activeBit;
         const isError =
           (frame.errorType === "parity" && label === "PAR") ||
           (frame.errorType === "framing" && label === "STOP");
+        const isData = label.startsWith("D");
 
-        let bg = bit === 1 ? "#1a3a2a" : "#1a1a2a";
-        let border = bit === 1 ? "#00ff8844" : "#4466ff44";
-        let fg = bit === 1 ? "#00ff88" : "#6688ff";
+        let bg = bit === 1 ? "#1a3a2a" : "#1a1a22";
+        let border = bit === 1 ? "#00ff8844" : "#4466ff22";
+        let fg = bit === 1 ? "#00ff88" : "#4a6a5a";
 
-        if (isActive) { bg = "#2a4a3a"; border = "#00ff88"; }
-        if (isError) { bg = "#3a1a1a"; border = "#ff4757"; fg = "#ff4757"; }
+        if (isActive) { bg = "#2a4a3a"; border = "#00ff88"; fg = "#fff"; }
+        if (isError)  { bg = "#3a1a1a"; border = "#ff4757"; fg = "#ff4757"; }
 
         return (
           <div
             key={i}
+            onClick={() => onBitToggle && isData && onBitToggle(parseInt(label.slice(1)))}
             style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              padding: "4px 6px",
-              background: bg,
-              border: `1px solid ${border}`,
-              borderRadius: 4,
-              minWidth: 32,
-              transition: "all 0.15s",
-              transform: isActive ? "scale(1.15)" : "scale(1)",
-              boxShadow: isActive ? `0 0 12px ${isError ? "#ff475766" : "#00ff8844"}` : "none",
+              display: "flex", flexDirection: "column", alignItems: "center",
+              padding: "6px 8px", background: bg, border: `1px solid ${border}`,
+              borderRadius: 6, minWidth: 36, transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+              transform: isActive ? "scale(1.1)" : "scale(1)",
+              cursor: onBitToggle && isData ? "pointer" : "default",
+              boxShadow: isActive ? "0 0 15px rgba(0,255,136,0.2)" : "none",
             }}
           >
-            <span style={{ fontSize: 9, color: "#6a8a7a", fontFamily: '"IBM Plex Mono", monospace' }}>
+            <span style={{ fontSize: 9, color: "#3a5a4a", fontFamily: '"IBM Plex Mono", monospace', fontWeight: 600 }}>
               {label}
             </span>
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: fg,
-                fontFamily: '"IBM Plex Mono", monospace',
-              }}
-            >
+            <span style={{ fontSize: 16, fontWeight: 700, color: fg, fontFamily: '"IBM Plex Mono", monospace' }}>
               {bit}
             </span>
           </div>
         );
       })}
-      <span style={{
-        fontSize: 11,
-        color: "#5a7a6a",
-        marginLeft: 8,
-        fontFamily: '"IBM Plex Mono", monospace',
-      }}>
+      <span style={{ fontSize: 12, color: "#4a6a5a", marginLeft: 12, fontWeight: 700 }}>
         0x{frame.byte.toString(16).toUpperCase().padStart(2, "0")}
       </span>
       {frame.hasError && (
-        <span style={{
-          fontSize: 10,
-          color: "#ff4757",
-          marginLeft: 4,
-          padding: "2px 6px",
-          background: "#3a1a1a",
-          borderRadius: 4,
-          fontFamily: '"IBM Plex Mono", monospace',
-        }}>
-          ⚠ {frame.errorType === "parity" ? "Parity Hatası" : "Framing Hatası"}
+        <span style={{ fontSize: 10, color: "#ff4757", marginLeft: 8, padding: "3px 8px", background: "#3a1a1a", borderRadius: 4, fontWeight: 700 }}>
+           {frame.errorType.toUpperCase()} ERROR
         </span>
       )}
     </div>
@@ -647,9 +714,9 @@ function BitFrameDisplay({ frame, activeBit, playing }) {
 }
 
 // ── Baud Rate Comparison ────────────────────
-function BaudRateComparison({ byte, parity }) {
+function BaudRateComparison({ byte, parity, width = 680 }) {
   const canvasRef = useRef(null);
-  const w = 680, h = 200;
+  const w = width, h = 200;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -722,25 +789,38 @@ function BaudRateComparison({ byte, parity }) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: w, height: h, display: "block", borderRadius: 8, border: "1px solid #1a2a22" }}
+      style={{ width: w, height: h, display: "block", borderRadius: 8, border: "1px solid #1a2a22", maxWidth: "100%" }}
     />
   );
 }
 
-// ── Custom Sensor Modal ─────────────────────
-function CustomSensorForm({ onAdd, onClose }) {
-  const [form, setForm] = useState({
-    name: "", label: "", unit: "", icon: "📟",
-    min: 0, max: 100, color: "#00ff88",
+function SensorLibraryModal({ onAdd, onClose, font }) {
+  const [activeTab, setActiveTab] = useState("all"); 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [form, setForm] = useState({ name: "", label: "", unit: "", icon: "📟", min: 0, max: 100, color: "#00ff88" });
+
+  const categories = {
+    "all": { label: "Tüm Sensörler", keys: Object.keys(SENSOR_REGISTRY) },
+    "health": { label: "Sağlık", keys: ["MASIMO_SPO2", "MASIMO_PR", "MASIMO_PI", "AD8232", "MAX30102_SPO2", "MAX30102_HR", "MLX90614", "GSR"] },
+    "env": { label: "Çevresel", keys: ["DS18B20", "DHT22", "BMP280", "MPU6050"] }
+  };
+
+  const filteredKeys = categories[activeTab].keys.filter(k => {
+    const s = SENSOR_REGISTRY[k];
+    return s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           s.label.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const handleSubmit = () => {
+  const handleLibAdd = (key) => {
+    onAdd({ ...SENSOR_REGISTRY[key] }, true);
+    onClose();
+  };
+
+  const handleCustomSubmit = () => {
     if (!form.name || !form.label) return;
     onAdd({
       ...form,
-      min: Number(form.min),
-      max: Number(form.max),
-      resolution: 0.01,
+      min: Number(form.min), max: Number(form.max), resolution: 0.01,
       generate: (t) => {
         const mid = (Number(form.max) + Number(form.min)) / 2;
         const amp = (Number(form.max) - Number(form.min)) * 0.3;
@@ -749,78 +829,113 @@ function CustomSensorForm({ onAdd, onClose }) {
       encodeBytes: (val) => {
         const raw = Math.round(val * 100);
         return [(raw >> 8) & 0xff, raw & 0xff];
-      },
-    });
+      }
+    }, false);
+    onClose();
   };
 
-  const inputStyle = {
-    background: "#0d1520",
-    border: "1px solid #1a3a2a",
-    borderRadius: 4,
-    color: "#c0d8cc",
-    padding: "6px 10px",
-    fontFamily: '"IBM Plex Mono", monospace',
-    fontSize: 13,
-    outline: "none",
-    width: "100%",
+  const modalStyle = {
+    position: "fixed", inset: 0, background: "rgba(2, 6, 12, 0.9)",
+    backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000
+  };
+
+  const cardStyle = {
+    background: "#0a121d", border: "1px solid #1a3a3a", borderRadius: 20,
+    width: 650, height: "700px", maxWidth: "90vw", display: "flex", flexDirection: "column",
+    boxShadow: "0 0 50px rgba(0,255,136,0.1)", overflow: "hidden", position: "relative"
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
-    }}>
-      <div style={{
-        background: "#0f1923", border: "1px solid #1a3a2a", borderRadius: 12,
-        padding: 24, width: 380, color: "#c0d8cc",
-      }}>
-        <h3 style={{ margin: "0 0 16px", fontFamily: '"IBM Plex Mono", monospace', color: "#00ff88" }}>
-          + Yeni Sensör Ekle
-        </h3>
-        {[
-          { key: "name", ph: "Ör: SHT31", lbl: "Sensör Kodu" },
-          { key: "label", ph: "Ör: Nem & Sıcaklık", lbl: "Etiket" },
-          { key: "unit", ph: "Ör: %RH", lbl: "Birim" },
-          { key: "icon", ph: "📟", lbl: "İkon (emoji)" },
-        ].map(({ key, ph, lbl }) => (
-          <div key={key} style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 11, color: "#5a7a6a", display: "block", marginBottom: 3 }}>{lbl}</label>
-            <input
-              style={inputStyle}
-              placeholder={ph}
-              value={form[key]}
-              onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-            />
+    <div style={modalStyle} onClick={onClose}>
+      <div style={cardStyle} onClick={e => e.stopPropagation()}>
+        {/* Sticky Header Section */}
+        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#0a121d" }}>
+          {/* Modal Header */}
+          <div style={{ padding: "24px 32px", background: "rgba(0,255,136,0.03)", borderBottom: "1px solid #1a3a3a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, color: "#00ff88", letterSpacing: 1, fontWeight: 800 }}>SENSOR HUB</h2>
+              <div style={{ fontSize: 11, color: "#4a6a5a", marginTop: 4 }}>PROFESYONEL SİMÜLASYON KÜTÜPHANESİ</div>
+            </div>
+            <button onClick={onClose} style={{ background: "#1a2a3a", border: "none", color: "#fff", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
           </div>
-        ))}
-        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, color: "#5a7a6a", display: "block", marginBottom: 3 }}>Min</label>
-            <input style={inputStyle} type="number" value={form.min}
-              onChange={(e) => setForm((f) => ({ ...f, min: e.target.value }))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, color: "#5a7a6a", display: "block", marginBottom: 3 }}>Max</label>
-            <input style={inputStyle} type="number" value={form.max}
-              onChange={(e) => setForm((f) => ({ ...f, max: e.target.value }))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, color: "#5a7a6a", display: "block", marginBottom: 3 }}>Renk</label>
-            <input type="color" value={form.color} style={{ ...inputStyle, padding: 2, height: 34, cursor: "pointer" }}
-              onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))} />
+
+          {/* Modal Toolbar */}
+          <div style={{ padding: "16px 32px", background: "#0d1624", borderBottom: "1px solid #1a3a3a", display: "flex", gap: 20, alignItems: "center" }}>
+            <div style={{ flex: 1, position: "relative" }}>
+              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#3a5a4a" }}>🔍</span>
+              <input 
+                placeholder="Sensör ara..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ width: "100%", background: "#060a11", border: "1px solid #1a3a3a", padding: "10px 10px 10px 40px", borderRadius: 8, color: "#fff", fontFamily: font, fontSize: 13, outline: "none" }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {Object.entries(categories).map(([key, cat]) => (
+                <button key={key} onClick={() => setActiveTab(key)} style={{
+                  padding: "8px 14px", borderRadius: 6, border: "none",
+                  background: activeTab === key ? "#00ff8822" : "transparent",
+                  color: activeTab === key ? "#00ff88" : "#4a6a5a",
+                  cursor: "pointer", fontSize: 12, fontWeight: 700, transition: "all 0.2s"
+                }}>{cat.label}</button>
+              ))}
+              <button onClick={() => setActiveTab("custom")} style={{
+                 padding: "8px 14px", borderRadius: 6, border: "1px dashed #1a3a3a",
+                 background: activeTab === "custom" ? "#ff475711" : "transparent",
+                 color: activeTab === "custom" ? "#ff4757" : "#4a6a5a",
+                 cursor: "pointer", fontSize: 12, fontWeight: 700
+              }}>+ ÖZEL</button>
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <button onClick={handleSubmit} style={{
-            flex: 1, padding: "8px 0", background: "#00ff8822", border: "1px solid #00ff88",
-            borderRadius: 6, color: "#00ff88", cursor: "pointer",
-            fontFamily: '"IBM Plex Mono", monospace', fontWeight: 600,
-          }}>Ekle</button>
-          <button onClick={onClose} style={{
-            flex: 1, padding: "8px 0", background: "#1a1a2a", border: "1px solid #333",
-            borderRadius: 6, color: "#888", cursor: "pointer",
-            fontFamily: '"IBM Plex Mono", monospace',
-          }}>İptal</button>
+
+        {/* Modal Content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
+          {activeTab === "custom" ? (
+             <div style={{ maxWidth: 400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ fontSize: 14, color: "#fff", fontWeight: 700, textAlign: "center", marginBottom: 10 }}>ÖZEL SENSÖR PARAMETRELERİ</div>
+                {[{ k: "name", l: "Sensör Kodu (ID)", p: "Örn: DHT22" }, { k: "label", l: "Etiket", p: "Örn: Nem Sensörü" }, { k: "unit", l: "Birim", p: "Örn: %RH" }, { k: "icon", l: "İkon", p: "📟" }].map(f => (
+                  <div key={f.k}>
+                    <label style={{ fontSize: 11, color: "#5a7a6a", display: "block", marginBottom: 6 }}>{f.l}</label>
+                    <input placeholder={f.p} style={{ width: "100%", background: "#060a11", border: "1px solid #1a3a3a", padding: 12, borderRadius: 8, color: "#fff", fontFamily: font }} value={form[f.k]} onChange={e => setForm({...form, [f.k]: e.target.value})} />
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 12 }}>
+                   <div style={{ flex: 1 }}><label style={{ fontSize: 11, color: "#5a7a6a" }}>Min</label><input type="number" style={{ width: "100%", background: "#060a11", border: "1px solid #1a3a3a", padding: 10, borderRadius: 8, color: "#fff" }} value={form.min} onChange={e => setForm({...form, min: e.target.value})} /></div>
+                   <div style={{ flex: 1 }}><label style={{ fontSize: 11, color: "#5a7a6a" }}>Max</label><input type="number" style={{ width: "100%", background: "#060a11", border: "1px solid #1a3a3a", padding: 10, borderRadius: 8, color: "#fff" }} value={form.max} onChange={e => setForm({...form, max: e.target.value})} /></div>
+                   <div style={{ flex: 1 }}><label style={{ fontSize: 11, color: "#5a7a6a" }}>Renk</label><input type="color" style={{ width: "100%", height: 38, background: "none", border: "none", cursor: "pointer" }} value={form.color} onChange={e => setForm({...form, color: e.target.value})} /></div>
+                </div>
+                <button onClick={handleCustomSubmit} style={{ marginTop: 12, padding: 14, background: "linear-gradient(135deg, #00ff88, #00cc6a)", border: "none", borderRadius: 10, color: "#000", fontWeight: 800, cursor: "pointer", fontFamily: font, boxShadow: "0 10px 20px rgba(0,255,136,0.2)" }}>SENSÖRÜ OLUŞTUR VE EKLE</button>
+             </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {filteredKeys.length === 0 ? (
+                <div style={{ gridColumn: "1/-1", padding: 40, textAlign: "center", color: "#2a3a32" }}>Arama kriterlerine uygun sensör bulunamadı.</div>
+              ) : (
+                filteredKeys.map(k => {
+                  const s = SENSOR_REGISTRY[k];
+                  return (
+                    <div key={k} onClick={() => handleLibAdd(k)} style={{
+                      position: "relative", padding: 20, borderRadius: 16, background: "rgba(255,255,255,0.02)", border: "1px solid #1a2a3a",
+                      cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      overflow: "hidden"
+                    }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#00ff88"; e.currentTarget.style.background = "rgba(0,255,136,0.05)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#1a2a3a"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                      <div style={{ fontSize: 32, background: "rgba(0,0,0,0.3)", width: 56, height: 56, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${s.color}22` }}>{s.icon}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, color: "#fff", fontWeight: 800, marginBottom: 2 }}>{s.label}</div>
+                        <div style={{ fontSize: 11, color: "#4a6a5a", fontWeight: 600 }}>{s.name}</div>
+                        <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                          <span style={{ fontSize: 9, color: "#c0d8cc", background: "#1a2a3a", padding: "2px 6px", borderRadius: 4 }}>{s.unit}</span>
+                          <span style={{ fontSize: 9, color: "#c0d8cc", background: "#1a2a3a", padding: "2px 6px", borderRadius: 4 }}>{s.min}/{s.max}</span>
+                        </div>
+                      </div>
+                      <div style={{ position: "absolute", right: 20, color: "#00ff88", opacity: 0, transition: "all 0.2s" }} className="add-indicator">+</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -925,22 +1040,49 @@ function LogPanel({ logs }) {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   }, [logs]);
 
+  const exportCSV = () => {
+    const rows = ["Zaman,Sensör,Mesaj"];
+    logs.forEach((log) => {
+      const sensor = log.sensor?.name || "";
+      const text = `"${log.text.replace(/"/g, '""')}"`;
+      rows.push(`${log.time},${sensor},${text}`);
+    });
+    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `uart_log_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div ref={ref} style={{
-      background: "#080c12", borderRadius: 8, border: "1px solid #1a2a22",
-      padding: 10, height: 140, overflowY: "auto", fontFamily: '"IBM Plex Mono", monospace',
-      fontSize: 11,
-    }}>
-      {logs.map((log, i) => (
-        <div key={i} style={{ color: log.color || "#5a8a6a", marginBottom: 2, lineHeight: 1.4 }}>
-          <span style={{ color: "#3a5a4a" }}>[{log.time}]</span>{" "}
-          <span style={{ color: log.sensor?.color || "#5a8a6a" }}>{log.sensor?.icon || "•"}</span>{" "}
-          {log.text}
-        </div>
-      ))}
-      {logs.length === 0 && (
-        <div style={{ color: "#2a3a32", fontStyle: "italic" }}>Simülasyon başlatılmadı...</div>
-      )}
+    <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6, gap: 8 }}>
+        <span style={{ fontSize: 10, color: "#3a5a4a", alignSelf: "center" }}>{logs.length} kayıt</span>
+        <button onClick={exportCSV} disabled={logs.length === 0} style={{
+          padding: "3px 12px", borderRadius: 4, border: "1px solid #1a3a2a",
+          background: "#0a0e14", color: logs.length > 0 ? "#4ecdc4" : "#2a3a32",
+          cursor: logs.length > 0 ? "pointer" : "not-allowed",
+          fontFamily: '"IBM Plex Mono", monospace', fontSize: 10,
+        }}>⬇ CSV İndir</button>
+      </div>
+      <div ref={ref} style={{
+        background: "#080c12", borderRadius: 8, border: "1px solid #1a2a22",
+        padding: 10, height: 140, overflowY: "auto", fontFamily: '"IBM Plex Mono", monospace',
+        fontSize: 11,
+      }}>
+        {logs.map((log, i) => (
+          <div key={i} style={{ color: log.color || "#5a8a6a", marginBottom: 2, lineHeight: 1.4 }}>
+            <span style={{ color: "#3a5a4a" }}>[{log.time}]</span>{" "}
+            <span style={{ color: log.sensor?.color || "#5a8a6a" }}>{log.sensor?.icon || "•"}</span>{" "}
+            {log.text}
+          </div>
+        ))}
+        {logs.length === 0 && (
+          <div style={{ color: "#2a3a32", fontStyle: "italic" }}>Simülasyon başlatılmadı...</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1185,19 +1327,311 @@ function UsageGuideTab({ font }) {
   );
 }
 
+// ── Byte Analyzer ────────────────────────────
+function ByteAnalyzer({ font, baudRate }) {
+  const [hexVal, setHexVal] = useState("A5");
+  const [decVal, setDecVal] = useState("165");
+  const [binVal, setBinVal] = useState("10100101");
+  const [localParity, setLocalParity] = useState("none");
+  const [localStop, setLocalStop] = useState(1);
+  const [localError, setLocalError] = useState(null);
+
+  const byteNum = useMemo(() => {
+    const n = parseInt(hexVal, 16);
+    return !isNaN(n) && n >= 0 && n <= 255 ? n : null;
+  }, [hexVal]);
+
+  const frame = useMemo(
+    () => (byteNum !== null ? buildUartFrame(byteNum, localParity, localStop, localError) : null),
+    [byteNum, localParity, localStop, localError]
+  );
+
+  const syncFrom = (n) => {
+    setHexVal(n.toString(16).toUpperCase().padStart(2, "0"));
+    setDecVal(n.toString());
+    setBinVal(n.toString(2).padStart(8, "0"));
+  };
+
+  const onHex = (e) => {
+    const v = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 2).toUpperCase();
+    setHexVal(v);
+    const n = parseInt(v, 16);
+    if (!isNaN(n) && n <= 255) {
+      setDecVal(n.toString());
+      setBinVal(n.toString(2).padStart(8, "0"));
+    }
+  };
+
+  const onDec = (e) => {
+    const v = e.target.value.replace(/\D/g, "").slice(0, 3);
+    setDecVal(v);
+    const n = parseInt(v);
+    if (!isNaN(n) && n <= 255) {
+      setHexVal(n.toString(16).toUpperCase().padStart(2, "0"));
+      setBinVal(n.toString(2).padStart(8, "0"));
+    }
+  };
+
+  const onBin = (e) => {
+    const v = e.target.value.replace(/[^01]/g, "").slice(0, 8);
+    setBinVal(v);
+    if (v.length === 8) {
+      const n = parseInt(v, 2);
+      setHexVal(n.toString(16).toUpperCase().padStart(2, "0"));
+      setDecVal(n.toString());
+    }
+  };
+
+  const inputStyle = {
+    background: "#0d1520", border: "1px solid #1a3a2a", borderRadius: 4,
+    color: "#c0d8cc", padding: "6px 10px", fontFamily: font, fontSize: 14,
+    outline: "none", width: "100%", boxSizing: "border-box",
+  };
+
+  const bitDuration = (1 / baudRate) * 1e6;
+  const frameDuration = frame ? frame.bits.length * bitDuration : 0;
+
+  const COMMON_BYTES = [
+    { label: "0x00 NUL", val: 0x00 }, { label: "0x0A LF", val: 0x0A },
+    { label: "0x0D CR", val: 0x0D },  { label: "0x41 'A'", val: 0x41 },
+    { label: "0x55 alt.", val: 0x55 }, { label: "0xAA alt.", val: 0xAA },
+    { label: "0xFF all1", val: 0xFF },
+  ];
+
+  return (
+    <div style={{ color: "#c0d8cc" }}>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+
+        {/* Input group */}
+        <div style={{ flex: "0 0 240px" }}>
+          <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 8, letterSpacing: 1 }}>BYTE GİRİŞİ</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div>
+              <label style={{ fontSize: 10, color: "#4a6a5a", display: "block", marginBottom: 3 }}>HEX (0x00 – 0xFF)</label>
+              <input
+                style={{ ...inputStyle, color: "#a29bfe", fontSize: 20, letterSpacing: 6, textAlign: "center" }}
+                value={hexVal} onChange={onHex} maxLength={2} placeholder="A5"
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: "#4a6a5a", display: "block", marginBottom: 3 }}>DECIMAL (0 – 255)</label>
+              <input style={{ ...inputStyle, textAlign: "center" }} value={decVal} onChange={onDec} maxLength={3} placeholder="165" />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: "#4a6a5a", display: "block", marginBottom: 3 }}>BINARY</label>
+              <input
+                style={{ ...inputStyle, letterSpacing: 4, textAlign: "center", fontSize: 13 }}
+                value={binVal} onChange={onBin} maxLength={8} placeholder="10100101"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Frame config */}
+        <div style={{ flex: "0 0 220px" }}>
+          <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 8, letterSpacing: 1 }}>FRAME AYARLARI</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 4 }}>PARİTE</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                {Object.entries(PARITY_MODES).map(([k, v]) => (
+                  <button key={k} onClick={() => setLocalParity(k)} style={{
+                    flex: 1, padding: "4px 0", borderRadius: 4, border: "1px solid",
+                    borderColor: localParity === k ? "#a29bfe" : "#1a2a22",
+                    background: localParity === k ? "#a29bfe22" : "transparent",
+                    color: localParity === k ? "#a29bfe" : "#4a6a5a",
+                    cursor: "pointer", fontFamily: font, fontSize: 11,
+                  }}>{v.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 4 }}>STOP BİT</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                {[1, 2].map((s) => (
+                  <button key={s} onClick={() => setLocalStop(s)} style={{
+                    flex: 1, padding: "4px 0", borderRadius: 4, border: "1px solid",
+                    borderColor: localStop === s ? "#ffd93d" : "#1a2a22",
+                    background: localStop === s ? "#ffd93d22" : "transparent",
+                    color: localStop === s ? "#ffd93d" : "#4a6a5a",
+                    cursor: "pointer", fontFamily: font, fontSize: 11,
+                  }}>{s}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 4 }}>HATA ENJEKTE ET</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                {[
+                  { k: null, l: "Yok", c: "#4a6a5a" },
+                  { k: "parity", l: "Parity", c: "#ff6b6b" },
+                  { k: "framing", l: "Framing", c: "#ff9f43" },
+                ].map(({ k, l, c }) => (
+                  <button key={String(k)} onClick={() => setLocalError(k)} style={{
+                    flex: 1, padding: "4px 0", borderRadius: 4, border: "1px solid",
+                    borderColor: localError === k ? c : "#1a2a22",
+                    background: localError === k ? `${c}22` : "transparent",
+                    color: localError === k ? c : "#4a6a5a",
+                    cursor: "pointer", fontFamily: font, fontSize: 10,
+                  }}>{l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Timing info */}
+        {frame && byteNum !== null && (
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 8, letterSpacing: 1 }}>ZAMANLAMA & BİLGİ</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12 }}>
+              {[
+                { label: "Byte", value: `0x${byteNum.toString(16).toUpperCase().padStart(2,"0")} = ${byteNum} = 0b${byteNum.toString(2).padStart(8,"0")}` },
+                { label: "Toplam Bit", value: `${frame.bits.length} (1S + 8D${localParity !== "none" ? " + 1P" : ""} + ${localStop}ST)` },
+                { label: "Bit Süresi", value: `${bitDuration.toFixed(2)} µs @ ${baudRate} baud` },
+                { label: "Frame Süresi", value: `${frameDuration.toFixed(2)} µs = ${(frameDuration/1000).toFixed(4)} ms` },
+                { label: "Max Throughput", value: `${Math.floor(1e6 / frameDuration)} frame/sn` },
+                { label: "Parity Biti", value: frame.parityBit !== null ? frame.parityBit.toString() : "Yok" },
+                { label: "Durum", value: frame.hasError ? "⚠ HATA VAR" : "✓ Temiz Frame" },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: "flex", gap: 8 }}>
+                  <span style={{ color: "#4a6a5a", minWidth: 110 }}>{label}:</span>
+                  <span style={{ color: label === "Durum" ? (frame.hasError ? "#ff4757" : "#00ff88") : "#c0d8cc" }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Common bytes quick select */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 10, color: "#4a6a5a", marginBottom: 6, letterSpacing: 1 }}>HIZLI SEÇIM</div>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {COMMON_BYTES.map(({ label, val }) => (
+            <button key={label} onClick={() => syncFrom(val)} style={{
+              padding: "3px 10px", borderRadius: 4, border: "1px solid",
+              borderColor: byteNum === val ? "#00ff88" : "#1a2a22",
+              background: byteNum === val ? "#00ff8822" : "transparent",
+              color: byteNum === val ? "#00ff88" : "#4a6a5a",
+              cursor: "pointer", fontFamily: font, fontSize: 10,
+            }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Frame visualization */}
+      <div style={{ fontSize: 10, color: "#3a5a4a", marginBottom: 12, letterSpacing: 2, fontWeight: 700 }}>UART FRAME EXPLORER</div>
+      {frame ? (
+        <div style={{ background: "rgba(0,0,0,0.2)", padding: 16, borderRadius: 12, border: "1px solid #1a2a3a" }}>
+          <BitFrameDisplay 
+            frame={frame} 
+            activeBit={-1} 
+            playing={false} 
+            onBitToggle={(bitIdx) => {
+              const newBits = binVal.split("");
+              newBits[7 - bitIdx] = newBits[7 - bitIdx] === "1" ? "0" : "1";
+              onBin({ target: { value: newBits.join("") } });
+            }}
+          />
+          <div style={{ fontSize: 10, color: "#4a6a5a", marginTop: 10, textAlign: "center" }}>
+            💡 Veriyi değiştirmek için yukarıdaki bit kutucuklarına tıklayabilirsiniz.
+          </div>
+        </div>
+      ) : (
+        <div style={{ color: "#ff4757", fontSize: 12, padding: 8 }}>Geçersiz byte değeri (0x00 – 0xFF arası girin)</div>
+      )}
+    </div>
+  );
+}
+
+function CanAnalyzer({ canFrames, font }) {
+  const frames = Object.entries(canFrames).sort((a, b) => b[1].time - a[1].time);
+
+  return (
+    <div style={{ color: "#c0d8cc", fontFamily: font }}>
+      <div style={{ fontSize: 10, color: "#4a6a5a", letterSpacing: 2, marginBottom: 12, fontWeight: 700 }}>CAN BUS ANALYZER (SLCAN)</div>
+      {frames.length === 0 ? (
+        <div style={{ padding: 40, textAlign: "center", color: "#2a3a32", border: "1px dashed #1a2a22", borderRadius: 12 }}>
+          Henüz CAN paketi alınmadı. <br/><span style={{ fontSize: 10 }}>SLCAN protokolünde 'tIDDLCData' formatında veri bekliyor.</span>
+        </div>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #1a2a3a" }}>
+              {["ID", "DLC", "DATA (HEX)", "PERIOD", "TIME"].map(h => (
+                <th key={h} style={{ textAlign: "left", padding: 10, color: "#4a6a5a" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {frames.map(([id, f]) => (
+              <tr key={id} style={{ borderBottom: "1px solid #0d1624", background: Date.now() - f.time < 500 ? "#00ff8808" : "none", transition: "background 0.5s" }}>
+                <td style={{ padding: 10, color: "#ff7675", fontWeight: 700 }}>0x{id.padStart(3, "0")}</td>
+                <td style={{ padding: 10, color: "#4ecdc4" }}>{f.dlc}</td>
+                <td style={{ padding: 10, color: "#ffd93d", letterSpacing: 1 }}>{f.data.match(/.{1,2}/g).join(" ")}</td>
+                <td style={{ padding: 10, color: "#5a7a6a" }}>{f.period ? `${f.period}ms` : "-"}</td>
+                <td style={{ padding: 10, color: "#3a5a4a", fontSize: 10 }}>{new Date(f.time).toLocaleTimeString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function SensorListItem({ sensor, pKey, isActive, onToggle, onClone, onRemove }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "10px 14px", background: isActive ? `${sensor.color}15` : "rgba(255,255,255,0.02)",
+      borderRadius: 12, border: `1px solid ${isActive ? sensor.color + "44" : "#1a2a22"}`,
+      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
+      boxShadow: isActive ? `0 0 15px ${sensor.color}11` : "none"
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }} onClick={() => onToggle(pKey)}>
+        <span style={{ fontSize: 20, filter: isActive ? "none" : "grayscale(1) opacity(0.5)" }}>{sensor.icon}</span>
+        <div>
+          <div style={{ fontSize: 13, color: isActive ? sensor.color : "#6a8a7a", fontWeight: 700 }}>{sensor.label || sensor.name}</div>
+          <div style={{ fontSize: 9, color: "#3a5a4a", fontWeight: 600, letterSpacing: 0.5 }}>{isActive ? "ONLINE" : "STANDBY"}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={() => onClone(pKey)} title="Klonla" style={{
+          background: "none", border: "none", color: "#4ecdc4", cursor: "pointer", fontSize: 14, opacity: 0.5, transition: "opacity 0.2s"
+        }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>⎘</button>
+        <button onClick={() => onRemove(pKey)} title="Kaldır" style={{
+          background: "none", border: "none", color: "#ff4757", cursor: "pointer", fontSize: 14, opacity: 0.5, transition: "opacity 0.2s"
+        }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>✕</button>
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════
 // ANA BİLEŞEN
 // ══════════════════════════════════════════════
 export default function UartSimulator() {
-  const [sensors, setSensors] = useState(SENSOR_REGISTRY);
-  const [activeSensors, setActiveSensors] = useState(["DS18B20", "DHT22"]);
-  const [baudRate, setBaudRate] = useState(9600);
+  // --- Persistence & State Initialization ---
+  const [sensors, setSensors] = useState(() => {
+    const saved = localStorage.getItem("uart_sensors");
+    return saved ? JSON.parse(saved) : { ...SENSOR_REGISTRY };
+  });
+  const [activeSensors, setActiveSensors] = useState(() => {
+    const saved = localStorage.getItem("uart_active_sensors");
+    return saved ? JSON.parse(saved) : ["DS18B20", "DHT22"];
+  });
+  const [baudRate, setBaudRate] = useState(() => {
+    const saved = localStorage.getItem("uart_baud");
+    return saved ? Number(saved) : 9600;
+  });
   const [parity, setParity] = useState("none");
   const [stopBits, setStopBits] = useState(1);
-  const [errorMode, setErrorMode] = useState(null); // null | "parity" | "framing"
+  const [errorMode, setErrorMode] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [tab, setTab] = useState("osiloskop"); // osiloskop | baudKarsilastirma | log
+  const [tab, setTab] = useState("osiloskop");
 
   const [sensorHistories, setSensorHistories] = useState({});
   const [currentFrames, setCurrentFrames] = useState([]);
@@ -1205,14 +1639,31 @@ export default function UartSimulator() {
   const [activeBitIdx, setActiveBitIdx] = useState(0);
   const [logs, setLogs] = useState([]);
   const [tick, setTick] = useState(0);
+  const [canFrames, setCanFrames] = useState({});
+  const [quickResults, setQuickResults] = useState([]);
   const [showAddSensor, setShowAddSensor] = useState(false);
   const [transmittedCount, setTransmittedCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
-
   const [serialProtocol, setSerialProtocol] = useState("ascii");
 
   const timerRef = useRef(null);
   const tickRef = useRef(0);
+  const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(700);
+  const transmitCountRef = useRef(0);
+  const lastThroughputTimeRef = useRef(Date.now());
+  const [throughput, setThroughput] = useState(0);
+
+  // Persistence Effects
+  useEffect(() => {
+    localStorage.setItem("uart_sensors", JSON.stringify(sensors));
+  }, [sensors]);
+  useEffect(() => {
+    localStorage.setItem("uart_active_sensors", JSON.stringify(activeSensors));
+  }, [activeSensors]);
+  useEffect(() => {
+    localStorage.setItem("uart_baud", baudRate.toString());
+  }, [baudRate]);
 
   const timeStr = () => {
     const d = new Date();
@@ -1267,6 +1718,15 @@ export default function UartSimulator() {
     setErrorCount((c) => c + frames.filter((f) => f.hasError).length);
     setLogs((prev) => [...prev.slice(-200), ...newLogs]);
     setTick((t) => t + 1);
+
+    // Throughput tracking (frames/sec)
+    transmitCountRef.current += frames.length;
+    const now = Date.now();
+    if (now - lastThroughputTimeRef.current >= 1000) {
+      setThroughput(transmitCountRef.current);
+      transmitCountRef.current = 0;
+      lastThroughputTimeRef.current = now;
+    }
   }, [activeSensors, sensors, sensorHistories, errorMode, parity, stopBits]);
 
   // Bit-level animation
@@ -1313,10 +1773,88 @@ export default function UartSimulator() {
     );
   };
 
-  const handleAddCustomSensor = (s) => {
-    const key = s.name.toUpperCase().replace(/\s/g, "_");
-    setSensors((prev) => ({ ...prev, [key]: { ...s, name: key } }));
+  const handleAddSensorFromLibrary = (s, isLibrary) => {
+    let key = isLibrary ? s.name : s.name.toUpperCase().replace(/\s/g, "_");
+    let finalKey = key;
+    let num = 2;
+    while (sensors[finalKey]) {
+      finalKey = `${key}_${num++}`;
+    }
+    const newSensor = { ...s, name: finalKey };
+    if (!isLibrary) {
+      newSensor.label = s.label || s.name;
+    }
+    setSensors((prev) => ({ ...prev, [finalKey]: newSensor }));
+    setActiveSensors((prev) => [...prev, finalKey]);
     setShowAddSensor(false);
+  };
+
+  const removeSensor = (key) => {
+    setSensors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setActiveSensors((prev) => prev.filter((k) => k !== key));
+    setSensorHistories((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const cloneSensor = (key) => {
+    const base = sensors[key];
+    if (!base) return;
+    let newNum = 2;
+    let newKey = `${key}_${newNum}`;
+    while (sensors[newKey]) {
+      newNum++;
+      newKey = `${key}_${newNum}`;
+    }
+    const cloned = { ...base, name: newKey, label: `${base.label || base.name} (${newNum})` };
+    setSensors((prev) => ({ ...prev, [newKey]: cloned }));
+    setActiveSensors((prev) => [...prev, newKey]);
+  };
+
+  const clearWorkspace = () => {
+    if (Object.keys(sensors).length === 0) return;
+    if (window.confirm("Tüm sensörleri çalışma alanından kaldırmak istediğinize emin misiniz? (Kütüphaneden dilediğiniz zaman geri ekleyebilirsiniz)")) {
+      setSensors({});
+      setActiveSensors([]);
+      setSensorHistories({});
+    }
+  };
+
+  const exportWorkspace = () => {
+    const data = JSON.stringify({ sensors, activeSensors }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `uart_workspace_${new Date().toISOString().slice(0,10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importWorkspace = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const payload = JSON.parse(ev.target.result);
+        if (window.confirm("Mevcut çalışma alanınız temizlenecek ve JSON dosyasındaki veriler yüklenecek. Onaylıyor musunuz?")) {
+          setSensors(payload.sensors || {});
+          setActiveSensors(payload.activeSensors || []);
+          setSensorHistories({});
+        }
+      } catch (err) {
+        alert("JSON dosyası okunamadı veya geçersiz format!");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = null; 
   };
 
   // Gerçek seri porttan gelen parse edilmiş veriyi simülatöre besle
@@ -1331,6 +1869,25 @@ export default function UartSimulator() {
     };
     const bytes = s.encodeBytes(value);
     const frames = bytes.map((b) => buildUartFrame(b, parity, stopBits));
+    
+    // CAN Analyzer Update if SLCAN
+    if (serialProtocol === "slcan") {
+      const line = typeof value === "string" ? value : "";
+      const match = line.trim().match(/^t([0-9A-Fa-f]{3})([0-8])(.*)/);
+      if (match) {
+        const id = match[1].toUpperCase();
+        const dlc = parseInt(match[2]);
+        const data = match[3];
+        setCanFrames(prev => {
+          const old = prev[id] || { time: Date.now() };
+          return {
+            ...prev,
+            [id]: { dlc, data, time: Date.now(), period: Date.now() - old.time }
+          };
+        });
+      }
+    }
+
     setSensorHistories((prev) => ({
       ...prev,
       [key]: [...(prev[key] || []).slice(-59), value],
@@ -1360,23 +1917,77 @@ export default function UartSimulator() {
     onLog: serialLog,
   });
 
+  const resetAll = useCallback(() => {
+    setPlaying(false);
+    setSensorHistories({});
+    setCurrentFrames([]);
+    setLogs([]);
+    setTransmittedCount(0);
+    setErrorCount(0);
+    setThroughput(0);
+    setActiveFrameIdx(0);
+    setActiveBitIdx(0);
+    transmitCountRef.current = 0;
+    lastThroughputTimeRef.current = Date.now();
+    tickRef.current = 0;
+  }, []);
+
+  // Responsive container width
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerWidth(Math.max(320, Math.floor(entry.contentRect.width) - 48));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Keyboard shortcuts: Space = play/pause, R = reset
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      }
+      if (e.code === "KeyR" && !e.ctrlKey && !e.metaKey) {
+        resetAll();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [resetAll]);
+
   const font = '"IBM Plex Mono", "Fira Code", monospace';
 
   const tabs = [
     { key: "osiloskop",        label: "📡 Osiloskop" },
+    { key: "canAnalyzer",      label: "🚦 CAN Analyzer" },
     { key: "baudKarsilastirma",label: "⚡ Baud Karşılaştırma" },
     { key: "log",              label: "📋 İletim Logu" },
+    { key: "byteAnaliz",       label: "🔬 Byte Analiz" },
     { key: "firmware",         label: "💻 Firmware" },
     { key: "kullanim",         label: "📖 Kullanım" },
   ];
 
   return (
-    <div style={{
-      background: "linear-gradient(180deg, #080c12 0%, #0a1018 100%)",
-      minHeight: "100vh",
+    <div ref={containerRef} style={{
+      boxSizing: "border-box",
+      background: "linear-gradient(180deg, #020408 0%, #0a121d 100%)",
+      height: "100vh",
+      overflow: "hidden",
       color: "#c0d8cc",
       fontFamily: font,
-      padding: "16px 20px",
+      display: "grid",
+      gridTemplateColumns: "380px 1fr",
+      gridTemplateRows: "auto 1fr",
+      gridTemplateAreas: `
+        "header header"
+        "sidebar main"
+      `,
+      gap: 20,
+      padding: "20px",
     }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
@@ -1393,13 +2004,21 @@ export default function UartSimulator() {
               UART SİMÜLATÖR
             </h1>
             <div style={{ fontSize: 10, color: "#3a5a4a", letterSpacing: 2 }}>
-              SENSÖR TEST PLATFORMU v1.0
+              SENSÖR TEST PLATFORMU v2.0
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 11, color: "#4a6a5a" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 11, color: "#4a6a5a", flexWrap: "wrap" }}>
           <span>TX: <span style={{ color: "#00ff88" }}>{transmittedCount}</span></span>
-          <span>ERR: <span style={{ color: errorCount > 0 ? "#ff4757" : "#4a6a5a" }}>{errorCount}</span></span>
+          <span>
+            ERR: <span style={{ color: errorCount > 0 ? "#ff4757" : "#4a6a5a" }}>{errorCount}</span>
+            {transmittedCount > 0 && (
+              <span style={{ color: "#4a6a5a" }}> ({(errorCount / transmittedCount * 100).toFixed(1)}%)</span>
+            )}
+          </span>
+          {throughput > 0 && (
+            <span>BPS: <span style={{ color: "#ffd93d" }}>{throughput}</span></span>
+          )}
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{
               width: 7, height: 7, borderRadius: "50%", display: "inline-block",
@@ -1413,6 +2032,12 @@ export default function UartSimulator() {
         </div>
       </div>
 
+      <div style={{
+        gridArea: "sidebar",
+        display: "flex", flexDirection: "column", gap: 12,
+        overflowY: "auto", paddingRight: 4,
+        paddingBottom: 24,
+      }}>
       {/* Control Bar */}
       <div style={{
         display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center",
@@ -1500,6 +2125,14 @@ export default function UartSimulator() {
             }}>{e.label}</button>
           ))}
         </div>
+
+        <div style={{ width: 1, height: 28, background: "#1a2a22", margin: "0 4px" }} />
+
+        <button onClick={resetAll} title="Sıfırla (R tuşu)" style={{
+          padding: "4px 14px", borderRadius: 4, border: "1px solid #2a3a4a",
+          background: "transparent", color: "#4a6a7a",
+          cursor: "pointer", fontFamily: font, fontSize: 11,
+        }}>↺ Sıfırla</button>
       </div>
 
       {/* Serial Port Panel */}
@@ -1514,27 +2147,88 @@ export default function UartSimulator() {
         font={font}
       />
 
-      {/* Sensor Selection */}
-      <div style={{
-        display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center",
-      }}>
-        {Object.entries(sensors).map(([key, s]) => (
-          <button key={key} onClick={() => toggleSensor(key)} style={{
-            padding: "6px 14px", borderRadius: 20, border: "1px solid",
-            borderColor: activeSensors.includes(key) ? s.color : "#1a2a22",
-            background: activeSensors.includes(key) ? `${s.color}18` : "transparent",
-            color: activeSensors.includes(key) ? s.color : "#3a5a4a",
-            cursor: "pointer", fontFamily: font, fontSize: 12,
-            transition: "all 0.2s",
-          }}>
-            {s.icon} {s.label || s.name}
-          </button>
-        ))}
-        <button onClick={() => setShowAddSensor(true)} style={{
-          padding: "6px 14px", borderRadius: 20, border: "1px dashed #1a3a2a",
-          background: "transparent", color: "#3a5a4a", cursor: "pointer",
-          fontFamily: font, fontSize: 12,
-        }}>+ Sensör Ekle</button>
+      {/* Workspace Sensors List */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#3a5a4a", letterSpacing: 2, fontWeight: 700 }}>ÇALIŞMA ALANI</div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+             <button onClick={exportWorkspace} title="Dışa Aktar (JSON)" style={{ background: "rgba(0,255,136,0.05)", border: "1px solid #00ff8844", color: "#00ff88", padding: "4px 8px", borderRadius: 4, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center" }}>💾</button>
+             <label title="İçe Aktar (JSON)" style={{ background: "rgba(0,255,136,0.05)", border: "1px solid #00ff8844", color: "#00ff88", padding: "4px 8px", borderRadius: 4, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center" }}>
+                📂 <input type="file" accept=".json" onChange={importWorkspace} style={{ display: "none" }} />
+             </label>
+             <button onClick={clearWorkspace} title="Tümünü Sil" style={{
+               background: "#ff475715", border: "1px solid #ff475744", color: "#ff4757",
+               padding: "4px 10px", borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: "pointer",
+               visibility: Object.keys(sensors).length > 0 ? "visible" : "hidden"
+             }}>🗑</button>
+          </div>
+        </div>
+
+        {/* Quick Add (Autocomplete) */}
+        <div style={{ position: "relative", marginBottom: 16 }}>
+          <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 12, opacity: 0.5 }}>⚡</div>
+          <input 
+            type="text" 
+            placeholder="Hızlı sensör bul..."
+            onChange={(e) => {
+              const val = e.target.value.toLowerCase();
+              if (val.length < 1) { setQuickResults([]); return; }
+              const matches = Object.keys(SENSOR_REGISTRY).filter(k => 
+                SENSOR_REGISTRY[k].label.toLowerCase().includes(val) || SENSOR_REGISTRY[k].name.toLowerCase().includes(val)
+              ).slice(0, 5);
+              setQuickResults(matches);
+            }}
+            onBlur={() => setTimeout(() => setQuickResults([]), 200)}
+            style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #1a2a22", padding: "8px 12px 8px 30px", borderRadius: 8, color: "#fff", fontSize: 11, fontFamily: font, outline: "none", transition: "all 0.2s" }}
+          />
+          {quickResults.length > 0 && (
+            <div style={{ position: "absolute", top: "105%", left: 0, right: 0, background: "#0d1624", border: "1px solid #1a3a3a", borderRadius: 10, zIndex: 100, overflow: "hidden", boxShadow: "0 10px 40px rgba(0,0,0,0.6)" }}>
+              {quickResults.map(k => {
+                const s = SENSOR_REGISTRY[k];
+                return (
+                  <div key={k} onClick={() => { handleAddSensorFromLibrary(s, true); setQuickResults([]); }} style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #1a2a3a", display: "flex", alignItems: "center", gap: 10, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(0,255,136,0.08)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                    <span style={{ fontSize: 18 }}>{s.icon}</span>
+                    <div style={{ flex: 1 }}>
+                       <div style={{ fontSize: 12, color: "#fff", fontWeight: 700 }}>{s.label}</div>
+                       <div style={{ fontSize: 9, color: "#4a6a5a" }}>{s.name}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {/* Active Group */}
+          {Object.entries(sensors).filter(([k]) => activeSensors.includes(k)).length > 0 && (
+            <div style={{ fontSize: 9, color: "#00ff88", marginBottom: 4, opacity: 0.6 }}>● AKTİF</div>
+          )}
+          {Object.entries(sensors).filter(([k]) => activeSensors.includes(k)).map(([key, s]) => (
+            <SensorListItem key={key} sensor={s} pKey={key} isActive={true} onToggle={toggleSensor} onClone={cloneSensor} onRemove={removeSensor} />
+          ))}
+
+          {/* Standby Group */}
+          {Object.entries(sensors).filter(([k]) => !activeSensors.includes(k)).length > 0 && (
+            <div style={{ fontSize: 9, color: "#4a6a5a", marginTop: 10, marginBottom: 4, opacity: 0.6 }}>○ BEKLEMEDE</div>
+          )}
+          {Object.entries(sensors).filter(([k]) => !activeSensors.includes(k)).map(([key, s]) => (
+            <SensorListItem key={key} sensor={s} pKey={key} isActive={false} onToggle={toggleSensor} onClone={cloneSensor} onRemove={removeSensor} />
+          ))}
+
+          {Object.keys(sensors).length === 0 && (
+            <div style={{ padding: "20px 0", textAlign: "center", color: "#2a3a32", fontSize: 12, border: "1px dashed #1a2a22", borderRadius: 10 }}>
+              Henüz sensör eklenmedi.
+            </div>
+          )}
+
+          <button onClick={() => setShowAddSensor(true)} style={{
+            padding: "12px", borderRadius: 10, border: "1px dashed #00ff8844",
+            background: "rgba(0,255,136,0.05)", color: "#00ff88", cursor: "pointer",
+            fontFamily: font, fontSize: 12, fontWeight: 800, marginTop: 8,
+            transition: "all 0.2s", letterSpacing: 0.5
+          }}>+ SENSOR HUB'DAN EKLE</button>
+        </div>
       </div>
 
       {/* Sensor mini-graphs */}
@@ -1563,6 +2257,14 @@ export default function UartSimulator() {
         </div>
       )}
 
+      </div>
+
+      <div style={{
+        gridArea: "main",
+        display: "flex", flexDirection: "column", gap: 12,
+        overflowY: "auto", paddingLeft: 4,
+        paddingBottom: 24,
+      }}>
       {/* Tab bar */}
       <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
         {tabs.map((t) => (
@@ -1587,7 +2289,7 @@ export default function UartSimulator() {
             <Oscilloscope
               frames={currentFrames}
               baudRate={baudRate}
-              width={700}
+              width={containerWidth}
               height={180}
               playing={playing}
               activeFrame={activeFrameIdx}
@@ -1627,6 +2329,7 @@ export default function UartSimulator() {
             <BaudRateComparison
               byte={currentFrames.length > 0 ? currentFrames[0].byte : 0x55}
               parity={parity}
+              width={containerWidth}
             />
             <div style={{
               marginTop: 12, fontSize: 11, color: "#4a6a5a", lineHeight: 1.6,
@@ -1645,15 +2348,17 @@ export default function UartSimulator() {
           </div>
         )}
 
-        {tab === "log"      && <LogPanel logs={logs} />}
-        {tab === "firmware" && <FirmwareTab font={font} />}
-        {tab === "kullanim"  && <UsageGuideTab font={font} />}
+        {tab === "canAnalyzer"      && <CanAnalyzer canFrames={canFrames} font={font} />}
+        {tab === "log"              && <LogPanel logs={logs} />}
+        {tab === "byteAnaliz"       && <ByteAnalyzer font={font} baudRate={baudRate} />}
+        {tab === "firmware"         && <FirmwareTab font={font} />}
+        {tab === "kullanim"         && <UsageGuideTab font={font} />}
       </div>
 
       {/* UART Config Summary */}
       <div style={{
-        marginTop: 12, padding: 10, background: "#080c12", borderRadius: 8,
-        border: "1px solid #1a2a22", fontSize: 11, color: "#4a6a5a",
+        marginTop: 12, padding: 10, background: "#081018", borderRadius: 8,
+        border: "1px solid #1a2a3a", fontSize: 11, color: "#4a6a5a",
         display: "flex", gap: 20, flexWrap: "wrap",
       }}>
         <span>Frame: <span style={{ color: "#00ff88" }}>1 Start + 8 Data{parity !== "none" ? " + 1 Parity" : ""} + {stopBits} Stop = {9 + (parity !== "none" ? 1 : 0) + stopBits} bit</span></span>
@@ -1661,11 +2366,13 @@ export default function UartSimulator() {
         <span>Frame Süresi: <span style={{ color: "#a29bfe" }}>{((( 9 + (parity !== "none" ? 1 : 0) + stopBits) / baudRate) * 1e6).toFixed(2)} µs</span></span>
         <span>Aktif Sensör: <span style={{ color: "#ff6b6b" }}>{activeSensors.length}</span></span>
       </div>
+      </div>
 
       {showAddSensor && (
-        <CustomSensorForm
-          onAdd={handleAddCustomSensor}
+        <SensorLibraryModal
+          onAdd={handleAddSensorFromLibrary}
           onClose={() => setShowAddSensor(false)}
+          font={font}
         />
       )}
     </div>
