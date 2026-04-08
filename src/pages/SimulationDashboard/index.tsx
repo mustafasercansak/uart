@@ -134,7 +134,7 @@ export default function SimulationDashboard() {
   const allRangeFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'range') ?? [], [selectedProfile]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-900">
+    <div className="h-full flex flex-col bg-gray-900 overflow-hidden">
       <StatBar 
         status={status}
         frameCount={frameCount}
@@ -162,56 +162,57 @@ export default function SimulationDashboard() {
         formatMs={formatMs}
       />
 
-      <div className="flex-1 overflow-y-auto min-h-0 bg-gray-900/50">
-        <div className="flex flex-col lg:flex-row min-h-full">
-          <div className="flex-1 flex flex-col border-r border-gray-800">
-            <div className="flex flex-col xl:flex-row border-b border-gray-800">
-              <div className="flex-1 min-w-0">
-                <FrameMonitor 
-                  lastFrame={lastFrame}
-                  recentFrames={recentFrames}
-                />
-              </div>
-              <div className="flex-1 min-w-0 border-t xl:border-t-0 xl:border-l border-gray-800">
-                <RxMonitor 
-                  lastRxFrame={lastRxFrame}
-                />
-              </div>
-            </div>
-            
-            <WaveformCharts 
-              waveformHistory={waveformHistory}
-              selectedProfile={selectedProfile}
-              CustomTooltip={CustomTooltip}
-              chartColors={CHART_COLORS}
+      {/* Main content: fixed height, no page scroll */}
+      <div className="flex-1 min-h-0 flex">
+        {/* Left: Frame monitors + Logic Analyzer (compact, stacked) */}
+        <div className="w-72 xl:w-80 flex flex-col border-r border-gray-800 shrink-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <FrameMonitor 
+              lastFrame={lastFrame}
+              recentFrames={recentFrames}
             />
-
+            <RxMonitor 
+              lastRxFrame={lastRxFrame}
+            />
+          </div>
+          <div className="shrink-0">
             <LogicAnalyzer 
               lastTxFrame={lastFrame}
               lastRxFrame={lastRxFrame}
             />
           </div>
+        </div>
 
-          <ControlPanel 
-            status={status}
-            flagsFields={flagsFields}
-            allRangeFields={allRangeFields}
-            bitOverrides={bitOverrides}
-            fieldOverrides={fieldOverrides}
-            pendingErrors={pendingErrors}
-            logEntries={logEntries}
-            errorTypes={ERROR_TYPES}
-            onOverrideField={overrideField}
-            onOverrideBit={overrideBit}
-            onInjectError={injectError}
-            onResetOverrides={resetOverrides}
-            onExportLogs={exportLogs}
-            isRecording={isRecording}
-            onStartRecording={startRecording}
-            onStopRecording={stopRecording}
-            onStartPlayback={startPlayback}
+        {/* Center: Waveform charts (fill remaining space) */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <WaveformCharts 
+            waveformHistory={waveformHistory}
+            selectedProfile={selectedProfile}
+            CustomTooltip={CustomTooltip}
+            chartColors={CHART_COLORS}
           />
         </div>
+
+        {/* Right: Control Panel */}
+        <ControlPanel 
+          status={status}
+          flagsFields={flagsFields}
+          allRangeFields={allRangeFields}
+          bitOverrides={bitOverrides}
+          fieldOverrides={fieldOverrides}
+          pendingErrors={pendingErrors}
+          logEntries={logEntries}
+          errorTypes={ERROR_TYPES}
+          onOverrideField={overrideField}
+          onOverrideBit={overrideBit}
+          onInjectError={injectError}
+          onResetOverrides={resetOverrides}
+          onExportLogs={exportLogs}
+          isRecording={isRecording}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          onStartPlayback={startPlayback}
+        />
       </div>
     </div>
   );

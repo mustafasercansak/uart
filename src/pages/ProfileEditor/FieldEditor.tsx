@@ -191,6 +191,7 @@ function WaveformEditor({ config, onChange }: { config: WaveformConfig; onChange
           <option value="triangle">Üçgen</option>
           <option value="sawtooth">Testere Dişi</option>
           <option value="square">Kare</option>
+          <option value="ecg">EKG (P-QRS-T)</option>
           <option value="custom">Özel</option>
         </select>
       </div>
