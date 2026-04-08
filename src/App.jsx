@@ -256,6 +256,23 @@ const PROTOCOLS = {
         : { key: `SENSOR_${buf[1].toString(16).toUpperCase().padStart(2, "0")}`, value: raw };
     },
   },
+  masimo: {
+    label: "Masimo",
+    example: "SPO2= 98 PR= 75 PI= 2.15%",
+    color: "#ff3f34",
+    parse: (line) => {
+      const spo2 = line.match(/SPO2=\s*(\d+)/);
+      const pr = line.match(/PR=\s*(\d+)/);
+      const pi = line.match(/PI=\s*([\d.]+)/);
+      if (spo2 || pr || pi) {
+        return { 
+          key: spo2 ? "MASIMO_SPO2" : pr ? "MASIMO_PR" : "MASIMO_PI", 
+          value: parseFloat((spo2 || pr || pi)[1]) 
+        };
+      }
+      return null;
+    },
+  },
   slcan: {
     label: "CAN (SLCAN)",
     example: "t12381122334455667788",
@@ -1909,6 +1926,19 @@ export default function UartSimulator() {
   const [speed, setSpeed] = useState(1);
   const [tab, setTab] = useState("osiloskop");
 
+  const [txPulse, setTxPulse] = useState(false);
+  const [rxPulse, setRxPulse] = useState(false);
+
+  const flashTx = useCallback(() => {
+    setTxPulse(true);
+    setTimeout(() => setTxPulse(false), 80);
+  }, []);
+
+  const flashRx = useCallback(() => {
+    setRxPulse(true);
+    setTimeout(() => setRxPulse(false), 80);
+  }, []);
+
   const [sensorHistories, setSensorHistories] = useState({});
   const [currentFrames, setCurrentFrames] = useState([]);
   const [showAddSensor, setShowAddSensor] = useState(false);
@@ -1957,31 +1987,66 @@ export default function UartSimulator() {
     const frames = [];
     const traceEntries = [];
 
-    // console.log("Generating sample for:", activeSensors);
-    activeSensors.forEach((sKey) => {
-      const s = sensorsRef.current[sKey];
-      if (!s || typeof s.generate !== "function") {
-        // console.warn("Generating skipped for:", sKey, " (Missing generate function)");
-        return;
+    if (serialProtocol === "masimo") {
+      const mSPO2 = activeSensors.find(k => k.startsWith("MASIMO_SPO2"));
+      const mPR = activeSensors.find(k => k.startsWith("MASIMO_PR"));
+      const mPI = activeSensors.find(k => k.startsWith("MASIMO_PI"));
+      let parts = [];
+      if (mSPO2) {
+        const val = sensorsRef.current[mSPO2].generate(t);
+        newHistories[mSPO2] = val;
+        parts.push(`SPO2=${Math.round(val).toString().padStart(3, " ")}`);
       }
-      
-      const val = Math.max(s.min, Math.min(s.max, s.generate(t)));
-      const bytes = s.encodeBytes ? s.encodeBytes(val) : [];
+      if (mPR) {
+        const val = sensorsRef.current[mPR].generate(t);
+        newHistories[mPR] = val;
+        parts.push(`PR=${Math.round(val).toString().padStart(3, " ")}`);
+      }
+      if (mPI) {
+        const val = sensorsRef.current[mPI].generate(t);
+        newHistories[mPI] = val;
+        parts.push(`PI=${val.toFixed(2).padStart(5, " ")}%`);
+      }
+      if (parts.length > 0) {
+        const line = parts.join(" ") + "\r\n";
+        const bytes = new TextEncoder().encode(line);
+        bytes.forEach(b => frames.push(buildUartFrame(b, parity, stopBits, errorMode)));
+        traceEntries.push({ time: timeStr(), type: "sys", text: line.trim(), color: "#ff3f34" });
+      }
+    } else {
+      activeSensors.forEach((sKey) => {
+        const s = sensorsRef.current[sKey];
+        if (!s || typeof s.generate !== "function") return;
+        const val = Math.max(s.min, Math.min(s.max, s.generate(t)));
+        newHistories[sKey] = val;
 
-      newHistories[sKey] = val;
+        let packetBytes = [];
+        let logText = "";
 
-      bytes.forEach((b) => {
-        const frame = buildUartFrame(b, parity, stopBits, errorMode);
-        frames.push(frame);
+        if (serialProtocol === "ascii") {
+          logText = `${s.name}:${val.toFixed(3)}`;
+          packetBytes = new TextEncoder().encode(logText + "\n");
+        } else if (serialProtocol === "json") {
+          const obj = { s: s.name, v: parseFloat(val.toFixed(3)), u: s.unit };
+          logText = JSON.stringify(obj);
+          packetBytes = new TextEncoder().encode(logText + "\n");
+        } else if (serialProtocol === "binary") {
+          const b = s.encodeBytes ? s.encodeBytes(val) : [0x00, 0x00];
+          const BINARY_IDS = { DS18B20: 0x00, DHT22: 0x01, BMP280: 0x02, MPU6050: 0x03, AD8232: 0x10, MAX30102_SPO2: 0x11, MAX30102_HR: 0x12, MLX90614: 0x13, GSR: 0x14, MASIMO_SPO2: 0x20, MASIMO_PR: 0x21, MASIMO_PI: 0x22 };
+          const baseKey = s.baseType || sKey.replace(/_\d+$/, "");
+          const id = BINARY_IDS[baseKey] || 0xFF;
+          const xor = 0xAA ^ id ^ b[0] ^ b[1];
+          packetBytes = new Uint8Array([0xAA, id, b[0], b[1], xor]);
+          logText = `[BINARY] ${toHex(packetBytes)}`;
+        } else {
+          packetBytes = new Uint8Array(s.encodeBytes ? s.encodeBytes(val) : []);
+          logText = `${s.label}: ${val.toFixed(2)} ${s.unit}`;
+        }
+        
+        packetBytes.forEach(b => frames.push(buildUartFrame(b, parity, stopBits, errorMode)));
+        traceEntries.push({ time: timeStr(), type: "sys", text: logText, color: s.color });
       });
-
-      traceEntries.push({
-        time: timeStr(),
-        type: "sys",
-        text: `${s.label}: ${val.toFixed(2)} ${s.unit}`,
-        color: s.color
-      });
-    });
+    }
 
     if (activeSensors.length > 0) {
       setSensorHistories(prev => {
@@ -2033,9 +2098,22 @@ export default function UartSimulator() {
     }, [playing, frames, speed]);
 
     return (
-      <div style={{ background: "rgba(0,0,0,0.2)", padding: 16, borderRadius: 12, border: "1px solid #1a3a3a" }}>
-        <BitFrameDisplay frame={frames[fIdx]} activeBit={bIdx} playing={playing} />
-        <div style={{ marginTop: 10, textAlign: "center", fontSize: 10, color: "#4a6a5a" }}>
+      <div style={{ background: "rgba(0,0,0,0.2)", padding: 16, borderRadius: 12, border: "1px solid #1a3a3a", display: "flex", flexDirection: "column", gap: 16 }}>
+        {frames.length <= 2 ? (
+          <BitFrameDisplay frame={frames[fIdx]} activeBit={bIdx} playing={playing} />
+        ) : null}
+        
+        <Oscilloscope 
+          frames={frames} 
+          baudRate={baudRate} 
+          width={containerWidth ? containerWidth - 80 : 700} 
+          height={frames.length > 2 ? 160 : 80} 
+          playing={playing} 
+          activeFrame={fIdx} 
+          activeBit={bIdx} 
+        />
+        
+        <div style={{ textAlign: "center", fontSize: 10, color: "#4a6a5a" }}>
           Frame {fIdx + 1} / {frames.length} — Bit {bIdx}
         </div>
       </div>
@@ -2327,7 +2405,14 @@ export default function UartSimulator() {
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "#4a6a5a", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 10, color: "#4a6a5a", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 8px", background: "rgba(0,0,0,0.2)", borderRadius: 20, border: "1px solid #1a3a3a" }}>
+             <div style={{ width: 8, height: 8, borderRadius: "50%", background: txPulse ? "#00ff88" : "#002211", boxShadow: txPulse ? "0 0 10px #00ff88" : "none", transition: "all 0.05s" }} />
+             <span style={{ color: txPulse ? "#00ff88" : "#1a3a2a", fontWeight: 700 }}>TX</span>
+             <div style={{ width: 1, height: 10, background: "#1a3a2a" }} />
+             <div style={{ width: 8, height: 8, borderRadius: "50%", background: rxPulse ? "#4ecdc4" : "#0d2b29", boxShadow: rxPulse ? "0 0 10px #4ecdc4" : "none", transition: "all 0.05s" }} />
+             <span style={{ color: rxPulse ? "#4ecdc4" : "#13312e", fontWeight: 700 }}>RX</span>
+          </div>
           <span>TX: <span style={{ color: "#00ff88" }}>{transmittedCount}</span></span>
           <span>
             ERR: <span style={{ color: errorCount > 0 ? "#ff4757" : "#4a6a5a" }}>{errorCount}</span>
