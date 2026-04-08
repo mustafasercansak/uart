@@ -191,6 +191,12 @@ const PARITY_MODES = {
   odd: { label: "Tek", calc: (bits) => bits.reduce((a, b) => a ^ b, 0) ^ 1 },
 };
 
+const toHex = (data) => {
+  if (!data) return "";
+  const arr = typeof data === "string" ? new TextEncoder().encode(data) : data;
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+};
+
 // ── Protocol Registry ────────────────────────
 // Her protokol: { label, example, color, parse(line)→{key,value}|null }
 // Binary ayrıca parsePacket(Uint8Array[5])→{key,value}|null içerir
@@ -946,11 +952,23 @@ function SensorLibraryModal({ onAdd, onClose, font }) {
 // Desteklenen protokoller: ascii | json | binary
 // onPacket({ key, value }) — parse edilen her veri noktası
 // onLog({ text, color })   — bağlantı/hata mesajları
-function useSerialPort({ protocol, onPacket, onLog }) {
+function useSerialPort({ protocol, onPacket, onLog, onRaw }) {
   const [connected, setConnected] = useState(false);
   const [supported] = useState(() => "serial" in navigator);
   const portRef   = useRef(null);
   const readerRef = useRef(null);
+  const writerRef = useRef(null);
+
+  // Callback'leri ref içinde saklayarak sonsuz döngüleri önlüyoruz
+  const onPacketRef = useRef(onPacket);
+  const onLogRef = useRef(onLog);
+  const onRawRef = useRef(onRaw);
+  
+  useEffect(() => { onPacketRef.current = onPacket; }, [onPacket]);
+  useEffect(() => { onLogRef.current = onLog; }, [onLog]);
+  useEffect(() => { onRawRef.current = onRaw; }, [onRaw]);
+
+  const safeLog = useCallback((log) => onLogRef.current?.(log), []);
 
   const disconnect = useCallback(async () => {
     try {
@@ -958,14 +976,37 @@ function useSerialPort({ protocol, onPacket, onLog }) {
         await readerRef.current.cancel();
         readerRef.current = null;
       }
+      if (writerRef.current) {
+        writerRef.current.releaseLock();
+        writerRef.current = null;
+      }
       if (portRef.current) {
         await portRef.current.close();
         portRef.current = null;
       }
-    } catch { /* port zaten kapalı olabilir */ }
+    } catch { /* ... */ }
     setConnected(false);
-    onLog({ text: "Seri port bağlantısı kesildi.", color: "#ff9f43" });
-  }, [onLog]);
+    safeLog({ text: "Seri port bağlantısı kesildi.", color: "#ff9f43" });
+  }, [safeLog]);
+
+  const send = useCallback(async (data) => {
+    if (!portRef.current || !portRef.current.writable) {
+      safeLog({ text: "Hata: Port yazılabilir değil.", color: "#ff4757" });
+      return;
+    }
+    try {
+      const writer = portRef.current.writable.getWriter();
+      writerRef.current = writer;
+      let payload = typeof data === "string" ? new TextEncoder().encode(data) : data;
+      await writer.write(payload);
+      writer.releaseLock();
+      writerRef.current = null;
+      onRawRef.current?.(payload, "tx");
+    } catch (e) {
+      safeLog({ text: `Gönderim hatası: ${e.message}`, color: "#ff4757" });
+      if (writerRef.current) { try { writerRef.current.releaseLock(); } catch {} writerRef.current = null; }
+    }
+  }, [safeLog]);
 
   const connect = useCallback(async (baudRate) => {
     if (!supported) return;
@@ -974,121 +1015,179 @@ function useSerialPort({ protocol, onPacket, onLog }) {
       await port.open({ baudRate });
       portRef.current = port;
       setConnected(true);
-      onLog({ text: `Bağlandı — ${baudRate} baud, protokol: ${protocol.toUpperCase()}`, color: "#00ff88" });
+      safeLog({ text: `Bağlandı — ${baudRate} baud, protokol: ${protocol.toUpperCase()}`, color: "#00ff88" });
 
       const reader = port.readable.getReader();
       readerRef.current = reader;
       const dec = new TextDecoder();
       let lineBuf = "";
-      let binBuf  = [];
+      let binBuf = [];
 
       (async () => {
         try {
           while (true) {
             const { value, done } = await reader.read();
             if (done) break;
+            
+            onRawRef.current?.(value, "rx");
 
             if (protocol === "binary") {
-              // value → Uint8Array; paket = [0xAA][id][hi][lo][xor]
               for (const byte of value) {
                 if (byte === 0xAA) { binBuf = [byte]; }
                 else if (binBuf.length > 0) {
                   binBuf.push(byte);
                   if (binBuf.length === 5) {
                     const parsed = PROTOCOLS.binary.parsePacket(binBuf);
-                    if (parsed) onPacket(parsed);
-                    else onLog({ text: `Binary checksum hatası: [${binBuf.map((b) => "0x" + b.toString(16).padStart(2, "0")).join(" ")}]`, color: "#ff4757" });
+                    if (parsed) onPacketRef.current?.(parsed);
+                    else safeLog({ text: `Binary checksum hatası: [${binBuf.map((b) => "0x" + b.toString(16).padStart(2, "0")).join(" ")}]`, color: "#ff4757" });
                     binBuf = [];
                   }
                 }
               }
             } else {
-              // ASCII veya JSON — satır bazlı
               lineBuf += dec.decode(value, { stream: true });
               const lines = lineBuf.split(/\r?\n/);
               lineBuf = lines.pop();
               for (const line of lines) {
                 if (!line.trim()) continue;
-                const parsed = PROTOCOLS[protocol].parse(line);
-                if (parsed) onPacket(parsed);
-                else onLog({ text: `[RAW] ${line}`, color: "#3a5a4a" });
+                const parsed = PROTOCOLS[protocol]?.parse(line);
+                if (parsed) onPacketRef.current?.(parsed);
+                else safeLog({ text: `[RAW] ${line}`, color: "#3a5a4a" });
               }
             }
           }
         } catch (e) {
-          if (e.name !== "AbortError") onLog({ text: `Okuma hatası: ${e.message}`, color: "#ff4757" });
+          safeLog({ text: `Okuma hatası: ${e.message}`, color: "#ff4757" });
         } finally {
           reader.releaseLock();
           setConnected(false);
         }
       })();
     } catch (e) {
-      if (e.name !== "NotFoundError") onLog({ text: `Bağlantı hatası: ${e.message}`, color: "#ff4757" });
+      safeLog({ text: `Bağlantı hatası: ${e.message}`, color: "#ff4757" });
     }
-  }, [supported, protocol, onPacket, onLog]);
+  }, [supported, protocol, safeLog]);
 
-  // Temizlik
   useEffect(() => () => { disconnect(); }, [disconnect]);
 
-  return { connected, supported, connect, disconnect };
+  return { connected, supported, connect, disconnect, send };
 }
 
-// ── Log Panel ───────────────────────────────
-function LogPanel({ logs }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-  }, [logs]);
+function TracePanel({ history, onSend, font, rules, setRules, echoEnabled, setEchoEnabled }) {
+  const [input, setInput] = useState("");
+  const [lineEnding, setLineEnding] = useState("\n");
+  const [viewMode, setViewMode] = useState("ascii"); // ascii | hex
+  const [showLogic, setShowLogic] = useState(false);
+  const scrollRef = useRef(null);
 
-  const exportCSV = () => {
-    const rows = ["Zaman,Sensör,Mesaj"];
-    logs.forEach((log) => {
-      const sensor = log.sensor?.name || "";
-      const text = `"${log.text.replace(/"/g, '""')}"`;
-      rows.push(`${log.time},${sensor},${text}`);
-    });
-    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [history]);
+
+  const handleSend = () => {
+    if (!input) return;
+    let data = input;
+    if (lineEnding === "\n") data += "\n";
+    if (lineEnding === "\r\n") data += "\r\n";
+    onSend(data);
+    setInput("");
+  };
+
+  const exportLog = () => {
+    const text = history.map(h => `[${h.time}] ${h.type.toUpperCase()}: ${h.text}`).join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `uart_log_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.csv`;
+    a.download = `trace_log_${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6, gap: 8 }}>
-        <span style={{ fontSize: 10, color: "#3a5a4a", alignSelf: "center" }}>{logs.length} kayıt</span>
-        <button onClick={exportCSV} disabled={logs.length === 0} style={{
-          padding: "3px 12px", borderRadius: 4, border: "1px solid #1a3a2a",
-          background: "#0a0e14", color: logs.length > 0 ? "#4ecdc4" : "#2a3a32",
-          cursor: logs.length > 0 ? "pointer" : "not-allowed",
-          fontFamily: '"IBM Plex Mono", monospace', fontSize: 10,
-        }}>⬇ CSV İndir</button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, height: 450, fontFamily: font }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a1118", padding: "8px 12px", borderRadius: 8, border: "1px solid #1a2a22" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ fontSize: 10, color: "#00ff88", fontWeight: 700 }}>TRACE & TERMINAL</span>
+          <div style={{ width: 1, height: 12, background: "#1a2a22" }} />
+          {["ascii", "hex"].map(m => (
+            <button key={m} onClick={() => setViewMode(m)} style={{
+              padding: "2px 8px", borderRadius: 4, border: "1px solid",
+              borderColor: viewMode === m ? "#00ff88" : "#1a2a22",
+              background: viewMode === m ? "#00ff8822" : "transparent",
+              color: viewMode === m ? "#00ff88" : "#4a6a5a",
+              cursor: "pointer", fontSize: 9, textTransform: "uppercase"
+            }}>{m}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowLogic(!showLogic)} style={{
+            padding: "4px 10px", borderRadius: 4, border: "1px solid #1a2a22", 
+            background: showLogic ? "#ff9f4322" : "#0d1520", color: showLogic ? "#ff9f43" : "#4a6a5a",
+            cursor: "pointer", fontSize: 10
+          }}>⚙ OTOMASYON</button>
+          <button onClick={exportLog} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1a2a22", background: "#0d1520", color: "#4ecdc4", cursor: "pointer", fontSize: 10 }}>⬇ İNDİR</button>
+        </div>
       </div>
-      <div ref={ref} style={{
-        background: "#080c12", borderRadius: 8, border: "1px solid #1a2a22",
-        padding: 10, height: 140, overflowY: "auto", fontFamily: '"IBM Plex Mono", monospace',
-        fontSize: 11,
+
+      {/* Logic Panel */}
+      {showLogic && (
+        <div style={{ background: "#060a11", border: "1px solid #ff9f4344", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+             <span style={{ fontSize: 11, color: "#ff9f43", fontWeight: 700 }}>OTOMASYON AYARLARI</span>
+             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+               <span style={{ fontSize: 10, color: "#4a6a5a" }}>ECHO:</span>
+               <button onClick={() => setEchoEnabled(!echoEnabled)} style={{ padding: "2px 8px", borderRadius: 4, background: echoEnabled ? "#ff9f43" : "#1a2a22", color: echoEnabled ? "#000" : "#4a6a5a", border: "none", cursor: "pointer", fontSize: 10 }}>{echoEnabled ? "AÇIK" : "KAPALI"}</button>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* Main Screen */}
+      <div ref={scrollRef} style={{
+        flex: 1, background: "#05080c", border: "1px solid #1a2a22", borderRadius: 8,
+        padding: 12, overflowY: "auto", fontSize: 11, display: "flex", flexDirection: "column", gap: 3
       }}>
-        {logs.map((log, i) => (
-          <div key={i} style={{ color: log.color || "#5a8a6a", marginBottom: 2, lineHeight: 1.4 }}>
-            <span style={{ color: "#3a5a4a" }}>[{log.time}]</span>{" "}
-            <span style={{ color: log.sensor?.color || "#5a8a6a" }}>{log.sensor?.icon || "•"}</span>{" "}
-            {log.text}
+        {history.map((item, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, opacity: 0.9, lineHeight: "1.4" }}>
+            <span style={{ color: "#2a3a32", minWidth: 70, fontSize: 10 }}>[{item.time}]</span>
+            <span style={{ 
+              color: item.type === "tx" ? "#00ff88" : item.type === "rx" ? "#4ecdc4" : "#ff9f43",
+              fontWeight: 700, minWidth: 24, fontSize: 9
+            }}>
+              {item.type.toUpperCase()}
+            </span>
+            <span style={{ color: item.type === "tx" ? "#c0d8cc" : item.type === "rx" ? "#fff" : (item.color || "#ff9f43"), whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+              {viewMode === "hex" ? (item.hex || toHex(item.text)) : item.text.replace(/\n/g, "\\n").replace(/\r/g, "\\r")}
+            </span>
           </div>
         ))}
-        {logs.length === 0 && (
-          <div style={{ color: "#2a3a32", fontStyle: "italic" }}>Simülasyon başlatılmadı...</div>
-        )}
+        {history.length === 0 && <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#1a2a22", fontStyle: "italic" }}>Veri akışı bekleniyor...</div>}
+      </div>
+
+      {/* Input */}
+      <div style={{ display: "flex", gap: 6 }}>
+        <input 
+          placeholder="Komut gönder... (Enter)"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleSend()}
+          style={{ flex: 1, background: "#0d1520", border: "1px solid #1a2a2a", borderRadius: 6, padding: "8px 12px", color: "#fff", fontSize: 12, outline: "none" }}
+        />
+        <select value={lineEnding} onChange={e => setLineEnding(e.target.value)} style={{ background: "#0d1520", border: "1px solid #1a2a2a", borderRadius: 6, color: "#4a6a5a", padding: "0 8px", fontSize: 10 }}>
+          <option value="">Ek yok</option>
+          <option value="\n">\n</option>
+          <option value="\r\n">\r\n</option>
+        </select>
+        <button onClick={handleSend} style={{ padding: "0 20px", background: "#00ff88", border: "none", borderRadius: 6, color: "#000", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>GÖNDER</button>
       </div>
     </div>
   );
 }
 
 // ── Serial Panel ─────────────────────────────
-function SerialPanel({ connected, supported, protocol, setProtocol, baudRate, onConnect, onDisconnect, font }) {
+function SerialPanel({ connected, supported, protocol, setProtocol, baudRate, onConnect, onDisconnect, font, echoEnabled, setEchoEnabled }) {
   const statusColor = !supported ? "#ff4757" : connected ? "#00ff88" : "#4a6a5a";
   const statusText  = !supported ? "Desteklenmiyor (Chrome/Edge gerekli)" : connected ? "Bağlı" : "Bağlı Değil";
 
@@ -1108,6 +1207,25 @@ function SerialPanel({ connected, supported, protocol, setProtocol, baudRate, on
           boxShadow: connected ? `0 0 6px ${statusColor}` : "none",
         }} />
         <span style={{ fontSize: 11, color: statusColor, fontFamily: font }}>{statusText}</span>
+      </div>
+
+      <div style={{ width: 1, height: 20, background: "#1a2a22" }} />
+
+      {/* Echo Mode */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 10, color: "#4a6a5a" }}>ECHO</span>
+        <button 
+          onClick={() => setEchoEnabled(!echoEnabled)} 
+          style={{
+            padding: "3px 8px", borderRadius: 4, border: "1px solid",
+            borderColor: echoEnabled ? "#ff9f43" : "#1a2a22",
+            background: echoEnabled ? "#ff9f4322" : "transparent",
+            color: echoEnabled ? "#ff9f43" : "#4a6a5a",
+            cursor: "pointer", fontFamily: font, fontSize: 10
+          }}
+        >
+          {echoEnabled ? "ON" : "OFF"}
+        </button>
       </div>
 
       <div style={{ width: 1, height: 20, background: "#1a2a22" }} />
@@ -1581,7 +1699,137 @@ function CanAnalyzer({ canFrames, font }) {
   );
 }
 
-function SensorListItem({ sensor, pKey, isActive, onToggle, onClone, onRemove }) {
+
+function Terminal({ history, onSend, onClear, font }) {
+  const [input, setInput] = useState("");
+  const [lineEnding, setLineEnding] = useState("\\n");
+  const [viewMode, setViewMode] = useState("ascii"); // ascii | hex
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [history]);
+
+  const handleSend = () => {
+    if (!input) return;
+    let data = input;
+    if (lineEnding === "\\n") data += "\n";
+    if (lineEnding === "\\r\\n") data += "\r\n";
+    onSend(data);
+    setInput("");
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, height: "100%" }}>
+      {/* Terminal Toolbar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {["ascii", "hex"].map(m => (
+            <button key={m} onClick={() => setViewMode(m)} style={{
+              padding: "4px 12px", borderRadius: 6, border: "1px solid",
+              borderColor: viewMode === m ? "#00ff88" : "#1a2a22",
+              background: viewMode === m ? "rgba(0,255,136,0.1)" : "transparent",
+              color: viewMode === m ? "#00ff88" : "#4a6a5a",
+              cursor: "pointer", fontFamily: font, fontSize: 10, textTransform: "uppercase",
+              fontWeight: 700, transition: "all 0.2s"
+            }}>{m}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 10, color: "#3a5a4a", opacity: 0.6 }}>{history.length} paket izleniyor</div>
+          <button onClick={onClear} title="Terminali Temizle" style={{
+            background: "none", border: "none", color: "#ff4757", cursor: "pointer", fontSize: 14, padding: "2px 6px"
+          }}>🗑</button>
+        </div>
+      </div>
+
+      {/* Terminal Screen */}
+      <div ref={scrollRef} style={{
+        flex: 1, background: "#060a11", border: "1px solid #1a2a22", borderRadius: 12,
+        padding: 16, overflowY: "auto", fontFamily: font, fontSize: 12, display: "flex", flexDirection: "column", gap: 8,
+        boxShadow: "inset 0 0 20px rgba(0,0,0,0.5)"
+      }}>
+        {history.map((item, i) => {
+          const isTx = item.type === "tx";
+          const isSys = item.type === "sys";
+          
+          return (
+            <div key={i} style={{ 
+              display: "flex", 
+              flexDirection: "column",
+              alignSelf: isSys ? "center" : (isTx ? "flex-end" : "flex-start"),
+              maxWidth: "85%",
+              gap: 2
+            }}>
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 6, 
+                fontSize: 9, 
+                color: "#3a5a4a",
+                justifyContent: isSys ? "center" : (isTx ? "flex-end" : "flex-start")
+              }}>
+                <span style={{ fontWeight: 700, color: isTx ? "#00ff88" : (isSys ? "#6a8a7a" : "#4ecdc4") }}>
+                  {isTx ? "TX" : (isSys ? "SIM" : "RX")}
+                </span>
+                <span>[{item.time}]</span>
+              </div>
+              <div style={{
+                background: isSys ? "rgba(255,255,255,0.03)" : (isTx ? "rgba(0,255,136,0.08)" : "rgba(78,205,196,0.08)"),
+                border: `1px solid ${isSys ? "#1a2a22" : (isTx ? "#00ff8833" : "#4ecdc433")}`,
+                padding: "6px 12px",
+                borderRadius: isSys ? 6 : (isTx ? "12px 12px 2px 12px" : "12px 12px 12px 2px"),
+                color: isTx ? "#c0d8cc" : "#fff",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                fontSize: 11
+              }}>
+                {viewMode === "hex" ? (item.hex || toHex(item.text)) : (item.text?.replace(/\n/g, "\\n").replace(/\r/g, "\\r"))}
+              </div>
+            </div>
+          );
+        })}
+        {history.length === 0 && (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#2a3a32", fontStyle: "italic" }}>
+            Veri akışı bekleniyor...
+          </div>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div style={{ display: "flex", gap: 8 }}>
+        <input 
+          placeholder="Seri porta veri gönder..."
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleSend()}
+          style={{
+            flex: 1, background: "#0d1520", border: "1px solid #1a3a2a", borderRadius: 8,
+            padding: "12px 16px", color: "#fff", fontFamily: font, fontSize: 13, outline: "none",
+            boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3)"
+          }}
+        />
+        <select value={lineEnding} onChange={e => setLineEnding(e.target.value)} style={{
+          background: "#0d1520", border: "1px solid #1a3a2a", borderRadius: 8,
+          color: "#4a6a5a", padding: "0 10px", fontFamily: font, fontSize: 11, cursor: "pointer", outline: "none"
+        }}>
+          <option value="">Son ek yok</option>
+          <option value="\\n">\n (LF)</option>
+          <option value="\\r\\n">\r\n (CRLF)</option>
+        </select>
+        <button onClick={handleSend} style={{
+          padding: "0 28px", background: "linear-gradient(135deg, #00ff88, #00cc6a)",
+          border: "none", borderRadius: 8, color: "#000", fontWeight: 800, cursor: "pointer", fontFamily: font,
+          transition: "transform 0.1s"
+        }} onMouseDown={e => e.currentTarget.style.transform = "scale(0.96)"} onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}>GÖNDER</button>
+      </div>
+    </div>
+  );
+}
+
+function SensorListItem({ sensor, pKey, isActive, onToggle, onClone, onRemove, onMove, isFirst, isLast }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -1591,19 +1839,33 @@ function SensorListItem({ sensor, pKey, isActive, onToggle, onClone, onRemove })
       boxShadow: isActive ? `0 0 15px ${sensor.color}11` : "none"
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }} onClick={() => onToggle(pKey)}>
-        <span style={{ fontSize: 20, filter: isActive ? "none" : "grayscale(1) opacity(0.5)" }}>{sensor.icon}</span>
+        <span style={{ fontSize: 24, filter: isActive ? "none" : "grayscale(1) opacity(0.5)" }}>{sensor.icon}</span>
         <div>
           <div style={{ fontSize: 13, color: isActive ? sensor.color : "#6a8a7a", fontWeight: 700 }}>{sensor.label || sensor.name}</div>
           <div style={{ fontSize: 9, color: "#3a5a4a", fontWeight: 600, letterSpacing: 0.5 }}>{isActive ? "ONLINE" : "STANDBY"}</div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => onClone(pKey)} title="Klonla" style={{
-          background: "none", border: "none", color: "#4ecdc4", cursor: "pointer", fontSize: 14, opacity: 0.5, transition: "opacity 0.2s"
-        }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>⎘</button>
-        <button onClick={() => onRemove(pKey)} title="Kaldır" style={{
-          background: "none", border: "none", color: "#ff4757", cursor: "pointer", fontSize: 14, opacity: 0.5, transition: "opacity 0.2s"
-        }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>✕</button>
+      <div style={{ display: "flex", gap: 4 }}>
+        <button onClick={(e) => { e.stopPropagation(); onMove(pKey, -1); }} disabled={isFirst} title="Yukarı Taşı" style={{
+          width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)",
+          color: "#fff", borderRadius: 6, cursor: isFirst ? "default" : "pointer", fontSize: 12, opacity: isFirst ? 0.2 : 0.6, transition: "all 0.2s"
+        }}>▲</button>
+        <button onClick={(e) => { e.stopPropagation(); onMove(pKey, 1); }} disabled={isLast} title="Aşağı Taşı" style={{
+          width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)",
+          color: "#fff", borderRadius: 6, cursor: isLast ? "default" : "pointer", fontSize: 12, opacity: isLast ? 0.2 : 0.6, transition: "all 0.2s"
+        }}>▼</button>
+        <button onClick={(e) => { e.stopPropagation(); onClone(pKey); }} title="Klonla" style={{
+          width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(78, 205, 196, 0.05)", border: "1px solid rgba(78, 205, 196, 0.2)",
+          color: "#4ecdc4", borderRadius: 6, cursor: "pointer", fontSize: 14, transition: "all 0.2s"
+        }}>⎘</button>
+        <button onClick={(e) => { e.stopPropagation(); onRemove(pKey); }} title="Çalışma alanından kaldır" style={{
+          width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(255, 71, 87, 0.05)", border: "1px solid rgba(255, 71, 87, 0.2)",
+          color: "#ff4757", borderRadius: 6, cursor: "pointer", fontSize: 14, transition: "all 0.2s"
+        }}>✕</button>
       </div>
     </div>
   );
@@ -1616,7 +1878,21 @@ export default function UartSimulator() {
   // --- Persistence & State Initialization ---
   const [sensors, setSensors] = useState(() => {
     const saved = localStorage.getItem("uart_sensors");
-    return saved ? JSON.parse(saved) : { ...SENSOR_REGISTRY };
+    if (!saved) return { ...SENSOR_REGISTRY };
+    try {
+      const parsed = JSON.parse(saved);
+      // Re-attach functions lost during JSON serialization, handling clones correctly
+      Object.keys(parsed).forEach(k => {
+        const s = parsed[k];
+        const baseKey = s.baseType || k.replace(/_\d+$/, "");
+        const base = SENSOR_REGISTRY[baseKey];
+        if (base) {
+          s.generate = base.generate;
+          s.encodeBytes = base.encodeBytes;
+        }
+      });
+      return parsed;
+    } catch { return { ...SENSOR_REGISTRY }; }
   });
   const [activeSensors, setActiveSensors] = useState(() => {
     const saved = localStorage.getItem("uart_active_sensors");
@@ -1635,16 +1911,17 @@ export default function UartSimulator() {
 
   const [sensorHistories, setSensorHistories] = useState({});
   const [currentFrames, setCurrentFrames] = useState([]);
-  const [activeFrameIdx, setActiveFrameIdx] = useState(0);
-  const [activeBitIdx, setActiveBitIdx] = useState(0);
-  const [logs, setLogs] = useState([]);
-  const [tick, setTick] = useState(0);
-  const [canFrames, setCanFrames] = useState({});
-  const [quickResults, setQuickResults] = useState([]);
   const [showAddSensor, setShowAddSensor] = useState(false);
+  const [quickResults, setQuickResults] = useState([]);
+  const [trace, setTrace] = useState([]); // Birleşik Log + Terminal
   const [transmittedCount, setTransmittedCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
+  const [throughput, setThroughput] = useState(0);
   const [serialProtocol, setSerialProtocol] = useState("ascii");
+  const [echoEnabled, setEchoEnabled] = useState(false);
+  const [responseRules, setResponseRules] = useState([
+    { trigger: "PING", response: "PONG", enabled: true }
+  ]);
 
   const timerRef = useRef(null);
   const tickRef = useRef(0);
@@ -1652,7 +1929,9 @@ export default function UartSimulator() {
   const [containerWidth, setContainerWidth] = useState(700);
   const transmitCountRef = useRef(0);
   const lastThroughputTimeRef = useRef(Date.now());
-  const [throughput, setThroughput] = useState(0);
+  const sensorsRef = useRef(sensors);
+
+  useEffect(() => { sensorsRef.current = sensors; }, [sensors]);
 
   // Persistence Effects
   useEffect(() => {
@@ -1674,52 +1953,50 @@ export default function UartSimulator() {
     const t = tickRef.current;
     tickRef.current += 0.1;
 
-    const newHistories = { ...sensorHistories };
+    const newHistories = {};
     const frames = [];
-    const newLogs = [];
+    const traceEntries = [];
 
+    // console.log("Generating sample for:", activeSensors);
     activeSensors.forEach((sKey) => {
-      const s = sensors[sKey];
-      if (!s) return;
+      const s = sensorsRef.current[sKey];
+      if (!s || typeof s.generate !== "function") {
+        // console.warn("Generating skipped for:", sKey, " (Missing generate function)");
+        return;
+      }
+      
       const val = Math.max(s.min, Math.min(s.max, s.generate(t)));
-      const bytes = s.encodeBytes(val);
+      const bytes = s.encodeBytes ? s.encodeBytes(val) : [];
 
-      if (!newHistories[sKey]) newHistories[sKey] = [];
-      newHistories[sKey] = [...newHistories[sKey].slice(-59), val];
+      newHistories[sKey] = val;
 
-      // Apply error injection randomly (20% chance per frame when enabled)
-      bytes.forEach((b, bi) => {
-        const inject = errorMode && Math.random() < 0.2 ? errorMode : null;
-        const frame = buildUartFrame(b, parity, stopBits, inject);
+      bytes.forEach((b) => {
+        const frame = buildUartFrame(b, parity, stopBits, errorMode);
         frames.push(frame);
-        if (inject) {
-          newLogs.push({
-            time: timeStr(),
-            sensor: s,
-            text: `⚠ ${inject === "parity" ? "PARITY" : "FRAMING"} HATASI — 0x${b.toString(16).toUpperCase().padStart(2, "0")}`,
-            color: "#ff4757",
-          });
-        }
       });
 
-      newLogs.push({
+      traceEntries.push({
         time: timeStr(),
-        sensor: s,
-        text: `${s.label}: ${val.toFixed(3)} ${s.unit} → [${bytes.map((b) => "0x" + b.toString(16).toUpperCase().padStart(2, "0")).join(", ")}]`,
-        color: s.color,
+        type: "sys",
+        text: `${s.label}: ${val.toFixed(2)} ${s.unit}`,
+        color: s.color
       });
     });
 
-    setSensorHistories(newHistories);
-    setCurrentFrames(frames);
-    setActiveFrameIdx(0);
-    setActiveBitIdx(0);
-    setTransmittedCount((c) => c + frames.length);
-    setErrorCount((c) => c + frames.filter((f) => f.hasError).length);
-    setLogs((prev) => [...prev.slice(-200), ...newLogs]);
-    setTick((t) => t + 1);
+    if (activeSensors.length > 0) {
+      setSensorHistories(prev => {
+        const next = { ...prev };
+        Object.entries(newHistories).forEach(([k, v]) => {
+          next[k] = [...(next[k] || []).slice(-59), v];
+        });
+        return next;
+      });
+      setCurrentFrames(frames);
+      setTransmittedCount(c => c + frames.length);
+      setTrace(prev => [...prev.slice(-199), ...traceEntries.map(e => ({ ...e, hex: toHex(e.text) }))]);
+    }
 
-    // Throughput tracking (frames/sec)
+    // Throughput
     transmitCountRef.current += frames.length;
     const now = Date.now();
     if (now - lastThroughputTimeRef.current >= 1000) {
@@ -1727,33 +2004,43 @@ export default function UartSimulator() {
       transmitCountRef.current = 0;
       lastThroughputTimeRef.current = now;
     }
-  }, [activeSensors, sensors, sensorHistories, errorMode, parity, stopBits]);
+  }, [activeSensors, errorMode, parity, stopBits]);
 
-  // Bit-level animation
-  useEffect(() => {
-    if (!playing || currentFrames.length === 0) return;
-    const totalBits = currentFrames.reduce((a, f) => a + f.bits.length, 0);
-    const bitDuration = Math.max(30, 600 / (speed * totalBits));
+  // Bit-level player isolated to avoid heavy re-renders
+  function UartBitPlayer({ frames, playing, speed, font }) {
+    const [fIdx, setFIdx] = useState(0);
+    const [bIdx, setBIdx] = useState(0);
 
-    let globalBit = 0;
-    const timer = setInterval(() => {
-      let cumBits = 0;
-      for (let fi = 0; fi < currentFrames.length; fi++) {
-        if (globalBit < cumBits + currentFrames[fi].bits.length) {
-          setActiveFrameIdx(fi);
-          setActiveBitIdx(globalBit - cumBits);
-          break;
+    useEffect(() => {
+      if (!playing || frames.length === 0) return;
+      const totalBits = frames.reduce((a, f) => a + f.bits.length, 0);
+      const bitDuration = Math.max(30, 400 / (speed * (totalBits || 1)));
+      let globalBit = 0;
+      
+      const timer = setInterval(() => {
+        let cumBits = 0;
+        for (let fi = 0; fi < frames.length; fi++) {
+          if (globalBit < cumBits + frames[fi].bits.length) {
+            setFIdx(fi);
+            setBIdx(globalBit - cumBits);
+            break;
+          }
+          cumBits += frames[fi].bits.length;
         }
-        cumBits += currentFrames[fi].bits.length;
-      }
-      globalBit++;
-      if (globalBit >= totalBits) {
-        globalBit = 0;
-      }
-    }, bitDuration);
+        globalBit = (globalBit + 1) % totalBits;
+      }, bitDuration);
+      return () => clearInterval(timer);
+    }, [playing, frames, speed]);
 
-    return () => clearInterval(timer);
-  }, [playing, currentFrames, speed]);
+    return (
+      <div style={{ background: "rgba(0,0,0,0.2)", padding: 16, borderRadius: 12, border: "1px solid #1a3a3a" }}>
+        <BitFrameDisplay frame={frames[fIdx]} activeBit={bIdx} playing={playing} />
+        <div style={{ marginTop: 10, textAlign: "center", fontSize: 10, color: "#4a6a5a" }}>
+          Frame {fIdx + 1} / {frames.length} — Bit {bIdx}
+        </div>
+      </div>
+    );
+  }
 
   // Main sample timer
   useEffect(() => {
@@ -1790,6 +2077,8 @@ export default function UartSimulator() {
   };
 
   const removeSensor = (key) => {
+    const s = sensors[key];
+    console.log("Removing sensor:", key);
     setSensors((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -1801,6 +2090,12 @@ export default function UartSimulator() {
       delete next[key];
       return next;
     });
+    setTrace(prev => [...prev.slice(-99), { 
+      time: timeStr(), 
+      type: "sys", 
+      text: `Kayıt kaldırıldı: ${s?.label || key}`, 
+      color: "#ff4757" 
+    }]);
   };
 
   const cloneSensor = (key) => {
@@ -1837,6 +2132,35 @@ export default function UartSimulator() {
     URL.revokeObjectURL(url);
   };
 
+  const moveSensor = (key, direction) => {
+    // 1. activeSensors dizisini güncelle (Osiloskop sırası)
+    setActiveSensors((prev) => {
+      const idx = prev.indexOf(key);
+      if (idx === -1) return prev;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
+
+    // 2. sensors objesinin ana sırasını güncelle (Sidebar sırası)
+    setSensors((prev) => {
+      const keys = Object.keys(prev);
+      const idx = keys.indexOf(key);
+      if (idx === -1) return prev;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= keys.length) return prev;
+      
+      const newKeys = [...keys];
+      [newKeys[idx], newKeys[newIdx]] = [newKeys[newIdx], newKeys[idx]];
+      
+      const next = {};
+      newKeys.forEach(k => { next[k] = prev[k]; });
+      return next;
+    });
+  };
+
   const importWorkspace = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1845,7 +2169,18 @@ export default function UartSimulator() {
       try {
         const payload = JSON.parse(ev.target.result);
         if (window.confirm("Mevcut çalışma alanınız temizlenecek ve JSON dosyasındaki veriler yüklenecek. Onaylıyor musunuz?")) {
-          setSensors(payload.sensors || {});
+          const importedSensors = payload.sensors || {};
+          // Re-attach functions
+          Object.keys(importedSensors).forEach(k => {
+            const s = importedSensors[k];
+            const baseKey = s.baseType || k.replace(/_\d+$/, "");
+            const base = SENSOR_REGISTRY[baseKey];
+            if (base) {
+              s.generate = base.generate;
+              s.encodeBytes = base.encodeBytes;
+            }
+          });
+          setSensors(importedSensors);
           setActiveSensors(payload.activeSensors || []);
           setSensorHistories({});
         }
@@ -1859,77 +2194,65 @@ export default function UartSimulator() {
 
   // Gerçek seri porttan gelen parse edilmiş veriyi simülatöre besle
   const handleSerialPacket = useCallback(({ key, value }) => {
-    const s = sensors[key] || {
-      name: key, label: key, unit: "", icon: "📡",
-      color: "#00bcd4", min: -Infinity, max: Infinity,
-      encodeBytes: (v) => {
-        const raw = Math.round(Math.abs(v) * 100) & 0xffff;
-        return [(raw >> 8) & 0xff, raw & 0xff];
-      },
+    const s = sensorsRef.current[key] || { 
+      name: key, label: key, unit: "", icon: "📡", color: "#00bcd4" 
     };
-    const bytes = s.encodeBytes(value);
-    const frames = bytes.map((b) => buildUartFrame(b, parity, stopBits));
     
-    // CAN Analyzer Update if SLCAN
-    if (serialProtocol === "slcan") {
-      const line = typeof value === "string" ? value : "";
-      const match = line.trim().match(/^t([0-9A-Fa-f]{3})([0-8])(.*)/);
-      if (match) {
-        const id = match[1].toUpperCase();
-        const dlc = parseInt(match[2]);
-        const data = match[3];
-        setCanFrames(prev => {
-          const old = prev[id] || { time: Date.now() };
-          return {
-            ...prev,
-            [id]: { dlc, data, time: Date.now(), period: Date.now() - old.time }
-          };
-        });
-      }
-    }
-
-    setSensorHistories((prev) => ({
-      ...prev,
-      [key]: [...(prev[key] || []).slice(-59), value],
-    }));
-    setCurrentFrames(frames);
-    setActiveFrameIdx(0);
-    setActiveBitIdx(0);
-    setTransmittedCount((c) => c + frames.length);
-    setLogs((prev) => [
-      ...prev.slice(-200),
-      {
-        time: timeStr(),
-        sensor: s,
-        text: `[SERIAL] ${s.label}: ${typeof value === "number" ? value.toFixed(3) : value} ${s.unit} → [${bytes.map((b) => "0x" + b.toString(16).toUpperCase().padStart(2, "0")).join(", ")}]`,
-        color: s.color,
-      },
+    setTrace(prev => [
+      ...prev.slice(-199),
+      { time: timeStr(), type: "rx", text: `[UART] ${s.label}: ${typeof value === "number" ? value.toFixed(2) : value}`, color: s.color }
     ]);
-  }, [sensors, parity, stopBits]);
-
-  const serialLog = useCallback((log) => {
-    setLogs((prev) => [...prev.slice(-200), { time: timeStr(), sensor: null, ...log }]);
   }, []);
 
-  const { connected: serialConnected, supported: serialSupported, connect: serialConnect, disconnect: serialDisconnect } = useSerialPort({
+  const serialLog = useCallback((log) => {
+    setTrace(prev => [
+      ...prev.slice(-199), 
+      { time: timeStr(), type: "sys", text: log.text, color: log.color }
+    ]);
+  }, []);
+
+  const handleSerialRaw = useCallback((data, type) => {
+    const text = new TextDecoder().decode(data);
+    const hex = toHex(data);
+    setTrace(prev => [
+      ...prev.slice(-199),
+      { time: timeStr(), type, text, hex }
+    ]);
+
+    if (type === "rx") {
+      if (echoEnabled) setTimeout(() => sendSerial(data), 20);
+      const rxText = text.trim();
+      const rule = responseRules.find(r => r.enabled && rxText.includes(r.trigger));
+      if (rule) setTimeout(() => sendSerial(rule.response), 50);
+    }
+  }, [echoEnabled, responseRules]);
+
+  const { connected: serialConnected, supported: serialSupported, connect: serialConnect, disconnect: serialDisconnect, send: sendSerial } = useSerialPort({
     protocol: serialProtocol,
     onPacket: handleSerialPacket,
     onLog: serialLog,
+    onRaw: handleSerialRaw,
   });
+
+  const onManualSend = (data) => {
+    sendSerial(data);
+    const text = typeof data === "string" ? data : new TextDecoder().decode(data);
+    setTrace(prev => [...prev.slice(-199), { 
+      time: timeStr(), 
+      type: "tx", 
+      text: text.trim(), 
+      hex: toHex(data) 
+    }]);
+  };
 
   const resetAll = useCallback(() => {
     setPlaying(false);
     setSensorHistories({});
     setCurrentFrames([]);
-    setLogs([]);
+    setTrace([]);
     setTransmittedCount(0);
     setErrorCount(0);
     setThroughput(0);
-    setActiveFrameIdx(0);
-    setActiveBitIdx(0);
-    transmitCountRef.current = 0;
-    lastThroughputTimeRef.current = Date.now();
-    tickRef.current = 0;
   }, []);
 
   // Responsive container width
@@ -1962,13 +2285,9 @@ export default function UartSimulator() {
   const font = '"IBM Plex Mono", "Fira Code", monospace';
 
   const tabs = [
-    { key: "osiloskop",        label: "📡 Osiloskop" },
-    { key: "canAnalyzer",      label: "🚦 CAN Analyzer" },
-    { key: "baudKarsilastirma",label: "⚡ Baud Karşılaştırma" },
-    { key: "log",              label: "📋 İletim Logu" },
-    { key: "byteAnaliz",       label: "🔬 Byte Analiz" },
-    { key: "firmware",         label: "💻 Firmware" },
-    { key: "kullanim",         label: "📖 Kullanım" },
+    { key: "osiloskop", label: "📡 Osiloskop" },
+    { key: "terminal", label: "🖥 İzleme & Terminal" },
+    { key: "firmware", label: "💻 Firmware" },
   ];
 
   return (
@@ -1986,29 +2305,29 @@ export default function UartSimulator() {
         "header header"
         "sidebar main"
       `,
-      gap: 20,
-      padding: "20px",
+      gap: 10,
+      padding: "10px 16px",
     }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 8, background: "#00ff8815",
+            width: 32, height: 32, borderRadius: 6, background: "#00ff8815",
             border: "1px solid #00ff8844", display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18,
+            fontSize: 16,
           }}>⚡</div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#00ff88", letterSpacing: 1 }}>
+            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#00ff88", letterSpacing: 1, lineHeight: 1.2 }}>
               UART SİMÜLATÖR
             </h1>
-            <div style={{ fontSize: 10, color: "#3a5a4a", letterSpacing: 2 }}>
+            <div style={{ fontSize: 9, color: "#3a5a4a", letterSpacing: 1 }}>
               SENSÖR TEST PLATFORMU v2.0
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 11, color: "#4a6a5a", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "#4a6a5a", flexWrap: "wrap" }}>
           <span>TX: <span style={{ color: "#00ff88" }}>{transmittedCount}</span></span>
           <span>
             ERR: <span style={{ color: errorCount > 0 ? "#ff4757" : "#4a6a5a" }}>{errorCount}</span>
@@ -2145,6 +2464,8 @@ export default function UartSimulator() {
         onConnect={serialConnect}
         onDisconnect={serialDisconnect}
         font={font}
+        echoEnabled={echoEnabled}
+        setEchoEnabled={setEchoEnabled}
       />
 
       {/* Workspace Sensors List */}
@@ -2186,7 +2507,7 @@ export default function UartSimulator() {
               {quickResults.map(k => {
                 const s = SENSOR_REGISTRY[k];
                 return (
-                  <div key={k} onClick={() => { handleAddSensorFromLibrary(s, true); setQuickResults([]); }} style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #1a2a3a", display: "flex", alignItems: "center", gap: 10, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(0,255,136,0.08)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  <div key={k} onClick={() => { handleAddSensorFromLibrary(s, true); setQuickResults([]); }} style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #1a3a3a", display: "flex", alignItems: "center", gap: 10, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(0,255,136,0.08)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
                     <span style={{ fontSize: 18 }}>{s.icon}</span>
                     <div style={{ flex: 1 }}>
                        <div style={{ fontSize: 12, color: "#fff", fontWeight: 700 }}>{s.label}</div>
@@ -2204,16 +2525,24 @@ export default function UartSimulator() {
           {Object.entries(sensors).filter(([k]) => activeSensors.includes(k)).length > 0 && (
             <div style={{ fontSize: 9, color: "#00ff88", marginBottom: 4, opacity: 0.6 }}>● AKTİF</div>
           )}
-          {Object.entries(sensors).filter(([k]) => activeSensors.includes(k)).map(([key, s]) => (
-            <SensorListItem key={key} sensor={s} pKey={key} isActive={true} onToggle={toggleSensor} onClone={cloneSensor} onRemove={removeSensor} />
+          {Object.entries(sensors).filter(([k]) => activeSensors.includes(k)).map(([key, s], idx, arr) => (
+            <SensorListItem 
+              key={key} sensor={s} pKey={key} isActive={true} 
+              onToggle={toggleSensor} onClone={cloneSensor} onRemove={removeSensor} onMove={moveSensor}
+              isFirst={idx === 0} isLast={idx === arr.length - 1}
+            />
           ))}
 
           {/* Standby Group */}
           {Object.entries(sensors).filter(([k]) => !activeSensors.includes(k)).length > 0 && (
             <div style={{ fontSize: 9, color: "#4a6a5a", marginTop: 10, marginBottom: 4, opacity: 0.6 }}>○ BEKLEMEDE</div>
           )}
-          {Object.entries(sensors).filter(([k]) => !activeSensors.includes(k)).map(([key, s]) => (
-            <SensorListItem key={key} sensor={s} pKey={key} isActive={false} onToggle={toggleSensor} onClone={cloneSensor} onRemove={removeSensor} />
+          {Object.entries(sensors).filter(([k]) => !activeSensors.includes(k)).map(([key, s], idx, arr) => (
+            <SensorListItem 
+              key={key} sensor={s} pKey={key} isActive={false} 
+              onToggle={toggleSensor} onClone={cloneSensor} onRemove={removeSensor} onMove={moveSensor}
+              isFirst={idx === 0} isLast={idx === arr.length - 1}
+            />
           ))}
 
           {Object.keys(sensors).length === 0 && (
@@ -2262,8 +2591,8 @@ export default function UartSimulator() {
       <div style={{
         gridArea: "main",
         display: "flex", flexDirection: "column", gap: 12,
-        overflowY: "auto", paddingLeft: 4,
-        paddingBottom: 24,
+        overflow: "hidden", paddingLeft: 4,
+        paddingBottom: 24, height: "100%"
       }}>
       {/* Tab bar */}
       <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
@@ -2282,99 +2611,56 @@ export default function UartSimulator() {
       {/* Tab content */}
       <div style={{
         background: "#0c1219", borderRadius: "0 8px 8px 8px", border: "1px solid #1a2a22",
-        padding: 16, minHeight: 250,
+        padding: 16, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden"
       }}>
         {tab === "osiloskop" && (
-          <div>
-            <Oscilloscope
-              frames={currentFrames}
-              baudRate={baudRate}
-              width={containerWidth}
-              height={180}
-              playing={playing}
-              activeFrame={activeFrameIdx}
-              activeBit={activeBitIdx}
-            />
-            {currentFrames.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, color: "#4a6a5a", marginBottom: 6 }}>FRAME DETAY</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {currentFrames.map((f, i) => (
-                    <BitFrameDisplay
-                      key={i}
-                      frame={f}
-                      activeBit={activeFrameIdx === i ? activeBitIdx : -1}
-                      playing={playing}
-                    />
-                  ))}
-                </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {currentFrames.length > 0 ? (
+              <UartBitPlayer frames={currentFrames} playing={playing} speed={speed} font={font} />
+            ) : (
+              <div style={{ padding: 40, textAlign: "center", color: "#2a3a32", border: "1px dashed #1a2a22", borderRadius: 12 }}>
+                Simülasyonu başlatın — veriler burada görselleştirilecek
               </div>
             )}
-            {currentFrames.length === 0 && (
-              <div style={{
-                textAlign: "center", padding: 40, color: "#2a3a32",
-                fontSize: 14,
-              }}>
-                Simülasyonu başlatın — sensör verileri burada görselleştirilecek
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === "baudKarsilastirma" && (
-          <div>
-            <div style={{ fontSize: 11, color: "#4a6a5a", marginBottom: 8 }}>
-              AYNI BYTE FARKLI BAUD RATE (9600 / 57600 / 115200)
-            </div>
-            <BaudRateComparison
-              byte={currentFrames.length > 0 ? currentFrames[0].byte : 0x55}
-              parity={parity}
-              width={containerWidth}
-            />
-            <div style={{
-              marginTop: 12, fontSize: 11, color: "#4a6a5a", lineHeight: 1.6,
-              padding: 12, background: "#080c12", borderRadius: 8,
-            }}>
-              <strong style={{ color: "#ffd93d" }}>Bit Süresi Karşılaştırma</strong><br />
-              {BAUD_RATES.map((r) => {
-                const dur = ((1 / r) * 1e6).toFixed(2);
-                return (
-                  <span key={r} style={{ marginRight: 16 }}>
-                    {r}: <span style={{ color: "#00ff88" }}>{dur} µs</span>
-                  </span>
-                );
-              })}
+            
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+               {activeSensors.map(k => {
+                 const s = sensors[k];
+                 const val = sensorHistories[k]?.slice(-1)[0];
+                 return (
+                   <div key={k} style={{ padding: 12, background: "#0a1118", borderRadius: 10, borderLeft: `3px solid ${s?.color || "#444"}` }}>
+                      <div style={{ fontSize: 10, color: "#4a6a5a" }}>{s?.label}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{s?.icon} {typeof val === "number" ? val.toFixed(1) : "0.0"}</div>
+                   </div>
+                 );
+               })}
             </div>
           </div>
         )}
 
-        {tab === "canAnalyzer"      && <CanAnalyzer canFrames={canFrames} font={font} />}
-        {tab === "log"              && <LogPanel logs={logs} />}
-        {tab === "byteAnaliz"       && <ByteAnalyzer font={font} baudRate={baudRate} />}
-        {tab === "firmware"         && <FirmwareTab font={font} />}
-        {tab === "kullanim"         && <UsageGuideTab font={font} />}
+        {tab === "terminal" && <Terminal history={trace} onSend={onManualSend} onClear={() => setTrace([])} font={font} />}
+        
+        {tab === "firmware" && <FirmwareTab font={font} />}
       </div>
 
-      {/* UART Config Summary */}
+      {/* Footer / Info */}
       <div style={{
         marginTop: 12, padding: 10, background: "#081018", borderRadius: 8,
         border: "1px solid #1a2a3a", fontSize: 11, color: "#4a6a5a",
         display: "flex", gap: 20, flexWrap: "wrap",
       }}>
-        <span>Frame: <span style={{ color: "#00ff88" }}>1 Start + 8 Data{parity !== "none" ? " + 1 Parity" : ""} + {stopBits} Stop = {9 + (parity !== "none" ? 1 : 0) + stopBits} bit</span></span>
+        <span>Frame: <span style={{ color: "#00ff88" }}>1 Start + 8 Data{parity !== "none" ? " + 1 Parity" : ""} + {stopBits} Stop</span></span>
         <span>Bit Süresi: <span style={{ color: "#ffd93d" }}>{((1 / baudRate) * 1e6).toFixed(2)} µs</span></span>
-        <span>Frame Süresi: <span style={{ color: "#a29bfe" }}>{((( 9 + (parity !== "none" ? 1 : 0) + stopBits) / baudRate) * 1e6).toFixed(2)} µs</span></span>
         <span>Aktif Sensör: <span style={{ color: "#ff6b6b" }}>{activeSensors.length}</span></span>
       </div>
-      </div>
-
-      {showAddSensor && (
-        <SensorLibraryModal
-          onAdd={handleAddSensorFromLibrary}
-          onClose={() => setShowAddSensor(false)}
-          font={font}
-        />
-      )}
     </div>
-  );
+
+    {showAddSensor && (
+      <SensorLibraryModal onAdd={handleAddSensorFromLibrary} onClose={() => setShowAddSensor(false)} font={font} />
+    )}
+  </div>
+);
 }
+
+// ── Supporting Components ────────────────────
+
