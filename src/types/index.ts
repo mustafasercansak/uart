@@ -9,7 +9,8 @@ export type FieldType =
   | 'waveform'
   | 'checksum'
   | 'flags'
-  | 'computed';
+  | 'computed'
+  | 'script';
 
 export type Endianness = 'big' | 'little';
 
@@ -43,7 +44,7 @@ export interface RampConfig {
 }
 
 // ── Waveform Field ───────────────────────────
-export type WaveformShape = 'sine' | 'triangle' | 'sawtooth' | 'square' | 'custom';
+export type WaveformShape = 'sine' | 'triangle' | 'sawtooth' | 'square' | 'custom' | 'ecg';
 
 export interface WaveformConfig {
   shape: WaveformShape;
@@ -112,6 +113,11 @@ export interface ComputedConfig {
   clampMax: number;
 }
 
+// ── Script Field ─────────────────────────────
+export interface ScriptConfig {
+  code: string;
+}
+
 // ── Union type config ────────────────────────
 export type FieldTypeConfig =
   | FixedConfig
@@ -120,7 +126,8 @@ export type FieldTypeConfig =
   | WaveformConfig
   | ChecksumConfig
   | FlagsConfig
-  | ComputedConfig;
+  | ComputedConfig
+  | ScriptConfig;
 
 // ── Field ────────────────────────────────────
 export interface Field {
@@ -281,12 +288,15 @@ export interface SimulationState {
   scenarioId: string | null;
   outputMode: OutputMode;
   serialConnected: boolean;
+  networkConnected: boolean;
+  isRecording: boolean;
   startedAt: number | null;
   elapsedMs: number;
   frameCount: number;
   errorCount: number;
   framesPerSecond: number;
   lastFrame: GeneratedFrame | null;
+  lastRxFrame: GeneratedFrame | null;
   recentFrames: GeneratedFrame[];
   waveformHistory: Array<Record<string, number>>;
   logEntries: Array<{ time: string; text: string; type: 'info' | 'tx' | 'rx' | 'error' }>;

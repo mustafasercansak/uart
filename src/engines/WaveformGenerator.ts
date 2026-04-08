@@ -40,6 +40,22 @@ export function generateWaveformSample(config: WaveformConfig, timeMs: number): 
     case 'square':
       value = amplitude * (t < 0.5 ? 1 : -1);
       break;
+    case 'ecg': {
+      // Piecewise Gaussian components for P-QRS-T
+      // normalized t: 0.15(P), 0.35(Q), 0.40(R), 0.45(S), 0.70(T)
+      const g = (t: number, pos: number, width: number, amp: number) => 
+        amp * Math.exp(-Math.pow(t - pos, 2) / (2 * Math.pow(width, 2)));
+      
+      const p = g(t, 0.15, 0.02, 0.15); // P wave
+      const q = g(t, 0.34, 0.005, -0.15); // Q dip
+      const r = g(t, 0.36, 0.01, 1.0);  // R peak
+      const s = g(t, 0.38, 0.01, -0.3); // S dip
+      const st = g(t, 0.45, 0.05, 0.05); // ST segment shift
+      const tw = g(t, 0.65, 0.05, 0.25); // T wave
+      
+      value = (p + q + r + s + st + tw) * amplitude;
+      break;
+    }
     case 'custom':
       if (customPoints && customPoints.length > 1) {
         const segLen = 1 / (customPoints.length - 1);

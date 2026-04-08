@@ -8,6 +8,7 @@ import type {
   ChecksumConfig,
   FlagsConfig,
   ComputedConfig,
+  ScriptConfig,
   FlagBit,
   BitBehavior,
   ChecksumAlgorithm,
@@ -39,6 +40,7 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       checksum: { algorithm: 'xor', scope: { startFieldId: allFields[0]?.id ?? '', endFieldId: allFields[allFields.length - 1]?.id ?? '' } },
       flags: { bits: [{ index: 0, name: 'Bit 0', defaultValue: 0, behavior: 'fixed', behaviorConfig: {} }] },
       computed: { expression: "fields['Veri'] * 2", clampMin: 0, clampMax: 255 },
+      script: { code: "// t: elapsed ms, i: frame count, f: named values\nreturn Math.sin(t/1000) * 100 + 128;" },
     };
     onChange({ ...field, type, typeConfig: defaultConfigs[type] as Field['typeConfig'] });
   };
@@ -78,6 +80,7 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
             <option value="checksum">Checksum</option>
             <option value="flags">Bayraklar (Bit)</option>
             <option value="computed">Hesaplanmış</option>
+            <option value="script">Script (JS)</option>
           </select>
         </div>
       </div>
@@ -90,6 +93,7 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       {field.type === 'checksum' && <ChecksumEditor config={field.typeConfig as ChecksumConfig} allFields={allFields} field={field} onChange={updateConfig} />}
       {field.type === 'flags' && <FlagsEditor config={field.typeConfig as FlagsConfig} onChange={updateConfig} byteWidth={field.byteWidth} />}
       {field.type === 'computed' && <ComputedEditor config={field.typeConfig as ComputedConfig} onChange={updateConfig} allFields={allFields} />}
+      {field.type === 'script' && <ScriptEditor config={field.typeConfig as ScriptConfig} onChange={updateConfig} />}
     </div>
   );
 }
@@ -447,6 +451,34 @@ function ComputedEditor({ config, onChange, allFields }: {
         <div>
           <label className={labelCls}>Max Sıkıştırma</label>
           <input type="number" className={inputCls} value={config.clampMax} onChange={(e) => onChange({ clampMax: Number(e.target.value) })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+function ScriptEditor({ config, onChange }: { config: ScriptConfig; onChange: (p: Partial<ScriptConfig>) => void }) {
+  return (
+    <div className="space-y-2">
+      <label className={labelCls}>JavaScript Kodu</label>
+      <div className="relative group">
+        <textarea
+          className="bg-gray-950 border border-gray-800 rounded p-3 text-[11px] font-mono text-blue-300 outline-none focus:border-blue-600 w-full h-48 resize-none leading-relaxed"
+          value={config.code}
+          onChange={(e) => onChange({ code: e.target.value })}
+          spellCheck={false}
+          placeholder="// t: ms, i: frame, f: fields"
+        />
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <span className="text-[10px] text-gray-600 font-mono">JS / ES6+</span>
+        </div>
+      </div>
+      <div className="bg-blue-900/10 border border-blue-900/30 rounded p-2">
+        <div className="text-blue-400 text-[10px] font-mono font-bold mb-1 uppercase tracking-tight">Kullanılabilir Değişkenler:</div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">t</code> - Geçen süre (ms)</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">i</code> - Frame sayısı</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">f</code> - Önceki alanlar</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">Math.*</code> - Tüm JS math fonksiyonları</div>
         </div>
       </div>
     </div>

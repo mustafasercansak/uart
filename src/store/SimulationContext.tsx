@@ -8,7 +8,10 @@ import type {
   GeneratedFrame
 } from '../types';
 import { generateFrame } from '../engines/FrameGenerator';
+import { parseFrame } from '../engines/FrameParser';
 import { tickScenarioEngine } from '../engines/ScenarioEngine';
+
+const BACKEND_URL = 'ws://localhost:8080';
 
 // ─────────────────────────────────────────────
 // SİMÜLASYON CONTEXT
@@ -24,12 +27,14 @@ const INITIAL_STATE: SimulationState = {
   scenarioId: null,
   outputMode: 'log',
   serialConnected: false,
+  networkConnected: false,
   startedAt: null,
   elapsedMs: 0,
   frameCount: 0,
   errorCount: 0,
   framesPerSecond: 0,
   lastFrame: null,
+  lastRxFrame: null,
   recentFrames: [],
   waveformHistory: [],
   logEntries: [],
@@ -38,6 +43,7 @@ const INITIAL_STATE: SimulationState = {
   activeRamps: {},
   activePulses: {},
   pendingErrors: [],
+  isRecording: false,
 };
 
 type SimAction =
@@ -55,6 +61,8 @@ type SimAction =
   | { type: 'SET_PROFILE'; profileId: string | null }
   | { type: 'SET_SCENARIO'; scenarioId: string | null }
   | { type: 'SET_OUTPUT_MODE'; outputMode: OutputMode }
+  | { type: 'SET_NETWORK_CONNECTED'; connected: boolean }
+  | { type: 'SET_RECORDING'; recording: boolean }
   | { type: 'ADD_LOG'; entryType: 'info' | 'tx' | 'rx' | 'error'; text: string }
   | { type: 'BATCH_LOGS'; entries: Array<SimulationState['logEntries'][0]> };
 
@@ -151,6 +159,10 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       };
     case 'SET_SERIAL_CONNECTED':
       return { ...state, serialConnected: action.connected };
+    case 'SET_NETWORK_CONNECTED':
+      return { ...state, networkConnected: action.connected };
+    case 'SET_RECORDING':
+      return { ...state, isRecording: action.recording };
     default:
       return state;
   }
@@ -172,6 +184,13 @@ interface SimulationContextType {
   setScenario: (scenarioId: string | null) => void;
   setOutputMode: (outputMode: OutputMode) => void;
   setUiVisible: (visible: boolean) => void;
+  exportLogs: () => void;
+  setProfiles: (profiles: FrameProfile[]) => void;
+  connectNetwork: (url: string) => Promise<void>;
+  disconnectNetwork: () => void;
+  startRecording: () => void;
+  stopRecording: () => void;
+  startPlayback: (data: any) => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
@@ -187,229 +206,137 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const portRef = useRef<any>(null);
   const writerRef = useRef<any>(null);
   const readerRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const backendWsRef = useRef<WebSocket | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const logBufferRef = useRef<Array<SimulationState['logEntries'][0]>>([]);
+  const profilesRef = useRef<FrameProfile[]>([]);
   const lastLogFlushRef = useRef<number>(0);
   const uiUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingUiUpdateRef = useRef<Partial<SimulationState> | null>(null);
+  const rxBufferRef = useRef<number[]>([]);
+  const fullLogRef = useRef<Array<{ time: string; text: string; type: string }>>([]);
   const uiVisibleRef = useRef(false);
 
+  // ── BACKEND CONNECTION ───────────────────────
+  React.useEffect(() => {
+    const connect = () => {
+      const socket = new WebSocket(BACKEND_URL);
+      socket.onopen = () => {
+        console.log('Connected to backend simulation engine');
+        backendWsRef.current = socket;
+        dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Simülasyon motoru bağlandı (Backend)' });
+      };
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'TICK') {
+          // Process tick for UI
+          const { frame, elapsedMs } = msg;
+          pendingUiUpdateRef.current = { 
+            lastFrame: frame,
+            elapsedMs,
+            frameCount: frame.frameNumber
+          };
+        } else if (msg.type === 'LOG') {
+          logBufferRef.current.push(msg.entry);
+          fullLogRef.current.push(msg.entry);
+        } else if (msg.type === 'RECORDING_FINISHED') {
+          dispatch({ type: 'SET_RECORDING', recording: false });
+          // Auto-download the recording
+          const blob = new Blob([JSON.stringify(msg.data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `uart_session_${new Date().toISOString().slice(0, 19).replace(/[:]/g, '-')}.json`;
+          a.click();
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt tamamlandı ve indirildi: ${msg.data.length} frame.` });
+        }
+      };
+      socket.onclose = () => {
+        backendWsRef.current = null;
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: 'Simülasyon motoru bağlantısı kesildi. Yeniden bağlanılıyor...' });
+        setTimeout(connect, 2000);
+      };
+    };
+    connect();
+    return () => backendWsRef.current?.close();
+  }, []);
+
+  // ── UI UPDATE LOOP ───────────────────────────
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+       // Flush logs
+       if (logBufferRef.current.length > 0 && Date.now() - lastLogFlushRef.current > 200) {
+        const entries = [...logBufferRef.current];
+        logBufferRef.current = [];
+        lastLogFlushRef.current = Date.now();
+        dispatch({ type: 'BATCH_LOGS', entries });
+      }
+
+      if (pendingUiUpdateRef.current && uiVisibleRef.current) {
+        const update = pendingUiUpdateRef.current;
+        pendingUiUpdateRef.current = null;
+        dispatch({ type: 'TICK', elapsedMs: update.elapsedMs ?? 0, newState: update });
+      }
+    }, 33);
+    return () => clearInterval(timer);
+  }, []);
+
   const stop = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (fpsTimerRef.current) clearInterval(fpsTimerRef.current);
-    if (uiUpdateIntervalRef.current) clearInterval(uiUpdateIntervalRef.current);
-    intervalRef.current = null;
-    uiUpdateIntervalRef.current = null;
+    backendWsRef.current?.send(JSON.stringify({ type: 'STOP' }));
     dispatch({ type: 'STOP' });
   }, []);
 
   const pause = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (uiUpdateIntervalRef.current) clearInterval(uiUpdateIntervalRef.current);
-    intervalRef.current = null;
-    uiUpdateIntervalRef.current = null;
+    backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE' }));
     dispatch({ type: 'PAUSE' });
   }, []);
 
   const start = useCallback(
     (profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (uiUpdateIntervalRef.current) clearInterval(uiUpdateIntervalRef.current);
-      frameCountRef.current = 0;
-      fpsCounterRef.current = 0;
-
+      backendWsRef.current?.send(JSON.stringify({ 
+        type: 'START', 
+        profile, 
+        scenario, 
+        outputMode 
+      }));
       dispatch({
         type: 'START',
         profileId: profile.id,
         scenarioId: scenario?.id ?? null,
         outputMode,
       });
-
-      const startTime = Date.now();
-
-      // FPS counter (internal state only)
-      fpsTimerRef.current = setInterval(() => {
-        const fps = fpsCounterRef.current;
-        fpsCounterRef.current = 0;
-        stateRef.current = { ...stateRef.current, framesPerSecond: fps };
-      }, 1000);
-
-      // UI Update throttling loop (30 FPS)
-      uiUpdateIntervalRef.current = setInterval(() => {
-        // Flush log buffer every 200ms
-        if (logBufferRef.current.length > 0 && Date.now() - lastLogFlushRef.current > 200) {
-          const entries = [...logBufferRef.current];
-          logBufferRef.current = [];
-          lastLogFlushRef.current = Date.now();
-          dispatch({ type: 'BATCH_LOGS', entries });
-        }
-
-        if (pendingUiUpdateRef.current && uiVisibleRef.current) {
-          const update = pendingUiUpdateRef.current;
-          pendingUiUpdateRef.current = null;
-          dispatch({ type: 'TICK', elapsedMs: update.elapsedMs ?? 0, newState: update });
-        }
-      }, 33);
-
-      intervalRef.current = setInterval(() => {
-        const currentState = stateRef.current;
-        if (currentState.status !== 'running') return;
-
-        const elapsedMs = Date.now() - startTime;
-        frameCountRef.current++;
-        fpsCounterRef.current++;
-
-        // Process scenario steps
-        let scenarioUpdates: Partial<SimulationState> = {};
-        if (scenario) {
-          const result = tickScenarioEngine(scenario, profile, { ...currentState, elapsedMs });
-          scenarioUpdates = result.updates;
-        }
-
-        // Generate frame
-        const updatedState: SimulationState = {
-          ...currentState,
-          ...scenarioUpdates,
-          elapsedMs,
-          frameCount: frameCountRef.current,
-        };
-
-        const frame = generateFrame(profile, updatedState, frameCountRef.current);
-        const hasErrors = frame.errors.length > 0;
-
-        if (currentState.outputMode === 'serial' && writerRef.current) {
-          try {
-            writerRef.current.write(new Uint8Array(frame.rawBytes));
-          } catch (e) {
-            console.error('Serial port yazma hatası:', e);
-          }
-        }
-
-        const finalUpdates: Partial<SimulationState> = {
-          ...scenarioUpdates,
-          lastFrame: frame,
-          frameCount: frameCountRef.current,
-          framesPerSecond: stateRef.current.framesPerSecond,
-          errorCount: stateRef.current.errorCount + (hasErrors ? 1 : 0),
-          pendingErrors: hasErrors && currentState.pendingErrors.length > 0
-            ? currentState.pendingErrors.slice(1)
-            : currentState.pendingErrors,
-        };
-
-        // Buffer logs instead of dispatching
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
-        if (hasErrors) {
-          frame.errors.forEach(err => logBufferRef.current.push({ time: timeStr, text: err, type: 'error' }));
-        }
-        if (currentState.outputMode !== 'log') {
-          logBufferRef.current.push({ time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' });
-        }
-
-        stateRef.current = { ...currentState, ...finalUpdates, elapsedMs };
-        
-        // Don't dispatch immediately, save for throttled UI update
-        pendingUiUpdateRef.current = { ...finalUpdates, elapsedMs };
-      }, profile.sendIntervalMs);
     },
     [],
   );
 
   const resume = useCallback(
     (profile: FrameProfile, scenario: Scenario | null) => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (uiUpdateIntervalRef.current) clearInterval(uiUpdateIntervalRef.current);
+      backendWsRef.current?.send(JSON.stringify({ type: 'RESUME' }));
       dispatch({ type: 'RESUME' });
-
-      const pausedAt = stateRef.current.elapsedMs;
-      const resumeStart = Date.now();
-
-      // UI Update throttling loop (30 FPS)
-      uiUpdateIntervalRef.current = setInterval(() => {
-        // Flush log buffer
-        if (logBufferRef.current.length > 0 && Date.now() - lastLogFlushRef.current > 200) {
-          const entries = [...logBufferRef.current];
-          logBufferRef.current = [];
-          lastLogFlushRef.current = Date.now();
-          dispatch({ type: 'BATCH_LOGS', entries });
-        }
-
-        if (pendingUiUpdateRef.current && uiVisibleRef.current) {
-          const update = pendingUiUpdateRef.current;
-          pendingUiUpdateRef.current = null;
-          dispatch({ type: 'TICK', elapsedMs: update.elapsedMs ?? 0, newState: update });
-        }
-      }, 33);
-
-      intervalRef.current = setInterval(() => {
-        const currentState = stateRef.current;
-        if (currentState.status !== 'running') return;
-
-        const elapsedMs = pausedAt + (Date.now() - resumeStart);
-        frameCountRef.current++;
-        fpsCounterRef.current++;
-
-        let scenarioUpdates: Partial<SimulationState> = {};
-        if (scenario) {
-          const result = tickScenarioEngine(scenario, profile, { ...currentState, elapsedMs });
-          scenarioUpdates = result.updates;
-        }
-
-        const updatedState: SimulationState = { ...currentState, ...scenarioUpdates, elapsedMs };
-        const frame = generateFrame(profile, updatedState, frameCountRef.current);
-        const hasErrors = frame.errors.length > 0;
-
-        if (currentState.outputMode === 'serial' && writerRef.current) {
-          try {
-            writerRef.current.write(new Uint8Array(frame.rawBytes));
-          } catch (e) {
-            console.error('Serial port yazma hatası:', e);
-          }
-        }
-
-        const finalUpdates: Partial<SimulationState> = {
-          ...scenarioUpdates,
-          lastFrame: frame,
-          frameCount: frameCountRef.current,
-          framesPerSecond: stateRef.current.framesPerSecond,
-          errorCount: stateRef.current.errorCount + (hasErrors ? 1 : 0),
-          pendingErrors: hasErrors && currentState.pendingErrors.length > 0
-            ? currentState.pendingErrors.slice(1)
-            : currentState.pendingErrors,
-        };
-
-        // Buffer logs
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
-        if (hasErrors) {
-          frame.errors.forEach(err => logBufferRef.current.push({ time: timeStr, text: err, type: 'error' }));
-        }
-        if (currentState.outputMode !== 'log') {
-          logBufferRef.current.push({ time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' });
-        }
-
-        stateRef.current = { ...currentState, ...finalUpdates, elapsedMs };
-        
-        // Don't dispatch immediately, save for throttled UI update
-        pendingUiUpdateRef.current = { ...finalUpdates, elapsedMs };
-      }, profile.sendIntervalMs);
     },
     [],
   );
 
   const overrideField = useCallback((fieldId: string, value: number) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_FIELD', fieldId, value }));
     dispatch({ type: 'OVERRIDE_FIELD', fieldId, value });
   }, []);
 
   const overrideBit = useCallback((bitKey: string, value: number) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_BIT', bitKey, value }));
     dispatch({ type: 'OVERRIDE_BIT', bitKey, value });
   }, []);
 
   const injectError = useCallback((errorType: ErrorType) => {
+    // Current backend doesn't handle pendingErrors via sync yet, let's just trigger it locally
+    // Actually best to send it to backend
+    backendWsRef.current?.send(JSON.stringify({ type: 'INJECT_ERROR', errorType }));
     dispatch({ type: 'INJECT_ERROR', errorType });
   }, []);
 
   const resetOverrides = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'RESET_OVERRIDES' }));
     dispatch({ type: 'RESET_OVERRIDES' });
   }, []);
 
@@ -441,9 +368,46 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
                 const { value, done } = await reader.read();
                 if (done) break;
                 if (value) {
-                  const hex = (value as Uint8Array).reduce((acc, b) => acc + b.toString(16).padStart(2, '0').toUpperCase() + ' ', '').trim();
-                  const timeStr = new Date().toLocaleTimeString('tr-TR', { hour12: false }) + '.' + new Date().getMilliseconds().toString().padStart(3, '0');
-                  logBufferRef.current.push({ time: timeStr, text: `RX: ${hex}`, type: 'rx' });
+                  const bytes = Array.from(value as Uint8Array);
+                  const hex = bytes.reduce((acc, b) => acc + b.toString(16).padStart(2, '0').toUpperCase() + ' ', '').trim();
+                  const now = new Date();
+                  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+                  
+                  const logEntry = { time: timeStr, text: `RX: ${hex}`, type: 'rx' as const };
+                  logBufferRef.current.push(logEntry);
+                  fullLogRef.current.push(logEntry);
+
+                  // RX Parsing logic
+                  const currentProfile = stateRef.current.profileId 
+                    ? profilesRef.current.find((p) => p.id === stateRef.current.profileId) 
+                    : null;
+                  
+                  if (currentProfile) {
+                    rxBufferRef.current.push(...bytes);
+                    const totalWidth = currentProfile.fields.reduce((s: number, f: any) => s + f.byteWidth, 0);
+                    
+                    // Simple sync searching or length-based parsing
+                    if (rxBufferRef.current.length >= totalWidth) {
+                      const frameBytes = rxBufferRef.current.slice(0, totalWidth);
+                      rxBufferRef.current = rxBufferRef.current.slice(totalWidth);
+                      
+                      const parsedFields = parseFrame(currentProfile, frameBytes);
+                      if (parsedFields) {
+                        const rxFrame: GeneratedFrame = {
+                          frameNumber: 0, // Not applicable for RX
+                          timestampMs: Date.now(),
+                          rawHex: hex,
+                          rawBytes: frameBytes,
+                          fields: parsedFields,
+                          errors: []
+                        };
+                        pendingUiUpdateRef.current = { 
+                          ...pendingUiUpdateRef.current, 
+                          lastRxFrame: rxFrame 
+                        };
+                      }
+                    }
+                  }
                 }
               }
             } catch (err) {
@@ -489,6 +453,103 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  const exportLogs = useCallback(() => {
+    if (fullLogRef.current.length === 0) return;
+    
+    const headers = ['Time', 'Type', 'Text'];
+    const rows = fullLogRef.current.map(l => [l.time, l.type, `"${l.text.replace(/"/g, '""')}"`]);
+    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `uart_session_${new Date().toISOString().slice(0, 19).replace(/[:]/g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  const connectNetwork = useCallback(async (url: string) => {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        const ws = new WebSocket(url);
+        ws.binaryType = 'arraybuffer';
+        
+        ws.onopen = () => {
+          wsRef.current = ws;
+          dispatch({ type: 'SET_NETWORK_CONNECTED', connected: true });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Network bağlandı: ${url}` });
+          resolve();
+        };
+
+        ws.onmessage = (event) => {
+          const bytes = Array.from(new Uint8Array(event.data));
+          const hex = bytes.reduce((acc, b) => acc + b.toString(16).padStart(2, '0').toUpperCase() + ' ', '').trim();
+          const now = new Date();
+          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+          
+          const logEntry = { time: timeStr, text: `RX (NET): ${hex}`, type: 'rx' as const };
+          logBufferRef.current.push(logEntry);
+          fullLogRef.current.push(logEntry);
+
+          // RX Parsing logic same as serial...
+          const currentProfile = stateRef.current.profileId 
+            ? profilesRef.current.find((p) => p.id === stateRef.current.profileId) 
+            : null;
+          
+          if (currentProfile) {
+            rxBufferRef.current.push(...bytes);
+            const totalWidth = currentProfile.fields.reduce((s: number, f: any) => s + f.byteWidth, 0);
+            if (rxBufferRef.current.length >= totalWidth) {
+              const frameBytes = rxBufferRef.current.slice(0, totalWidth);
+              rxBufferRef.current = rxBufferRef.current.slice(totalWidth);
+              const parseResult = parseFrame(currentProfile, frameBytes);
+              if (parseResult) {
+                const rxFrame = {
+                  frameNumber: 0,
+                  timestampMs: Date.now(),
+                  rawHex: hex,
+                  rawBytes: frameBytes,
+                  fields: parseResult,
+                  errors: []
+                };
+                pendingUiUpdateRef.current = { ...pendingUiUpdateRef.current, lastRxFrame: rxFrame };
+              }
+            }
+          }
+        };
+
+        ws.onclose = () => {
+          wsRef.current = null;
+          dispatch({ type: 'SET_NETWORK_CONNECTED', connected: false });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Network bağlantısı kesildi' });
+        };
+
+        ws.onerror = (err) => {
+          console.error('WS Error:', err);
+          dispatch({ type: 'ADD_LOG', entryType: 'error', text: 'Network hatası oluştu' });
+          reject(err);
+        };
+        
+      } catch (err: any) {
+        reject(err);
+      }
+    });
+  }, []);
+
+  const disconnectNetwork = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  }, []);
+
+  const setProfiles = useCallback((profiles: FrameProfile[]) => {
+    profilesRef.current = profiles;
+  }, []);
+
   const setProfile = useCallback((profileId: string | null) => {
     dispatch({ type: 'SET_PROFILE', profileId });
   }, []);
@@ -523,6 +584,22 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setScenario,
         setOutputMode,
         setUiVisible,
+        exportLogs,
+        setProfiles,
+        connectNetwork,
+        disconnectNetwork,
+        startRecording: () => {
+          backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
+          dispatch({ type: 'SET_RECORDING', recording: true });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Kayıt başlatıldı...' });
+        },
+        stopRecording: () => {
+          backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
+        },
+        startPlayback: (data: any) => {
+          backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt oynatılıyor: ${data.length} frame.` });
+        }
       }}
     >
       {children}

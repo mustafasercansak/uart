@@ -7,6 +7,7 @@ import type {
   ChecksumConfig,
   FlagsConfig,
   ComputedConfig,
+  ScriptConfig,
   GeneratedFrame,
   ParsedField,
   SimulationState,
@@ -80,7 +81,16 @@ function getFieldValue(
       return 0;
     }
     case 'waveform': {
-      const cfg = typeConfig as WaveformConfig;
+      const cfg = { ...typeConfig as WaveformConfig };
+      
+      // Medical Sync: If this is an ECG and there's a BPM field, sync them
+      if (cfg.shape === 'ecg') {
+        const bpm = namedValues['BPM'] || namedValues['HR'] || 0;
+        if (bpm > 0) {
+          cfg.frequency = bpm / 60;
+        }
+      }
+      
       return clampValue(generateWaveformSample(cfg, elapsedMs), byteWidth);
     }
     case 'checksum':
@@ -109,6 +119,26 @@ function getFieldValue(
     case 'computed': {
       const cfg = typeConfig as ComputedConfig;
       return evaluateExpression(cfg.expression, namedValues, cfg.clampMin, cfg.clampMax);
+    }
+    case 'script': {
+      const cfg = typeConfig as ScriptConfig;
+      try {
+        // Scripts have access to:
+        // t: elapsed time in ms
+        // i: frame count
+        // f: previous field values
+        const fn = new Function('t', 'i', 'f', `
+          try {
+            ${cfg.code}
+          } catch(e) {
+            return 0;
+          }
+        `);
+        const result = fn(elapsedMs, state.frameCount, namedValues);
+        return clampValue(Number(result) || 0, byteWidth);
+      } catch (e) {
+        return 0;
+      }
     }
     default:
       return 0;
