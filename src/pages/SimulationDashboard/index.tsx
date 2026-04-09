@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Menu, Activity, Settings2 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
@@ -54,6 +55,8 @@ export default function SimulationDashboard() {
   const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<any | null>(null);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   
   const { 
     state, 
@@ -140,7 +143,7 @@ export default function SimulationDashboard() {
   const allRangeFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'range') ?? [], [selectedProfile]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 overflow-hidden">
+    <div className="h-full flex flex-col bg-gray-950 overflow-hidden text-gray-200 font-sans">
       <StatBar 
         status={status}
         frameCount={frameCount}
@@ -168,50 +171,72 @@ export default function SimulationDashboard() {
         formatMs={formatMs}
       />
 
-      {/* Main content: fixed height, no page scroll */}
-      <div className="flex-1 min-h-0 flex">
-        {/* Left: Frame monitors + Logic Analyzer (compact, stacked) */}
-        <div className="w-72 xl:w-80 flex flex-col border-r border-gray-800 shrink-0 overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <FrameMonitor 
-              lastFrame={lastFrame}
-              recentFrames={recentFrames}
-              selectedFrameId={selectedFrame?.frameNumber}
-              onSelectFrame={setSelectedFrame}
-            />
-            <RxMonitor 
-              lastRxFrame={lastRxFrame}
-              selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
-              onSelectFrame={setSelectedFrame}
-            />
-          </div>
-          <div className="shrink-0">
-            <LogicAnalyzer 
-              lastTxFrame={lastFrame}
-              lastRxFrame={lastRxFrame}
-            />
+      {/* Main layout container */}
+      <div className="flex-1 min-h-0 flex relative bg-[#0a0a0d] overflow-hidden">
+        
+        {/* LEFT PANEL */}
+        <div 
+          className={`shrink-0 flex flex-col bg-gray-900 border-r border-gray-800/50 transition-all duration-300 ease-in-out relative ${
+            isLeftPanelOpen ? 'w-72 xl:w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'
+          }`}
+        >
+          <div className="w-72 xl:w-80 h-full flex flex-col">
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <FrameMonitor 
+                lastFrame={lastFrame}
+                recentFrames={recentFrames}
+                selectedFrameId={selectedFrame?.frameNumber}
+                onSelectFrame={setSelectedFrame}
+              />
+              <RxMonitor 
+                lastRxFrame={lastRxFrame}
+                selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
+                onSelectFrame={setSelectedFrame}
+              />
+            </div>
+            <div className="shrink-0 border-t border-gray-800/50">
+              <LogicAnalyzer 
+                lastTxFrame={lastFrame}
+                lastRxFrame={lastRxFrame}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Center: Waveform charts (fill remaining space) */}
-        <div className="flex-1 min-w-0 overflow-y-auto relative">
-          <WaveformCharts 
-            waveformHistory={waveformHistory}
-            selectedProfile={selectedProfile}
-            CustomTooltip={CustomTooltip}
-            chartColors={CHART_COLORS}
-          />
+        {/* LEFT PANEL TOGGLE BUTTON */}
+        <button
+          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+          className={`absolute left-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-gray-400 hover:text-white rounded-r-md shadow-lg transition-transform duration-300 ease-in-out ${
+            isLeftPanelOpen ? 'translate-x-72 xl:translate-x-80' : 'translate-x-0'
+          }`}
+          title={isLeftPanelOpen ? "Monitörleri Gizle" : "Monitörleri Göster"}
+        >
+          {isLeftPanelOpen ? <ChevronLeft size={16} /> : <Activity size={16} />}
+        </button>
 
-          <div className="shrink-0">
-            <VisualProtocolAnalyzer 
-              frame={lastFrame}
-              profile={selectedProfile}
-            />
+        {/* CENTER PANEL (WAVEFORMS) */}
+        <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#0a0a0d] to-[#12121a]">
+          <div className="flex-1 min-h-0 overflow-hidden relative p-4 flex flex-col">
+            <div className="flex-1 min-h-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
+              <WaveformCharts 
+                waveformHistory={waveformHistory}
+                selectedProfile={selectedProfile}
+                CustomTooltip={CustomTooltip}
+                chartColors={CHART_COLORS}
+              />
+            </div>
+
+            <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30">
+              <VisualProtocolAnalyzer 
+                frame={lastFrame}
+                profile={selectedProfile}
+              />
+            </div>
           </div>
-          
-          {/* Packet Inspector Overlay (Fixed to the right of central panel) */}
+
+          {/* Packet Inspector Overlay */}
           {selectedFrame && (
-            <div className="absolute inset-y-0 right-0 w-96 z-20">
+            <div className="absolute inset-y-0 right-0 w-[400px] z-20 backdrop-blur-md bg-gray-950/90 border-l border-gray-800 shadow-2xl animate-in slide-in-from-right-10">
               <PacketInspector 
                 frame={selectedFrame}
                 profile={selectedProfile}
@@ -221,26 +246,46 @@ export default function SimulationDashboard() {
           )}
         </div>
 
-        {/* Right: Control Panel */}
-        <ControlPanel 
-          status={status}
-          flagsFields={flagsFields}
-          allRangeFields={allRangeFields}
-          bitOverrides={bitOverrides}
-          fieldOverrides={fieldOverrides}
-          pendingErrors={pendingErrors}
-          logEntries={logEntries}
-          errorTypes={ERROR_TYPES}
-          onOverrideField={overrideField}
-          onOverrideBit={overrideBit}
-          onInjectError={injectError}
-          onResetOverrides={resetOverrides}
-          onExportLogs={exportLogs}
-          isRecording={isRecording}
-          onStartRecording={startRecording}
-          onStopRecording={stopRecording}
-          onStartPlayback={startPlayback}
-        />
+        {/* RIGHT PANEL TOGGLE BUTTON */}
+        <button
+          onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+          className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-gray-400 hover:text-white rounded-l-md shadow-lg transition-transform duration-300 ease-in-out ${
+            isRightPanelOpen ? '-translate-x-80' : 'translate-x-0'
+          }`}
+          title={isRightPanelOpen ? "Kontrolleri Gizle" : "Kontrolleri Göster"}
+        >
+          {isRightPanelOpen ? <ChevronRight size={16} /> : <Settings2 size={16} />}
+        </button>
+
+        {/* RIGHT PANEL */}
+        <div 
+          className={`shrink-0 flex flex-col bg-gray-900 border-l border-gray-800/50 transition-all duration-300 ease-in-out relative ${
+            isRightPanelOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0'
+          }`}
+        >
+          <div className="w-80 h-full overflow-y-auto custom-scrollbar">
+            <ControlPanel 
+              status={status}
+              flagsFields={flagsFields}
+              allRangeFields={allRangeFields}
+              bitOverrides={bitOverrides}
+              fieldOverrides={fieldOverrides}
+              pendingErrors={pendingErrors}
+              logEntries={logEntries}
+              errorTypes={ERROR_TYPES}
+              onOverrideField={overrideField}
+              onOverrideBit={overrideBit}
+              onInjectError={injectError}
+              onResetOverrides={resetOverrides}
+              onExportLogs={exportLogs}
+              isRecording={isRecording}
+              onStartRecording={startRecording}
+              onStopRecording={stopRecording}
+              onStartPlayback={startPlayback}
+            />
+          </div>
+        </div>
+
       </div>
     </div>
   );

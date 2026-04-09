@@ -1,11 +1,13 @@
-import React, { memo, useState, useCallback } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { FrameProfile, RangeConfig } from '../../../types';
+import { memo, useState, useCallback } from 'react';
+import { LayoutGrid, List, GripHorizontal } from 'lucide-react';
+import type { FrameProfile } from '../../../types';
+import CanvasWaveform from './CanvasWaveform';
+import DashboardGrid, { type GridPanel } from './DashboardGrid';
 
 interface WaveformChartsProps {
   waveformHistory: Array<Record<string, number>>;
   selectedProfile: FrameProfile | null;
-  CustomTooltip: any;
+  CustomTooltip?: any;
   chartColors: string[];
 }
 
@@ -14,148 +16,177 @@ const CHART_COLORS_EXTENDED = [
   '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#eab308', '#22d3ee',
 ];
 
-const WaveformCharts = memo(({ waveformHistory, selectedProfile, CustomTooltip, chartColors }: WaveformChartsProps) => {
-  // Track which fields are enabled for charting (by field name)
+const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: WaveformChartsProps) => {
   const [enabledCharts, setEnabledCharts] = useState<Record<string, boolean>>({});
+  const [gridMode, setGridMode] = useState(false);
+  const [gridPanels, setGridPanels] = useState<GridPanel[]>([]);
 
-  const toggleChart = useCallback((fieldName: string) => {
-    setEnabledCharts(prev => ({ ...prev, [fieldName]: !prev[fieldName] }));
+  const toggleChart = useCallback((fieldName: string, fieldType: string, colorIdx: number) => {
+    setEnabledCharts(prev => {
+      const newState = { ...prev, [fieldName]: !prev[fieldName] };
+      if (!prev[fieldName]) {
+        // Adding: also add to grid panels
+        const color = CHART_COLORS_EXTENDED[colorIdx % CHART_COLORS_EXTENDED.length];
+        setGridPanels(gp => [
+          ...gp,
+          { id: `${fieldName}-${Date.now()}`, fieldName, fieldType, color }
+        ]);
+      } else {
+        // Removing: remove from grid panels
+        setGridPanels(gp => gp.filter(p => p.fieldName !== fieldName));
+      }
+      return newState;
+    });
+  }, []);
+
+  const removeGridPanel = useCallback((panelId: string) => {
+    setGridPanels(prev => {
+      const removed = prev.find(p => p.id === panelId);
+      if (removed) {
+        setEnabledCharts(ec => ({ ...ec, [removed.fieldName]: false }));
+      }
+      return prev.filter(p => p.id !== panelId);
+    });
   }, []);
 
   if (!selectedProfile || waveformHistory.length <= 1) return null;
 
-  const waveformFields = selectedProfile.fields.filter((f) => f.type === 'waveform');
-  const allChartableFields = selectedProfile.fields.filter(f => f.type !== 'checksum');
-  
-  // Non-waveform fields go to the toggleable list below
-  const toggleableFields = allChartableFields.filter(f => f.type !== 'waveform');
+  const waveformFields = selectedProfile.fields.filter(f => f.type === 'waveform');
+  const toggleableFields = selectedProfile.fields.filter(f => f.type !== 'waveform' && f.type !== 'checksum');
   const activeToggleFields = toggleableFields.filter(f => enabledCharts[f.name]);
+  const lastPoint = waveformHistory[waveformHistory.length - 1] ?? {};
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-gray-950/20">
-      {/* ─── FIXED WAVEFORM SECTION (Top) ─── */}
-      {waveformFields.length > 0 && (
-        <div className="flex flex-col gap-4 p-4 border-b border-gray-800 bg-black/40">
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-gray-500 text-[10px] font-mono uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Sinyal İzleme (Waveforms)
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-2">
-            {waveformFields.map((f, i) => (
-              <div key={f.id} className="h-24 bg-black/30 rounded border border-gray-800/50 p-2 relative group">
-                <div className="absolute top-1 left-2 z-10 flex items-center gap-2">
-                  <span className="text-[9px] font-mono uppercase tracking-tighter font-bold" style={{ color: chartColors[i % chartColors.length] }}>
-                    {f.name} (LIVE)
-                  </span>
-                  <span className="text-[8px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    ID: {f.id} | {f.byteWidth}B
-                  </span>
-                </div>
-                
-                <div className="absolute top-1 right-2 z-10 text-lg font-bold font-mono opacity-80" style={{ color: chartColors[i % chartColors.length] }}>
-                   {(waveformHistory[waveformHistory.length - 1]?.[f.name] ?? 0).toFixed(0)}
-                </div>
+    <div className="flex flex-col flex-1 min-h-0 bg-gray-950/20 overflow-y-auto custom-scrollbar">
 
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={waveformHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
-                    <XAxis dataKey="t" hide />
-                    <YAxis domain={['auto', 'auto']} hide />
-                    <Line 
-                      type="monotone" 
-                      dataKey={f.name} 
-                      stroke={chartColors[i % chartColors.length]} 
-                      dot={false} 
-                      isAnimationActive={false} 
-                      strokeWidth={2.5} 
-                      strokeLinecap="round"
-                      style={{ filter: `drop-shadow(0 0 3px ${chartColors[i % chartColors.length]}40)` }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
+      {/* ─── PINNED WAVEFORM SECTION ─── */}
+      {waveformFields.length > 0 && (
+        <div className="flex flex-col shrink-0 border-b border-gray-800/60 bg-black/50">
+          <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ boxShadow: '0 0 6px #10b981' }} />
+            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-[0.2em]">Sinyal İzleme · Waveforms</span>
+          </div>
+          <div className="flex flex-col divide-y divide-gray-800/40">
+            {waveformFields.map((f, i) => {
+              const color = chartColors[i % chartColors.length];
+              const cv = (lastPoint[f.name] ?? 0).toFixed(0);
+              return (
+                <div key={f.id} className="relative group px-3 pb-2 pt-1" style={{ height: 100 }}>
+                  <div className="absolute top-2 left-4 z-10 flex items-center gap-2 pointer-events-none">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider" style={{ color, textShadow: `0 0 8px ${color}80` }}>
+                      {f.name}
+                    </span>
+                    <span className="text-[8px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">{f.byteWidth}B</span>
+                  </div>
+                  <div className="absolute top-2 right-4 z-10 text-base font-bold font-mono tabular-nums pointer-events-none" style={{ color, textShadow: `0 0 10px ${color}60` }}>
+                    {cv}
+                  </div>
+                  <div className="absolute inset-0 pt-6 px-0">
+                    <CanvasWaveform dataKey={f.name} history={waveformHistory} color={color} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* ─── DATA CHANNEL SELECTORS (Toggleable) ─── */}
-      <div className="p-4 border-b border-gray-800">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Veri Kanalları (Grafik Aç/Kapat)</div>
-          <span className="text-[9px] text-gray-600 font-mono">
-            {activeToggleFields.length}/{toggleableFields.length} aktif
-          </span>
+      {/* ─── TOGGLE BAR (sticky) ─── */}
+      <div className="shrink-0 sticky top-0 z-20 bg-gray-900/95 backdrop-blur-md border-b border-gray-800/60 shadow-lg">
+        <div className="flex items-center justify-between px-4 pt-2.5 pb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-[0.2em]">Veri Kanalları</span>
+            <span className="text-[9px] text-gray-600 font-mono bg-gray-800 px-1.5 py-0.5 rounded ml-1">
+              {activeToggleFields.length}/{toggleableFields.length}
+            </span>
+          </div>
+          {/* Grid / List toggle */}
+          <div className="flex items-center gap-1 bg-gray-800/60 rounded p-1">
+            <button
+              onClick={() => setGridMode(false)}
+              className={`p-1 rounded transition-all ${!gridMode ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+              title="Liste görünümü"
+            >
+              <List size={12} />
+            </button>
+            <button
+              onClick={() => setGridMode(true)}
+              className={`p-1 rounded transition-all ${gridMode ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+              title="Grid görünümü (Sürükle-Bırak)"
+            >
+              <LayoutGrid size={12} />
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 px-4 pb-3">
           {toggleableFields.map((f, i) => {
             const isActive = !!enabledCharts[f.name];
-            const color = CHART_COLORS_EXTENDED[(i + waveformFields.length) % CHART_COLORS_EXTENDED.length];
-            const currentVal = waveformHistory[waveformHistory.length - 1]?.[f.name] ?? 0;
+            const colorIdx = i + waveformFields.length;
+            const color = CHART_COLORS_EXTENDED[colorIdx % CHART_COLORS_EXTENDED.length];
+            const currentVal = lastPoint[f.name] ?? 0;
             return (
               <button
                 key={f.id}
-                onClick={() => toggleChart(f.name)}
+                onClick={() => toggleChart(f.name, f.type, colorIdx)}
                 className={`
-                  px-2.5 py-1.5 rounded text-[10px] font-mono border transition-all duration-200
-                  ${isActive 
-                    ? 'border-opacity-60 bg-opacity-20 text-white shadow-sm' 
-                    : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-500'
-                  }
+                  px-2.5 py-1 rounded text-[10px] font-mono border transition-all duration-200 select-none
+                  ${isActive ? 'text-white shadow-sm' : 'bg-gray-900 border-gray-700/60 text-gray-500 hover:border-gray-500 hover:text-gray-300'}
                 `}
-                style={isActive ? { 
-                  borderColor: color, 
-                  backgroundColor: `${color}20`,
-                  color: color,
-                  boxShadow: `0 0 8px ${color}30`
+                style={isActive ? {
+                  borderColor: `${color}80`,
+                  backgroundColor: `${color}18`,
+                  color,
+                  boxShadow: `0 0 10px ${color}30`
                 } : {}}
               >
-                <span className="mr-1">{isActive ? '📊' : '📈'}</span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle" style={{ backgroundColor: isActive ? color : '#4b5563' }} />
                 {f.name}
-                {isActive && <span className="ml-1.5 opacity-70">({currentVal})</span>}
+                {isActive && <span className="ml-1.5 opacity-60 tabular-nums">{currentVal}</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ─── ACTIVE DATA CHARTS ─── */}
-      {activeToggleFields.length > 0 && (
-        <div className="flex flex-col gap-2 p-4 border-b border-gray-800 bg-black/20 overflow-y-auto">
-          {activeToggleFields.map((f, i) => {
-            const colorIdx = toggleableFields.findIndex(tf => tf.id === f.id);
-            const color = CHART_COLORS_EXTENDED[(colorIdx + waveformFields.length) % CHART_COLORS_EXTENDED.length];
-            const currentVal = waveformHistory[waveformHistory.length - 1]?.[f.name] ?? 0;
+      {/* ─── ACTIVE CHARTS: LIST MODE ─── */}
+      {!gridMode && activeToggleFields.length > 0 && (
+        <div className="flex flex-col divide-y divide-gray-800/40 shrink-0 pb-6">
+          {activeToggleFields.map((f) => {
+            const colorIdx = toggleableFields.findIndex(tf => tf.id === f.id) + waveformFields.length;
+            const color = CHART_COLORS_EXTENDED[colorIdx % CHART_COLORS_EXTENDED.length];
+            const cv = lastPoint[f.name] ?? 0;
             return (
-              <div key={f.id} className="h-20 bg-black/30 rounded border border-gray-800/50 p-2 relative group">
-                <div className="absolute top-1 left-2 z-10 flex items-center gap-2">
-                  <span className="text-[9px] font-mono uppercase tracking-tighter" style={{ color }}>{f.name}</span>
-                  <span className="text-[9px] font-mono opacity-20" style={{ color }}>({f.type})</span>
+              <div key={f.id} className="relative group px-3 pb-2 pt-1" style={{ height: 88 }}>
+                <div className="absolute top-2 left-4 z-10 flex items-center gap-2 pointer-events-none">
+                  <span className="text-[9px] font-mono uppercase tracking-wider" style={{ color, textShadow: `0 0 6px ${color}60` }}>{f.name}</span>
+                  <span className="text-[8px] font-mono opacity-30" style={{ color }}>{f.type}</span>
                 </div>
-                <div className="absolute top-1 right-2 z-10 text-sm font-bold font-mono" style={{ color }}>{currentVal}</div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={waveformHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
-                    <XAxis dataKey="t" hide />
-                    <YAxis domain={['auto', 'auto']} hide />
-                    <Line 
-                      type="monotone" 
-                      dataKey={f.name} 
-                      stroke={color} 
-                      dot={false} 
-                      isAnimationActive={false} 
-                      strokeWidth={2} 
-                      strokeLinecap="round"
-                      style={{ filter: `drop-shadow(0 0 2px ${color}40)` }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="absolute top-2 right-4 z-10 text-sm font-bold font-mono tabular-nums pointer-events-none" style={{ color }}>{cv}</div>
+                <div className="absolute inset-0 pt-6 px-0">
+                  <CanvasWaveform dataKey={f.name} history={waveformHistory} color={color} />
+                </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ─── ACTIVE CHARTS: GRID MODE (Drag & Drop) ─── */}
+      {gridMode && gridPanels.length > 0 && (
+        <div className="flex-1 min-h-0 shrink-0" style={{ minHeight: 300 }}>
+          <DashboardGrid
+            panels={gridPanels}
+            history={waveformHistory}
+            onRemovePanel={removeGridPanel}
+          />
+        </div>
+      )}
+
+      {gridMode && gridPanels.length === 0 && (
+        <div className="flex-1 flex items-center justify-center text-gray-700 font-mono text-xs gap-2 py-8">
+          <GripHorizontal size={16} />
+          <span>Yukarıdan kanalları aç — grid'e eklenecek</span>
         </div>
       )}
     </div>
@@ -163,5 +194,4 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, CustomTooltip, 
 });
 
 WaveformCharts.displayName = 'WaveformCharts';
-
 export default WaveformCharts;
