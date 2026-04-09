@@ -46,7 +46,12 @@ wss.on('connection', (ws) => {
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
       
-      ws.send(JSON.stringify({ type: 'TICK', frame, elapsedMs: engine.getState().elapsedMs }));
+      ws.send(JSON.stringify({ 
+        type: 'TICK', 
+        frame, 
+        elapsedMs: engine.getState().elapsedMs,
+        pendingErrors: engine.getState().pendingErrors 
+      }));
 
       // Send logs for TX and errors
       if (engine.getState().outputMode !== 'log') {
@@ -105,6 +110,10 @@ wss.on('connection', (ws) => {
         case 'START_PLAYBACK':
           console.log('\x1b[36m[PLAY]\x1b[0m Oynatma komutu alındı.');
           engine.startPlayback(data.data);
+          break;
+        case 'INJECT_ERROR':
+          console.log('\x1b[35m[ERROR]\x1b[0m Hata enjekte ediliyor:', data.errorType);
+          engine.injectError(data.errorType);
           break;
         default:
           console.log('\x1b[31m[WARN]\x1b[0m Bilinmeyen komut:', data.type);

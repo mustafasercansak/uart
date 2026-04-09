@@ -33,7 +33,13 @@ function clampValue(value: number, width: number): number {
   return Math.max(0, Math.min(max, Math.round(value)));
 }
 
-function numberToBytes(value: number, width: number, endianness: 'big' | 'little'): number[] {
+function numberToBytes(value: number, width: number, endianness: 'big' | 'little', isAscii?: boolean): number[] {
+  if (isAscii) {
+    const str = Math.round(value).toString().padStart(width, '0');
+    const bytes = Array.from(str).map(c => c.charCodeAt(0));
+    return bytes.slice(0, width);
+  }
+
   const bytes: number[] = [];
   for (let i = 0; i < width; i++) {
     bytes.push((value >> (i * 8)) & 0xff);
@@ -210,7 +216,10 @@ export function generateFrame(
 
     const decimalValue = bytes.length === 1
       ? bytes[0]
-      : bytes.reduce((acc, b, i) => acc | (b << (i * 8)), 0);
+      : field.endianness === 'little'
+        ? bytes.reduce((acc, b, i) => acc | (b << (i * 8)), 0)
+        : bytes.reduce((acc, b, i) => (acc << 8) | b, 0);
+
     const hexStr = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
     const parsed: ParsedField = { name: field.name, hex: hexStr, decimal: decimalValue };

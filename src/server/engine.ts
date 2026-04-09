@@ -6,7 +6,8 @@ import type {
   Scenario, 
   OutputMode, 
   GeneratedFrame,
-  SimulationStatus
+  SimulationStatus,
+  ErrorType
 } from '../types';
 
 /**
@@ -43,6 +44,10 @@ export class SimulationEngine {
 
   public updateOverrides(patch: Partial<SimulationState>) {
     this.state = { ...this.state, ...patch };
+  }
+
+  public injectError(errorType: ErrorType) {
+    this.state.pendingErrors = [...this.state.pendingErrors, errorType];
   }
 
   public startRecording() {
@@ -183,6 +188,13 @@ export class SimulationEngine {
 
     // Callback or Event emission happens here
     this.onFrame(frame);
+
+    // Clear one-shot error if it was applied
+    if (this.state.pendingErrors.length > 0) {
+      const consumed = this.state.pendingErrors[0];
+      this.state.pendingErrors = this.state.pendingErrors.slice(1);
+      console.log(`\x1b[35m[ERROR]\x1b[0m Hata başarıyla enjekte edildi: ${consumed}`);
+    }
 
     // Schedule next
     const drift = Date.now() - nextTickAt;

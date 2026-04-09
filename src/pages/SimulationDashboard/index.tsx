@@ -10,6 +10,8 @@ import RxMonitor from './components/RxMonitor';
 import WaveformCharts from './components/WaveformCharts';
 import ControlPanel from './components/ControlPanel';
 import LogicAnalyzer from './components/LogicAnalyzer';
+import PacketInspector from './components/PacketInspector';
+import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -51,6 +53,7 @@ const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f
 export default function SimulationDashboard() {
   const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
+  const [selectedFrame, setSelectedFrame] = useState<any | null>(null);
   
   const { 
     state, 
@@ -114,7 +117,10 @@ export default function SimulationDashboard() {
         if (status === 'running') pause();
         else if (status === 'paused' && selectedProfile) resume(selectedProfile, selectedScenario);
       }
-      if (e.code === 'Escape') stop();
+      if (e.code === 'Escape') {
+        stop();
+        setSelectedFrame(null);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -170,9 +176,13 @@ export default function SimulationDashboard() {
             <FrameMonitor 
               lastFrame={lastFrame}
               recentFrames={recentFrames}
+              selectedFrameId={selectedFrame?.frameNumber}
+              onSelectFrame={setSelectedFrame}
             />
             <RxMonitor 
               lastRxFrame={lastRxFrame}
+              selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
+              onSelectFrame={setSelectedFrame}
             />
           </div>
           <div className="shrink-0">
@@ -184,13 +194,31 @@ export default function SimulationDashboard() {
         </div>
 
         {/* Center: Waveform charts (fill remaining space) */}
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="flex-1 min-w-0 overflow-y-auto relative">
           <WaveformCharts 
             waveformHistory={waveformHistory}
             selectedProfile={selectedProfile}
             CustomTooltip={CustomTooltip}
             chartColors={CHART_COLORS}
           />
+
+          <div className="shrink-0">
+            <VisualProtocolAnalyzer 
+              frame={lastFrame}
+              profile={selectedProfile}
+            />
+          </div>
+          
+          {/* Packet Inspector Overlay (Fixed to the right of central panel) */}
+          {selectedFrame && (
+            <div className="absolute inset-y-0 right-0 w-96 z-20">
+              <PacketInspector 
+                frame={selectedFrame}
+                profile={selectedProfile}
+                onClose={() => setSelectedFrame(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right: Control Panel */}

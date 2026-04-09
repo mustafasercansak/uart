@@ -100,7 +100,6 @@ const StatBar = memo(({
           <option value="tcp">TCP (Ağ)</option>
         </select>
         
-        {/* Baud Rate Indicator - NEW */}
         {selectedProfile && (
           <div className="text-[10px] font-mono text-gray-500 border border-gray-800 px-2 py-1 rounded bg-gray-900/50">
             {selectedProfile.baudRate} bps

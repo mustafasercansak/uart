@@ -3,11 +3,13 @@ import type { GeneratedFrame } from '../../../types';
 
 interface RxMonitorProps {
   lastRxFrame: GeneratedFrame | null;
+  selectedFrameId?: number;
+  onSelectFrame?: (frame: GeneratedFrame) => void;
 }
 
-const RxMonitor = memo(({ lastRxFrame }: RxMonitorProps) => {
+const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonitorProps) => {
   return (
-    <div className="p-4 border-b border-gray-800 bg-blue-900/5">
+    <div className="p-4 border-b border-gray-800 bg-blue-900/5 transition-all">
       <div className="flex items-center justify-between mb-3">
         <div className="text-blue-400 text-xs font-mono uppercase tracking-wider">Canlı RX Frame (Gelen)</div>
         {lastRxFrame && (
@@ -16,31 +18,25 @@ const RxMonitor = memo(({ lastRxFrame }: RxMonitorProps) => {
       </div>
       
       {lastRxFrame ? (
-        <div className="space-y-2">
+        <div 
+          className={`space-y-2 p-2 rounded-xl transition-all cursor-pointer border ${selectedFrameId === 0 ? 'bg-blue-500/10 border-blue-500/40' : 'border-transparent hover:bg-blue-900/10'}`}
+          onClick={() => onSelectFrame?.(lastRxFrame)}
+        >
           {/* Raw hex */}
           <div className="bg-gray-950 rounded p-3 font-mono text-xs border border-blue-900/30">
             <span className="text-gray-600">HEX: </span>
             <span className="text-blue-400">{lastRxFrame.rawHex}</span>
           </div>
           
-          {/* Field breakdown */}
-          <div className="flex flex-wrap gap-2">
-            {lastRxFrame.fields.map((f) => (
-              <div key={f.name} className="bg-gray-800 rounded px-2 py-1.5 border border-blue-900/20">
-                <div className="text-blue-500/70 text-[10px] font-mono">{f.name}</div>
-                <div className="text-blue-100 text-xs font-mono font-bold">0x{f.hex.replace(' ', '')}</div>
-                <div className="text-gray-500 text-[10px] font-mono">{f.decimal}</div>
-                {f.flags && (
-                  <div className="mt-1 space-y-0.5">
-                    {Object.entries(f.flags).map(([name, val]) => (
-                      <div key={name} className={`text-[9px] font-mono ${val ? 'text-blue-400' : 'text-gray-600'}`}>
-                        {val ? '■' : '□'} {name}
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {/* Field breakdown (Compact) */}
+          <div className="flex flex-wrap gap-1">
+            {lastRxFrame.fields.slice(0, 4).map((f) => (
+              <div key={f.name} className="bg-blue-900/10 rounded px-1.5 py-0.5 border border-blue-900/20">
+                <span className="text-blue-500/70 text-[9px] font-mono mr-1">{f.name}:</span>
+                <span className="text-blue-100 text-[9px] font-mono font-bold">{f.decimal}</span>
               </div>
             ))}
+            {lastRxFrame.fields.length > 4 && <span className="text-gray-700 text-[9px] font-mono">...</span>}
           </div>
         </div>
       ) : (
