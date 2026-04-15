@@ -44,6 +44,8 @@ const INITIAL_STATE: SimulationState = {
   activePulses: {},
   pendingErrors: [],
   isRecording: false,
+  conversationLogs: [],
+  exchanges: [],
 };
 
 type SimAction =
@@ -64,7 +66,11 @@ type SimAction =
   | { type: 'SET_NETWORK_CONNECTED'; connected: boolean }
   | { type: 'SET_RECORDING'; recording: boolean }
   | { type: 'ADD_LOG'; entryType: 'info' | 'tx' | 'rx' | 'error'; text: string }
-  | { type: 'BATCH_LOGS'; entries: Array<SimulationState['logEntries'][0]> };
+  | { type: 'BATCH_LOGS'; entries: Array<SimulationState['logEntries'][0]> }
+  | { type: 'ADD_CONVERSATION'; entry: any }
+  | { type: 'UPDATE_EXCHANGE'; exchange: any }
+  | { type: 'INIT_STATE'; newState: Partial<SimulationState> }
+  | { type: 'SET_BACKEND_CONNECTED'; connected: boolean };
 
 function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -163,6 +169,39 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, networkConnected: action.connected };
     case 'SET_RECORDING':
       return { ...state, isRecording: action.recording };
+    case 'ADD_CONVERSATION':
+      return { 
+        ...state, 
+        conversationLogs: [action.entry, ...state.conversationLogs].slice(0, 100) 
+      };
+    case 'UPDATE_EXCHANGE':
+      const updatedExchanges = [...state.exchanges];
+      const existingIdx = updatedExchanges.findIndex(e => e.id === action.exchange.id);
+      
+      if (existingIdx !== -1) {
+        updatedExchanges[existingIdx] = action.exchange;
+        return { ...state, exchanges: updatedExchanges };
+      } else {
+        return { 
+          ...state, 
+          exchanges: [action.exchange, ...state.exchanges].slice(0, 50) 
+        };
+      }
+    case 'TICK':
+      return { 
+        ...state, 
+        elapsedMs: action.elapsedMs,
+        status: action.newState.status || state.status,
+        selectedProfileId: action.newState.selectedProfileId || state.selectedProfileId,
+        ...action.newState
+      };
+    case 'INIT_STATE':
+      return { 
+        ...state, 
+        ...action.newState 
+      };
+    case 'SET_BACKEND_CONNECTED':
+      return { ...state, networkConnected: action.connected };
     default:
       return state;
   }
@@ -178,7 +217,7 @@ interface SimulationContextType {
   overrideBit: (bitKey: string, value: number) => void;
   injectError: (errorType: ErrorType) => void;
   resetOverrides: () => void;
-  connectSerial: (baudRate: number) => Promise<void>;
+  connectSerial: (portName: string, baudRate: number) => Promise<void>;
   disconnectSerial: () => Promise<void>;
   setProfile: (profileId: string | null) => void;
   setScenario: (scenarioId: string | null) => void;
@@ -191,6 +230,7 @@ interface SimulationContextType {
   startRecording: () => void;
   stopRecording: () => void;
   startPlayback: (data: any) => void;
+  getPorts: () => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
@@ -217,6 +257,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const rxBufferRef = useRef<number[]>([]);
   const fullLogRef = useRef<Array<{ time: string; text: string; type: string }>>([]);
   const uiVisibleRef = useRef(false);
+  const conversationBufferRef = useRef<any[]>([]);
+  const exchangeBufferRef = useRef<any[]>([]);
 
   // ── BACKEND CONNECTION ───────────────────────
   React.useEffect(() => {
@@ -225,24 +267,31 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       socket.onopen = () => {
         console.log('Connected to backend simulation engine');
         backendWsRef.current = socket;
+        dispatch({ type: 'SET_BACKEND_CONNECTED', connected: true });
         dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Simülasyon motoru bağlandı (Backend)' });
       };
       socket.onmessage = (event) => {
         const msg = JSON.parse(event.data);
-        if (msg.type === 'TICK') {
+        if (msg.type === 'INITIAL_STATE') {
+          dispatch({ type: 'INIT_STATE', newState: msg.state });
+          if (msg.exchanges) {
+            msg.exchanges.forEach((ex: any) => dispatch({ type: 'UPDATE_EXCHANGE', exchange: ex }));
+          }
+        } else if (msg.type === 'TICK') {
           // Process tick for UI
-          const { frame, elapsedMs } = msg;
           pendingUiUpdateRef.current = { 
-            lastFrame: frame,
-            elapsedMs,
-            frameCount: frame.frameNumber
+            lastFrame: msg.frame,
+            elapsedMs: msg.elapsedMs,
+            frameCount: msg.frame.frameNumber,
+            status: msg.status,
+            selectedProfileId: msg.selectedProfileId,
+            exchanges: msg.exchanges || [] 
           };
         } else if (msg.type === 'LOG') {
           logBufferRef.current.push(msg.entry);
           fullLogRef.current.push(msg.entry);
         } else if (msg.type === 'RECORDING_FINISHED') {
           dispatch({ type: 'SET_RECORDING', recording: false });
-          // Auto-download the recording
           const blob = new Blob([JSON.stringify(msg.data, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -250,12 +299,29 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           a.download = `uart_session_${new Date().toISOString().slice(0, 19).replace(/[:]/g, '-')}.json`;
           a.click();
           dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt tamamlandı ve indirildi: ${msg.data.length} frame.` });
+        } else if (msg.type === 'CONVERSATION') {
+          conversationBufferRef.current.push(msg.entry);
+        } else if (msg.type === 'EXCHANGE') {
+          exchangeBufferRef.current.push(msg.exchange);
+        } else if (msg.type === 'RAW_RX_DATA') {
+          dispatch({ type: 'ADD_LOG', entryType: 'rx', text: `[RAW RX]: ${msg.hex}` });
+        } else if (msg.type === 'SERIAL_STATUS') {
+          dispatch({ type: 'SET_SERIAL_CONNECTED', connected: msg.connected });
+          if (msg.error) {
+            dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Seri Port Hatası: ${msg.error}` });
+          }
+        } else if (msg.type === 'PORTS_LIST') {
+          pendingUiUpdateRef.current = { ...pendingUiUpdateRef.current, availablePorts: msg.ports } as any;
         }
       };
       socket.onclose = () => {
+        console.warn('Backend connection lost');
         backendWsRef.current = null;
-        dispatch({ type: 'ADD_LOG', entryType: 'error', text: 'Simülasyon motoru bağlantısı kesildi. Yeniden bağlanılıyor...' });
-        setTimeout(connect, 2000);
+        dispatch({ type: 'SET_BACKEND_CONNECTED', connected: false });
+        setTimeout(connect, 2000); // Auto-reconnect
+      };
+      socket.onerror = () => {
+        socket.close();
       };
     };
     connect();
@@ -277,6 +343,20 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         const update = pendingUiUpdateRef.current;
         pendingUiUpdateRef.current = null;
         dispatch({ type: 'TICK', elapsedMs: update.elapsedMs ?? 0, newState: update });
+      }
+
+      // Flush conversations
+      if (conversationBufferRef.current.length > 0) {
+          const convEntries = [...conversationBufferRef.current];
+          conversationBufferRef.current = [];
+          convEntries.forEach(entry => dispatch({ type: 'ADD_CONVERSATION', entry }));
+      }
+
+      // Flush exchanges
+      if (exchangeBufferRef.current.length > 0) {
+          const exEntries = [...exchangeBufferRef.current];
+          exchangeBufferRef.current = [];
+          exEntries.forEach(exchange => dispatch({ type: 'UPDATE_EXCHANGE', exchange }));
       }
     }, 33);
     return () => clearInterval(timer);
@@ -340,117 +420,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'RESET_OVERRIDES' });
   }, []);
 
-  const connectSerial = useCallback(async (baudRate: number) => {
-    try {
-      const nav: any = navigator;
-      if (!nav.serial) {
-        alert('Tarayıcınız Web Serial API desteklemiyor (Chrome/Edge kullanın).');
-        return;
-      }
-      const port = await nav.serial.requestPort();
-      await port.open({ baudRate });
-      
-      const writer = port.writable.getWriter();
-      portRef.current = port;
-      writerRef.current = writer;
-      dispatch({ type: 'SET_SERIAL_CONNECTED', connected: true });
-      dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Seri port bağlandı (${baudRate} baud)` });
-
-      // Start reader loop
-      abortControllerRef.current = new AbortController();
-      (async () => {
-        while (port.readable && !abortControllerRef.current?.signal.aborted) {
-          try {
-            const reader = port.readable.getReader();
-            readerRef.current = reader;
-            try {
-              while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                if (value) {
-                  const bytes = Array.from(value as Uint8Array);
-                  const hex = bytes.reduce((acc, b) => acc + b.toString(16).padStart(2, '0').toUpperCase() + ' ', '').trim();
-                  const now = new Date();
-                  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
-                  
-                  const logEntry = { time: timeStr, text: `RX: ${hex}`, type: 'rx' as const };
-                  logBufferRef.current.push(logEntry);
-                  fullLogRef.current.push(logEntry);
-
-                  // RX Parsing logic
-                  const currentProfile = stateRef.current.profileId 
-                    ? profilesRef.current.find((p) => p.id === stateRef.current.profileId) 
-                    : null;
-                  
-                  if (currentProfile) {
-                    rxBufferRef.current.push(...bytes);
-                    const totalWidth = currentProfile.fields.reduce((s: number, f: any) => s + f.byteWidth, 0);
-                    
-                    // Simple sync searching or length-based parsing
-                    if (rxBufferRef.current.length >= totalWidth) {
-                      const frameBytes = rxBufferRef.current.slice(0, totalWidth);
-                      rxBufferRef.current = rxBufferRef.current.slice(totalWidth);
-                      
-                      const parsedFields = parseFrame(currentProfile, frameBytes);
-                      if (parsedFields) {
-                        const rxFrame: GeneratedFrame = {
-                          frameNumber: 0, // Not applicable for RX
-                          timestampMs: Date.now(),
-                          rawHex: hex,
-                          rawBytes: frameBytes,
-                          fields: parsedFields,
-                          errors: []
-                        };
-                        pendingUiUpdateRef.current = { 
-                          ...pendingUiUpdateRef.current, 
-                          lastRxFrame: rxFrame 
-                        };
-                      }
-                    }
-                  }
-                }
-              }
-            } catch (err) {
-              console.error('Serial read error:', err);
-            } finally {
-              reader.releaseLock();
-              readerRef.current = null;
-            }
-          } catch (err) {
-            console.error('Reader creation error:', err);
-            break;
-          }
-        }
-      })();
-
-    } catch (err: any) {
-      console.error('Serial port bağlantı hatası:', err);
-      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Bağlantı hatası: ${err.message}` });
-    }
+  const connectSerial = useCallback(async (portName: string, baudRate: number) => {
+    backendWsRef.current?.send(JSON.stringify({ 
+        type: 'CONNECT_SERIAL', 
+        config: { portName, baudRate }
+    }));
   }, []);
 
   const disconnectSerial = useCallback(async () => {
-    try {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      if (readerRef.current) {
-        await readerRef.current.cancel();
-      }
-      if (writerRef.current) {
-        await writerRef.current.releaseLock();
-        writerRef.current = null;
-      }
-      if (portRef.current) {
-        await portRef.current.close();
-        portRef.current = null;
-      }
-      dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Seri port bağlantısı kesildi' });
-    } catch (err) {
-      console.error('Port kapatma hatası:', err);
-    } finally {
-      dispatch({ type: 'SET_SERIAL_CONNECTED', connected: false });
-    }
+    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_SERIAL' }));
   }, []);
 
   const exportLogs = useCallback(() => {
@@ -599,6 +577,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         startPlayback: (data: any) => {
           backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
           dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt oynatılıyor: ${data.length} frame.` });
+        },
+        getPorts: () => {
+          backendWsRef.current?.send(JSON.stringify({ type: 'GET_PORTS' }));
         }
       }}
     >

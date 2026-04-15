@@ -13,6 +13,7 @@ import ControlPanel from './components/ControlPanel';
 import LogicAnalyzer from './components/LogicAnalyzer';
 import PacketInspector from './components/PacketInspector';
 import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
+import ExchangeMonitor from './components/ExchangeMonitor';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -54,8 +55,9 @@ const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f
 export default function SimulationDashboard() {
   const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
-  const [selectedFrame, setSelectedFrame] = useState<any | null>(null);
+  const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [selectedExchangeId, setSelectedExchangeId] = useState<string | null>(null);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   
   const { 
@@ -66,7 +68,8 @@ export default function SimulationDashboard() {
     connectNetwork, disconnectNetwork,
     setProfile, setScenario, setOutputMode, setUiVisible,
     exportLogs, setProfiles,
-    startRecording, stopRecording, startPlayback
+    startRecording, stopRecording, startPlayback,
+    getPorts
   } = useSimulation();
 
   const { 
@@ -87,7 +90,10 @@ export default function SimulationDashboard() {
     pendingErrors,
     serialConnected,
     networkConnected,
-    isRecording
+    isRecording,
+    conversationLogs,
+    exchanges,
+    availablePorts
   } = state;
 
   // Sync profiles with context for RX parsing
@@ -142,6 +148,21 @@ export default function SimulationDashboard() {
   const flagsFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'flags') ?? [], [selectedProfile]);
   const allRangeFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'range') ?? [], [selectedProfile]);
 
+  // When an exchange is selected, prioritize its TX for visual analysis
+  const analyzerFrame = useMemo(() => {
+    const selectedExchange = exchanges.find(ex => ex.id === selectedExchangeId);
+    if (selectedExchange?.tx) {
+      return { 
+        frameNumber: 0, 
+        timestamp: selectedExchange.startTime, 
+        rawHex: selectedExchange.tx.rawHex, 
+        rawBytes: selectedExchange.tx.rawHex.split(' ').map(h => parseInt(h, 16)),
+        values: {} 
+      } as any;
+    }
+    return lastFrame;
+  }, [exchanges, selectedExchangeId, lastFrame]);
+
   return (
     <div className="h-full flex flex-col bg-gray-950 overflow-hidden text-gray-200 font-sans">
       <StatBar 
@@ -160,15 +181,19 @@ export default function SimulationDashboard() {
         onSetProfile={setProfile}
         onSetScenario={setScenario}
         onSetOutputMode={setOutputMode}
-        onConnectSerial={() => selectedProfile && connectSerial(selectedProfile.baudRate)}
+        onConnectSerial={(portName) => selectedProfile && connectSerial(portName, selectedProfile.baudRate)}
         onDisconnectSerial={disconnectSerial}
         onConnectNetwork={connectNetwork}
         onDisconnectNetwork={disconnectNetwork}
+        onGetPorts={getPorts}
+        availablePorts={availablePorts || []}
         onStart={handleStart}
         onStop={stop}
         onPause={pause}
         onResume={handleResume}
         formatMs={formatMs}
+        onSelectExchange={setSelectedExchangeId}
+        selectedExchangeId={selectedExchangeId}
       />
 
       {/* Main layout container */}
@@ -192,6 +217,12 @@ export default function SimulationDashboard() {
                 lastRxFrame={lastRxFrame}
                 selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
                 onSelectFrame={setSelectedFrame}
+              />
+              <ExchangeMonitor 
+                exchanges={exchanges}
+                isLoopbackMode={outputMode === 'serial'}
+                selectedId={selectedExchangeId || undefined}
+                onSelect={setSelectedExchangeId}
               />
             </div>
             <div className="shrink-0 border-t border-gray-800/50">
@@ -228,7 +259,7 @@ export default function SimulationDashboard() {
 
             <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30">
               <VisualProtocolAnalyzer 
-                frame={lastFrame}
+                frame={analyzerFrame}
                 profile={selectedProfile}
               />
             </div>

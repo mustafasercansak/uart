@@ -259,6 +259,47 @@ export type ScenarioCategory =
   | 'custom';
 
 // ─────────────────────────────────────────────
+// RESPONDER & CONVERSATION TİPLERİ
+// ─────────────────────────────────────────────
+
+export interface ResponderAction {
+  type: 'send_raw' | 'set_field' | 'inject_error';
+  payload: string;
+  delayMs?: number;
+}
+
+export interface ResponderRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  pattern: string; // Hex or ASCII
+  patternType: 'hex' | 'ascii';
+  actions: ResponderAction[];
+  cooldownMs?: number;
+}
+
+export interface ConversationEntry {
+  id: string;
+  timestamp: number;
+  type: 'rx' | 'tx' | 'match' | 'error';
+  rawHex: string;
+  details?: string;
+  linkedId?: string; // Links RX to the TX response or vice-versa
+  latencyMs?: number;
+  status?: 'success' | 'fail' | 'warning';
+}
+
+export interface Exchange {
+  id: string;
+  startTime: number;
+  tx?: ConversationEntry;
+  rx?: ConversationEntry;
+  match?: ConversationEntry;
+  latencyMs?: number;
+  isLoopbackMatch?: boolean;
+}
+
+// ─────────────────────────────────────────────
 // SİMÜLASYON RUNTIME TİPLERİ
 // ─────────────────────────────────────────────
 
@@ -310,6 +351,12 @@ export interface SimulationState {
   activePulses: Record<string, ActivePulse>;
   // Error injection queue
   pendingErrors: ErrorType[];
+  // Conversation History
+  conversationLogs: ConversationEntry[];
+  // Grouped exchanges for the comparison view
+  exchanges: Exchange[];
+  // Available Serial Ports (added for backend bridge)
+  availablePorts?: Array<{ path: string }>;
 }
 
 export interface ActiveRamp {

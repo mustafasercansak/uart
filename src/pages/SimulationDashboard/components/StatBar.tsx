@@ -17,10 +17,12 @@ interface StatBarProps {
   onSetProfile: (id: string) => void;
   onSetScenario: (id: string) => void;
   onSetOutputMode: (mode: OutputMode) => void;
-  onConnectSerial: () => void;
+  onConnectSerial: (portName: string) => void;
   onDisconnectSerial: () => void;
   onConnectNetwork: (url: string) => void;
   onDisconnectNetwork: () => void;
+  onGetPorts: () => void;
+  availablePorts: Array<{ path: string }>;
   onStart: () => void;
   onStop: () => void;
   onPause: () => void;
@@ -48,6 +50,8 @@ const StatBar = memo(({
   onDisconnectSerial,
   onConnectNetwork,
   onDisconnectNetwork,
+  onGetPorts,
+  availablePorts,
   onStart,
   onStop,
   onPause,
@@ -56,6 +60,16 @@ const StatBar = memo(({
 }: StatBarProps) => {
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
+  const [selectedPort, setSelectedPort] = React.useState('');
+  
+  // Backend connection status (networkConnected prop is used for this)
+  const backendConnected = networkConnected;
+
+  React.useEffect(() => {
+    if (availablePorts.length > 0 && !selectedPort) {
+      setSelectedPort(availablePorts[0].path);
+    }
+  }, [availablePorts, selectedPort]);
 
   return (
     <div className="px-5 py-3 bg-gray-950 border-b border-gray-800 flex items-center gap-4 shrink-0">
@@ -63,6 +77,14 @@ const StatBar = memo(({
         <div className={`w-2.5 h-2.5 rounded-full ${status === 'running' ? 'bg-green-400 animate-pulse' : status === 'paused' ? 'bg-yellow-400' : 'bg-gray-600'}`} />
         <span className="text-gray-400 text-xs font-mono uppercase">
           {status === 'running' ? 'Çalışıyor' : status === 'paused' ? 'Duraklatıldı' : 'Durdu'}
+        </span>
+      </div>
+
+      {/* Backend Status */}
+      <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+        <div className={`w-2 h-2 rounded-full ${backendConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+        <span className={`text-[10px] font-mono font-bold uppercase tracking-tight ${backendConnected ? 'text-emerald-500' : 'text-red-500'}`}>
+          {backendConnected ? 'Backend Bağlı' : 'Backend Kesildi'}
         </span>
       </div>
 
@@ -108,15 +130,27 @@ const StatBar = memo(({
       </div>
 
       {outputMode === 'serial' && (
-        <div className="flex items-center ml-2 border-l border-gray-700 pl-3">
+        <div className="flex items-center ml-2 border-l border-gray-700 pl-3 gap-2">
           {!serialConnected ? (
-            <button 
-              onClick={onConnectSerial} 
-              disabled={!selectedProfileId || status !== 'stopped'}
-              className="px-3 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
-            >
-              Bağlan
-            </button>
+            <>
+              <select 
+                className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-[10px] font-mono text-gray-200 outline-none focus:border-blue-700 w-24"
+                value={selectedPort}
+                onChange={(e) => setSelectedPort(e.target.value)}
+                onFocus={onGetPorts}
+                disabled={status !== 'stopped'}
+              >
+                {availablePorts.length === 0 && <option value="">Port Seçin</option>}
+                {availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)}
+              </select>
+              <button 
+                onClick={() => onConnectSerial(selectedPort)} 
+                disabled={!selectedProfileId || status !== 'stopped' || !selectedPort}
+                className="px-3 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
+              >
+                Bağlan
+              </button>
+            </>
           ) : (
             <button 
               onClick={onDisconnectSerial} 
@@ -126,7 +160,7 @@ const StatBar = memo(({
               Kopar
             </button>
           )}
-          {serialConnected && <span className="ml-2 text-green-400 text-xs font-mono">Bağlı</span>}
+          {serialConnected && <span className="ml-2 text-green-400 text-xs font-mono font-bold">BAĞLI</span>}
         </div>
       )}
 

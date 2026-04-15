@@ -6,9 +6,12 @@ import type {
   Scenario, 
   OutputMode, 
   GeneratedFrame,
-  SimulationStatus,
-  ErrorType
+  ResponderRule,
+  ResponderAction,
+  ConversationEntry,
+  Exchange
 } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * The Backend Simulation Engine
@@ -27,11 +30,24 @@ export class SimulationEngine {
   private isRecording = false;
   private recordingBuffer: Array<{ time: number; frame: GeneratedFrame }> = [];
   private playbackData: Array<{ time: number; frame: GeneratedFrame }> | null = null;
-  private playbackIndex = 0;
   private playbackTimer: NodeJS.Timeout | null = null;
+  
+  // Responder State
+  private responderRules: ResponderRule[] = [];
+  private rxBuffer: number[] = [];
+  private lastMatchTime: Record<string, number> = {};
+  
+  // Exchange Tracking
+  private pendingExchanges: Exchange[] = [];
 
   constructor(initialState: SimulationState) {
     this.state = initialState;
+    if (!this.state.conversationLogs) {
+        this.state.conversationLogs = [];
+    }
+    if (!this.state.exchanges) {
+        this.state.exchanges = [];
+    }
   }
 
   public setProfile(profile: FrameProfile) {
@@ -46,9 +62,177 @@ export class SimulationEngine {
     this.state = { ...this.state, ...patch };
   }
 
+  public getProfile() {
+    return this.profile;
+  }
+
   public injectError(errorType: ErrorType) {
     this.state.pendingErrors = [...this.state.pendingErrors, errorType];
   }
+
+  public setResponderRules(rules: ResponderRule[]) {
+    this.responderRules = rules;
+    this.lastMatchTime = {};
+    console.log(`\x1b[34m[RESP]\x1b[0m ${rules.length} adet yanıt kuralı yüklendi.`);
+  }
+
+  public processIncomingData(bytes: number[]) {
+    if (this.state.status !== 'running') return;
+
+    const hex = bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    
+    // Add to conversation log
+    const rxEntry: ConversationEntry = {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      type: 'rx',
+      rawHex: hex
+    };
+    this.addLog(rxEntry);
+
+    // Update oldest pending exchange or start new one
+    if (this.pendingExchanges.length > 0) {
+        const exchange = this.pendingExchanges.shift()!;
+        exchange.rx = rxEntry;
+        exchange.latencyMs = rxEntry.timestamp - exchange.startTime;
+        
+        // Bit-level integrity comparison
+        if (exchange.tx) {
+            exchange.isLoopbackMatch = (exchange.tx.rawHex === rxEntry.rawHex);
+            // Optional: You could add detailed bit-diff metadata here if needed
+        }
+        
+        this.updateExchange(exchange);
+    } else {
+        // Unsolicited RX
+        const rxExchange: Exchange = {
+            id: uuidv4(),
+            startTime: rxEntry.timestamp,
+            rx: rxEntry
+        };
+        this.addExchange(rxExchange);
+    }
+
+    // Add to internal buffer...
+    this.rxBuffer.push(...bytes);
+    if (this.rxBuffer.length > 64) {
+      this.rxBuffer = this.rxBuffer.slice(-64);
+    }
+
+    this.checkRules(rxEntry.id);
+  }
+
+  private addLog(entry: ConversationEntry) {
+    this.state.conversationLogs = [entry, ...this.state.conversationLogs].slice(0, 100);
+    this.onConversation?.(entry);
+  }
+
+  private addExchange(exchange: Exchange) {
+    this.state.exchanges = [exchange, ...this.state.exchanges].slice(0, 50);
+    this.onExchange?.(exchange);
+  }
+
+  private updateExchange(exchange: Exchange) {
+    const index = this.state.exchanges.findIndex(e => e.id === exchange.id);
+    if (index !== -1) {
+        this.state.exchanges[index] = exchange;
+        this.onExchange?.(exchange);
+    }
+  }
+
+  private checkRules(rxId: string) {
+    const now = Date.now();
+    
+    for (const rule of this.responderRules) {
+      if (!rule.enabled) continue;
+
+      if (rule.cooldownMs && this.lastMatchTime[rule.id] && (now - this.lastMatchTime[rule.id] < rule.cooldownMs)) {
+        continue;
+      }
+
+      const patternBytes = this.parsePattern(rule.pattern, rule.patternType);
+      if (patternBytes.length === 0) continue;
+
+      // Simple end-with check
+      const bufferTail = this.rxBuffer.slice(-patternBytes.length);
+      const isMatch = bufferTail.every((b, i) => b === patternBytes[i]);
+
+      if (isMatch) {
+        console.log(`\x1b[32m[MATCH]\x1b[0m Kural tetiklendi: ${rule.name}`);
+        this.lastMatchTime[rule.id] = now;
+        
+        const matchEntry: ConversationEntry = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            type: 'match',
+            rawHex: rule.pattern,
+            details: rule.name,
+            linkedId: rxId
+        };
+        this.addLog(matchEntry);
+
+        this.executeActions(rule.actions, matchEntry.id);
+        
+        this.rxBuffer = [];
+        break; 
+      }
+    }
+  }
+
+  private parsePattern(pattern: string, type: 'hex' | 'ascii'): number[] {
+    try {
+      if (type === 'hex') {
+        return pattern.trim().split(/\s+/).map(h => parseInt(h, 16));
+      } else {
+        return Array.from(pattern).map(c => c.charCodeAt(0));
+      }
+    } catch (e) {
+        return [];
+    }
+  }
+
+  private executeActions(actions: ResponderAction[], matchId: string) {
+    for (const action of actions) {
+      setTimeout(() => {
+        switch (action.type) {
+          case 'send_raw':
+            const bytes = this.parsePattern(action.payload, 'hex');
+            console.log(`\x1b[32m[RESP]\x1b[0m Yanıt gönderiliyor: ${action.payload}`);
+            
+            const txEntry: ConversationEntry = {
+                id: uuidv4(),
+                timestamp: Date.now(),
+                type: 'tx',
+                rawHex: action.payload,
+                linkedId: matchId
+            };
+            this.addLog(txEntry);
+
+            const txExchange: Exchange = {
+                id: uuidv4(),
+                startTime: txEntry.timestamp,
+                tx: txEntry
+            };
+            this.pendingExchanges.push(txExchange);
+            this.addExchange(txExchange);
+            
+            this.onRawResponse?.(bytes);
+            break;
+          case 'inject_error':
+            this.injectError(action.payload as any);
+            break;
+          case 'set_field':
+            const [fieldId, value] = action.payload.split(':');
+            this.state.fieldOverrides[fieldId] = parseFloat(value);
+            break;
+        }
+      }, action.delayMs || 0);
+    }
+  }
+
+  public onRawResponse: (bytes: number[]) => void = () => {};
+  public onConversation: (entry: ConversationEntry) => void = () => {};
+  public onExchange: (exchange: Exchange) => void = () => {};
 
   public startRecording() {
     this.isRecording = true;
@@ -181,6 +365,29 @@ export class SimulationEngine {
     // Generate frame
     const frame = generateFrame(profile, this.state, this.frameCount);
     
+    // Log as TX in conversation
+    const txEntry: ConversationEntry = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        type: 'tx',
+        rawHex: frame.rawHex
+    };
+    this.addLog(txEntry);
+
+    // Start/Update Exchange
+    const txExchange: Exchange = {
+        id: uuidv4(),
+        startTime: txEntry.timestamp,
+        tx: txEntry
+    };
+    this.pendingExchanges.push(txExchange);
+    this.addExchange(txExchange);
+    
+    // Clean up old pending exchanges that never got a response (prevent leak)
+    if (this.pendingExchanges.length > 20) {
+        this.pendingExchanges = this.pendingExchanges.slice(-20);
+    }
+
     // Recording
     if (this.isRecording) {
       this.recordingBuffer.push({ time: this.state.elapsedMs, frame });
