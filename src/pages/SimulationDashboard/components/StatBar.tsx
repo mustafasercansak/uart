@@ -1,4 +1,5 @@
 import React, { memo } from 'react';
+import { Terminal } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 
 interface StatBarProps {
@@ -14,6 +15,7 @@ interface StatBarProps {
   outputMode: OutputMode;
   serialConnected: boolean;
   networkConnected: boolean;
+  analyzerMode: boolean;
   onSetProfile: (id: string) => void;
   onSetScenario: (id: string) => void;
   onSetOutputMode: (mode: OutputMode) => void;
@@ -21,6 +23,7 @@ interface StatBarProps {
   onDisconnectSerial: () => void;
   onConnectNetwork: (url: string) => void;
   onDisconnectNetwork: () => void;
+  onToggleAnalyzerMode: () => void;
   onGetPorts: () => void;
   availablePorts: Array<{ path: string }>;
   onStart: () => void;
@@ -43,6 +46,7 @@ const StatBar = memo(({
   outputMode,
   serialConnected,
   networkConnected,
+  analyzerMode,
   onSetProfile,
   onSetScenario,
   onSetOutputMode,
@@ -50,6 +54,7 @@ const StatBar = memo(({
   onDisconnectSerial,
   onConnectNetwork,
   onDisconnectNetwork,
+  onToggleAnalyzerMode,
   onGetPorts,
   availablePorts,
   onStart,
@@ -194,6 +199,18 @@ const StatBar = memo(({
       )}
 
       <div className="flex gap-2 ml-auto">
+        <button 
+          onClick={onToggleAnalyzerMode}
+          className={`px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 border ${
+            analyzerMode 
+              ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+              : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'
+          }`}
+        >
+          <Terminal size={14} />
+          {analyzerMode ? 'Analyzer Active' : 'Enter Pro Mode'}
+        </button>
+
         {status === 'stopped' && (
           <button 
             onClick={onStart} 

@@ -355,6 +355,10 @@ export interface SimulationState {
   conversationLogs: ConversationEntry[];
   // Grouped exchanges for the comparison view
   exchanges: Exchange[];
+  // Professional Analyzer State
+  selectedExchangeId: string | null;
+  analyzerMode: boolean;
+  displayFilter: string;
   // Available Serial Ports (added for backend bridge)
   availablePorts?: Array<{ path: string }>;
 }

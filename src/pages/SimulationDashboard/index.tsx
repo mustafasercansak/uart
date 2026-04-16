@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Menu, Activity, Settings2 } from 'lucide-react';
-import type { FrameProfile, Scenario, ErrorType, OutputMode } from '../../types';
+import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
+import { parseFrame } from '../../engines/FrameParser';
 
 // Sub-components
 import StatBar from './components/StatBar';
@@ -14,6 +15,7 @@ import LogicAnalyzer from './components/LogicAnalyzer';
 import PacketInspector from './components/PacketInspector';
 import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
 import ExchangeMonitor from './components/ExchangeMonitor';
+import TraceTable from './components/TraceTable';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -57,7 +59,6 @@ export default function SimulationDashboard() {
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
-  const [selectedExchangeId, setSelectedExchangeId] = useState<string | null>(null);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   
   const { 
@@ -69,7 +70,8 @@ export default function SimulationDashboard() {
     setProfile, setScenario, setOutputMode, setUiVisible,
     exportLogs, setProfiles,
     startRecording, stopRecording, startPlayback,
-    getPorts
+    getPorts,
+    setAnalyzerMode, selectExchange, setDisplayFilter
   } = useSimulation();
 
   const { 
@@ -93,7 +95,10 @@ export default function SimulationDashboard() {
     isRecording,
     conversationLogs,
     exchanges,
-    availablePorts
+    availablePorts,
+    analyzerMode,
+    selectedExchangeId,
+    displayFilter
   } = state;
 
   // Sync profiles with context for RX parsing
@@ -148,20 +153,31 @@ export default function SimulationDashboard() {
   const flagsFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'flags') ?? [], [selectedProfile]);
   const allRangeFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'range') ?? [], [selectedProfile]);
 
-  // When an exchange is selected, prioritize its TX for visual analysis
+  // Unified Frame selection logic for inspector
   const analyzerFrame = useMemo(() => {
+    // 1. If explicit exchange is selected
     const selectedExchange = exchanges.find(ex => ex.id === selectedExchangeId);
-    if (selectedExchange?.tx) {
-      return { 
-        frameNumber: 0, 
-        timestamp: selectedExchange.startTime, 
-        rawHex: selectedExchange.tx.rawHex, 
-        rawBytes: selectedExchange.tx.rawHex.split(' ').map(h => parseInt(h, 16)),
-        values: {} 
-      } as any;
+    if (selectedExchange && selectedProfile) {
+        const entry = selectedExchange.tx || selectedExchange.rx;
+        if (entry) {
+            const bytesFromHex = entry.rawHex.split(' ').map(h => parseInt(h, 16));
+            const parsedFields = parseFrame(selectedProfile, bytesFromHex);
+            
+            return {
+                frameNumber: 0,
+                timestampMs: entry.timestamp,
+                rawHex: entry.rawHex,
+                rawBytes: bytesFromHex,
+                fields: parsedFields || [],
+                errors: []
+            } as GeneratedFrame;
+        }
     }
+    // 2. Fallback to manually selected frame from monitors
+    if (selectedFrame) return selectedFrame;
+    // 3. Fallback to live data
     return lastFrame;
-  }, [exchanges, selectedExchangeId, lastFrame]);
+  }, [exchanges, selectedExchangeId, selectedFrame, lastFrame, selectedProfile]);
 
   return (
     <div className="h-full flex flex-col bg-gray-950 overflow-hidden text-gray-200 font-sans">
@@ -178,6 +194,7 @@ export default function SimulationDashboard() {
         outputMode={outputMode}
         serialConnected={serialConnected}
         networkConnected={networkConnected}
+        analyzerMode={analyzerMode}
         onSetProfile={setProfile}
         onSetScenario={setScenario}
         onSetOutputMode={setOutputMode}
@@ -185,6 +202,7 @@ export default function SimulationDashboard() {
         onDisconnectSerial={disconnectSerial}
         onConnectNetwork={connectNetwork}
         onDisconnectNetwork={disconnectNetwork}
+        onToggleAnalyzerMode={() => setAnalyzerMode(!analyzerMode)}
         onGetPorts={getPorts}
         availablePorts={availablePorts || []}
         onStart={handleStart}
@@ -192,81 +210,110 @@ export default function SimulationDashboard() {
         onPause={pause}
         onResume={handleResume}
         formatMs={formatMs}
-        onSelectExchange={setSelectedExchangeId}
+        onSelectExchange={selectExchange}
         selectedExchangeId={selectedExchangeId}
       />
 
       {/* Main layout container */}
       <div className="flex-1 min-h-0 flex relative bg-[#0a0a0d] overflow-hidden">
         
-        {/* LEFT PANEL */}
-        <div 
-          className={`shrink-0 flex flex-col bg-gray-900 border-r border-gray-800/50 transition-all duration-300 ease-in-out relative ${
-            isLeftPanelOpen ? 'w-72 xl:w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'
-          }`}
-        >
-          <div className="w-72 xl:w-80 h-full flex flex-col">
-            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-              <FrameMonitor 
-                lastFrame={lastFrame}
-                recentFrames={recentFrames}
-                selectedFrameId={selectedFrame?.frameNumber}
-                onSelectFrame={setSelectedFrame}
-              />
-              <RxMonitor 
-                lastRxFrame={lastRxFrame}
-                selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
-                onSelectFrame={setSelectedFrame}
-              />
-              <ExchangeMonitor 
-                exchanges={exchanges}
-                isLoopbackMode={outputMode === 'serial'}
-                selectedId={selectedExchangeId || undefined}
-                onSelect={setSelectedExchangeId}
-              />
-            </div>
-            <div className="shrink-0 border-t border-gray-800/50">
-              <LogicAnalyzer 
-                lastTxFrame={lastFrame}
-                lastRxFrame={lastRxFrame}
-              />
+        {/* LEFT PANEL (Monitors) */}
+        {!analyzerMode && (
+          <div 
+            className={`shrink-0 flex flex-col bg-gray-900 border-r border-gray-800/50 transition-all duration-300 ease-in-out relative ${
+              isLeftPanelOpen ? 'w-72 xl:w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'
+            }`}
+          >
+            <div className="w-72 xl:w-80 h-full flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                <FrameMonitor 
+                  lastFrame={lastFrame}
+                  recentFrames={recentFrames}
+                  selectedFrameId={selectedFrame?.frameNumber}
+                  onSelectFrame={setSelectedFrame}
+                />
+                <RxMonitor 
+                  lastRxFrame={lastRxFrame}
+                  selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
+                  onSelectFrame={setSelectedFrame}
+                />
+                <ExchangeMonitor 
+                  exchanges={exchanges}
+                  isLoopbackMode={outputMode === 'serial'}
+                  selectedId={selectedExchangeId || undefined}
+                  onSelect={selectExchange}
+                />
+              </div>
+              <div className="shrink-0 border-t border-gray-800/50">
+                <LogicAnalyzer 
+                  lastTxFrame={lastFrame}
+                  lastRxFrame={lastRxFrame}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* LEFT PANEL TOGGLE BUTTON */}
-        <button
-          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
-          className={`absolute left-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-gray-400 hover:text-white rounded-r-md shadow-lg transition-transform duration-300 ease-in-out ${
-            isLeftPanelOpen ? 'translate-x-72 xl:translate-x-80' : 'translate-x-0'
-          }`}
-          title={isLeftPanelOpen ? "Monitörleri Gizle" : "Monitörleri Göster"}
-        >
-          {isLeftPanelOpen ? <ChevronLeft size={16} /> : <Activity size={16} />}
-        </button>
+        {/* LEFT PANEL TOGGLE BUTTON (Dashboard mode only) */}
+        {!analyzerMode && (
+          <button
+            onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+            className={`absolute left-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-gray-400 hover:text-white rounded-r-md shadow-lg transition-transform duration-300 ease-in-out ${
+              isLeftPanelOpen ? 'translate-x-72 xl:translate-x-80' : 'translate-x-0'
+            }`}
+          >
+            {isLeftPanelOpen ? <ChevronLeft size={16} /> : <Activity size={16} />}
+          </button>
+        )}
 
-        {/* CENTER PANEL (WAVEFORMS) */}
+        {/* CENTER PANEL (WAVEFORMS or TRACE TABLE) */}
         <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#0a0a0d] to-[#12121a]">
-          <div className="flex-1 min-h-0 overflow-hidden relative p-4 flex flex-col">
-            <div className="flex-1 min-h-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
-              <WaveformCharts 
-                waveformHistory={waveformHistory}
-                selectedProfile={selectedProfile}
-                CustomTooltip={CustomTooltip}
-                chartColors={CHART_COLORS}
-              />
+          {analyzerMode ? (
+            <div className="flex-1 min-h-0 p-4 flex gap-4 overflow-hidden">
+                <div className="flex-[3] min-h-0 flex flex-col gap-4">
+                    <TraceTable 
+                        exchanges={exchanges}
+                        selectedId={selectedExchangeId}
+                        onSelect={selectExchange}
+                        displayFilter={displayFilter}
+                    />
+                    <div className="h-64 shrink-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden shadow-2xl">
+                         <LogicAnalyzer 
+                            lastTxFrame={lastFrame}
+                            lastRxFrame={lastRxFrame}
+                         />
+                    </div>
+                </div>
+                <div className="flex-[2] min-h-0">
+                    <PacketInspector 
+                        frame={analyzerFrame}
+                        profile={selectedProfile}
+                        onClose={() => selectExchange(null)}
+                    />
+                </div>
             </div>
+          ) : (
+            <div className="flex-1 min-h-0 overflow-hidden relative p-4 flex flex-col">
+              <div className="flex-1 min-h-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
+                <WaveformCharts 
+                  waveformHistory={waveformHistory}
+                  selectedProfile={selectedProfile}
+                  CustomTooltip={CustomTooltip}
+                  chartColors={CHART_COLORS}
+                />
+              </div>
 
-            <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30">
-              <VisualProtocolAnalyzer 
-                frame={analyzerFrame}
-                profile={selectedProfile}
-              />
+              <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30">
+                <VisualProtocolAnalyzer 
+                  frame={analyzerFrame}
+                  profile={selectedProfile}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Packet Inspector Overlay */}
-          {selectedFrame && (
+          {/* Packet Inspector Overlay (Dashboard mode only) */}
+          {!analyzerMode && selectedFrame && (
             <div className="absolute inset-y-0 right-0 w-[400px] z-20 backdrop-blur-md bg-gray-950/90 border-l border-gray-800 shadow-2xl animate-in slide-in-from-right-10">
               <PacketInspector 
                 frame={selectedFrame}
@@ -277,21 +324,22 @@ export default function SimulationDashboard() {
           )}
         </div>
 
-        {/* RIGHT PANEL TOGGLE BUTTON */}
-        <button
-          onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-          className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-gray-400 hover:text-white rounded-l-md shadow-lg transition-transform duration-300 ease-in-out ${
-            isRightPanelOpen ? '-translate-x-80' : 'translate-x-0'
-          }`}
-          title={isRightPanelOpen ? "Kontrolleri Gizle" : "Kontrolleri Göster"}
-        >
-          {isRightPanelOpen ? <ChevronRight size={16} /> : <Settings2 size={16} />}
-        </button>
+        {/* RIGHT PANEL TOGGLE (Dashboard mode only) */}
+        {!analyzerMode && (
+          <button
+            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-gray-400 hover:text-white rounded-l-md shadow-lg transition-transform duration-300 ease-in-out ${
+              isRightPanelOpen ? '-translate-x-80' : 'translate-x-0'
+            }`}
+          >
+            {isRightPanelOpen ? <ChevronRight size={16} /> : <Settings2 size={16} />}
+          </button>
+        )}
 
-        {/* RIGHT PANEL */}
+        {/* RIGHT PANEL (Controls) */}
         <div 
           className={`shrink-0 flex flex-col bg-gray-900 border-l border-gray-800/50 transition-all duration-300 ease-in-out relative ${
-            isRightPanelOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0'
+            (isRightPanelOpen || analyzerMode) ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0'
           }`}
         >
           <div className="w-80 h-full overflow-y-auto custom-scrollbar">

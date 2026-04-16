@@ -34,6 +34,9 @@ const INITIAL_STATE: SimulationState = {
   isRecording: false,
   conversationLogs: [],
   exchanges: [],
+  selectedExchangeId: null,
+  analyzerMode: false,
+  displayFilter: '',
 };
 
 let activePort: SerialPort | null = null;

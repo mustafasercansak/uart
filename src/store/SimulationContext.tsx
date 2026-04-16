@@ -46,6 +46,9 @@ const INITIAL_STATE: SimulationState = {
   isRecording: false,
   conversationLogs: [],
   exchanges: [],
+  selectedExchangeId: null,
+  analyzerMode: false,
+  displayFilter: '',
 };
 
 type SimAction =
@@ -69,6 +72,9 @@ type SimAction =
   | { type: 'BATCH_LOGS'; entries: Array<SimulationState['logEntries'][0]> }
   | { type: 'ADD_CONVERSATION'; entry: any }
   | { type: 'UPDATE_EXCHANGE'; exchange: any }
+  | { type: 'SELECT_EXCHANGE'; exchangeId: string | null }
+  | { type: 'SET_ANALYZER_MODE'; enabled: boolean }
+  | { type: 'SET_DISPLAY_FILTER'; filter: string }
   | { type: 'INIT_STATE'; newState: Partial<SimulationState> }
   | { type: 'SET_BACKEND_CONNECTED'; connected: boolean };
 
@@ -195,6 +201,12 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
         selectedProfileId: action.newState.selectedProfileId || state.selectedProfileId,
         ...action.newState
       };
+    case 'SELECT_EXCHANGE':
+      return { ...state, selectedExchangeId: action.exchangeId };
+    case 'SET_ANALYZER_MODE':
+      return { ...state, analyzerMode: action.enabled };
+    case 'SET_DISPLAY_FILTER':
+      return { ...state, displayFilter: action.filter };
     case 'INIT_STATE':
       return { 
         ...state, 
@@ -231,6 +243,9 @@ interface SimulationContextType {
   stopRecording: () => void;
   startPlayback: (data: any) => void;
   getPorts: () => void;
+  selectExchange: (exchangeId: string | null) => void;
+  setAnalyzerMode: (enabled: boolean) => void;
+  setDisplayFilter: (filter: string) => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
@@ -580,6 +595,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         },
         getPorts: () => {
           backendWsRef.current?.send(JSON.stringify({ type: 'GET_PORTS' }));
+        },
+        selectExchange: (exchangeId: string | null) => {
+          dispatch({ type: 'SELECT_EXCHANGE', exchangeId });
+        },
+        setAnalyzerMode: (enabled: boolean) => {
+          dispatch({ type: 'SET_ANALYZER_MODE', enabled });
+        },
+        setDisplayFilter: (filter: string) => {
+          dispatch({ type: 'SET_DISPLAY_FILTER', filter });
         }
       }}
     >
