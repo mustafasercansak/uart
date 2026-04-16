@@ -2,6 +2,18 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { SimulationEngine } from './engine.ts';
 import type { SimulationState, SerialConfig, ResponderRule } from '../types';
 import { SerialPort } from 'serialport';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const RECORDINGS_DIR = path.join(__dirname, '..', '..', 'recordings');
+
+// Ensure recordings directory exists
+if (!fs.existsSync(RECORDINGS_DIR)) {
+  fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
+}
 
 /**
  * UART Simulator Backend Server
@@ -45,7 +57,10 @@ const INITIAL_STATE: SimulationState = {
     jitterMs: 0,
     interPacketArrivals: []
   },
-  diffFrames: [null, null]
+  diffFrames: [null, null],
+  recordings: [],
+  playbackIndex: 0,
+  playbackTotal: 0
 };
 
 let activePort: SerialPort | null = null;
@@ -178,7 +193,59 @@ wss.on('connection', (ws) => {
           break;
         case 'START_PLAYBACK':
           engine.startPlayback(data.data);
+          broadcast({ type: 'STATUS_UPDATE', status: 'running' });
           break;
+        case 'PAUSE_PLAYBACK':
+          engine.pausePlayback();
+          broadcast({ type: 'STATUS_UPDATE', status: 'paused' });
+          break;
+        case 'RESUME_PLAYBACK':
+          engine.resumePlayback();
+          broadcast({ type: 'STATUS_UPDATE', status: 'running' });
+          break;
+        case 'SEEK_PLAYBACK':
+          engine.seekToFrame(data.index);
+          break;
+        case 'STEP_PLAYBACK':
+          engine.stepPlayback(data.delta);
+          break;
+        case 'LIST_RECORDINGS': {
+          const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith('.json'));
+          const recordings = files.map(f => {
+             const stats = fs.statSync(path.join(RECORDINGS_DIR, f));
+             const content = JSON.parse(fs.readFileSync(path.join(RECORDINGS_DIR, f), 'utf-8'));
+             return {
+               id: f,
+               name: f.replace('.json', ''),
+               createdAt: stats.birthtimeMs,
+               frameCount: content.length,
+               durationMs: content.length > 0 ? content[content.length - 1].time : 0,
+               data: content
+             };
+          });
+          ws.send(JSON.stringify({ type: 'RECORDINGS_LIST', recordings }));
+          break;
+        }
+        case 'SAVE_RECORDING': {
+          const fileName = `${data.name || `recording_${Date.now()}`}.json`;
+          fs.writeFileSync(path.join(RECORDINGS_DIR, fileName), JSON.stringify(data.data, null, 2));
+          console.log(`\x1b[35m[REC]\x1b[0m Kayıt kaydedildi: ${fileName}`);
+          // Refresh list for all clients
+          const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith('.json'));
+          broadcast({ type: 'RECORDINGS_LIST', recordings: files.map(f => ({ id: f, name: f.replace('.json', '') })) });
+          break;
+        }
+        case 'DELETE_RECORDING': {
+          const filePath = path.join(RECORDINGS_DIR, data.id);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log(`\x1b[31m[REC]\x1b[0m Kayıt silindi: ${data.id}`);
+            // Broadcast updated list
+            const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith('.json'));
+            broadcast({ type: 'RECORDINGS_LIST', recordings: files.map(f => ({ id: f, name: f.replace('.json', '') })) });
+          }
+          break;
+        }
         case 'INJECT_ERROR':
           engine.injectError(data.errorType);
           break;

@@ -5,6 +5,7 @@ import SimulationDashboard from './pages/SimulationDashboard';
 import ProfileEditor from './pages/ProfileEditor';
 import ScenarioEditor from './pages/ScenarioEditor';
 import TemplateBrowser from './pages/TemplateBrowser';
+import HelpPage from './pages/Help';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
             <Route path="/scenarios" element={<ScenarioEditor />} />
             <Route path="/templates" element={<TemplateBrowser />} />
           </Route>
+          <Route path="/help" element={<HelpPage />} />
         </Routes>
       </BrowserRouter>
     </SimulationProvider>

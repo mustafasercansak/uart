@@ -59,7 +59,11 @@ const INITIAL_STATE: SimulationState = {
     interPacketArrivals: []
   },
   diffFrames: [null, null],
-  responderRules: []
+  responderRules: [],
+  telemetryLayouts: {},
+  recordings: [],
+  playbackIndex: 0,
+  playbackTotal: 0
 };
 
 type SimAction =
@@ -93,7 +97,9 @@ type SimAction =
   | { type: 'SET_BACKEND_CONNECTED'; connected: boolean }
   | { type: 'UPDATE_TIMING_STATS'; stats: TimingStats }
   | { type: 'SET_DIFF_FRAME'; index: 0 | 1; frame: GeneratedFrame | null }
-  | { type: 'SET_RESPONDER_RULES'; rules: ResponderRule[] };
+  | { type: 'SET_RESPONDER_RULES'; rules: ResponderRule[] }
+  | { type: 'SET_TELEMETRY_LAYOUT'; profileId: string; layout: string[] }
+  | { type: 'SET_RECORDINGS'; recordings: RecordingMetadata[] };
 
 function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -238,6 +244,7 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
         serialConnected: action.newState.serialConnected !== undefined ? action.newState.serialConnected : state.serialConnected,
         diffFrames: action.newState.diffFrames !== undefined ? action.newState.diffFrames : state.diffFrames,
         responderRules: action.newState.responderRules !== undefined ? action.newState.responderRules : state.responderRules,
+        telemetryLayouts: action.newState.telemetryLayouts || state.telemetryLayouts || {},
         // Ensure specific arrays are initialized if everything else fails
         watchlist: action.newState.watchlist || state.watchlist || [],
         snapshots: action.newState.snapshots || state.snapshots || []
@@ -252,6 +259,17 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       const newDiffFrames = [...state.diffFrames] as [GeneratedFrame | null, GeneratedFrame | null];
       newDiffFrames[action.index] = action.frame;
       return { ...state, diffFrames: newDiffFrames };
+    case 'SET_TELEMETRY_LAYOUT': {
+      const newLayouts = { ...state.telemetryLayouts, [action.profileId]: action.layout };
+      // Save globally for persistence
+      try {
+        const currentPro = JSON.parse(localStorage.getItem('uart_pro_state') || '{}');
+        localStorage.setItem('uart_pro_state', JSON.stringify({ ...currentPro, telemetryLayouts: newLayouts }));
+      } catch (e) { console.error('Layout persistence failed', e); }
+      return { ...state, telemetryLayouts: newLayouts };
+    }
+    case 'SET_RECORDINGS':
+      return { ...state, recordings: action.recordings };
     case 'SET_RESPONDER_RULES':
       return { ...state, responderRules: action.rules };
     default:
@@ -290,7 +308,12 @@ interface SimulationContextType {
   saveSnapshot: (frame: GeneratedFrame) => void;
   deleteSnapshot: (frameNumber: number) => void;
   setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => void;
+  setTelemetryLayout: (profileId: string, layout: string[]) => void;
   setResponderRules: (rules: ResponderRule[]) => void;
+  pausePlayback: () => void;
+  resumePlayback: () => void;
+  seekPlayback: (index: number) => void;
+  stepPlayback: (delta: number) => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
@@ -326,14 +349,17 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   React.useEffect(() => {
     try {
       const persisted = localStorage.getItem('uart_pro_state');
-      if (persisted) {
-        const parsed = JSON.parse(persisted);
-        dispatch({ type: 'INIT_STATE', newState: {
-          watchlist: parsed.watchlist || [],
-          snapshots: parsed.snapshots || [],
-          analyzerMode: parsed.analyzerMode ?? true
-        }});
-      }
+      const legacyLayouts = localStorage.getItem('uart_telemetry_layouts');
+      
+      const parsed = persisted ? JSON.parse(persisted) : {};
+      const layouts = legacyLayouts ? JSON.parse(legacyLayouts) : (parsed.telemetryLayouts || {});
+
+      dispatch({ type: 'INIT_STATE', newState: {
+        watchlist: parsed.watchlist || [],
+        snapshots: parsed.snapshots || [],
+        analyzerMode: parsed.analyzerMode ?? true,
+        telemetryLayouts: layouts
+      }});
     } catch (e) {
       console.error('Failed to load persisted state', e);
     }
@@ -591,8 +617,6 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const injectError = useCallback((errorType: ErrorType) => {
-    // Current backend doesn't handle pendingErrors via sync yet, let's just trigger it locally
-    // Actually best to send it to backend
     backendWsRef.current?.send(JSON.stringify({ type: 'INJECT_ERROR', errorType }));
     dispatch({ type: 'INJECT_ERROR', errorType });
   }, []);
@@ -654,7 +678,6 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           logBufferRef.current.push(logEntry);
           fullLogRef.current.push(logEntry);
 
-          // RX Parsing logic same as serial...
           const currentProfile = stateRef.current.profileId 
             ? profilesRef.current.find((p) => p.id === stateRef.current.profileId) 
             : null;
@@ -726,6 +749,51 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     uiVisibleRef.current = visible;
   }, []);
 
+  const startRecording = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
+    dispatch({ type: 'SET_RECORDING', recording: true });
+    dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Kayıt başlatıldı...' });
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
+  }, []);
+
+  const saveRecording = useCallback((name: string, data: any[]) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'SAVE_RECORDING', name, data }));
+  }, []);
+
+  const deleteRecording = useCallback((id: string) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'DELETE_RECORDING', id }));
+  }, []);
+
+  const refreshRecordings = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'LIST_RECORDINGS' }));
+  }, []);
+
+  const startPlayback = useCallback((data: any) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
+    dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt oynatılıyor: ${data.length} frame.` });
+  }, []);
+
+  const pausePlayback = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE_PLAYBACK' }));
+    dispatch({ type: 'PAUSE' });
+  }, []);
+
+  const resumePlayback = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME_PLAYBACK' }));
+    dispatch({ type: 'RESUME' });
+  }, []);
+
+  const seekPlayback = useCallback((index: number) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'SEEK_PLAYBACK', index }));
+  }, []);
+
+  const stepPlayback = useCallback((delta: number) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'STEP_PLAYBACK', delta }));
+  }, []);
+
   return (
     <SimulationContext.Provider
       value={{
@@ -748,18 +816,16 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setProfiles,
         connectNetwork,
         disconnectNetwork,
-        startRecording: () => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
-          dispatch({ type: 'SET_RECORDING', recording: true });
-          dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Kayıt başlatıldı...' });
-        },
-        stopRecording: () => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
-        },
-        startPlayback: (data: any) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
-          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt oynatılıyor: ${data.length} frame.` });
-        },
+        startRecording,
+        stopRecording,
+        saveRecording,
+        deleteRecording,
+        refreshRecordings,
+        startPlayback,
+        pausePlayback,
+        resumePlayback,
+        seekPlayback,
+        stepPlayback,
         getPorts: () => {
           backendWsRef.current?.send(JSON.stringify({ type: 'GET_PORTS' }));
         },
@@ -783,6 +849,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         },
         setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => {
           dispatch({ type: 'SET_DIFF_FRAME', index, frame });
+        },
+        setTelemetryLayout: (profileId: string, layout: string[]) => {
+          dispatch({ type: 'SET_TELEMETRY_LAYOUT', profileId, layout });
         },
         setResponderRules: (rules: ResponderRule[]) => {
           backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RULES', rules }));

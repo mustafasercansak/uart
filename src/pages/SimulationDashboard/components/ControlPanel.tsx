@@ -1,4 +1,5 @@
 import React, { memo, useRef, useEffect } from 'react';
+import { FileDown } from 'lucide-react';
 import type { FrameProfile, ErrorType, FlagsConfig, RangeConfig } from '../../../types';
 
 interface ControlPanelProps {
@@ -15,10 +16,6 @@ interface ControlPanelProps {
   onInjectError: (type: ErrorType) => void;
   onResetOverrides: () => void;
   onExportLogs: () => void;
-  isRecording: boolean;
-  onStartRecording: () => void;
-  onStopRecording: () => void;
-  onStartPlayback: (data: any) => void;
 }
 
 const ControlPanel = memo(({
@@ -34,11 +31,7 @@ const ControlPanel = memo(({
   onOverrideBit,
   onInjectError,
   onResetOverrides,
-  onExportLogs,
-  isRecording,
-  onStartRecording,
-  onStopRecording,
-  onStartPlayback
+  onExportLogs
 }: ControlPanelProps) => {
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -148,56 +141,14 @@ const ControlPanel = memo(({
       <div className="flex-1 flex flex-col min-h-[300px] p-3">
         <div className="flex flex-col gap-2 mb-3">
           <div className="flex items-center justify-between">
-            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Konsol & Kayıt</div>
-            <div className="flex gap-2">
-              {!isRecording ? (
-                <button 
-                  onClick={onStartRecording}
-                  disabled={status !== 'running'}
-                  className="text-[10px] font-mono text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors disabled:opacity-30"
-                >
-                  🔴 Kaydı Başlat
-                </button>
-              ) : (
-                <button 
-                  onClick={onStopRecording}
-                  className="text-[10px] font-mono text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors animate-pulse"
-                >
-                  ⏹ Kaydı Durdur
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center justify-between border-t border-gray-800 pt-2">
-            <label className="text-[10px] font-mono text-gray-500 hover:text-blue-400 flex items-center gap-1 transition-colors cursor-pointer">
-              📂 Oturum Oynat
-              <input 
-                type="file" 
-                className="hidden" 
-                accept=".json" 
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      try {
-                        const data = JSON.parse(ev.target?.result as string);
-                        onStartPlayback(data);
-                      } catch (err) {
-                        alert('Hatalı dosya formatı!');
-                      }
-                    };
-                    reader.readAsText(file);
-                  }
-                }}
-              />
-            </label>
+            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Konsol Logları</div>
             <button 
               onClick={onExportLogs}
               className="text-[10px] font-mono text-gray-500 hover:text-green-400 flex items-center gap-1 transition-colors"
               title="Tüm TX/RX kaydını CSV olarak indir"
             >
-              📥 CSV Aktar
+              <FileDown size={14} />
+              CSV Aktar
             </button>
           </div>
         </div>

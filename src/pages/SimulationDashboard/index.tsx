@@ -10,7 +10,10 @@ import {
   Gauge as GaugeIcon,
   FlaskConical,
   GitCompare,
-  Code
+  Code,
+  History,
+  BarChart3,
+  PlayCircle
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
@@ -32,6 +35,9 @@ import LiveDashboard from './components/LiveDashboard';
 import TelemetryPanel from './components/Telemetry/TelemetryPanel';
 import DiffLab from './components/Lab/DiffLab';
 import ScriptEditor from './components/Lab/ScriptEditor';
+import Timeline from './components/Timeline';
+import Diagnostics from './components/Diagnostics';
+import PlaybackPanel from './components/PlaybackPanel';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -88,9 +94,11 @@ export default function SimulationDashboard() {
     setProfile, setScenario, setOutputMode, setUiVisible,
     exportLogs, setProfiles,
     startRecording, stopRecording, startPlayback,
+    pausePlayback, resumePlayback, seekPlayback, stepPlayback,
     getPorts,
     setAnalyzerMode, selectExchange, setDisplayFilter,
-    setDiffFrame, setResponderRules
+    setDiffFrame, setResponderRules,
+    deleteRecording, refreshRecordings
   } = useSimulation();
 
   const { 
@@ -120,10 +128,13 @@ export default function SimulationDashboard() {
     displayFilter,
     timingStats,
     diffFrames,
-    responderRules
+    responderRules,
+    recordings,
+    playbackIndex,
+    playbackTotal
   } = state;
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'lab' | 'scripting'>('waveforms');
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback'>('waveforms');
 
   // Sync profiles with context for RX parsing
   useEffect(() => {
@@ -382,6 +393,33 @@ export default function SimulationDashboard() {
                     Lab (Diff)
                 </button>
                 <button 
+                  onClick={() => setActiveCenterTab('timeline')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'timeline' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <History size={14} />
+                    Timeline
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('diagnostics')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'diagnostics' ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <BarChart3 size={14} />
+                    Diagnostics
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('playback')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'playback' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <PlayCircle size={14} />
+                    Playback
+                </button>
+                <button 
                   onClick={() => setActiveCenterTab('scripting')}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                     activeCenterTab === 'scripting' ? 'bg-yellow-600 text-black shadow-lg shadow-yellow-900/20' : 'text-gray-500 hover:text-gray-300'
@@ -419,6 +457,21 @@ export default function SimulationDashboard() {
                     }}
                   />
                 )}
+                {activeCenterTab === 'playback' && (
+                  <PlaybackPanel 
+                    recordings={recordings}
+                    onPlay={startPlayback}
+                    onDelete={deleteRecording}
+                    onRefresh={refreshRecordings}
+                    status={status}
+                    playbackIndex={playbackIndex || 0}
+                    playbackTotal={playbackTotal || 0}
+                    onPause={pausePlayback}
+                    onResume={resumePlayback}
+                    onSeek={seekPlayback}
+                    onStep={stepPlayback}
+                  />
+                )}
                 {activeCenterTab === 'scripting' && (
                   <ScriptEditor 
                     initialCode={responderRules?.find(r => r.id === 'dynamic-script')?.script}
@@ -437,6 +490,20 @@ export default function SimulationDashboard() {
                       const newRules = (responderRules || []).filter(r => r.id !== 'dynamic-script');
                       setResponderRules([...newRules, dynamicRule]);
                     }}
+                  />
+                )}
+                {activeCenterTab === 'timeline' && (
+                  <Timeline 
+                    exchanges={exchanges}
+                    onSelectFrame={setSelectedFrame}
+                  />
+                )}
+                {activeCenterTab === 'diagnostics' && (
+                  <Diagnostics 
+                    timingStats={timingStats}
+                    exchanges={exchanges}
+                    errorCount={errorCount}
+                    frameCount={frameCount}
                   />
                 )}
               </div>
@@ -501,10 +568,6 @@ export default function SimulationDashboard() {
               onInjectError={injectError}
               onResetOverrides={resetOverrides}
               onExportLogs={exportLogs}
-              isRecording={isRecording}
-              onStartRecording={startRecording}
-              onStopRecording={stopRecording}
-              onStartPlayback={startPlayback}
             />
           </div>
         </div>

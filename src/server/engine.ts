@@ -30,7 +30,9 @@ export class SimulationEngine {
   private isRecording = false;
   private recordingBuffer: Array<{ time: number; frame: GeneratedFrame }> = [];
   private playbackData: Array<{ time: number; frame: GeneratedFrame }> | null = null;
+  private playbackIndex: number = 0;
   private playbackTimer: NodeJS.Timeout | null = null;
+  private isPlaybackPaused: boolean = false;
   
   // Responder State
   private responderRules: ResponderRule[] = [];
@@ -320,16 +322,55 @@ export class SimulationEngine {
     this.stop();
     this.playbackData = data;
     this.playbackIndex = 0;
+    this.isPlaybackPaused = false;
+    this.state.playbackTotal = data.length;
+    this.state.playbackIndex = 0;
     this.state.status = 'running' as SimulationStatus;
     this.state.outputMode = 'log'; // Default to log for playback
     console.log('\x1b[36m[PLAY]\x1b[0m Oynatma başlatılıyor...', data.length, 'frame.');
     this.playbackLoop();
   }
 
+  public pausePlayback() {
+    this.isPlaybackPaused = true;
+    if (this.playbackTimer) clearTimeout(this.playbackTimer);
+    this.state.status = 'paused' as SimulationStatus;
+  }
+
+  public resumePlayback() {
+    if (!this.isPlaybackPaused) return;
+    this.isPlaybackPaused = false;
+    this.state.status = 'running' as SimulationStatus;
+    this.playbackLoop();
+  }
+
+  public seekToFrame(index: number) {
+    if (!this.playbackData) return;
+    this.playbackIndex = Math.max(0, Math.min(index, this.playbackData.length - 1));
+    
+    // Send only THIS frame immediately
+    const current = this.playbackData[this.playbackIndex];
+    this.state.elapsedMs = current.time;
+    this.state.frameCount = this.playbackIndex + 1;
+    this.state.playbackIndex = this.playbackIndex;
+    this.onFrame(current.frame);
+
+    // If we are running, continue from here
+    if (this.state.status === 'running' && !this.isPlaybackPaused) {
+      if (this.playbackTimer) clearTimeout(this.playbackTimer);
+      this.playbackLoop();
+    }
+  }
+
+  public stepPlayback(delta: number) {
+    if (!this.playbackData) return;
+    this.seekToFrame(this.playbackIndex + delta);
+  }
+
   private playbackLoop() {
-    if (!this.playbackData || this.playbackIndex >= this.playbackData.length || this.state.status !== 'running') {
-      if (this.playbackIndex >= this.playbackData?.length!) {
-         this.stop();
+    if (!this.playbackData || this.playbackIndex >= this.playbackData.length || this.state.status !== 'running' || this.isPlaybackPaused) {
+      if (this.playbackData && this.playbackIndex >= this.playbackData.length) {
+         this.state.status = 'stopped' as SimulationStatus;
          console.log('\x1b[36m[PLAY]\x1b[0m Oynatma bitti.');
       }
       return;
@@ -338,6 +379,7 @@ export class SimulationEngine {
     const current = this.playbackData[this.playbackIndex];
     this.state.elapsedMs = current.time;
     this.state.frameCount = this.playbackIndex + 1;
+    this.state.playbackIndex = this.playbackIndex;
     this.onFrame(current.frame);
 
     this.playbackIndex++;

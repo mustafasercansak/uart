@@ -382,6 +382,21 @@ export interface SimulationState {
   diffFrames: [GeneratedFrame | null, GeneratedFrame | null];
   // Responder Rules
   responderRules: ResponderRule[];
+  // Per-profile telemetry widget order
+  telemetryLayouts: Record<string, string[]>; // Profile ID -> Field Names in order
+  // Record & Playback
+  recordings: RecordingMetadata[];
+  playbackIndex?: number;
+  playbackTotal?: number;
+}
+
+export interface RecordingMetadata {
+  id: string;
+  name: string;
+  createdAt: number;
+  frameCount: number;
+  durationMs: number;
+  data?: any[]; // The actual packets (optional for list views)
 }
 
 export interface TimingStats {

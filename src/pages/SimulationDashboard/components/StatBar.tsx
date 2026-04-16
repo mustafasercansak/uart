@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Terminal, Activity } from 'lucide-react';
+import { Terminal, Activity, FileDown, Circle, Square, HelpCircle } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 
 interface StatBarProps {
@@ -38,6 +38,9 @@ interface StatBarProps {
     maxLatencyMs: number;
     jitterMs: number;
   };
+  isRecording: boolean;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
 }
 
 const StatBar = memo(({
@@ -70,7 +73,10 @@ const StatBar = memo(({
   onPause,
   onResume,
   formatMs,
-  timingStats = { averageLatencyMs: 0, minLatencyMs: 0, maxLatencyMs: 0, jitterMs: 0 }
+  timingStats = { averageLatencyMs: 0, minLatencyMs: 0, maxLatencyMs: 0, jitterMs: 0 },
+  isRecording,
+  onStartRecording,
+  onStopRecording
 }: StatBarProps) => {
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
@@ -85,6 +91,29 @@ const StatBar = memo(({
     }
   }, [availablePorts, selectedPort]);
 
+  const handleExport = () => {
+    const report = {
+      timestamp: new Date().toISOString(),
+      profile: selectedProfile?.name || 'Unknown',
+      stats: {
+        frameCount,
+        errorCount,
+        elapsedTime: formatMs(elapsedMs),
+        avgLatency: timingStats.averageLatencyMs,
+        jitter: timingStats.jitterMs
+      },
+      // Note: Full log export could be added here if passed as prop
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `uart_report_${new Date().getTime()}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <div className="px-3 py-2 bg-gray-950 border-b border-gray-800 flex flex-wrap items-center gap-x-4 gap-y-2 shrink-0">
       <div className="flex items-center gap-2 pr-3 border-r border-gray-800">
@@ -96,7 +125,7 @@ const StatBar = memo(({
 
       {/* Backend Status */}
       <div className="flex items-center gap-2 pr-3 border-r border-gray-800">
-        <div className={`w-2 h-2 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+        <div className={`w-2 h-2 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(10,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
         <span className={`text-[9px] font-mono font-bold uppercase tracking-tight ${networkConnected ? 'text-emerald-500' : 'text-red-500'}`}>
           {networkConnected ? 'Backend' : 'Kesildi'}
         </span>
@@ -193,8 +222,47 @@ const StatBar = memo(({
           <Activity size={14} className={analyzerMode ? 'animate-pulse' : ''} />
           {analyzerModeLabel}
         </button>
+        <button 
+          onClick={handleExport}
+          className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+          title="Seans Raporunu İndir (JSON)"
+        >
+          <FileDown size={14} />
+          Rapor Al
+        </button>
+
+        <button 
+          onClick={isRecording ? onStopRecording : onStartRecording}
+          disabled={status !== 'running'}
+          className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
+            isRecording 
+              ? 'bg-red-900/20 border-red-500/50 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
+              : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white hover:border-gray-500'
+          } disabled:opacity-30`}
+          title={status !== 'running' ? "Kayıt için simülasyon çalışıyor olmalı" : isRecording ? "Kaydı Durdur" : "Kaydı Başlat"}
+        >
+          {isRecording ? (
+            <>
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+              RECORDING
+              <Square size={10} className="fill-current" />
+            </>
+          ) : (
+            <>
+              <Circle size={10} className="text-gray-600 fill-current group-hover:text-red-500" />
+              REC
+            </>
+          )}
+        </button>
 
         <div className="flex gap-1 border-l border-gray-800 pl-3">
+          <button 
+            onClick={() => window.open('/help', '_blank')}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+            title="Yardım"
+          >
+            <HelpCircle size={14} />
+          </button>
           {status === 'stopped' ? (
             <button 
               onClick={onStart} 
