@@ -1,26 +1,25 @@
 import React, { memo, useMemo } from 'react';
-import { Search, Filter, ArrowDown, ArrowUp, Activity, Terminal, Repeat } from 'lucide-react';
-import type { Exchange } from '../../../types';
+import { Search, Filter, ArrowDown, ArrowUp, Activity, Terminal, Repeat, AlertCircle, CheckCircle2 } from 'lucide-react';
+import type { Exchange, FrameProfile } from '../../../types';
+import { FilterEngine } from '../../../engines/FilterEngine';
 
 interface TraceTableProps {
   exchanges: Exchange[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   displayFilter: string;
+  onFilterChange: (filter: string) => void;
+  profile?: FrameProfile | null;
 }
 
-const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter }: TraceTableProps) => {
+const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFilterChange, profile }: TraceTableProps) => {
   
+  const filterStatus = useMemo(() => FilterEngine.validate(displayFilter), [displayFilter]);
+
   const filteredExchanges = useMemo(() => {
     if (!displayFilter) return exchanges;
-    const filter = displayFilter.toLowerCase();
-    return exchanges.filter(ex => {
-      const txMatch = ex.tx?.rawHex.toLowerCase().includes(filter);
-      const rxMatch = ex.rx?.rawHex.toLowerCase().includes(filter);
-      const errMatch = (ex.tx?.status === 'fail' || ex.rx?.status === 'fail') && !ex.isLoopbackMatch;
-      return txMatch || rxMatch || (filter === 'error' && errMatch);
-    });
-  }, [exchanges, displayFilter]);
+    return exchanges.filter(ex => FilterEngine.evaluate(ex, displayFilter, profile || undefined));
+  }, [exchanges, displayFilter, profile]);
 
   return (
     <div className="flex flex-col h-full bg-gray-950/20 border border-gray-800/50 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm">
@@ -34,18 +33,35 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter }: Tra
             </div>
         </div>
         
-        <div className="flex items-center gap-2 flex-1 max-w-md">
-            <div className="relative flex-1">
-                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600" />
+        <div className="flex items-center gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1 group">
+                <Search size={12} className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors ${
+                    !displayFilter ? 'text-gray-600' : (filterStatus.isValid ? 'text-emerald-500' : 'text-rose-500')
+                }`} />
                 <input 
                     type="text"
-                    placeholder="Filter packets (hex, error, status...)"
-                    className="w-full bg-black/40 border border-gray-800 rounded-lg py-1 pl-8 pr-3 text-[11px] font-mono text-gray-300 focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-gray-700"
+                    placeholder="Filter: bpm > 100 && status == ok | id == 0x01 | contains 'FF'..."
+                    className={`w-full bg-black/60 border rounded-lg py-1.5 pl-8 pr-12 text-[11px] font-mono transition-all placeholder:text-gray-700 focus:outline-none focus:ring-1 ${
+                        !displayFilter 
+                        ? 'border-gray-800 text-gray-300 focus:border-blue-500/50 focus:ring-blue-500/20' 
+                        : (filterStatus.isValid 
+                            ? 'border-emerald-500/30 text-emerald-100 bg-emerald-500/5 focus:border-emerald-500/50 focus:ring-emerald-500/20' 
+                            : 'border-rose-500/30 text-rose-100 bg-rose-500/5 focus:border-rose-500/50 focus:ring-rose-500/20')
+                    }`}
                     value={displayFilter}
-                    readOnly // Managed by parent for now
+                    onChange={(e) => onFilterChange(e.target.value)}
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                    {displayFilter && (
+                        filterStatus.isValid 
+                        ? <CheckCircle2 size={12} className="text-emerald-500/50" /> 
+                        : <AlertCircle size={12} className="text-rose-500/50" />
+                    )}
+                </div>
             </div>
-            <button className="p-1.5 text-gray-500 hover:text-white transition-colors bg-gray-800/50 rounded-lg border border-gray-700/30">
+            <button className={`p-2 transition-all rounded-lg border ${
+                filterStatus.isValid ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-gray-800/50 border-gray-700/30 text-gray-500'
+            }`}>
                 <Filter size={14} />
             </button>
         </div>

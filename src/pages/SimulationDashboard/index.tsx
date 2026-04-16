@@ -316,6 +316,8 @@ export default function SimulationDashboard() {
                         selectedId={selectedExchangeId}
                         onSelect={selectExchange}
                         displayFilter={displayFilter}
+                        onFilterChange={setDisplayFilter}
+                        profile={selectedProfile}
                     />
                     <div className="h-64 shrink-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden shadow-2xl">
                          <LogicAnalyzer 
