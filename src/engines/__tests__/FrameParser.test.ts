@@ -27,7 +27,7 @@ describe('FrameParser', () => {
         endianness: 'little',
       },
     ],
-  };
+  } as any;
 
   it('correctly parses bytes into fields', () => {
     const bytes = [0xAA, 0xAA, 0x34, 0x12];

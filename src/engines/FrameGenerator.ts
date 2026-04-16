@@ -247,6 +247,7 @@ export function generateFrame(
   const rawHex = finalBytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
   return {
+    uId: `generated-${elapsedMs}-${Math.random()}`,
     frameNumber,
     timestampMs: elapsedMs,
     rawHex,

@@ -72,7 +72,7 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
         <div className="space-y-0.5">
           {recentFrames.slice(0, 30).map((frame) => (
             <div 
-              key={frame.frameNumber} 
+              key={frame.uId} 
               className={`group text-[10px] font-mono flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${selectedFrameId === frame.frameNumber ? 'bg-green-500/20 text-green-300' : 'text-gray-500 hover:bg-gray-800/40 hover:text-gray-300'} ${frame.errors.length > 0 ? 'border-l-2 border-red-500' : ''}`}
             >
               <span className="text-gray-700 w-6 text-right shrink-0" onClick={() => onSelectFrame?.(frame)}>{frame.frameNumber}</span>

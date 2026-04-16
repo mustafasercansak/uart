@@ -10,14 +10,22 @@ interface CanvasWaveformProps {
   height?: number;
   /** If true, the panel will flash briefly when the value spikes significantly */
   enableGlow?: boolean;
+  showCursors?: boolean;
+  cursorA?: number | null;
+  cursorB?: number | null;
+  onCursorMove?: (type: 'A' | 'B', index: number) => void;
 }
 
 export default function CanvasWaveform({
   dataKey,
-  history,
   color,
+  history = [],
   height = 80,
   enableGlow = true,
+  showCursors = false,
+  cursorA = null,
+  cursorB = null,
+  onCursorMove
 }: CanvasWaveformProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
@@ -92,6 +100,30 @@ export default function CanvasWaveform({
     return [x, y];
   }, [history, dataKey]);
 
+  const handleChartClick = (e: React.MouseEvent) => {
+    if (!showCursors || !onCursorMove) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = e.clientX - rect.left;
+    const pct = x / width;
+    const idx = Math.floor(pct * history.length);
+    const clampedIdx = Math.max(0, Math.min(idx, history.length - 1));
+
+    // Simple A/B toggle logic: if A is null, set A. If A is set and B is null, set B. 
+    // If both are set, set the closest one.
+    if (cursorA === null) {
+      onCursorMove('A', clampedIdx);
+    } else if (cursorB === null) {
+      onCursorMove('B', clampedIdx);
+    } else {
+      const distA = Math.abs(clampedIdx - cursorA);
+      const distB = Math.abs(clampedIdx - cursorB);
+      if (distA < distB) onCursorMove('A', clampedIdx);
+      else onCursorMove('B', clampedIdx);
+    }
+  };
+
   return (
     <div ref={containerRef} className="w-full h-full relative uplot-dark">
       {/* Spike glow overlay */}
@@ -105,6 +137,31 @@ export default function CanvasWaveform({
         />
       )}
       <UplotReact options={options} data={chartData} />
+      
+      {/* Interactive Cursors Layer */}
+      {showCursors && (
+        <div 
+          className="absolute inset-0 z-20 cursor-crosshair" 
+          onClick={handleChartClick}
+        >
+          {cursorA !== null && (
+            <div 
+              className="absolute top-0 bottom-0 w-[1px] bg-emerald-500 shadow-[0_0_8px_#10b981]"
+              style={{ left: `${(cursorA / (history.length - 1)) * 100}%` }}
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-emerald-500 text-[8px] font-black px-1 rounded-b text-black h-3 flex items-center">A</div>
+            </div>
+          )}
+          {cursorB !== null && (
+            <div 
+              className="absolute top-0 bottom-0 w-[1px] bg-rose-500 shadow-[0_0_8px_#f43f5e]"
+              style={{ left: `${(cursorB / (history.length - 1)) * 100}%` }}
+            >
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-rose-500 text-[8px] font-black px-1 rounded-t text-black h-3 flex items-center">B</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

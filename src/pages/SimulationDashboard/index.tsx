@@ -13,7 +13,10 @@ import {
   Code,
   History,
   BarChart3,
-  PlayCircle
+  PlayCircle,
+  Cpu as CpuIcon,
+  CheckSquare,
+  Waves
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
@@ -38,6 +41,9 @@ import ScriptEditor from './components/Lab/ScriptEditor';
 import Timeline from './components/Timeline';
 import Diagnostics from './components/Diagnostics';
 import PlaybackPanel from './components/PlaybackPanel';
+import HardwareLayout from './components/HardwareLayout';
+import SequenceRunner from './components/SequenceRunner';
+import SpectrumAnalyzer from './components/SpectrumAnalyzer';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -117,16 +123,17 @@ export default function SimulationDashboard() {
     bitOverrides,
     fieldOverrides,
     pendingErrors,
+    exchanges,
+    timingStats,
+    watchlist,
+    analyzerMode,
     serialConnected,
     networkConnected,
     isRecording,
     conversationLogs,
-    exchanges,
     availablePorts,
-    analyzerMode,
     selectedExchangeId,
     displayFilter,
-    timingStats,
     diffFrames,
     responderRules,
     recordings,
@@ -134,7 +141,7 @@ export default function SimulationDashboard() {
     playbackTotal
   } = state;
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback'>('waveforms');
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum'>('waveforms');
 
   // Sync profiles with context for RX parsing
   useEffect(() => {
@@ -207,6 +214,7 @@ export default function SimulationDashboard() {
             const parsedFields = parseFrame(selectedProfile, bytesFromHex);
             
             return {
+                uId: `snap-${entry.timestamp}-${Math.random()}`,
                 frameNumber: 0,
                 timestampMs: entry.timestamp,
                 rawHex: entry.rawHex,
@@ -238,6 +246,9 @@ export default function SimulationDashboard() {
         serialConnected={serialConnected}
         networkConnected={networkConnected}
         analyzerMode={analyzerMode}
+        isRecording={isRecording}
+        onStartRecording={startRecording}
+        onStopRecording={stopRecording}
         onSetProfile={setProfile}
         onSetScenario={setScenario}
         onSetOutputMode={setOutputMode}
@@ -254,8 +265,6 @@ export default function SimulationDashboard() {
         onPause={pause}
         onResume={handleResume}
         formatMs={formatMs}
-        onSelectExchange={selectExchange}
-        selectedExchangeId={selectedExchangeId}
         timingStats={timingStats}
       />
 
@@ -430,6 +439,33 @@ export default function SimulationDashboard() {
                     <Code size={14} />
                     Scripting
                 </button>
+                <button 
+                  onClick={() => setActiveCenterTab('hardware')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'hardware' ? 'bg-gray-200 text-black shadow-lg shadow-gray-400/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <CpuIcon size={14} />
+                    Hardware
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('testing')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'testing' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <CheckSquare size={14} />
+                    Testing
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('spectrum')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'spectrum' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <Waves size={14} />
+                    Spectrum
+                </button>
               </div>
 
               {/* Tab Content Area */}
@@ -506,6 +542,22 @@ export default function SimulationDashboard() {
                     exchanges={exchanges}
                     errorCount={errorCount}
                     frameCount={frameCount}
+                  />
+                )}
+                {activeCenterTab === 'hardware' && (
+                  <HardwareLayout 
+                    lastTxFrame={lastFrame}
+                    lastRxFrame={lastRxFrame}
+                    protocol={selectedProfile?.name.includes('SPI') ? 'SPI' : selectedProfile?.name.includes('I2C') ? 'I2C' : 'UART'}
+                  />
+                )}
+                {activeCenterTab === 'testing' && (
+                  <SequenceRunner />
+                )}
+                {activeCenterTab === 'spectrum' && (
+                  <SpectrumAnalyzer 
+                    waveformHistory={waveformHistory}
+                    dataKey={watchlist.length > 0 ? watchlist[0] : (lastFrame?.fields[0]?.name || null)}
                   />
                 )}
               </div>

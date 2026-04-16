@@ -1,5 +1,6 @@
 import { generateFrame } from '../engines/FrameGenerator';
 import { tickScenarioEngine } from '../engines/ScenarioEngine';
+import { VirtualPeripheralEngine } from '../engines/VirtualPeripheralEngine';
 import type { 
   SimulationState, 
   FrameProfile, 
@@ -9,7 +10,9 @@ import type {
   ResponderRule,
   ResponderAction,
   ConversationEntry,
-  Exchange
+  Exchange,
+  ErrorType,
+  SimulationStatus
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -42,8 +45,12 @@ export class SimulationEngine {
   // Exchange Tracking
   private pendingExchanges: Exchange[] = [];
 
+  // Peripherals
+  private peripheralEngine: VirtualPeripheralEngine;
+
   constructor(initialState: SimulationState) {
     this.state = initialState;
+    this.peripheralEngine = new VirtualPeripheralEngine();
     if (!this.state.conversationLogs) {
         this.state.conversationLogs = [];
     }
@@ -510,6 +517,38 @@ export class SimulationEngine {
 
     // Callback or Event emission happens here
     this.onFrame(frame);
+
+    // ── VIRTUAL PERIPHERAL PASS-THROUGH ───────
+    // If the tool is acting as a master, check if a virtual peripheral responds to this frame
+    const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' : 
+                     (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
+    
+    // In a real lab, TX from MCU is RX for Peripheral
+    const pResponses = this.peripheralEngine.processIncoming(protocol as any, frame.rawBytes);
+
+    pResponses.forEach(res => {
+      // Small delay to simulate processing time
+      setTimeout(() => {
+        if (res.log) {
+          const logEntry = { 
+            time: new Date().toLocaleTimeString(), 
+            text: `[PERIPHERAL] ${res.log}`, 
+            type: 'info' as const 
+          };
+          this.onConversation?.({
+            id: uuidv4(),
+            timestamp: Date.now(),
+            type: 'match',
+            rawHex: '',
+            details: res.log
+          });
+        }
+        
+        if (res.bytes.length > 0) {
+          this.processIncomingData(res.bytes);
+        }
+      }, 5 + Math.random() * 10);
+    });
 
     // Clear one-shot error if it was applied
     if (this.state.pendingErrors.length > 0) {

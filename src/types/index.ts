@@ -12,6 +12,18 @@ export type FieldType =
   | 'computed'
   | 'script';
 
+export type ProtocolType = 'UART' | 'SPI' | 'I2C' | 'CAN';
+
+// ── Virtual Peripherals ──────────────────────
+export interface PeripheralState {
+  id: string;
+  name: string;
+  protocol: ProtocolType;
+  address?: number; // For I2C
+  isEnabled: boolean;
+  internalState: Record<string, any>;
+}
+
 export type Endianness = 'big' | 'little';
 
 export type Parity = 'None' | 'Even' | 'Odd' | 'Mark' | 'Space';
@@ -326,6 +338,7 @@ export interface ParsedField {
 }
 
 export interface GeneratedFrame {
+  uId: string;
   frameNumber: number;
   timestampMs: number;
   rawHex: string;
@@ -458,4 +471,45 @@ export interface LogEntry {
   level: 'debug' | 'info' | 'warning' | 'error';
   message: string;
   data?: unknown;
+}
+export interface SimulationContextType {
+  state: SimulationState;
+  start: (profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => void;
+  stop: () => void;
+  pause: () => void;
+  resume: (profile: FrameProfile, scenario: Scenario | null) => void;
+  overrideField: (fieldId: string, value: number) => void;
+  overrideBit: (bitKey: string, value: number) => void;
+  injectError: (errorType: ErrorType) => void;
+  resetOverrides: () => void;
+  connectSerial: (portName: string, baudRate: number) => Promise<void>;
+  disconnectSerial: () => Promise<void>;
+  setProfile: (profileId: string | null) => void;
+  setScenario: (scenarioId: string | null) => void;
+  setOutputMode: (outputMode: OutputMode) => void;
+  setUiVisible: (visible: boolean) => void;
+  exportLogs: () => void;
+  setProfiles: (profiles: FrameProfile[]) => void;
+  connectNetwork: (url: string) => Promise<void>;
+  disconnectNetwork: () => void;
+  startRecording: () => void;
+  stopRecording: () => void;
+  saveRecording: (name: string, data: any[]) => void;
+  deleteRecording: (id: string) => void;
+  refreshRecordings: () => void;
+  startPlayback: (data: any) => void;
+  getPorts: () => void;
+  selectExchange: (exchangeId: string | null) => void;
+  setAnalyzerMode: (enabled: boolean) => void;
+  setDisplayFilter: (filter: string) => void;
+  toggleWatchlist: (fieldName: string) => void;
+  saveSnapshot: (frame: GeneratedFrame) => void;
+  deleteSnapshot: (frameNumber: number) => void;
+  setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => void;
+  setTelemetryLayout: (profileId: string, layout: string[]) => void;
+  setResponderRules: (rules: ResponderRule[]) => void;
+  pausePlayback: () => void;
+  resumePlayback: () => void;
+  seekPlayback: (index: number) => void;
+  stepPlayback: (delta: number) => void;
 }

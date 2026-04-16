@@ -46,7 +46,8 @@ const INITIAL_STATE: SimulationState = {
   isRecording: false,
   conversationLogs: [],
   exchanges: [],
-  analyzerMode: false,
+  selectedExchangeId: null,
+  analyzerMode: true,
   displayFilter: '',
   watchlist: [],
   snapshots: [],
@@ -58,6 +59,8 @@ const INITIAL_STATE: SimulationState = {
     interPacketArrivals: []
   },
   diffFrames: [null, null],
+  responderRules: [],
+  telemetryLayouts: {},
   recordings: [],
   playbackIndex: 0,
   playbackTotal: 0
@@ -69,9 +72,14 @@ const clients = new Set<WebSocket>();
 
 console.log('\x1b[32m[SERVER]\x1b[0m UART Simulator Arka Plan Servisi ws://127.0.0.1:8080 adresinde başlatıldı.');
 
-// Helper to broadcast to all connected clients
-const broadcast = (message: any) => {
-  const data = JSON.stringify(message);
+let broadcastBuffer: any[] = [];
+
+// Flush backend websocket buffer to frontend clients at 60 FPS
+setInterval(() => {
+  if (broadcastBuffer.length === 0) return;
+  const data = JSON.stringify(broadcastBuffer);
+  broadcastBuffer = [];
+  
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       try {
@@ -79,6 +87,23 @@ const broadcast = (message: any) => {
       } catch (err) {
         console.error('\x1b[31m[BROADCAST ERR]\x1b[0m', err);
       }
+    }
+  });
+}, 16);
+
+// Helper to broadcast to all connected clients
+const broadcast = (message: any) => {
+  broadcastBuffer.push(message);
+};
+
+// Send critical or large messages immediately
+const broadcastImmediate = (message: any) => {
+  const data = JSON.stringify(message);
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(data);
+      } catch (err) {}
     }
   });
 };
@@ -232,7 +257,7 @@ wss.on('connection', (ws) => {
           console.log(`\x1b[35m[REC]\x1b[0m Kayıt kaydedildi: ${fileName}`);
           // Refresh list for all clients
           const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith('.json'));
-          broadcast({ type: 'RECORDINGS_LIST', recordings: files.map(f => ({ id: f, name: f.replace('.json', '') })) });
+          broadcastImmediate({ type: 'RECORDINGS_LIST', recordings: files.map(f => ({ id: f, name: f.replace('.json', '') })) });
           break;
         }
         case 'DELETE_RECORDING': {
@@ -283,7 +308,7 @@ wss.on('connection', (ws) => {
           let rxBuffer: number[] = [];
           let rxTimeout: NodeJS.Timeout | null = null;
 
-          activePort.on('data', (bytes) => {
+          activePort.on('data', (bytes: Buffer) => {
             const byteArr = Array.from(bytes);
             rxBuffer.push(...byteArr);
 

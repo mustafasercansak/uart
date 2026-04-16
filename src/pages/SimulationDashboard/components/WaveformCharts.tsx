@@ -1,5 +1,5 @@
-import { memo, useState, useCallback } from 'react';
-import { LayoutGrid, List, GripHorizontal } from 'lucide-react';
+import { memo, useState, useCallback, useMemo } from 'react';
+import { LayoutGrid, List, GripHorizontal, MousePointer2, Activity, Ruler } from 'lucide-react';
 import type { FrameProfile } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
 import DashboardGrid, { type GridPanel } from './DashboardGrid';
@@ -20,6 +20,11 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
   const [enabledCharts, setEnabledCharts] = useState<Record<string, boolean>>({});
   const [gridMode, setGridMode] = useState(false);
   const [gridPanels, setGridPanels] = useState<GridPanel[]>([]);
+  
+  // Enhanced Lab Tools State
+  const [showCursors, setShowCursors] = useState(false);
+  const [cursorA, setCursorA] = useState<number | null>(null); // Time index
+  const [cursorB, setCursorB] = useState<number | null>(null); // Time index
 
   const toggleChart = useCallback((fieldName: string, fieldType: string, colorIdx: number) => {
     setEnabledCharts(prev => {
@@ -82,7 +87,15 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
                     {cv}
                   </div>
                   <div className="absolute inset-0 pt-6 px-0">
-                    <CanvasWaveform dataKey={f.name} history={waveformHistory} color={color} />
+                    <CanvasWaveform 
+                      dataKey={f.name} 
+                      history={waveformHistory} 
+                      color={color} 
+                      showCursors={showCursors}
+                      cursorA={cursorA}
+                      cursorB={cursorB}
+                      onCursorMove={(type, idx) => type === 'A' ? setCursorA(idx) : setCursorB(idx)}
+                    />
                   </div>
                 </div>
               );
@@ -117,6 +130,15 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
             >
               <LayoutGrid size={12} />
             </button>
+            <div className="w-[1px] h-4 bg-gray-700 mx-1" />
+            <button
+              onClick={() => setShowCursors(!showCursors)}
+              className={`p-1.5 rounded transition-all flex items-center gap-1.5 px-2 ${showCursors ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-gray-300'}`}
+              title="Ölçüm İmleçlerini Aç/Kapat"
+            >
+              <MousePointer2 size={12} />
+              <span className="text-[9px] font-bold font-mono">LAB CURSORS</span>
+            </button>
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 px-4 pb-3">
@@ -149,6 +171,39 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
         </div>
       </div>
 
+      {/* ─── LAB MEASUREMENT STATS ─── */}
+      {showCursors && cursorA !== null && cursorB !== null && (
+        <div className="mx-4 mt-2 px-4 py-3 bg-blue-900/10 border border-blue-500/20 rounded-xl flex items-center justify-between animate-in zoom-in-95 duration-200">
+           <div className="flex items-center gap-6">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-mono text-blue-400 uppercase font-black tracking-widest">Ölçüm (Lab)</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <Ruler size={14} className="text-blue-500" />
+                  <span className="text-sm font-mono font-bold text-white">Δt: {Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0)).toFixed(2)}ms</span>
+                </div>
+              </div>
+              <div className="w-[1px] h-8 bg-blue-500/20" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-mono text-gray-500 uppercase">Frekans (Gevşek)</span>
+                <span className="text-xs font-mono font-bold text-gray-300">
+                  {1000 / Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0)) > 0 
+                   ? (1000 / Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0))).toFixed(1) + ' Hz'
+                   : '---'}
+                </span>
+              </div>
+           </div>
+           
+           <div className="flex items-center gap-2">
+              <button 
+                onClick={() => { setCursorA(null); setCursorB(null); }}
+                className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-[10px] font-mono rounded-lg border border-blue-500/30 transition-all"
+              >
+                İmleçleri Sıfırla
+              </button>
+           </div>
+        </div>
+      )}
+
       {/* ─── ACTIVE CHARTS: LIST MODE ─── */}
       {!gridMode && activeToggleFields.length > 0 && (
         <div className="flex flex-col divide-y divide-gray-800/40 shrink-0 pb-6">
@@ -164,7 +219,15 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
                 </div>
                 <div className="absolute top-2 right-4 z-10 text-sm font-bold font-mono tabular-nums pointer-events-none" style={{ color }}>{cv}</div>
                 <div className="absolute inset-0 pt-6 px-0">
-                  <CanvasWaveform dataKey={f.name} history={waveformHistory} color={color} />
+                  <CanvasWaveform 
+                    dataKey={f.name} 
+                    history={waveformHistory} 
+                    color={color} 
+                    showCursors={showCursors}
+                    cursorA={cursorA}
+                    cursorB={cursorB}
+                    onCursorMove={(type, idx) => type === 'A' ? setCursorA(idx) : setCursorB(idx)}
+                  />
                 </div>
               </div>
             );

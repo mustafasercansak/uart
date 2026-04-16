@@ -107,8 +107,8 @@ export class FilterEngine {
             return !this.evaluateCondition(exchange, condition.substring(1).trim(), profile);
         }
         // Simple field existence or value search
-        return exchange.tx?.rawHex.toLowerCase().includes(condition) || 
-               exchange.rx?.rawHex.toLowerCase().includes(condition);
+        return !!exchange.tx?.rawHex.toLowerCase().includes(condition) || 
+               !!exchange.rx?.rawHex.toLowerCase().includes(condition);
     }
 
     // Get value of the left side (field)

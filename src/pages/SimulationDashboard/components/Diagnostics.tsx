@@ -88,7 +88,7 @@ const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: Di
              <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-[0.2em]">Varış Süresi Kararlılığı (Last 50)</span>
           </div>
           <div className="flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={220}>
               <LineChart data={jitterHistory}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
                 <XAxis dataKey="idx" hide />
@@ -117,7 +117,7 @@ const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: Di
              <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-[0.2em]">Paket Aralığı Dağılımı (Histogram)</span>
           </div>
           <div className="flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={220}>
               <BarChart data={histogramData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
                 <XAxis dataKey="bin" stroke="#6b7280" fontSize={10} fontFamily="monospace" unit="ms" />

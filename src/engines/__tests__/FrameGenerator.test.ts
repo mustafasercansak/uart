@@ -27,7 +27,7 @@ describe('FrameGenerator', () => {
         endianness: 'big',
       },
     ],
-  };
+  } as any;
 
   const mockState: SimulationState = {
     status: 'running',

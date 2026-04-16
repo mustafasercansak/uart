@@ -1,11 +1,16 @@
-import React, { createContext, useContext, useRef, useCallback, useReducer } from 'react';
+import React, { useRef, useCallback, useReducer, startTransition } from 'react';
+import { SimulationContext } from './context';
 import type {
   SimulationState,
   FrameProfile,
   Scenario,
   OutputMode,
   ErrorType,
-  GeneratedFrame
+  GeneratedFrame,
+  TimingStats,
+  ResponderRule,
+  RecordingMetadata,
+  SimulationStatus
 } from '../types';
 import { generateFrame } from '../engines/FrameGenerator';
 import { parseFrame } from '../engines/FrameParser';
@@ -19,7 +24,7 @@ const BACKEND_URL = 'ws://127.0.0.1:8080';
 
 const MAX_RECENT_FRAMES = 50;
 const MAX_LOG_ENTRIES = 100;
-const MAX_WAVEFORM_POINTS = 100;
+const MAX_WAVEFORM_POINTS = 512;
 
 const INITIAL_STATE: SimulationState = {
   status: 'stopped',
@@ -71,7 +76,7 @@ type SimAction =
   | { type: 'STOP' }
   | { type: 'PAUSE' }
   | { type: 'RESUME' }
-  | { type: 'TICK'; elapsedMs: number; newState: Partial<SimulationState> }
+  | { type: 'TICK'; elapsedMs: number; newState: Partial<SimulationState>; points: Array<Record<string, number>> }
   | { type: 'OVERRIDE_FIELD'; fieldId: string; value: number }
   | { type: 'OVERRIDE_BIT'; bitKey: string; value: number }
   | { type: 'INJECT_ERROR'; errorType: ErrorType }
@@ -86,7 +91,7 @@ type SimAction =
   | { type: 'ADD_LOG'; entryType: 'info' | 'tx' | 'rx' | 'error'; text: string }
   | { type: 'BATCH_LOGS'; entries: Array<SimulationState['logEntries'][0]> }
   | { type: 'ADD_CONVERSATION'; entry: any }
-  | { type: 'UPDATE_EXCHANGE'; exchange: any }
+  | { type: 'UPDATE_EXCHANGE'; exchange: any; lastRxFrame?: GeneratedFrame | null }
   | { type: 'SELECT_EXCHANGE'; exchangeId: string | null }
   | { type: 'SET_ANALYZER_MODE'; enabled: boolean }
   | { type: 'SET_DISPLAY_FILTER'; filter: string }
@@ -99,7 +104,10 @@ type SimAction =
   | { type: 'SET_DIFF_FRAME'; index: 0 | 1; frame: GeneratedFrame | null }
   | { type: 'SET_RESPONDER_RULES'; rules: ResponderRule[] }
   | { type: 'SET_TELEMETRY_LAYOUT'; profileId: string; layout: string[] }
-  | { type: 'SET_RECORDINGS'; recordings: RecordingMetadata[] };
+  | { type: 'SET_RECORDINGS'; recordings: RecordingMetadata[] }
+  | { type: 'SET_STATUS'; status: SimulationStatus }
+  | { type: 'MASTER_TICK'; updates: Partial<SimulationState>; points: Array<Record<string, number>>; logEntries: Array<SimulationState['logEntries'][0]>; elapsedMs: number }
+  | { type: 'BATCH_UPDATE'; updates: Partial<SimulationState> };
 
 function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -124,38 +132,35 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, status: 'paused' };
     case 'RESUME':
       return { ...state, status: 'running' };
-    case 'TICK': {
-      const { elapsedMs, newState } = action;
-      const mergedFrame = (newState.lastFrame ?? state.lastFrame) as GeneratedFrame | null;
+    case 'MASTER_TICK': {
+      const { updates, points, logEntries, elapsedMs } = action;
       
+      const mergedFrame = (updates.lastFrame ?? state.lastFrame) as GeneratedFrame | null;
       let updatedRecent = state.recentFrames;
-      let updatedWaveform = state.waveformHistory;
-
-      if (mergedFrame && newState.lastFrame) {
+      if (mergedFrame && updates.lastFrame) {
+        // Only update recent frames if a new frame actually arrived in this master tick
         updatedRecent = [mergedFrame, ...state.recentFrames].slice(0, MAX_RECENT_FRAMES);
-
-        const point: Record<string, number> = { t: mergedFrame.timestampMs };
-        for (const f of mergedFrame.fields) {
-          point[f.name] = f.decimal;
-        }
-        updatedWaveform = [...state.waveformHistory.slice(-(MAX_WAVEFORM_POINTS - 1)), point];
       }
 
+      let updatedWaveform = state.waveformHistory;
+      if (points && points.length > 0) {
+        updatedWaveform = [...state.waveformHistory, ...points].slice(-MAX_WAVEFORM_POINTS);
+      }
+
+      const combinedLogEntries = logEntries.length > 0
+        ? [...state.logEntries.slice(-(MAX_LOG_ENTRIES - logEntries.length)), ...logEntries]
+        : state.logEntries;
+
       return {
         ...state,
-        ...newState,
-        // Force preserve frontend-only state if not in newState
-        diffFrames: newState.diffFrames !== undefined ? newState.diffFrames : state.diffFrames,
-        responderRules: newState.responderRules !== undefined ? newState.responderRules : state.responderRules,
-        elapsedMs,
+        ...updates,
+        logEntries: combinedLogEntries,
         recentFrames: updatedRecent,
         waveformHistory: updatedWaveform,
-      };
-    }
-    case 'BATCH_LOGS': {
-      return {
-        ...state,
-        logEntries: [...state.logEntries.slice(-(MAX_LOG_ENTRIES - action.entries.length)), ...action.entries]
+        elapsedMs: elapsedMs !== undefined ? elapsedMs : state.elapsedMs,
+        // Preserve specific UI states
+        selectedExchangeId: updates.selectedExchangeId !== undefined ? updates.selectedExchangeId : state.selectedExchangeId,
+        watchlist: updates.watchlist || state.watchlist
       };
     }
     case 'ADD_LOG': {
@@ -255,6 +260,7 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, status: action.status };
     case 'UPDATE_TIMING_STATS':
       return { ...state, timingStats: action.stats };
+
     case 'SET_DIFF_FRAME':
       const newDiffFrames = [...state.diffFrames] as [GeneratedFrame | null, GeneratedFrame | null];
       newDiffFrames[action.index] = action.frame;
@@ -272,51 +278,17 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, recordings: action.recordings };
     case 'SET_RESPONDER_RULES':
       return { ...state, responderRules: action.rules };
+    case 'BATCH_UPDATE':
+      return { ...state, ...action.updates };
     default:
       return state;
   }
 }
 
-interface SimulationContextType {
-  state: SimulationState;
-  start: (profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => void;
-  stop: () => void;
-  pause: () => void;
-  resume: (profile: FrameProfile, scenario: Scenario | null) => void;
-  overrideField: (fieldId: string, value: number) => void;
-  overrideBit: (bitKey: string, value: number) => void;
-  injectError: (errorType: ErrorType) => void;
-  resetOverrides: () => void;
-  connectSerial: (portName: string, baudRate: number) => Promise<void>;
-  disconnectSerial: () => Promise<void>;
-  setProfile: (profileId: string | null) => void;
-  setScenario: (scenarioId: string | null) => void;
-  setOutputMode: (outputMode: OutputMode) => void;
-  setUiVisible: (visible: boolean) => void;
-  exportLogs: () => void;
-  setProfiles: (profiles: FrameProfile[]) => void;
-  connectNetwork: (url: string) => Promise<void>;
-  disconnectNetwork: () => void;
-  startRecording: () => void;
-  stopRecording: () => void;
-  startPlayback: (data: any) => void;
-  getPorts: () => void;
-  selectExchange: (exchangeId: string | null) => void;
-  setAnalyzerMode: (enabled: boolean) => void;
-  setDisplayFilter: (filter: string) => void;
-  toggleWatchlist: (fieldName: string) => void;
-  saveSnapshot: (frame: GeneratedFrame) => void;
-  deleteSnapshot: (frameNumber: number) => void;
-  setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => void;
-  setTelemetryLayout: (profileId: string, layout: string[]) => void;
-  setResponderRules: (rules: ResponderRule[]) => void;
-  pausePlayback: () => void;
-  resumePlayback: () => void;
-  seekPlayback: (index: number) => void;
-  stepPlayback: (delta: number) => void;
-}
 
-const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
+// SimulationContextType is imported from ../types
+
+// Context is now imported from ./context.ts
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
@@ -336,7 +308,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const abortControllerRef = useRef<AbortController | null>(null);
   const logBufferRef = useRef<Array<SimulationState['logEntries'][0]>>([]);
   const profilesRef = useRef<FrameProfile[]>([]);
-  const lastLogFlushRef = useRef<number>(0);
+  const lastLogFlushRef = useRef(Date.now());
+  const frameCounterRef = useRef(0);
+  const msgBufferRef = useRef<string[]>([]);
+  const waveformBufferRef = useRef<Array<Record<string, number>>>([]);
+
+  const assignUid = useCallback((frame: any) => ({
+    ...frame,
+    uId: `${frame.frameNumber}-${frame.timestampMs || Date.now()}-${frameCounterRef.current++}`
+  }), []);
   const uiUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingUiUpdateRef = useRef<Partial<SimulationState> | null>(null);
   const rxBufferRef = useRef<number[]>([]);
@@ -402,79 +382,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
       socket.onmessage = (event) => {
         if (!isMountedRef.current) return;
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'INITIAL_STATE') {
-          dispatch({ type: 'INIT_STATE', newState: msg.state });
-          if (msg.exchanges) {
-            msg.exchanges.forEach((ex: any) => dispatch({ type: 'UPDATE_EXCHANGE', exchange: ex }));
-          }
-        } else if (msg.type === 'TICK') {
-          pendingUiUpdateRef.current = { 
-            lastFrame: msg.frame,
-            elapsedMs: msg.elapsedMs,
-            frameCount: msg.frame.frameNumber,
-            status: msg.status,
-            selectedProfileId: msg.selectedProfileId,
-            exchanges: msg.exchanges || [] 
-          };
-
-          // Generate TX Log Entry
-          const now = new Date();
-          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
-          const logEntry = { 
-            time: timeStr, 
-            text: `TX: ${msg.frame.rawHex}`, 
-            type: 'tx' as const 
-          };
-          
-          logBufferRef.current.push(logEntry);
-          fullLogRef.current.push(logEntry);
-        } else if (msg.type === 'LOG') {
-          logBufferRef.current.push(msg.entry);
-          fullLogRef.current.push(msg.entry);
-        } else if (msg.type === 'RECORDING_FINISHED') {
-          dispatch({ type: 'SET_RECORDING', recording: false });
-          const blob = new Blob([JSON.stringify(msg.data, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `uart_session_${new Date().toISOString().slice(0, 19).replace(/[:]/g, '-')}.json`;
-          a.click();
-          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt tamamlandı ve indirildi: ${msg.data.length} frame.` });
-        } else if (msg.type === 'CONVERSATION') {
-          conversationBufferRef.current.push(msg.entry);
-        } else if (msg.type === 'EXCHANGE') {
-          exchangeBufferRef.current.push(msg.exchange);
-        } else if (msg.type === 'RAW_RX_DATA') {
-          dispatch({ type: 'ADD_LOG', entryType: 'rx', text: `[RAW RX]: ${msg.hex}` });
-          
-          // Also update lastRxFrame for the Logic Analyzer
-          if (profilesRef.current.length > 0) {
-            const profile = profilesRef.current.find(p => p.id === stateRef.current.selectedProfileId);
-            if (profile) {
-              const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));
-              const fields = parseFrame(profile, bytes);
-              const rxFrame = {
-                frameNumber: 0,
-                timestampMs: Date.now(),
-                rawHex: msg.hex,
-                rawBytes: bytes,
-                fields: fields || [],
-                errors: []
-              } as GeneratedFrame;
-              dispatch({ type: 'SET_LAST_RX_FRAME', frame: rxFrame });
-            }
-          }
-        } else if (msg.type === 'SERIAL_STATUS') {
-          dispatch({ type: 'SET_SERIAL_CONNECTED', connected: msg.connected });
-          if (msg.error) {
-            dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Seri Port Hatası: ${msg.error}` });
-          }
-        } else if (msg.type === 'STATUS_UPDATE') {
-          dispatch({ type: 'SET_STATUS', status: msg.status });
-        } else if (msg.type === 'PORTS_LIST') {
-          pendingUiUpdateRef.current = { ...pendingUiUpdateRef.current, availablePorts: msg.ports } as any;
-        }
+        msgBufferRef.current.push(event.data);
       };
 
       socket.onclose = () => {
@@ -491,7 +399,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       };
     };
 
-    connect();
+    if (isMountedRef.current) {
+        connect();
+    }
 
     return () => {
       isMountedRef.current = false;
@@ -501,7 +411,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
       if (currentSocket) {
           currentSocket.onclose = null; // Prevent reconnect loop
-          currentSocket.close();
+          // Only close if it's actually open or connecting
+          if (currentSocket.readyState === WebSocket.OPEN) {
+            currentSocket.close();
+          }
       }
     };
   }, []);
@@ -509,76 +422,127 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   // ── UI UPDATE LOOP ───────────────────────────
   React.useEffect(() => {
     const timer = setInterval(() => {
-       // Flush logs
-       if (logBufferRef.current.length > 0 && Date.now() - lastLogFlushRef.current > 200) {
-        const entries = [...logBufferRef.current];
-        logBufferRef.current = [];
-        lastLogFlushRef.current = Date.now();
-        dispatch({ type: 'BATCH_LOGS', entries });
-      }
+      if (!uiVisibleRef.current) return;
 
-      if (pendingUiUpdateRef.current && uiVisibleRef.current) {
-        const update = pendingUiUpdateRef.current;
-        pendingUiUpdateRef.current = null;
-        dispatch({ type: 'TICK', elapsedMs: update.elapsedMs ?? 0, newState: update });
-      }
+      const rawMsgs = msgBufferRef.current;
+      msgBufferRef.current = [];
+      
+      const masterBatch: Partial<SimulationState> = {};
+      const newPoints: any[] = [];
+      const newLogs: any[] = [];
+      let latestElapsed = stateRef.current.elapsedMs;
 
-      // Flush conversations
-      if (conversationBufferRef.current.length > 0) {
-          const convEntries = [...conversationBufferRef.current];
-          conversationBufferRef.current = [];
-          convEntries.forEach(entry => dispatch({ type: 'ADD_CONVERSATION', entry }));
-      }
-
-      // Flush exchanges
-      if (exchangeBufferRef.current.length > 0) {
-          const exEntries = [...exchangeBufferRef.current];
-          exchangeBufferRef.current = [];
+      // 1. Process Message Buffer
+      for (const raw of rawMsgs) {
+        try {
+          const parsed = JSON.parse(raw);
+          const msgs = Array.isArray(parsed) ? parsed : [parsed];
           
-          exEntries.forEach(exchange => {
-            let parsedRx: GeneratedFrame | null = null;
-            if (exchange.rx && profilesRef.current.length > 0) {
-              const profile = profilesRef.current.find(p => p.id === stateRef.current.selectedProfileId);
-              if (profile) {
-                const bytes = exchange.rx.rawHex.split(' ').map((h: string) => parseInt(h, 16));
-                const fields = parseFrame(profile, bytes);
-                parsedRx = {
-                  frameNumber: 0,
-                  timestampMs: exchange.rx.timestamp,
-                  rawHex: exchange.rx.rawHex,
-                  rawBytes: bytes,
-                  fields: fields || [],
-                  errors: []
-                } as GeneratedFrame;
-              }
-            }
-            dispatch({ type: 'UPDATE_EXCHANGE', exchange, lastRxFrame: parsedRx });
+          for (const msg of msgs) {
+            switch(msg.type) {
+              case 'INITIAL_STATE':
+                startTransition(() => {
+                  dispatch({ type: 'INIT_STATE', newState: msg.state });
+                });
+                break;
+              case 'TICK':
+                const frameWithUid = assignUid(msg.frame);
+                masterBatch.lastFrame = frameWithUid;
+                masterBatch.status = msg.status;
+                masterBatch.profileId = msg.selectedProfileId;
+                latestElapsed = msg.elapsedMs;
+                
+                const point: Record<string, number> = { t: msg.frame.timestampMs };
+                msg.frame.fields.forEach((f: any) => point[f.name] = f.decimal);
+                newPoints.push(point);
 
-            // Calculate timing stats
-            if (exchange.latencyMs !== undefined) {
-              const currentStats = stateRef.current.timingStats;
-              const newArrivals = [...currentStats.interPacketArrivals, exchange.latencyMs].slice(-50);
-              const avg = newArrivals.reduce((a, b) => a + b, 0) / newArrivals.length;
-              const min = Math.min(...newArrivals);
-              const max = Math.max(...newArrivals);
-              const jitter = newArrivals.length > 1 
-                ? newArrivals.slice(1).reduce((acc, val, i) => acc + Math.abs(val - newArrivals[i]), 0) / (newArrivals.length - 1)
-                : 0;
-
-              dispatch({ 
-                type: 'UPDATE_TIMING_STATS', 
-                stats: { 
-                    averageLatencyMs: avg, 
-                    minLatencyMs: min, 
-                    maxLatencyMs: max, 
-                    jitterMs: jitter,
-                    interPacketArrivals: newArrivals 
-                } 
-              });
+                const now = new Date();
+                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+                newLogs.push({ time: timeStr, text: `TX: ${msg.frame.rawHex}`, type: 'tx' });
+                break;
+              case 'LOG':
+                newLogs.push(msg.entry);
+                break;
+              case 'EXCHANGE':
+                exchangeBufferRef.current.push(msg.exchange);
+                break;
+              case 'CONVERSATION':
+                conversationBufferRef.current.push(msg.entry);
+                break;
+              case 'RAW_RX_DATA':
+                if (profilesRef.current.length > 0) {
+                  const profile = profilesRef.current.find(p => p.id === stateRef.current.profileId);
+                  if (profile) {
+                    const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));
+                    const fields = parseFrame(profile, bytes);
+                    masterBatch.lastRxFrame = assignUid({
+                      frameNumber: 0,
+                      timestampMs: Date.now(),
+                      rawHex: msg.hex,
+                      rawBytes: bytes,
+                      fields: fields || [],
+                      errors: []
+                    });
+                  }
+                }
+                break;
+              case 'STATUS_UPDATE':
+                masterBatch.status = msg.status;
+                break;
+              case 'PORTS_LIST':
+                masterBatch.availablePorts = msg.ports;
+                break;
             }
-          });
+          }
+        } catch (e) {}
       }
-    }, 33);
+
+      // 2. Process Buffered Conversations
+      if (conversationBufferRef.current.length > 0) {
+        const convEntries = [...conversationBufferRef.current];
+        conversationBufferRef.current = [];
+        masterBatch.conversationLogs = [...convEntries, ...stateRef.current.conversationLogs].slice(0, 100);
+      }
+
+      // 3. Process Buffered Exchanges & Timing
+      if (exchangeBufferRef.current.length > 0) {
+        const exEntries = [...exchangeBufferRef.current];
+        exchangeBufferRef.current = [];
+        const currentExchanges = [...stateRef.current.exchanges];
+        let latestLat: number | null = null;
+
+        exEntries.forEach(ex => {
+          const idx = currentExchanges.findIndex(e => e.id === ex.id);
+          if (idx !== -1) currentExchanges[idx] = ex;
+          else currentExchanges.unshift(ex);
+          if (ex.latencyMs !== undefined) latestLat = ex.latencyMs;
+        });
+
+        if (latestLat !== null) {
+          const arrivals = [...stateRef.current.timingStats.interPacketArrivals, latestLat].slice(-50);
+          masterBatch.timingStats = {
+            averageLatencyMs: arrivals.reduce((a, b) => a + b, 0) / arrivals.length,
+            minLatencyMs: Math.min(...arrivals),
+            maxLatencyMs: Math.max(...arrivals),
+            jitterMs: arrivals.length > 1 ? arrivals.slice(1).reduce((acc, v, i) => acc + Math.abs(v - arrivals[i]), 0) / (arrivals.length - 1) : 0,
+            interPacketArrivals: arrivals
+          };
+        }
+
+        masterBatch.exchanges = currentExchanges.slice(0, 50);
+      }
+
+      // 4. Atomic Dispatch as Non-Blocking Transition
+      startTransition(() => {
+        dispatch({
+          type: 'MASTER_TICK',
+          updates: masterBatch,
+          points: newPoints,
+          logEntries: newLogs,
+          elapsedMs: latestElapsed
+        });
+      });
+    }, 66);
     return () => clearInterval(timer);
   }, []);
 
@@ -703,6 +667,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
               const parseResult = parseFrame(currentProfile, frameBytes);
               if (parseResult) {
                 const rxFrame = {
+                  uId: `net-rx-${Date.now()}-${Math.random()}`,
                   frameNumber: 0,
                   timestampMs: Date.now(),
                   rawHex: hex,
@@ -874,12 +839,4 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       {children}
     </SimulationContext.Provider>
   );
-}
-
-export function useSimulationContext() {
-  const context = useContext(SimulationContext);
-  if (context === undefined) {
-    throw new Error('useSimulationContext must be used within a SimulationProvider');
-  }
-  return context;
 }
