@@ -77,174 +77,145 @@ const StatBar = memo(({
   }, [availablePorts, selectedPort]);
 
   return (
-    <div className="px-5 py-3 bg-gray-950 border-b border-gray-800 flex items-center gap-4 shrink-0">
-      <div className="flex items-center gap-2">
+    <div className="px-3 py-2 bg-gray-950 border-b border-gray-800 flex flex-wrap items-center gap-x-4 gap-y-2 shrink-0">
+      <div className="flex items-center gap-2 pr-3 border-r border-gray-800">
         <div className={`w-2.5 h-2.5 rounded-full ${status === 'running' ? 'bg-green-400 animate-pulse' : status === 'paused' ? 'bg-yellow-400' : 'bg-gray-600'}`} />
-        <span className="text-gray-400 text-xs font-mono uppercase">
+        <span className="text-gray-400 text-[10px] font-mono uppercase font-bold">
           {status === 'running' ? 'Çalışıyor' : status === 'paused' ? 'Duraklatıldı' : 'Durdu'}
         </span>
       </div>
 
       {/* Backend Status */}
-      <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
-        <div className={`w-2 h-2 rounded-full ${backendConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
-        <span className={`text-[10px] font-mono font-bold uppercase tracking-tight ${backendConnected ? 'text-emerald-500' : 'text-red-500'}`}>
-          {backendConnected ? 'Backend Bağlı' : 'Backend Kesildi'}
+      <div className="flex items-center gap-2 pr-3 border-r border-gray-800">
+        <div className={`w-2 h-2 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+        <span className={`text-[9px] font-mono font-bold uppercase tracking-tight ${networkConnected ? 'text-emerald-500' : 'text-red-500'}`}>
+          {networkConnected ? 'Backend' : 'Kesildi'}
         </span>
       </div>
 
-      <select 
-        className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
-        value={selectedProfileId ?? ''} 
-        onChange={(e) => onSetProfile(e.target.value)} 
-        disabled={status !== 'stopped'}
-      >
-        <option value="">— Profil Seçin —</option>
-        {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
-
-      <select 
-        className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
-        value={selectedScenarioId ?? ''} 
-        onChange={(e) => onSetScenario(e.target.value)} 
-        disabled={status !== 'stopped'}
-      >
-        <option value="">— Senaryo Yok —</option>
-        {scenarios.filter((s) => !selectedProfileId || s.profileId === selectedProfileId).map((s) => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </select>
-
       <div className="flex items-center gap-2">
         <select 
-          className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
+          className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700 w-32"
+          value={selectedProfileId ?? ''} 
+          onChange={(e) => onSetProfile(e.target.value)} 
+          disabled={status !== 'stopped'}
+        >
+          <option value="">— Profil —</option>
+          {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+
+        <select 
+          className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700 w-32"
+          value={selectedScenarioId ?? ''} 
+          onChange={(e) => onSetScenario(e.target.value)} 
+          disabled={status !== 'stopped'}
+        >
+          <option value="">— Senaryo Yok —</option>
+          {scenarios.filter((s) => !selectedProfileId || s.profileId === selectedProfileId).map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2 border-l border-gray-800 pl-3">
+        <select 
+          className="bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700"
           value={outputMode} 
           onChange={(e) => onSetOutputMode(e.target.value as OutputMode)} 
           disabled={status !== 'stopped'}
         >
-          <option value="log">Yalnızca Log</option>
+          <option value="log">Log</option>
           <option value="serial">Seri Port</option>
-          <option value="tcp">TCP (Ağ)</option>
+          <option value="tcp">TCP</option>
         </select>
         
         {selectedProfile && (
-          <div className="text-[10px] font-mono text-gray-500 border border-gray-800 px-2 py-1 rounded bg-gray-900/50">
-            {selectedProfile.baudRate} bps
+          <div className="text-[9px] font-mono text-gray-500 border border-gray-800 px-1.5 py-0.5 rounded bg-gray-900/50">
+            {selectedProfile.baudRate}
           </div>
         )}
       </div>
 
       {outputMode === 'serial' && (
-        <div className="flex items-center ml-2 border-l border-gray-700 pl-3 gap-2">
+        <div className="flex items-center border-l border-gray-700 pl-3 gap-2">
           {!serialConnected ? (
-            <>
+            <div className="flex items-center gap-1">
               <select 
-                className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-[10px] font-mono text-gray-200 outline-none focus:border-blue-700 w-24"
+                className="bg-gray-800 border border-gray-700 rounded px-1 py-1 text-[9px] font-mono text-gray-200 outline-none w-28 focus:border-blue-500"
                 value={selectedPort}
                 onChange={(e) => setSelectedPort(e.target.value)}
                 onFocus={onGetPorts}
-                disabled={status !== 'stopped'}
+                disabled={status !== 'stopped' || !networkConnected}
               >
-                {availablePorts.length === 0 && <option value="">Port Seçin</option>}
-                {availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)}
+                {availablePorts.length === 0 ? (
+                    <option value="">{networkConnected ? 'Port Yok' : 'Backend Bekleniyor'}</option>
+                ) : (
+                    availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)
+                )}
               </select>
               <button 
                 onClick={() => onConnectSerial(selectedPort)} 
-                disabled={!selectedProfileId || status !== 'stopped' || !selectedPort}
-                className="px-3 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
+                disabled={!selectedProfileId || status !== 'stopped' || !selectedPort || !networkConnected}
+                className="px-2 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-mono rounded font-bold transition-all"
+                title={!networkConnected ? "Backend bağlantısı bekleniyor" : !selectedPort ? "Lütfen port seçin" : ""}
               >
                 Bağlan
               </button>
-            </>
+            </div>
           ) : (
             <button 
               onClick={onDisconnectSerial} 
               disabled={status !== 'stopped'}
-              className="px-3 py-1 bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
+              className="px-2 py-1 bg-red-700 hover:bg-red-600 text-white text-[10px] font-mono rounded font-bold"
             >
               Kopar
             </button>
           )}
-          {serialConnected && <span className="ml-2 text-green-400 text-xs font-mono font-bold">BAĞLI</span>}
         </div>
       )}
 
-      {outputMode === 'tcp' && (
-        <div className="flex items-center ml-2 border-l border-gray-700 pl-3 gap-2">
-          <input 
-            className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[10px] font-mono text-gray-400 outline-none focus:border-blue-700 w-32"
-            value={wsUrl}
-            onChange={(e) => setWsUrl(e.target.value)}
-            placeholder="ws://..."
-            disabled={networkConnected || status !== 'stopped'}
-          />
-          {!networkConnected ? (
-            <button 
-              onClick={() => onConnectNetwork(wsUrl)} 
-              disabled={!selectedProfileId || status !== 'stopped'}
-              className="px-3 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
-            >
-              Bağlan
-            </button>
-          ) : (
-            <button 
-              onClick={onDisconnectNetwork} 
-              disabled={status !== 'stopped'}
-              className="px-3 py-1 bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
-            >
-              Kes
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-2 ml-auto">
+      <div className="flex gap-1.5 ml-auto">
         <button 
           onClick={onToggleAnalyzerMode}
-          className={`px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 border ${
+          className={`px-2 py-1 rounded border font-mono text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 ${
             analyzerMode 
-              ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
-              : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'
+              ? 'bg-blue-600 text-white border-blue-400' 
+              : 'bg-gray-900 text-gray-500 border-gray-800 hover:border-gray-600'
           }`}
         >
-          <Terminal size={14} />
-          {analyzerMode ? 'Analyzer Active' : 'Enter Pro Mode'}
+          <Terminal size={12} />
+          {analyzerMode ? 'Analyzer Active' : 'Pro Mode'}
         </button>
 
-        {status === 'stopped' && (
-          <button 
-            onClick={onStart} 
-            disabled={!selectedProfileId || (outputMode === 'serial' && !serialConnected) || (outputMode === 'tcp' && !networkConnected)}
-            className="px-4 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono rounded font-bold transition-colors"
-          >
-            ▶ Başlat
-          </button>
-        )}
-        {status === 'running' && (
-          <>
-            <button onClick={onPause} className="px-4 py-1.5 bg-yellow-700 hover:bg-yellow-600 text-white text-xs font-mono rounded font-bold transition-colors">⏸ Duraklat</button>
-            <button onClick={onStop} className="px-4 py-1.5 bg-red-800 hover:bg-red-700 text-white text-xs font-mono rounded font-bold transition-colors">■ Durdur</button>
-          </>
-        )}
-        {status === 'paused' && (
-          <>
+        <div className="flex gap-1 border-l border-gray-800 pl-3">
+          {status === 'stopped' ? (
             <button 
-              onClick={onResume}
-              className="px-4 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-mono rounded font-bold transition-colors"
+              onClick={onStart} 
+              disabled={!selectedProfileId || (outputMode === 'serial' && !serialConnected) || (outputMode === 'tcp' && !networkConnected)}
+              className="px-3 py-1 bg-green-700 hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-mono rounded font-bold transition-all shadow-lg shadow-green-900/10"
+              title={!selectedProfileId ? "Lütfen profil seçin" : (outputMode === 'serial' && !serialConnected) ? "Seri porta bağlanmalısınız" : ""}
             >
-              ▶ Devam Et
+              ▶ Başlat
             </button>
-            <button onClick={onStop} className="px-4 py-1.5 bg-red-800 hover:bg-red-700 text-white text-xs font-mono rounded font-bold transition-colors">■ Durdur</button>
-          </>
-        )}
+          ) : status === 'running' ? (
+            <>
+              <button onClick={onPause} className="px-3 py-1 bg-yellow-700 hover:bg-yellow-600 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">⏸</button>
+              <button onClick={onStop} className="px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">■</button>
+            </>
+          ) : (
+            <>
+              <button onClick={onResume} className="px-3 py-1 bg-green-700 hover:bg-green-600 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">▶</button>
+              <button onClick={onStop} className="px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">■</button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-4 text-xs font-mono">
-        <div><span className="text-gray-600">Frame:</span> <span className="text-gray-300">{frameCount.toLocaleString()}</span></div>
-        <div><span className="text-gray-600">FPS:</span> <span className="text-gray-300">{framesPerSecond}</span></div>
-        <div><span className="text-gray-600">Hata:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-300'}>{errorCount}</span></div>
-        <div><span className="text-gray-600">Süre:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
+      {/* Stats - Move to very end or potentially separate row if tiny */}
+      <div className="flex gap-3 text-[9px] font-mono border-l border-gray-800 pl-3">
+        <div className="hidden sm:block"><span className="text-gray-600">F:</span> <span className="text-gray-300">{frameCount}</span></div>
+        <div><span className="text-gray-600">Err:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
+        <div><span className="text-gray-600">T:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
       </div>
     </div>
   );

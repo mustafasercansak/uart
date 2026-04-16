@@ -206,16 +206,29 @@ const ControlPanel = memo(({
             <div className="text-gray-700">Simülasyon başlatıldığında log burada görünecek...</div>
           )}
           {logEntries.map((entry, i) => {
-            let colorClass = 'text-gray-500';
-            if (entry.type === 'tx') colorClass = 'text-green-500';
-            else if (entry.type === 'rx') colorClass = 'text-blue-400';
-            else if (entry.type === 'error') colorClass = 'text-red-400';
-            else if (entry.type === 'info') colorClass = 'text-gray-400 italic';
-
+            const isTx = entry.type === 'tx';
+            const isRx = entry.type === 'rx';
+            const isError = entry.type === 'error';
+            
             return (
-              <div key={i} className={colorClass}>
-                <span className="text-gray-700">[{entry.time}] </span>
-                {entry.text}
+              <div key={i} className="flex flex-col border-b border-gray-900/50 pb-1 mb-1 last:border-0 hover:bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                   <span className="text-gray-700 text-[9px] shrink-0">[{entry.time}]</span>
+                   <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-tighter ${
+                     isTx ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 
+                     isRx ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 
+                     isError ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-gray-800 text-gray-400'
+                   }`}>
+                     {entry.type}
+                   </span>
+                </div>
+                <div className={`mt-0.5 pl-2 border-l-2 ${
+                  isTx ? 'border-green-500/30 text-green-200/90' : 
+                  isRx ? 'border-blue-500/30 text-blue-100' : 
+                  isError ? 'border-red-500/30 text-red-300' : 'border-gray-800 text-gray-400'
+                } font-mono break-all leading-relaxed`}>
+                  {entry.text.replace(/^\[RAW RX\]: |^TX: /, '')}
+                </div>
               </div>
             );
           })}

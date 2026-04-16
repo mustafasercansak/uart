@@ -40,29 +40,31 @@ const INITIAL_STATE: SimulationState = {
 };
 
 let activePort: SerialPort | null = null;
-
 const engine = new SimulationEngine(INITIAL_STATE);
+const clients = new Set<WebSocket>();
 
-console.log('\x1b[32m[SERVER]\x1b[0m UART Simulator Arka Plan Servisi ws://localhost:8080 adresinde başlatıldı.');
+console.log('\x1b[32m[SERVER]\x1b[0m UART Simulator Arka Plan Servisi ws://127.0.0.1:8080 adresinde başlatıldı.');
 
-wss.on('connection', (ws) => {
-  console.log('\x1b[34m[CONN]\x1b[0m Dashboard bağlandı.');
+// Helper to broadcast to all connected clients
+const broadcast = (message: any) => {
+    const data = JSON.stringify(message);
+    clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            try {
+                client.send(data);
+            } catch (err) {
+                console.error('\x1b[31m[BROADCAST ERR]\x1b[0m', err);
+            }
+        }
+    });
+};
 
-  // Send initial state immediately
-  ws.send(JSON.stringify({ 
-    type: 'INITIAL_STATE', 
-    state: engine.getState(),
-    exchanges: engine.getState().exchanges
-  }));
-
-  // Handle engine frame emissions
-  engine.onFrame = (frame) => {
+// Setup Engine callbacks ONCE (Broadcast logic)
+engine.onFrame = (frame) => {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 
-    // 1. Send to Dashboard if connected
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ 
+    broadcast({ 
         type: 'TICK', 
         frame, 
         elapsedMs: engine.getState().elapsedMs,
@@ -70,55 +72,61 @@ wss.on('connection', (ws) => {
         selectedProfileId: engine.getProfile()?.id,
         pendingErrors: engine.getState().pendingErrors,
         exchanges: engine.getState().exchanges
-      }));
+    });
 
-      // Send logs for TX and errors
-      if (engine.getState().outputMode !== 'log') {
-        ws.send(JSON.stringify({ 
-          type: 'LOG', 
-          entry: { time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' } 
-        }));
-      }
-
-      if (frame.errors.length > 0) {
-        frame.errors.forEach(err => {
-          ws.send(JSON.stringify({ 
+    if (engine.getState().outputMode !== 'log') {
+        broadcast({ 
             type: 'LOG', 
-            entry: { time: timeStr, text: err, type: 'error' } 
-          }));
+            entry: { time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' } 
         });
-      }
     }
 
-    // 2. Send to Serial Port (Independent of Dashboard connection)
+    if (frame.errors.length > 0) {
+        frame.errors.forEach(err => {
+            broadcast({ 
+                type: 'LOG', 
+                entry: { time: timeStr, text: err, type: 'error' } 
+            });
+        });
+    }
+
+    // Send to Serial Port
     if (activePort && activePort.writable) {
        activePort.write(Buffer.from(frame.rawBytes), (err) => {
          if (err) console.error(`\x1b[31m[TX ERR]\x1b[0m`, err.message);
          else console.log(`\x1b[36m[TX]\x1b[0m ${frame.rawBytes.length} bytes sent: ${frame.rawHex}`);
        });
     }
-  };
+};
 
-  engine.onRawResponse = (bytes) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'TX_RAW', payload: bytes }));
-    }
+engine.onRawResponse = (bytes) => {
+    broadcast({ type: 'TX_RAW', payload: bytes });
     if (activePort && activePort.writable) {
         activePort.write(Buffer.from(bytes));
     }
-  };
+};
 
-  engine.onConversation = (entry) => {
-    if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'CONVERSATION', entry }));
-    }
-  };
+engine.onConversation = (entry) => {
+    broadcast({ type: 'CONVERSATION', entry });
+};
 
-  engine.onExchange = (exchange) => {
-    if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'EXCHANGE', exchange }));
-    }
-  };
+engine.onExchange = (exchange) => {
+    broadcast({ type: 'EXCHANGE', exchange });
+};
+
+wss.on('connection', (ws) => {
+  clients.add(ws);
+  console.log(`\x1b[34m[CONN]\x1b[0m Dashboard bağlandı. Toplam: ${clients.size}`);
+
+  const fullState = engine.getState();
+  // Filter out UI-only or confusing flags for initial sync
+  const { networkConnected, ...cleanState } = fullState;
+
+  ws.send(JSON.stringify({ 
+    type: 'INITIAL_STATE', 
+    state: cleanState,
+    exchanges: cleanState.exchanges
+  }));
 
   ws.on('message', async (message) => {
     try {
@@ -128,16 +136,20 @@ wss.on('connection', (ws) => {
         case 'START':
           console.log('\x1b[32m[START]\x1b[0m Simülasyon başlatılıyor...', data.profile.name);
           engine.start(data.profile, data.scenario, data.outputMode);
+          broadcast({ type: 'STATUS_UPDATE', status: 'running' });
           break;
         case 'STOP':
           console.log('\x1b[33m[STOP]\x1b[0m Simülasyon durduruldu.');
           engine.stop();
+          broadcast({ type: 'STATUS_UPDATE', status: 'stopped' });
           break;
         case 'PAUSE':
           engine.pause();
+          broadcast({ type: 'STATUS_UPDATE', status: 'paused' });
           break;
         case 'RESUME':
           engine.resume();
+          broadcast({ type: 'STATUS_UPDATE', status: 'running' });
           break;
         case 'OVERRIDE_FIELD':
           engine.updateOverrides({ fieldOverrides: { ...engine.getState().fieldOverrides, [data.fieldId]: data.value } });
@@ -156,11 +168,9 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'RECORDING_FINISHED', data: recordedData }));
           break;
         case 'START_PLAYBACK':
-          console.log('\x1b[36m[PLAY]\x1b[0m Oynatma komutu alındı.');
           engine.startPlayback(data.data);
           break;
         case 'INJECT_ERROR':
-          console.log('\x1b[35m[ERROR]\x1b[0m Hata enjekte ediliyor:', data.errorType);
           engine.injectError(data.errorType);
           break;
         case 'UPDATE_RESPONDER_RULES':
@@ -168,59 +178,57 @@ wss.on('connection', (ws) => {
           break;
         case 'GET_PORTS':
           SerialPort.list().then(ports => {
-            ws.send(JSON.stringify({ type: 'PORTS_LIST', ports }));
+            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PORTS_LIST', ports }));
           });
           break;
         case 'CONNECT_SERIAL': {
           const config = data.config as SerialConfig;
-          
-          // Helper to close port safely
           const closePort = () => new Promise<void>((resolve) => {
             if (!activePort || !activePort.isOpen) return resolve();
             activePort.close(() => {
               activePort = null;
-              setTimeout(resolve, 100); // Give OS time to release handle
+              setTimeout(resolve, 100);
             });
           });
 
           await closePort();
-          
-          console.log(`\x1b[34m[SERIAL]\x1b[0m Bağlanılıyor: ${config.portName} (${config.baudRate})`);
-          activePort = new SerialPort({ 
-            path: config.portName, 
-            baudRate: config.baudRate,
-            autoOpen: false 
-          });
+          console.log(`\x1b[34m[SERIAL]\x1b[0m Bağlanılıyor: ${config.portName}`);
+          activePort = new SerialPort({ path: config.portName, baudRate: config.baudRate, autoOpen: false });
 
           activePort.open((err) => {
             if (err) {
-              const msg = err.message.includes('Access denied') 
-                ? 'Port kilitli (Başka bir program COM portunu kullanıyor olabilir)'
-                : err.message;
-              console.error('\x1b[31m[ERR]\x1b[0m Seri port açılamadı:', msg);
-              ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false, error: msg }));
+              const msg = err.message.includes('Access denied') ? 'Port kilitli' : err.message;
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false, error: msg }));
               return;
             }
-            console.log('\x1b[32m[SERIAL]\x1b[0m Bağlantı başarılı.');
-            ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: true }));
+            broadcast({ type: 'SERIAL_STATUS', connected: true });
           });
 
-          // Re-attach listeners after successful open or initialization
+          let rxBuffer: number[] = [];
+          let rxTimeout: NodeJS.Timeout | null = null;
+
           activePort.on('data', (bytes) => {
             const byteArr = Array.from(bytes);
-            const hex = byteArr.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-            console.log(`\x1b[35m[RX]\x1b[0m ${bytes.length} bytes received: ${hex}`);
-            
-            ws.send(JSON.stringify({ 
-              type: 'RAW_RX_DATA', 
-              hex
-            }));
-            engine.processIncomingData(byteArr);
+            rxBuffer.push(...byteArr);
+
+            if (rxTimeout) clearTimeout(rxTimeout);
+
+            rxTimeout = setTimeout(() => {
+                if (rxBuffer.length === 0) return;
+                
+                const hex = rxBuffer.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+                console.log(`\x1b[35m[RX]\x1b[0m ${rxBuffer.length} bytes received: ${hex}`);
+                
+                broadcast({ type: 'RAW_RX_DATA', hex });
+                
+                engine.processIncomingData(rxBuffer);
+                rxBuffer = [];
+                rxTimeout = null;
+            }, 50);
           });
 
           activePort.on('error', (err) => {
-             console.error('\x1b[31m[ERR]\x1b[0m Seri port hatası:', err.message);
-             ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false, error: err.message }));
+             broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
           });
           break;
         }
@@ -228,21 +236,18 @@ wss.on('connection', (ws) => {
           if (activePort) {
             activePort.close(() => {
               activePort = null;
-              ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false }));
+              broadcast({ type: 'SERIAL_STATUS', connected: false });
             });
-          } else {
-            ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false }));
           }
           break;
-        default:
-          console.log('\x1b[31m[WARN]\x1b[0m Bilinmeyen komut:', data.type);
       }
     } catch (err) {
-      console.error('\x1b[31m[ERR]\x1b[0m Mesaj işleme hatası:', err);
+      console.error('\x1b[31m[ERR]\x1b[0m', err);
     }
   });
 
   ws.on('close', () => {
-    console.log('\x1b[33m[DISCO]\x1b[0m Dashboard ayrıldı.');
+    clients.delete(ws);
+    console.log(`\x1b[33m[DISCO]\x1b[0m Dashboard ayrıldı. Kalan: ${clients.size}`);
   });
 });

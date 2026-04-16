@@ -359,6 +359,9 @@ export interface SimulationState {
   selectedExchangeId: string | null;
   analyzerMode: boolean;
   displayFilter: string;
+  // Professional Suite
+  watchlist: string[]; // Field IDs or Names
+  snapshots: GeneratedFrame[];
   // Available Serial Ports (added for backend bridge)
   availablePorts?: Array<{ path: string }>;
 }

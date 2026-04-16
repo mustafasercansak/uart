@@ -79,47 +79,82 @@ export class SimulationEngine {
   public processIncomingData(bytes: number[]) {
     if (this.state.status !== 'running') return;
 
-    const hex = bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-    
-    // Add to conversation log
-    const rxEntry: ConversationEntry = {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      type: 'rx',
-      rawHex: hex
-    };
-    this.addLog(rxEntry);
+    // 1. Accumulate all incoming bytes into the persistent buffer
+    this.rxBuffer.push(...bytes);
 
-    // Update oldest pending exchange or start new one
-    if (this.pendingExchanges.length > 0) {
-        const exchange = this.pendingExchanges.shift()!;
-        exchange.rx = rxEntry;
-        exchange.latencyMs = rxEntry.timestamp - exchange.startTime;
+    // 2. Determine frame width and sync pattern (first 2 bytes usually)
+    const frameSize = this.profile ? this.profile.fields.reduce((sum, f) => sum + f.byteWidth, 0) : 0;
+    
+    // Fallback if no profile or invalid size
+    if (!frameSize || frameSize <= 0) {
+      if (this.rxBuffer.length > 100) this.rxBuffer = this.rxBuffer.slice(-100);
+      return;
+    }
+
+    // 3. Extraction loop: Try to find and pull whole frames from the buffer
+    let processed = true;
+    while (processed && this.rxBuffer.length >= frameSize) {
+      processed = false;
+
+      // Look for the header (55 AA for YS2000A)
+      // We assume the first field(s) with constant values or common headers are sync.
+      // For now, let's just use the frameSize as the trigger, but ideally look for 0x55 0xAA
+      const headerIdx = this.rxBuffer.indexOf(0x55);
+      
+      if (headerIdx === -1) {
+        // No header found, clear buffer to prevent overflow but keep last few bytes in case 0x55 is split
+        if (this.rxBuffer.length > 20) this.rxBuffer = this.rxBuffer.slice(-5);
+        break;
+      }
+
+      // If header is not at 0, discard everything before it (garbage)
+      if (headerIdx > 0) {
+        this.rxBuffer = this.rxBuffer.slice(headerIdx);
+        if (this.rxBuffer.length < frameSize) break;
+      }
+
+      // Check if we have enough bytes for a full frame starting at the header
+      if (this.rxBuffer.length >= frameSize) {
+        const chunk = this.rxBuffer.slice(0, frameSize);
+        this.rxBuffer = this.rxBuffer.slice(frameSize);
+        processed = true;
+
+        const hex = chunk.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
         
-        // Bit-level integrity comparison
-        if (exchange.tx) {
-            exchange.isLoopbackMatch = (exchange.tx.rawHex === rxEntry.rawHex);
-            // Optional: You could add detailed bit-diff metadata here if needed
+        const rxEntry: ConversationEntry = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            type: 'rx',
+            rawHex: hex
+        };
+        this.addLog(rxEntry);
+
+        if (this.pendingExchanges.length > 0) {
+            const exchange = this.pendingExchanges.shift()!;
+            exchange.rx = rxEntry;
+            exchange.latencyMs = rxEntry.timestamp - exchange.startTime;
+            
+            if (exchange.tx) {
+                exchange.isLoopbackMatch = (exchange.tx.rawHex === rxEntry.rawHex);
+            }
+            this.updateExchange(exchange);
+        } else {
+            const rxExchange: Exchange = {
+                id: uuidv4(),
+                startTime: rxEntry.timestamp,
+                rx: rxEntry
+            };
+            this.addExchange(rxExchange);
         }
         
-        this.updateExchange(exchange);
-    } else {
-        // Unsolicited RX
-        const rxExchange: Exchange = {
-            id: uuidv4(),
-            startTime: rxEntry.timestamp,
-            rx: rxEntry
-        };
-        this.addExchange(rxExchange);
+        this.checkRules(rxEntry.id);
+      }
     }
 
-    // Add to internal buffer...
-    this.rxBuffer.push(...bytes);
-    if (this.rxBuffer.length > 64) {
-      this.rxBuffer = this.rxBuffer.slice(-64);
+    // Buffer safety limit
+    if (this.rxBuffer.length > 512) {
+      this.rxBuffer = this.rxBuffer.slice(-256);
     }
-
-    this.checkRules(rxEntry.id);
   }
 
   private addLog(entry: ConversationEntry) {
@@ -291,6 +326,11 @@ export class SimulationEngine {
     this.startTime = Date.now();
     this.state.status = 'running' as SimulationStatus;
     this.state.outputMode = outputMode;
+    
+    // Clear buffers for a clean run
+    this.rxBuffer = [];
+    this.pendingExchanges = [];
+    this.lastMatchTime = {};
 
     this.run();
   }

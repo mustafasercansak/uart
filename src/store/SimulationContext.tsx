@@ -11,7 +11,7 @@ import { generateFrame } from '../engines/FrameGenerator';
 import { parseFrame } from '../engines/FrameParser';
 import { tickScenarioEngine } from '../engines/ScenarioEngine';
 
-const BACKEND_URL = 'ws://localhost:8080';
+const BACKEND_URL = 'ws://127.0.0.1:8080';
 
 // ─────────────────────────────────────────────
 // SİMÜLASYON CONTEXT
@@ -47,8 +47,10 @@ const INITIAL_STATE: SimulationState = {
   conversationLogs: [],
   exchanges: [],
   selectedExchangeId: null,
-  analyzerMode: false,
+  analyzerMode: true, // Default to true now for pro feel
   displayFilter: '',
+  watchlist: [],
+  snapshots: [],
 };
 
 type SimAction =
@@ -75,6 +77,9 @@ type SimAction =
   | { type: 'SELECT_EXCHANGE'; exchangeId: string | null }
   | { type: 'SET_ANALYZER_MODE'; enabled: boolean }
   | { type: 'SET_DISPLAY_FILTER'; filter: string }
+  | { type: 'TOGGLE_WATCHLIST'; fieldName: string }
+  | { type: 'SAVE_SNAPSHOT'; frame: GeneratedFrame }
+  | { type: 'DELETE_SNAPSHOT'; frameNumber: number }
   | { type: 'INIT_STATE'; newState: Partial<SimulationState> }
   | { type: 'SET_BACKEND_CONNECTED'; connected: boolean };
 
@@ -175,6 +180,8 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, networkConnected: action.connected };
     case 'SET_RECORDING':
       return { ...state, isRecording: action.recording };
+    case 'SET_LAST_RX_FRAME':
+      return { ...state, lastRxFrame: action.frame };
     case 'ADD_CONVERSATION':
       return { 
         ...state, 
@@ -184,15 +191,15 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       const updatedExchanges = [...state.exchanges];
       const existingIdx = updatedExchanges.findIndex(e => e.id === action.exchange.id);
       
-      if (existingIdx !== -1) {
-        updatedExchanges[existingIdx] = action.exchange;
-        return { ...state, exchanges: updatedExchanges };
-      } else {
-        return { 
-          ...state, 
-          exchanges: [action.exchange, ...state.exchanges].slice(0, 50) 
-        };
-      }
+      const nextExchanges = existingIdx !== -1
+        ? (updatedExchanges[existingIdx] = action.exchange, updatedExchanges)
+        : [action.exchange, ...state.exchanges].slice(0, 50);
+
+      return { 
+        ...state, 
+        exchanges: nextExchanges,
+        lastRxFrame: action.lastRxFrame || state.lastRxFrame
+      };
     case 'TICK':
       return { 
         ...state, 
@@ -207,13 +214,31 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, analyzerMode: action.enabled };
     case 'SET_DISPLAY_FILTER':
       return { ...state, displayFilter: action.filter };
+    case 'TOGGLE_WATCHLIST':
+      const newWatchlist = state.watchlist.includes(action.fieldName)
+        ? state.watchlist.filter(f => f !== action.fieldName)
+        : [...state.watchlist, action.fieldName];
+      return { ...state, watchlist: newWatchlist };
+    case 'SAVE_SNAPSHOT':
+        if (state.snapshots.some(s => s.frameNumber === action.frame.frameNumber)) return state;
+        return { ...state, snapshots: [...state.snapshots, action.frame] };
+    case 'DELETE_SNAPSHOT':
+        return { ...state, snapshots: state.snapshots.filter(s => s.frameNumber !== action.frameNumber) };
     case 'INIT_STATE':
       return { 
         ...state, 
-        ...action.newState 
+        ...action.newState,
+        // Preserve connection states across init
+        networkConnected: state.networkConnected,
+        serialConnected: action.newState.serialConnected !== undefined ? action.newState.serialConnected : state.serialConnected,
+        // Ensure specific arrays are initialized
+        watchlist: action.newState.watchlist || state.watchlist || [],
+        snapshots: action.newState.snapshots || state.snapshots || []
       };
     case 'SET_BACKEND_CONNECTED':
       return { ...state, networkConnected: action.connected };
+    case 'SET_STATUS':
+      return { ...state, status: action.status };
     default:
       return state;
   }
@@ -246,6 +271,9 @@ interface SimulationContextType {
   selectExchange: (exchangeId: string | null) => void;
   setAnalyzerMode: (enabled: boolean) => void;
   setDisplayFilter: (filter: string) => void;
+  toggleWatchlist: (fieldName: string) => void;
+  saveSnapshot: (frame: GeneratedFrame) => void;
+  deleteSnapshot: (frameNumber: number) => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
@@ -263,6 +291,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const readerRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const backendWsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const logBufferRef = useRef<Array<SimulationState['logEntries'][0]>>([]);
   const profilesRef = useRef<FrameProfile[]>([]);
@@ -275,17 +305,60 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const conversationBufferRef = useRef<any[]>([]);
   const exchangeBufferRef = useRef<any[]>([]);
 
+  // ── PERSISTENCE (PRO SUITE) ──────────────────
+  React.useEffect(() => {
+    try {
+      const persisted = localStorage.getItem('uart_pro_state');
+      if (persisted) {
+        const parsed = JSON.parse(persisted);
+        dispatch({ type: 'INIT_STATE', newState: {
+          watchlist: parsed.watchlist || [],
+          snapshots: parsed.snapshots || [],
+          analyzerMode: parsed.analyzerMode ?? true
+        }});
+      }
+    } catch (e) {
+      console.error('Failed to load persisted state', e);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const toPersist = {
+      watchlist: state.watchlist,
+      snapshots: state.snapshots,
+      analyzerMode: state.analyzerMode
+    };
+    localStorage.setItem('uart_pro_state', JSON.stringify(toPersist));
+  }, [state.watchlist, state.snapshots, state.analyzerMode]);
+
   // ── BACKEND CONNECTION ───────────────────────
   React.useEffect(() => {
+    isMountedRef.current = true;
+    let currentSocket: WebSocket | null = null;
+
     const connect = () => {
+      if (!isMountedRef.current) return;
+      if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+      }
+
       const socket = new WebSocket(BACKEND_URL);
+      currentSocket = socket;
+
       socket.onopen = () => {
-        console.log('Connected to backend simulation engine');
+        if (!isMountedRef.current) {
+            socket.close();
+            return;
+        }
+        console.log('[CLIENT] Sunucuya bağlandı');
         backendWsRef.current = socket;
         dispatch({ type: 'SET_BACKEND_CONNECTED', connected: true });
         dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Simülasyon motoru bağlandı (Backend)' });
       };
+
       socket.onmessage = (event) => {
+        if (!isMountedRef.current) return;
         const msg = JSON.parse(event.data);
         if (msg.type === 'INITIAL_STATE') {
           dispatch({ type: 'INIT_STATE', newState: msg.state });
@@ -293,7 +366,6 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
             msg.exchanges.forEach((ex: any) => dispatch({ type: 'UPDATE_EXCHANGE', exchange: ex }));
           }
         } else if (msg.type === 'TICK') {
-          // Process tick for UI
           pendingUiUpdateRef.current = { 
             lastFrame: msg.frame,
             elapsedMs: msg.elapsedMs,
@@ -320,27 +392,63 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           exchangeBufferRef.current.push(msg.exchange);
         } else if (msg.type === 'RAW_RX_DATA') {
           dispatch({ type: 'ADD_LOG', entryType: 'rx', text: `[RAW RX]: ${msg.hex}` });
+          
+          // Also update lastRxFrame for the Logic Analyzer
+          if (profilesRef.current.length > 0) {
+            const profile = profilesRef.current.find(p => p.id === stateRef.current.selectedProfileId);
+            if (profile) {
+              const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));
+              const fields = parseFrame(profile, bytes);
+              const rxFrame = {
+                frameNumber: 0,
+                timestampMs: Date.now(),
+                rawHex: msg.hex,
+                rawBytes: bytes,
+                fields: fields || [],
+                errors: []
+              } as GeneratedFrame;
+              dispatch({ type: 'SET_LAST_RX_FRAME', frame: rxFrame });
+            }
+          }
         } else if (msg.type === 'SERIAL_STATUS') {
           dispatch({ type: 'SET_SERIAL_CONNECTED', connected: msg.connected });
           if (msg.error) {
             dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Seri Port Hatası: ${msg.error}` });
           }
+        } else if (msg.type === 'STATUS_UPDATE') {
+          dispatch({ type: 'SET_STATUS', status: msg.status });
         } else if (msg.type === 'PORTS_LIST') {
           pendingUiUpdateRef.current = { ...pendingUiUpdateRef.current, availablePorts: msg.ports } as any;
         }
       };
+
       socket.onclose = () => {
-        console.warn('Backend connection lost');
-        backendWsRef.current = null;
-        dispatch({ type: 'SET_BACKEND_CONNECTED', connected: false });
-        setTimeout(connect, 2000); // Auto-reconnect
+        if (backendWsRef.current === socket) backendWsRef.current = null;
+        if (isMountedRef.current) {
+            console.warn('[CLIENT] Sunucu bağlantısı koptu, yeniden deneniyor...');
+            dispatch({ type: 'SET_BACKEND_CONNECTED', connected: false });
+            reconnectTimerRef.current = setTimeout(connect, 2000); // Auto-reconnect
+        }
       };
+
       socket.onerror = () => {
         socket.close();
       };
     };
+
     connect();
-    return () => backendWsRef.current?.close();
+
+    return () => {
+      isMountedRef.current = false;
+      if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+      }
+      if (currentSocket) {
+          currentSocket.onclose = null; // Prevent reconnect loop
+          currentSocket.close();
+      }
+    };
   }, []);
 
   // ── UI UPDATE LOOP ───────────────────────────
@@ -371,7 +479,26 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       if (exchangeBufferRef.current.length > 0) {
           const exEntries = [...exchangeBufferRef.current];
           exchangeBufferRef.current = [];
-          exEntries.forEach(exchange => dispatch({ type: 'UPDATE_EXCHANGE', exchange }));
+          
+          exEntries.forEach(exchange => {
+            let parsedRx: GeneratedFrame | null = null;
+            if (exchange.rx && profilesRef.current.length > 0) {
+              const profile = profilesRef.current.find(p => p.id === stateRef.current.selectedProfileId);
+              if (profile) {
+                const bytes = exchange.rx.rawHex.split(' ').map((h: string) => parseInt(h, 16));
+                const fields = parseFrame(profile, bytes);
+                parsedRx = {
+                  frameNumber: 0, // Not strictly tracking RX frame numbers here
+                  timestampMs: exchange.rx.timestamp,
+                  rawHex: exchange.rx.rawHex,
+                  rawBytes: bytes,
+                  fields: fields || [],
+                  errors: []
+                };
+              }
+            }
+            dispatch({ type: 'UPDATE_EXCHANGE', exchange, lastRxFrame: parsedRx });
+          });
       }
     }, 33);
     return () => clearInterval(timer);
@@ -604,6 +731,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         },
         setDisplayFilter: (filter: string) => {
           dispatch({ type: 'SET_DISPLAY_FILTER', filter });
+        },
+        toggleWatchlist: (fieldName: string) => {
+          dispatch({ type: 'TOGGLE_WATCHLIST', fieldName });
+        },
+        saveSnapshot: (frame: GeneratedFrame) => {
+          dispatch({ type: 'SAVE_SNAPSHOT', frame });
+        },
+        deleteSnapshot: (frameNumber: number) => {
+          dispatch({ type: 'DELETE_SNAPSHOT', frameNumber });
         }
       }}
     >

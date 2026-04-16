@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Menu, Activity, Settings2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, Activity, Settings2, LayoutDashboard } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
@@ -16,6 +16,7 @@ import PacketInspector from './components/PacketInspector';
 import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
 import ExchangeMonitor from './components/ExchangeMonitor';
 import TraceTable from './components/TraceTable';
+import LiveDashboard from './components/LiveDashboard';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -58,8 +59,10 @@ export default function SimulationDashboard() {
   const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
-  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [selectedSnapshotFrame, setSelectedSnapshotFrame] = useState<GeneratedFrame | null>(null);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   
   const { 
     state, 
@@ -153,10 +156,18 @@ export default function SimulationDashboard() {
   const flagsFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'flags') ?? [], [selectedProfile]);
   const allRangeFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'range') ?? [], [selectedProfile]);
 
+  // Unified Exchange selection
+  const selectedExchange = useMemo(() => 
+    exchanges.find(ex => ex.id === selectedExchangeId) || null, 
+    [exchanges, selectedExchangeId]
+  );
+
   // Unified Frame selection logic for inspector
   const analyzerFrame = useMemo(() => {
-    // 1. If explicit exchange is selected
-    const selectedExchange = exchanges.find(ex => ex.id === selectedExchangeId);
+    // 1. If explicit snapshot is selected
+    if (selectedSnapshotFrame) return selectedSnapshotFrame;
+
+    // 2. If explicit exchange is selected
     if (selectedExchange && selectedProfile) {
         const entry = selectedExchange.tx || selectedExchange.rx;
         if (entry) {
@@ -173,11 +184,11 @@ export default function SimulationDashboard() {
             } as GeneratedFrame;
         }
     }
-    // 2. Fallback to manually selected frame from monitors
+    // 3. Fallback to manually selected frame from monitors
     if (selectedFrame) return selectedFrame;
-    // 3. Fallback to live data
+    // 4. Fallback to live data
     return lastFrame;
-  }, [exchanges, selectedExchangeId, selectedFrame, lastFrame, selectedProfile]);
+  }, [exchanges, selectedExchangeId, selectedFrame, selectedSnapshotFrame, lastFrame, selectedProfile]);
 
   return (
     <div className="h-full flex flex-col bg-gray-950 overflow-hidden text-gray-200 font-sans">
@@ -244,12 +255,6 @@ export default function SimulationDashboard() {
                   onSelect={selectExchange}
                 />
               </div>
-              <div className="shrink-0 border-t border-gray-800/50">
-                <LogicAnalyzer 
-                  lastTxFrame={lastFrame}
-                  lastRxFrame={lastRxFrame}
-                />
-              </div>
             </div>
           </div>
         )}
@@ -269,7 +274,8 @@ export default function SimulationDashboard() {
         {/* CENTER PANEL (WAVEFORMS or TRACE TABLE) */}
         <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#0a0a0d] to-[#12121a]">
           {analyzerMode ? (
-            <div className="flex-1 min-h-0 p-4 flex gap-4 overflow-hidden">
+            <div className="flex-1 min-h-0 p-4 flex gap-4 overflow-hidden relative">
+                {/* Main Content Areas */}
                 <div className="flex-[3] min-h-0 flex flex-col gap-4">
                     <TraceTable 
                         exchanges={exchanges}
@@ -284,13 +290,42 @@ export default function SimulationDashboard() {
                          />
                     </div>
                 </div>
-                <div className="flex-[2] min-h-0">
-                    <PacketInspector 
-                        frame={analyzerFrame}
-                        profile={selectedProfile}
-                        onClose={() => selectExchange(null)}
-                    />
+
+                {/* Right Panel: Inspector and Telemetry */}
+                <div className="flex shrink-0">
+                  {/* Pro Packet Inspector */}
+                  {analyzerMode && selectedExchange && (
+                    <div className="w-[500px] shrink-0 border-l border-gray-800 relative z-30">
+                      <PacketInspector 
+                        exchange={selectedExchange} 
+                        profile={selectedProfile} 
+                        onClose={() => selectExchange(null)} 
+                      />
+                    </div>
+                  )}
+
+                  {/* Live Telemetry Dashboard */}
+                  {isDashboardOpen && (
+                    <div className={`${(analyzerMode && selectedExchange) ? 'w-80' : 'w-96'} shrink-0 border-l border-gray-800 bg-gray-950 transition-all duration-300 relative z-20`}>
+                      <LiveDashboard 
+                        onSelectSnapshot={setSelectedSnapshotFrame}
+                        selectedSnapshotId={selectedSnapshotFrame?.frameNumber}
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {/* Dashboard Toggle Button */}
+                <button
+                    onClick={() => setIsDashboardOpen(!isDashboardOpen)}
+                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-emerald-400 hover:text-emerald-300 rounded-l-md shadow-lg transition-all duration-300 ${
+                      isDashboardOpen ? 'translate-x-0' : 'translate-x-[-10px] scale-110'
+                    }`}
+                    title={isDashboardOpen ? "Close Dashboard" : "Open Live Dashboard"}
+                >
+                    <LayoutDashboard size={14} />
+                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
+                </button>
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-hidden relative p-4 flex flex-col">

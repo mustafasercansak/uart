@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Search, Filter, ArrowDown, ArrowUp, Activity, Terminal } from 'lucide-react';
+import { Search, Filter, ArrowDown, ArrowUp, Activity, Terminal, Repeat } from 'lucide-react';
 import type { Exchange } from '../../../types';
 
 interface TraceTableProps {
@@ -17,7 +17,7 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter }: Tra
     return exchanges.filter(ex => {
       const txMatch = ex.tx?.rawHex.toLowerCase().includes(filter);
       const rxMatch = ex.rx?.rawHex.toLowerCase().includes(filter);
-      const errMatch = ex.tx?.status === 'fail' || ex.rx?.status === 'fail';
+      const errMatch = (ex.tx?.status === 'fail' || ex.rx?.status === 'fail') && !ex.isLoopbackMatch;
       return txMatch || rxMatch || (filter === 'error' && errMatch);
     });
   }, [exchanges, displayFilter]);
@@ -78,7 +78,7 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter }: Tra
               filteredExchanges.map((ex, idx) => {
                 const isSelected = selectedId === ex.id;
                 const time = new Date(ex.startTime).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + (ex.startTime % 1000).toString().padStart(3, '0');
-                const hasError = ex.tx?.status === 'fail' || ex.rx?.status === 'fail' || !ex.isLoopbackMatch;
+                const hasError = (ex.tx?.status === 'fail' || ex.rx?.status === 'fail' || (ex.tx && ex.rx && !ex.isLoopbackMatch)) && !ex.isLoopbackMatch;
 
                 return (
                   <tr 
@@ -100,16 +100,23 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter }: Tra
                        </span>
                     </td>
                     <td className="p-3 text-gray-500">{(ex.tx?.rawHex.split(' ').length || ex.rx?.rawHex.split(' ').length || 0)}B</td>
+                    {/* Status Dot */}
                     <td className="p-3 text-center">
-                       <div className="flex justify-center">
-                         {ex.isLoopbackMatch ? (
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                         ) : hasError ? (
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                         ) : (
-                            <div className="w-1.5 h-1.5 rounded-full bg-gray-700" />
-                         )}
-                       </div>
+                      <div className="flex items-center justify-center">
+                        {ex.isLoopbackMatch ? (
+                            <div className="flex items-center gap-1.5 text-emerald-400" title="Loopback Perfect Match">
+                                <Repeat size={12} className="animate-pulse" />
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                            </div>
+                        ) : (
+                            <div 
+                                className={`w-2 h-2 rounded-full ${
+                                    (ex.tx && ex.rx) ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
+                                    (ex.tx || ex.rx) ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-gray-800'
+                                }`}
+                            />
+                        )}
+                      </div>
                     </td>
                     <td className="p-3">
                        <div className="flex items-center gap-3 overflow-hidden">
