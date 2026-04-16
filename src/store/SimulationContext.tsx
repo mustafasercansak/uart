@@ -417,6 +417,18 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
             selectedProfileId: msg.selectedProfileId,
             exchanges: msg.exchanges || [] 
           };
+
+          // Generate TX Log Entry
+          const now = new Date();
+          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+          const logEntry = { 
+            time: timeStr, 
+            text: `TX: ${msg.frame.rawHex}`, 
+            type: 'tx' as const 
+          };
+          
+          logBufferRef.current.push(logEntry);
+          fullLogRef.current.push(logEntry);
         } else if (msg.type === 'LOG') {
           logBufferRef.current.push(msg.entry);
           fullLogRef.current.push(msg.entry);
