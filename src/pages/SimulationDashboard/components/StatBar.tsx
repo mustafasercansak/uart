@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Terminal } from 'lucide-react';
+import { Terminal, Activity } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 
 interface StatBarProps {
@@ -24,6 +24,7 @@ interface StatBarProps {
   onConnectNetwork: (url: string) => void;
   onDisconnectNetwork: () => void;
   onToggleAnalyzerMode: () => void;
+  analyzerModeLabel?: string;
   onGetPorts: () => void;
   availablePorts: Array<{ path: string }>;
   onStart: () => void;
@@ -31,6 +32,12 @@ interface StatBarProps {
   onPause: () => void;
   onResume: () => void;
   formatMs: (ms: number) => string;
+  timingStats: {
+    averageLatencyMs: number;
+    minLatencyMs: number;
+    maxLatencyMs: number;
+    jitterMs: number;
+  };
 }
 
 const StatBar = memo(({
@@ -55,13 +62,15 @@ const StatBar = memo(({
   onConnectNetwork,
   onDisconnectNetwork,
   onToggleAnalyzerMode,
+  analyzerModeLabel = 'Pro Mod',
   onGetPorts,
   availablePorts,
   onStart,
   onStop,
   onPause,
   onResume,
-  formatMs
+  formatMs,
+  timingStats = { averageLatencyMs: 0, minLatencyMs: 0, maxLatencyMs: 0, jitterMs: 0 }
 }: StatBarProps) => {
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
@@ -177,14 +186,12 @@ const StatBar = memo(({
       <div className="flex gap-1.5 ml-auto">
         <button 
           onClick={onToggleAnalyzerMode}
-          className={`px-2 py-1 rounded border font-mono text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-            analyzerMode 
-              ? 'bg-blue-600 text-white border-blue-400' 
-              : 'bg-gray-900 text-gray-500 border-gray-800 hover:border-gray-600'
+          className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
+            analyzerMode ? 'bg-emerald-900/20 border-emerald-800/50 text-emerald-400' : 'bg-blue-900/20 border-blue-800/50 text-blue-400'
           }`}
         >
-          <Terminal size={12} />
-          {analyzerMode ? 'Analyzer Active' : 'Pro Mode'}
+          <Activity size={14} className={analyzerMode ? 'animate-pulse' : ''} />
+          {analyzerModeLabel}
         </button>
 
         <div className="flex gap-1 border-l border-gray-800 pl-3">
@@ -214,6 +221,18 @@ const StatBar = memo(({
       {/* Stats - Move to very end or potentially separate row if tiny */}
       <div className="flex gap-3 text-[9px] font-mono border-l border-gray-800 pl-3">
         <div className="hidden sm:block"><span className="text-gray-600">F:</span> <span className="text-gray-300">{frameCount}</span></div>
+        <div>
+           <span className="text-gray-600">Latency:</span> 
+           <span className={`ml-1 font-bold ${timingStats.averageLatencyMs > 100 ? 'text-red-400' : 'text-emerald-400'}`}>
+             {timingStats.averageLatencyMs.toFixed(1)}ms
+           </span>
+        </div>
+        <div>
+           <span className="text-gray-600">Jitter:</span> 
+           <span className="ml-1 text-gray-300">
+             {timingStats.jitterMs.toFixed(2)}ms
+           </span>
+        </div>
         <div><span className="text-gray-600">Err:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
         <div><span className="text-gray-600">T:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
       </div>

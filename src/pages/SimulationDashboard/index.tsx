@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Menu, Activity, Settings2, LayoutDashboard } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Menu, 
+  Activity, 
+  Settings2, 
+  LayoutDashboard,
+  LineChart,
+  Gauge as GaugeIcon,
+  FlaskConical,
+  GitCompare,
+  Code
+} from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
@@ -17,6 +29,9 @@ import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
 import ExchangeMonitor from './components/ExchangeMonitor';
 import TraceTable from './components/TraceTable';
 import LiveDashboard from './components/LiveDashboard';
+import TelemetryPanel from './components/Telemetry/TelemetryPanel';
+import DiffLab from './components/Lab/DiffLab';
+import ScriptEditor from './components/Lab/ScriptEditor';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -48,9 +63,9 @@ function formatMs(ms: number): string {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   const h = Math.floor(m / 60);
-  if (h > 0) return `${h}s ${m % 60}d ${s % 60}s`;
-  if (m > 0) return `${m}d ${s % 60}s`;
-  return `${s}s ${ms % 1000}ms`;
+  if (h > 0) return `${h} sa ${m % 60} dk ${s % 60} sn`;
+  if (m > 0) return `${m} dk ${s % 60} sn`;
+  return `${s} sn ${ms % 1000} ms`;
 }
 
 const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316'];
@@ -74,7 +89,8 @@ export default function SimulationDashboard() {
     exportLogs, setProfiles,
     startRecording, stopRecording, startPlayback,
     getPorts,
-    setAnalyzerMode, selectExchange, setDisplayFilter
+    setAnalyzerMode, selectExchange, setDisplayFilter,
+    setDiffFrame, setResponderRules
   } = useSimulation();
 
   const { 
@@ -101,8 +117,13 @@ export default function SimulationDashboard() {
     availablePorts,
     analyzerMode,
     selectedExchangeId,
-    displayFilter
+    displayFilter,
+    timingStats,
+    diffFrames,
+    responderRules
   } = state;
+
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'lab' | 'scripting'>('waveforms');
 
   // Sync profiles with context for RX parsing
   useEffect(() => {
@@ -214,6 +235,7 @@ export default function SimulationDashboard() {
         onConnectNetwork={connectNetwork}
         onDisconnectNetwork={disconnectNetwork}
         onToggleAnalyzerMode={() => setAnalyzerMode(!analyzerMode)}
+        analyzerModeLabel={analyzerMode ? 'Standart Mod' : 'Pro Mod\'a Geç'}
         onGetPorts={getPorts}
         availablePorts={availablePorts || []}
         onStart={handleStart}
@@ -223,6 +245,7 @@ export default function SimulationDashboard() {
         formatMs={formatMs}
         onSelectExchange={selectExchange}
         selectedExchangeId={selectedExchangeId}
+        timingStats={timingStats}
       />
 
       {/* Main layout container */}
@@ -329,32 +352,118 @@ export default function SimulationDashboard() {
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-hidden relative p-4 flex flex-col">
+              {/* Professional Tab Navigation */}
+              <div className="flex items-center gap-1 mb-4 bg-gray-900/50 p-1 rounded-xl border border-gray-800/50 self-start">
+                <button 
+                  onClick={() => setActiveCenterTab('waveforms')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'waveforms' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <LineChart size={14} />
+                  Waveforms
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('telemetry')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'telemetry' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <GaugeIcon size={14} />
+                    Telemetry
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('lab')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'lab' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <FlaskConical size={14} />
+                    Lab (Diff)
+                </button>
+                <button 
+                  onClick={() => setActiveCenterTab('scripting')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'scripting' ? 'bg-yellow-600 text-black shadow-lg shadow-yellow-900/20' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <Code size={14} />
+                    Scripting
+                </button>
+              </div>
+
+              {/* Tab Content Area */}
               <div className="flex-1 min-h-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
-                <WaveformCharts 
-                  waveformHistory={waveformHistory}
-                  selectedProfile={selectedProfile}
-                  CustomTooltip={CustomTooltip}
-                  chartColors={CHART_COLORS}
-                />
+                {activeCenterTab === 'waveforms' && (
+                  <WaveformCharts 
+                    waveformHistory={waveformHistory}
+                    selectedProfile={selectedProfile}
+                    CustomTooltip={CustomTooltip}
+                    chartColors={CHART_COLORS}
+                  />
+                )}
+                {activeCenterTab === 'telemetry' && selectedProfile && (
+                   <TelemetryPanel 
+                     lastFrame={lastFrame}
+                     waveformHistory={waveformHistory}
+                     fields={selectedProfile.fields}
+                   />
+                )}
+                {activeCenterTab === 'lab' && (
+                  <DiffLab 
+                    frameA={diffFrames[0]} 
+                    frameB={diffFrames[1]} 
+                    onClear={() => {
+                        setDiffFrame(0, null);
+                        setDiffFrame(1, null);
+                    }}
+                  />
+                )}
+                {activeCenterTab === 'scripting' && (
+                  <ScriptEditor 
+                    initialCode={responderRules?.find(r => r.id === 'dynamic-script')?.script}
+                    onSave={(code) => {
+                      const dynamicRule = {
+                        id: 'dynamic-script',
+                        name: 'Dynamic JS Responder',
+                        enabled: true,
+                        pattern: '01', // Example: Match sync byte 0x01
+                        patternType: 'hex' as const,
+                        actions: [],
+                        script: code
+                      };
+                      
+                      // Filter out old version and add new one
+                      const newRules = (responderRules || []).filter(r => r.id !== 'dynamic-script');
+                      setResponderRules([...newRules, dynamicRule]);
+                    }}
+                  />
+                )}
               </div>
 
-              <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30">
-                <VisualProtocolAnalyzer 
-                  frame={analyzerFrame}
-                  profile={selectedProfile}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Packet Inspector Overlay (Dashboard mode only) */}
-          {!analyzerMode && selectedFrame && (
-            <div className="absolute inset-y-0 right-0 w-[400px] z-20 backdrop-blur-md bg-gray-950/90 border-l border-gray-800 shadow-2xl animate-in slide-in-from-right-10">
-              <PacketInspector 
-                frame={selectedFrame}
-                profile={selectedProfile}
-                onClose={() => setSelectedFrame(null)}
-              />
+              {/* Bottom Analyzer / Inspector (Unified) */}
+              {(selectedFrame || (activeCenterTab === 'waveforms' && lastFrame)) && (
+                <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30 animate-in fade-in slide-in-from-bottom-5">
+                  <div className="bg-gray-800/80 px-4 py-2 flex justify-between items-center border-b border-gray-700">
+                     <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                       <LayoutDashboard size={12} className={!selectedFrame ? 'text-emerald-500 animate-pulse' : 'text-blue-500'} />
+                       {selectedFrame ? `Paket Detayları (F# ${selectedFrame.frameNumber})` : 'Canlı Protokol Analizörü'}
+                     </span>
+                     {selectedFrame && (
+                       <button 
+                         onClick={() => setSelectedFrame(null)} 
+                         className="px-2 py-0.5 bg-gray-700 hover:bg-red-900/40 text-gray-400 hover:text-red-400 text-[9px] font-mono rounded transition-all flex items-center gap-1 border border-gray-600"
+                       >
+                         Seçimi Kapat
+                       </button>
+                     )}
+                  </div>
+                  <VisualProtocolAnalyzer 
+                    frame={selectedFrame || lastFrame}
+                    profile={selectedProfile}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

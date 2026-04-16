@@ -51,6 +51,15 @@ const INITIAL_STATE: SimulationState = {
   displayFilter: '',
   watchlist: [],
   snapshots: [],
+  timingStats: {
+    averageLatencyMs: 0,
+    minLatencyMs: 0,
+    maxLatencyMs: 0,
+    jitterMs: 0,
+    interPacketArrivals: []
+  },
+  diffFrames: [null, null],
+  responderRules: []
 };
 
 type SimAction =
@@ -81,7 +90,10 @@ type SimAction =
   | { type: 'SAVE_SNAPSHOT'; frame: GeneratedFrame }
   | { type: 'DELETE_SNAPSHOT'; frameNumber: number }
   | { type: 'INIT_STATE'; newState: Partial<SimulationState> }
-  | { type: 'SET_BACKEND_CONNECTED'; connected: boolean };
+  | { type: 'SET_BACKEND_CONNECTED'; connected: boolean }
+  | { type: 'UPDATE_TIMING_STATS'; stats: TimingStats }
+  | { type: 'SET_DIFF_FRAME'; index: 0 | 1; frame: GeneratedFrame | null }
+  | { type: 'SET_RESPONDER_RULES'; rules: ResponderRule[] };
 
 function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -126,6 +138,9 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return {
         ...state,
         ...newState,
+        // Force preserve frontend-only state if not in newState
+        diffFrames: newState.diffFrames !== undefined ? newState.diffFrames : state.diffFrames,
+        responderRules: newState.responderRules !== undefined ? newState.responderRules : state.responderRules,
         elapsedMs,
         recentFrames: updatedRecent,
         waveformHistory: updatedWaveform,
@@ -180,8 +195,6 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, networkConnected: action.connected };
     case 'SET_RECORDING':
       return { ...state, isRecording: action.recording };
-    case 'SET_LAST_RX_FRAME':
-      return { ...state, lastRxFrame: action.frame };
     case 'ADD_CONVERSATION':
       return { 
         ...state, 
@@ -199,14 +212,6 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
         ...state, 
         exchanges: nextExchanges,
         lastRxFrame: action.lastRxFrame || state.lastRxFrame
-      };
-    case 'TICK':
-      return { 
-        ...state, 
-        elapsedMs: action.elapsedMs,
-        status: action.newState.status || state.status,
-        selectedProfileId: action.newState.selectedProfileId || state.selectedProfileId,
-        ...action.newState
       };
     case 'SELECT_EXCHANGE':
       return { ...state, selectedExchangeId: action.exchangeId };
@@ -228,10 +233,12 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { 
         ...state, 
         ...action.newState,
-        // Preserve connection states across init
+        // Preserve strictly frontend-only or sensitive states across init
         networkConnected: state.networkConnected,
         serialConnected: action.newState.serialConnected !== undefined ? action.newState.serialConnected : state.serialConnected,
-        // Ensure specific arrays are initialized
+        diffFrames: action.newState.diffFrames !== undefined ? action.newState.diffFrames : state.diffFrames,
+        responderRules: action.newState.responderRules !== undefined ? action.newState.responderRules : state.responderRules,
+        // Ensure specific arrays are initialized if everything else fails
         watchlist: action.newState.watchlist || state.watchlist || [],
         snapshots: action.newState.snapshots || state.snapshots || []
       };
@@ -239,6 +246,14 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, networkConnected: action.connected };
     case 'SET_STATUS':
       return { ...state, status: action.status };
+    case 'UPDATE_TIMING_STATS':
+      return { ...state, timingStats: action.stats };
+    case 'SET_DIFF_FRAME':
+      const newDiffFrames = [...state.diffFrames] as [GeneratedFrame | null, GeneratedFrame | null];
+      newDiffFrames[action.index] = action.frame;
+      return { ...state, diffFrames: newDiffFrames };
+    case 'SET_RESPONDER_RULES':
+      return { ...state, responderRules: action.rules };
     default:
       return state;
   }
@@ -274,6 +289,8 @@ interface SimulationContextType {
   toggleWatchlist: (fieldName: string) => void;
   saveSnapshot: (frame: GeneratedFrame) => void;
   deleteSnapshot: (frameNumber: number) => void;
+  setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => void;
+  setResponderRules: (rules: ResponderRule[]) => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
@@ -488,16 +505,39 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
                 const bytes = exchange.rx.rawHex.split(' ').map((h: string) => parseInt(h, 16));
                 const fields = parseFrame(profile, bytes);
                 parsedRx = {
-                  frameNumber: 0, // Not strictly tracking RX frame numbers here
+                  frameNumber: 0,
                   timestampMs: exchange.rx.timestamp,
                   rawHex: exchange.rx.rawHex,
                   rawBytes: bytes,
                   fields: fields || [],
                   errors: []
-                };
+                } as GeneratedFrame;
               }
             }
             dispatch({ type: 'UPDATE_EXCHANGE', exchange, lastRxFrame: parsedRx });
+
+            // Calculate timing stats
+            if (exchange.latencyMs !== undefined) {
+              const currentStats = stateRef.current.timingStats;
+              const newArrivals = [...currentStats.interPacketArrivals, exchange.latencyMs].slice(-50);
+              const avg = newArrivals.reduce((a, b) => a + b, 0) / newArrivals.length;
+              const min = Math.min(...newArrivals);
+              const max = Math.max(...newArrivals);
+              const jitter = newArrivals.length > 1 
+                ? newArrivals.slice(1).reduce((acc, val, i) => acc + Math.abs(val - newArrivals[i]), 0) / (newArrivals.length - 1)
+                : 0;
+
+              dispatch({ 
+                type: 'UPDATE_TIMING_STATS', 
+                stats: { 
+                    averageLatencyMs: avg, 
+                    minLatencyMs: min, 
+                    maxLatencyMs: max, 
+                    jitterMs: jitter,
+                    interPacketArrivals: newArrivals 
+                } 
+              });
+            }
           });
       }
     }, 33);
@@ -740,6 +780,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         },
         deleteSnapshot: (frameNumber: number) => {
           dispatch({ type: 'DELETE_SNAPSHOT', frameNumber });
+        },
+        setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => {
+          dispatch({ type: 'SET_DIFF_FRAME', index, frame });
+        },
+        setResponderRules: (rules: ResponderRule[]) => {
+          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RULES', rules }));
+          dispatch({ type: 'SET_RESPONDER_RULES', rules });
         }
       }}
     >

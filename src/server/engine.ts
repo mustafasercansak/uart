@@ -206,6 +206,39 @@ export class SimulationEngine {
         };
         this.addLog(matchEntry);
 
+        // Advanced Scripting Support
+        if (rule.script) {
+          try {
+            const bytes = [...this.rxBuffer];
+            const state = JSON.parse(JSON.stringify(this.state));
+            
+            // Script sandbox (simple)
+            const scriptFn = new Function('bytes', 'state', `
+              try {
+                ${rule.script}
+              } catch(e) {
+                return { error: e.message };
+              }
+            `);
+            
+            const result = scriptFn(bytes, state);
+            if (result && result.error) {
+               console.error(`\x1b[31m[SCRIPT ERR]\x1b[0m ${result.error}`);
+            } else if (result) {
+               if (result.sendHex) {
+                 this.executeActions([{ type: 'send_raw', payload: result.sendHex }], matchEntry.id);
+               }
+               if (result.setFields) {
+                 Object.entries(result.setFields as Record<string, number>).forEach(([fid, val]) => {
+                    this.state.fieldOverrides[fid] = val;
+                 });
+               }
+            }
+          } catch (err: any) {
+            console.error(`\x1b[31m[SCRIPT EXEC ERR]\x1b[0m`, err);
+          }
+        }
+
         this.executeActions(rule.actions, matchEntry.id);
         
         this.rxBuffer = [];

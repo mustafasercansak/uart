@@ -1,4 +1,6 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
+import { GitCompare } from 'lucide-react';
+import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
 
 interface FrameMonitorProps {
@@ -9,11 +11,32 @@ interface FrameMonitorProps {
 }
 
 const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectFrame }: FrameMonitorProps) => {
+  const { setDiffFrame } = useSimulation();
+
   return (
     <div className="flex flex-col border-r border-gray-800 flex-1">
       {/* Live Frame Monitor */}
       <div className="p-4 border-b border-gray-800">
-        <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">Canlı Frame</div>
+        <div className="flex justify-between items-center mb-3">
+            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Canlı Frame</div>
+            {lastFrame && (
+                <div className="flex gap-1">
+                    <button 
+                        onClick={() => setDiffFrame(0, lastFrame)}
+                        className="p-1 hover:bg-blue-500/20 text-blue-500 rounded transition-colors" title="A Slotuna Gönder"
+                    >
+                        <GitCompare size={12} />
+                    </button>
+                    <button 
+                        onClick={() => setDiffFrame(1, lastFrame)}
+                        className="p-1 hover:bg-purple-500/20 text-purple-500 rounded transition-colors" title="B Slotuna Gönder"
+                    >
+                        <GitCompare size={12} />
+                    </button>
+                </div>
+            )}
+        </div>
+        {/* ...rest... */}
         {lastFrame ? (
           <div 
             className={`space-y-2 p-2 rounded-xl transition-all cursor-pointer border ${selectedFrameId === lastFrame.frameNumber ? 'bg-green-500/10 border-green-500/40' : 'border-transparent hover:bg-gray-800/20'}`}
@@ -50,11 +73,26 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
           {recentFrames.slice(0, 30).map((frame) => (
             <div 
               key={frame.frameNumber} 
-              onClick={() => onSelectFrame?.(frame)}
-              className={`text-[10px] font-mono flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${selectedFrameId === frame.frameNumber ? 'bg-green-500/20 text-green-300' : 'text-gray-500 hover:bg-gray-800/40 hover:text-gray-300'} ${frame.errors.length > 0 ? 'border-l-2 border-red-500' : ''}`}
+              className={`group text-[10px] font-mono flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${selectedFrameId === frame.frameNumber ? 'bg-green-500/20 text-green-300' : 'text-gray-500 hover:bg-gray-800/40 hover:text-gray-300'} ${frame.errors.length > 0 ? 'border-l-2 border-red-500' : ''}`}
             >
-              <span className="text-gray-700 w-6 text-right shrink-0">{frame.frameNumber}</span>
-              <span className="truncate">{frame.rawHex}</span>
+              <span className="text-gray-700 w-6 text-right shrink-0" onClick={() => onSelectFrame?.(frame)}>{frame.frameNumber}</span>
+              <span className="truncate flex-1" onClick={() => onSelectFrame?.(frame)}>{frame.rawHex}</span>
+              <div className="hidden group-hover:flex gap-2 ml-3">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setDiffFrame(0, frame); }} 
+                  className="p-1.5 hover:bg-blue-500/30 text-blue-400 rounded-md transition-all border border-transparent hover:border-blue-500/40 bg-gray-900/40"
+                  title="Slot A (Referans) Olarak Ayarla"
+                >
+                  <GitCompare size={14} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setDiffFrame(1, frame); }} 
+                  className="p-1.5 hover:bg-purple-500/30 text-purple-400 rounded-md transition-all border border-transparent hover:border-purple-500/40 bg-gray-900/40"
+                  title="Slot B (Test) Olarak Ayarla"
+                >
+                  <GitCompare size={14} />
+                </button>
+              </div>
               {frame.errors.length > 0 && <span className="text-red-400 ml-auto text-xs">⚠</span>}
             </div>
           ))}

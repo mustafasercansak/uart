@@ -34,9 +34,18 @@ const INITIAL_STATE: SimulationState = {
   isRecording: false,
   conversationLogs: [],
   exchanges: [],
-  selectedExchangeId: null,
   analyzerMode: false,
   displayFilter: '',
+  watchlist: [],
+  snapshots: [],
+  timingStats: {
+    averageLatencyMs: 0,
+    minLatencyMs: 0,
+    maxLatencyMs: 0,
+    jitterMs: 0,
+    interPacketArrivals: []
+  },
+  diffFrames: [null, null]
 };
 
 let activePort: SerialPort | null = null;

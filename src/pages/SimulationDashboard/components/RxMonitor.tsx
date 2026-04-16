@@ -1,4 +1,6 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
+import { GitCompare } from 'lucide-react';
+import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
 
 interface RxMonitorProps {
@@ -8,13 +10,31 @@ interface RxMonitorProps {
 }
 
 const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonitorProps) => {
+  const { setDiffFrame } = useSimulation();
+
   return (
     <div className="p-4 border-b border-gray-800 bg-blue-900/5 transition-all">
       <div className="flex items-center justify-between mb-3">
         <div className="text-blue-400 text-xs font-mono uppercase tracking-wider">Canlı RX Frame (Gelen)</div>
-        {lastRxFrame && (
-          <div className="text-[10px] font-mono text-blue-500 animate-pulse">● CANLI</div>
-        )}
+        <div className="flex gap-1 items-center">
+          {lastRxFrame && (
+            <>
+              <button 
+                  onClick={() => setDiffFrame(0, lastRxFrame)}
+                  className="p-1 hover:bg-blue-500/20 text-blue-500 rounded transition-colors" title="A Slotuna Gönder"
+              >
+                  <GitCompare size={12} />
+              </button>
+              <button 
+                  onClick={() => setDiffFrame(1, lastRxFrame)}
+                  className="p-1 hover:bg-purple-500/20 text-purple-500 rounded transition-colors" title="B Slotuna Gönder"
+              >
+                  <GitCompare size={12} />
+              </button>
+              <div className="text-[10px] font-mono text-blue-500 animate-pulse ml-2">● CANLI</div>
+            </>
+          )}
+        </div>
       </div>
       
       {lastRxFrame ? (

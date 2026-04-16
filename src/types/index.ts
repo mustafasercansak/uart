@@ -138,6 +138,17 @@ export interface Field {
   endianness: Endianness;
   type: FieldType;
   typeConfig: FieldTypeConfig;
+  widgetConfig?: WidgetConfig;
+}
+
+export type WidgetType = 'gauge' | 'sparkline' | 'bar' | 'value' | 'custom';
+
+export interface WidgetConfig {
+  type: WidgetType;
+  min?: number;
+  max?: number;
+  unit?: string;
+  color?: string;
 }
 
 // ── Frame Profile ────────────────────────────
@@ -276,6 +287,7 @@ export interface ResponderRule {
   patternType: 'hex' | 'ascii';
   actions: ResponderAction[];
   cooldownMs?: number;
+  script?: string; // Optional JS script for dynamic response
 }
 
 export interface ConversationEntry {
@@ -364,6 +376,20 @@ export interface SimulationState {
   snapshots: GeneratedFrame[];
   // Available Serial Ports (added for backend bridge)
   availablePorts?: Array<{ path: string }>;
+  // Timing Analytics
+  timingStats: TimingStats;
+  // Diff Lab
+  diffFrames: [GeneratedFrame | null, GeneratedFrame | null];
+  // Responder Rules
+  responderRules: ResponderRule[];
+}
+
+export interface TimingStats {
+  averageLatencyMs: number;
+  minLatencyMs: number;
+  maxLatencyMs: number;
+  jitterMs: number;
+  interPacketArrivals: number[]; // Last 50 for histogram
 }
 
 export interface ActiveRamp {

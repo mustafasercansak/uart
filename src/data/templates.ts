@@ -22,10 +22,10 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       sendIntervalMs: 16, // ~60Hz plet datası
       fields: [
         { id: 'ys-sync', name: 'Sync', order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0x01 } },
-        { id: 'ys-pleth', name: 'PPG Dalga', order: 1, byteWidth: 1, endianness: 'big', type: 'waveform', typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 50, offset: 128, noiseLevel: 2 } },
-        { id: 'ys-bar', name: 'Bar Grafiği', order: 2, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 0, max: 15, distribution: 'uniform' } },
-        { id: 'ys-pulse', name: 'Nabız', order: 3, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 40, max: 220, distribution: 'gaussian', mean: 75, stddev: 5 } },
-        { id: 'ys-spo2', name: 'SpO2', order: 4, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 90, max: 100, distribution: 'gaussian', mean: 98, stddev: 1 } },
+        { id: 'ys-pleth', name: 'PPG Dalga', order: 1, byteWidth: 1, endianness: 'big', type: 'waveform', typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 50, offset: 128, noiseLevel: 2 }, widgetConfig: { type: 'sparkline', color: '#10b981' } },
+        { id: 'ys-bar', name: 'Bar Grafiği', order: 2, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 0, max: 15, distribution: 'uniform' }, widgetConfig: { type: 'bar', min: 0, max: 15, color: '#3b82f6' } },
+        { id: 'ys-pulse', name: 'Nabız', order: 3, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 40, max: 220, distribution: 'gaussian', mean: 75, stddev: 5 }, widgetConfig: { type: 'gauge', min: 40, max: 220, unit: 'BPM', color: '#f87171' } },
+        { id: 'ys-spo2', name: 'SpO2', order: 4, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 90, max: 100, distribution: 'gaussian', mean: 98, stddev: 1 }, widgetConfig: { type: 'gauge', min: 0, max: 100, unit: '%', color: '#60a5fa' } },
         {
           id: 'ys-status',
           name: 'Durum',
