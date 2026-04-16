@@ -56,71 +56,71 @@ console.log('\x1b[32m[SERVER]\x1b[0m UART Simulator Arka Plan Servisi ws://127.0
 
 // Helper to broadcast to all connected clients
 const broadcast = (message: any) => {
-    const data = JSON.stringify(message);
-    clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            try {
-                client.send(data);
-            } catch (err) {
-                console.error('\x1b[31m[BROADCAST ERR]\x1b[0m', err);
-            }
-        }
-    });
+  const data = JSON.stringify(message);
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(data);
+      } catch (err) {
+        console.error('\x1b[31m[BROADCAST ERR]\x1b[0m', err);
+      }
+    }
+  });
 };
 
 // Setup Engine callbacks ONCE (Broadcast logic)
 engine.onFrame = (frame) => {
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 
-    broadcast({ 
-        type: 'TICK', 
-        frame, 
-        elapsedMs: engine.getState().elapsedMs,
-        status: engine.getState().status,
-        selectedProfileId: engine.getProfile()?.id,
-        pendingErrors: engine.getState().pendingErrors,
-        exchanges: engine.getState().exchanges
+  broadcast({
+    type: 'TICK',
+    frame,
+    elapsedMs: engine.getState().elapsedMs,
+    status: engine.getState().status,
+    selectedProfileId: engine.getProfile()?.id,
+    pendingErrors: engine.getState().pendingErrors,
+    exchanges: engine.getState().exchanges
+  });
+
+  if (engine.getState().outputMode !== 'log') {
+    broadcast({
+      type: 'LOG',
+      entry: { time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' }
     });
+  }
 
-    if (engine.getState().outputMode !== 'log') {
-        broadcast({ 
-            type: 'LOG', 
-            entry: { time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' } 
-        });
-    }
+  if (frame.errors.length > 0) {
+    frame.errors.forEach(err => {
+      broadcast({
+        type: 'LOG',
+        entry: { time: timeStr, text: err, type: 'error' }
+      });
+    });
+  }
 
-    if (frame.errors.length > 0) {
-        frame.errors.forEach(err => {
-            broadcast({ 
-                type: 'LOG', 
-                entry: { time: timeStr, text: err, type: 'error' } 
-            });
-        });
-    }
-
-    // Send to Serial Port
-    if (activePort && activePort.writable) {
-       activePort.write(Buffer.from(frame.rawBytes), (err) => {
-         if (err) console.error(`\x1b[31m[TX ERR]\x1b[0m`, err.message);
-         else console.log(`\x1b[36m[TX]\x1b[0m ${frame.rawBytes.length} bytes sent: ${frame.rawHex}`);
-       });
-    }
+  // Send to Serial Port
+  if (activePort && activePort.writable) {
+    activePort.write(Buffer.from(frame.rawBytes), (err) => {
+      if (err) console.error(`\x1b[31m[TX ERR]\x1b[0m`, err.message);
+      else console.log(`\x1b[36m[TX]\x1b[0m ${frame.rawBytes.length} bytes sent    : ${frame.rawHex}`);
+    });
+  }
 };
 
 engine.onRawResponse = (bytes) => {
-    broadcast({ type: 'TX_RAW', payload: bytes });
-    if (activePort && activePort.writable) {
-        activePort.write(Buffer.from(bytes));
-    }
+  broadcast({ type: 'TX_RAW', payload: bytes });
+  if (activePort && activePort.writable) {
+    activePort.write(Buffer.from(bytes));
+  }
 };
 
 engine.onConversation = (entry) => {
-    broadcast({ type: 'CONVERSATION', entry });
+  broadcast({ type: 'CONVERSATION', entry });
 };
 
 engine.onExchange = (exchange) => {
-    broadcast({ type: 'EXCHANGE', exchange });
+  broadcast({ type: 'EXCHANGE', exchange });
 };
 
 wss.on('connection', (ws) => {
@@ -131,8 +131,8 @@ wss.on('connection', (ws) => {
   // Filter out UI-only or confusing flags for initial sync
   const { networkConnected, ...cleanState } = fullState;
 
-  ws.send(JSON.stringify({ 
-    type: 'INITIAL_STATE', 
+  ws.send(JSON.stringify({
+    type: 'INITIAL_STATE',
     state: cleanState,
     exchanges: cleanState.exchanges
   }));
@@ -140,7 +140,7 @@ wss.on('connection', (ws) => {
   ws.on('message', async (message) => {
     try {
       const data = JSON.parse(message.toString());
-      
+
       switch (data.type) {
         case 'START':
           console.log('\x1b[32m[START]\x1b[0m Simülasyon başlatılıyor...', data.profile.name);
@@ -223,21 +223,21 @@ wss.on('connection', (ws) => {
             if (rxTimeout) clearTimeout(rxTimeout);
 
             rxTimeout = setTimeout(() => {
-                if (rxBuffer.length === 0) return;
-                
-                const hex = rxBuffer.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-                console.log(`\x1b[35m[RX]\x1b[0m ${rxBuffer.length} bytes received: ${hex}`);
-                
-                broadcast({ type: 'RAW_RX_DATA', hex });
-                
-                engine.processIncomingData(rxBuffer);
-                rxBuffer = [];
-                rxTimeout = null;
+              if (rxBuffer.length === 0) return;
+
+              const hex = rxBuffer.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+              console.log(`\x1b[35m[RX]\x1b[0m ${rxBuffer.length} bytes received: ${hex}`);
+
+              broadcast({ type: 'RAW_RX_DATA', hex });
+
+              engine.processIncomingData(rxBuffer);
+              rxBuffer = [];
+              rxTimeout = null;
             }, 50);
           });
 
           activePort.on('error', (err) => {
-             broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
+            broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
           });
           break;
         }
