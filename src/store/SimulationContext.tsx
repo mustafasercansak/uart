@@ -31,7 +31,7 @@ const MAX_RECENT_FRAMES = 50;
 const MAX_LOG_ENTRIES = 100;
 const MAX_WAVEFORM_POINTS = 512;
 
-const INITIAL_STATE: SimulationState = {
+export const INITIAL_STATE: SimulationState = {
   status: 'stopped',
   profileId: null,
   scenarioId: null,
@@ -89,7 +89,7 @@ const INITIAL_STATE: SimulationState = {
   validationSession: null
 };
 
-type SimAction =
+export type SimAction =
   | { type: 'START'; profileId: string; scenarioId: string | null; outputMode: OutputMode }
   | { type: 'STOP' }
   | { type: 'PAUSE' }
@@ -137,7 +137,7 @@ type SimAction =
   | { type: 'ADD_VALIDATION_EVENT'; event: any }
   | { type: 'UPDATE_VALIDATION_HISTORY'; entry: any };
 
-function reducer(state: SimulationState, action: SimAction): SimulationState {
+export function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
     case 'SET_PROFILE':
       return { ...state, profileId: action.profileId };

@@ -50,6 +50,11 @@ describe('FrameGenerator', () => {
     profileId: 'test-profile',
     scenarioId: null,
     serialConnected: false,
+    signalIntegrity: {
+        bitFlipsEnabled: false,
+        noiseLevel: 0,
+        jitterMs: 0
+    }
   } as any;
 
   it('generates correct bytes for fixed fields', () => {
