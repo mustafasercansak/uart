@@ -49,12 +49,18 @@ export function CommandPalette() {
     
     // Actions
     { id: 'act-start', name: 'Start Simulation', description: 'Broadcast UART data', category: 'Simulation', icon: <Play size={16} className="text-emerald-400" />, action: () => {
-        const profile = state.profiles?.[0]; // Default to first profile for quick start
+        const stored = localStorage.getItem('uart_profiles');
+        let profiles = [];
+        if (stored) { try { profiles = JSON.parse(stored); } catch(e) {} }
+        const profile = profiles.find((p: any) => p.id === state.profileId) || profiles[0];
         if (profile) start(profile, null, state.outputMode);
     }, shortcut: 'S' },
     { id: 'act-pause', name: 'Pause Simulation', description: 'Freeze all data streams', category: 'Simulation', icon: <Pause size={16} className="text-amber-400" />, action: () => pause(), shortcut: 'P' },
     { id: 'act-resume', name: 'Resume Simulation', description: 'Continue transmission', category: 'Simulation', icon: <Play size={16} className="text-emerald-400" />, action: () => {
-        const profile = state.profiles?.find(p => p.id === state.profileId);
+        const stored = localStorage.getItem('uart_profiles');
+        let profiles = [];
+        if (stored) { try { profiles = JSON.parse(stored); } catch(e) {} }
+        const profile = profiles.find((p: any) => p.id === state.profileId);
         if (profile) resume(profile, null);
     } },
     { id: 'act-stop', name: 'Stop Simulation', description: 'Cease all transmission', category: 'Simulation', icon: <Square size={16} className="text-rose-400" />, action: () => stop(), shortcut: 'Esc' },

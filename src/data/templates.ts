@@ -20,6 +20,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 16, // ~60Hz plet datası
+      framing: { mode: 'fixed' },
       fields: [
         { id: 'ys-sync', name: 'Sync', order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0x01 } },
         { id: 'ys-pleth', name: 'PPG Dalga', order: 1, byteWidth: 1, endianness: 'big', type: 'waveform', typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 50, offset: 128, noiseLevel: 2 }, widgetConfig: { type: 'sparkline', color: '#10b981' } },
@@ -74,6 +75,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 20,
+      framing: { mode: 'fixed' },
       fields: [
         { id: 'bm-sync', name: 'Header', order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0x01 } },
         { id: 'bm-pleth', name: 'Waveform', order: 1, byteWidth: 1, endianness: 'big', type: 'waveform', typeConfig: { shape: 'sine', frequency: 1, amplitude: 40, offset: 128, noiseLevel: 1 } },
@@ -127,6 +129,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 20,
+      framing: { mode: 'fixed' },
       fields: [
         {
           id: 'spo2-sync',
@@ -218,6 +221,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 10,
+      framing: { mode: 'fixed' },
       fields: [
         {
           id: 'pox-sync',
@@ -305,6 +309,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 1000,
+      framing: { mode: 'fixed' },
       fields: [
         {
           id: 'temp-sync',
@@ -377,6 +382,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 2000,
+      framing: { mode: 'fixed' },
       fields: [
         { id: 'nibp-sync', name: 'Sync', order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0xAA } },
         { id: 'nibp-cmd', name: 'Komut', order: 1, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0x06 } },
@@ -407,25 +413,26 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       parity: 'None',
       stopBits: 1,
       sendIntervalMs: 4,
+      framing: { mode: 'fixed' },
       fields: [
         { id: 'ecg-sync', name: 'Sync', order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0xAA } },
         {
-          id: 'ecg-wave-h',
-          name: 'EKG Yüksek',
+          id: 'ecg-lead-1',
+          name: 'Lead-I',
           order: 1,
-          byteWidth: 1,
+          byteWidth: 2,
           endianness: 'big',
           type: 'waveform',
-          typeConfig: { shape: 'custom', frequency: 1.2, amplitude: 60, offset: 128, noiseLevel: 3, customPoints: [128, 126, 124, 130, 200, 255, 100, 50, 128, 130, 128] },
+          typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 800, offset: 2048, noiseLevel: 3, phase: 0 },
         },
         {
-          id: 'ecg-wave-l',
-          name: 'EKG Düşük',
+          id: 'ecg-lead-2',
+          name: 'Lead-II',
           order: 2,
-          byteWidth: 1,
+          byteWidth: 2,
           endianness: 'big',
           type: 'waveform',
-          typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 20, offset: 128, noiseLevel: 2 },
+          typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 1200, offset: 2048, noiseLevel: 3, phase: 0.05 },
         },
         { id: 'ecg-hr', name: 'Kalp Hızı', order: 3, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 60, max: 100, distribution: 'gaussian', mean: 75, stddev: 5 } },
         {

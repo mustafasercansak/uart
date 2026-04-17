@@ -62,4 +62,11 @@ Derin donanım hata ayıklaması için Pro Suite, yüksek performanslı bir **Bi
 
 ---
 
-© 2026 Mustafa Sercan Sak
+## 🛡️ Medikal Validasyon ve Sertifikasyon (v7.1)
+
+En yeni güncelleme ile simülatör, profesyonel bir **Yeterlilik (Certification) İstasyonu**'na dönüştü.
+1. **Validasyon Başlat**: Üst menüdeki kalkan ikonuna basarak bir test oturumu açın.
+2. **Kriter Belirle**: Cihazınızın uyması gereken Min/Max değerleri girin.
+3. **Rapor Üret**: Test sonunda, tıbbi standartlara uygun, PDF olarak kaydedilebilen profesyonel bir doğrulama raporu alın.
+
+© 2026 Mustafa Sercan Sak — MedNet Suite Team v7.1.0

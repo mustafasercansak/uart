@@ -22,7 +22,6 @@ interface TabContentProps {
   selectedProfile: FrameProfile | null;
   waveformHistory: any[];
   exchanges: any[];
-  dispatch: any; // Ideally typed but keeping simple for now
   hooks: {
     startPlayback: any;
     deleteRecording: any;
@@ -59,12 +58,7 @@ export default function TabContent({
         />
       );
     case 'logic':
-      return (
-        <LogicAnalyzer 
-          lastTxFrame={lastFrame}
-          lastRxFrame={lastRxFrame}
-        />
-      );
+      return <LogicAnalyzer />;
     case 'telemetry':
       return selectedProfile ? (
         <TelemetryPanel 

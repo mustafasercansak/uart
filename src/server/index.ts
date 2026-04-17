@@ -47,7 +47,7 @@ const INITIAL_STATE: SimulationState = {
   conversationLogs: [],
   exchanges: [],
   selectedExchangeId: null,
-  analyzerMode: true,
+  analyzerMode: false,
   displayFilter: '',
   watchlist: [],
   snapshots: [],
@@ -70,7 +70,9 @@ const INITIAL_STATE: SimulationState = {
     jitterMs: 0,
     bitFlipsEnabled: false
   },
-  dashboardLayout: { widgets: [] }
+  dashboardLayout: { widgets: [] },
+  logicHistory: [],
+  validationSession: null
 };
 
 let activePort: SerialPort | null = null;
@@ -86,7 +88,7 @@ setInterval(() => {
   if (broadcastBuffer.length === 0) return;
   const data = JSON.stringify(broadcastBuffer);
   broadcastBuffer = [];
-  
+
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       try {
@@ -110,7 +112,7 @@ const broadcastImmediate = (message: any) => {
     if (client.readyState === WebSocket.OPEN) {
       try {
         client.send(data);
-      } catch (err) {}
+      } catch (err) { }
     }
   });
 };
@@ -133,12 +135,6 @@ engine.onFrame = (frame) => {
     exchanges: engine.getState().exchanges
   });
 
-  if (engine.getState().outputMode !== 'log') {
-    broadcast({
-      type: 'LOG',
-      entry: { time: timeStr, text: `TX: ${frame.rawHex}`, type: 'tx' }
-    });
-  }
 
   if (frame.errors.length > 0) {
     frame.errors.forEach(err => {
@@ -247,16 +243,16 @@ wss.on('connection', (ws) => {
         case 'LIST_RECORDINGS': {
           const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith('.json'));
           const recordings = files.map(f => {
-             const stats = fs.statSync(path.join(RECORDINGS_DIR, f));
-             const content = JSON.parse(fs.readFileSync(path.join(RECORDINGS_DIR, f), 'utf-8'));
-             return {
-               id: f,
-               name: f.replace('.json', ''),
-               createdAt: stats.birthtimeMs,
-               frameCount: content.length,
-               durationMs: content.length > 0 ? content[content.length - 1].time : 0,
-               data: content
-             };
+            const stats = fs.statSync(path.join(RECORDINGS_DIR, f));
+            const content = JSON.parse(fs.readFileSync(path.join(RECORDINGS_DIR, f), 'utf-8'));
+            return {
+              id: f,
+              name: f.replace('.json', ''),
+              createdAt: stats.birthtimeMs,
+              frameCount: content.length,
+              durationMs: content.length > 0 ? content[content.length - 1].time : 0,
+              data: content
+            };
           });
           ws.send(JSON.stringify({ type: 'RECORDINGS_LIST', recordings }));
           break;
@@ -317,17 +313,17 @@ wss.on('connection', (ws) => {
 
             await closePort();
             console.log(`\x1b[34m[SERIAL]\x1b[0m Bağlanılıyor: ${config.portName} (${config.baudRate} baud)`);
-            
-            activePort = new SerialPort({ 
-              path: config.portName, 
-              baudRate: config.baudRate, 
-              autoOpen: false 
+
+            activePort = new SerialPort({
+              path: config.portName,
+              baudRate: config.baudRate,
+              autoOpen: false
             });
 
             activePort.open((err) => {
               if (err) {
-                const msg = err.message.includes('Access denied') 
-                  ? 'Port kilitli (Başka bir program kullanıyor olabilir)' 
+                const msg = err.message.includes('Access denied')
+                  ? 'Port kilitli (Başka bir program kullanıyor olabilir)'
                   : err.message;
                 console.error(`\x1b[31m[SERIAL ERR]\x1b[0m ${config.portName} bağlantı hatası:`, err.message);
                 if (ws.readyState === WebSocket.OPEN) {
@@ -336,6 +332,7 @@ wss.on('connection', (ws) => {
                 return;
               }
               console.log(`\x1b[32m[SERIAL]\x1b[0m ${config.portName} başarıyla bağlandı.`);
+              engine.updateOverrides({ serialConnected: true });
               broadcast({ type: 'SERIAL_STATUS', connected: true });
             });
 
@@ -380,6 +377,7 @@ wss.on('connection', (ws) => {
             console.log('\x1b[33m[SERIAL]\x1b[0m Bağlantı kesiliyor...');
             activePort.close(() => {
               activePort = null;
+              engine.updateOverrides({ serialConnected: false });
               broadcast({ type: 'SERIAL_STATUS', connected: false });
             });
           }

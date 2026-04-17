@@ -50,4 +50,19 @@ Transform raw data into a mission-control HUD using the drag-and-drop designer. 
 - **Time Travel**: Use the **Playback** tab to scrub through past data, analyzing exact failure points using frame-by-frame stepping.
 
 ---
-Developed by **Mustafa Sercan Sak** | Simulation Engine v2.0
+
+## 🛡️ Level 5: Medical Certification & Compliance (v7.1)
+The Pro Suite now includes an automated **Compliance Engine** for medical device verification.
+- **Automated Auditing**: The system checks every UART packet against your predefined clinical safety limits.
+- **Expert Reporting**: Generate high-fidelity, signature-ready PDF reports that prove your hardware's compliance with medical standards.
+
+---
+
+## 🛡️ Medikal Validasyon ve Sertifikasyon (v7.1)
+
+En yeni güncelleme ile simülatör, profesyonel bir **Yeterlilik (Certification) İstasyonu**'na dönüştü.
+1. **Validasyon Başlat**: Üst menüdeki kalkan ikonuna basarak bir test oturumu açın.
+2. **Kriter Belirle**: Cihazınızın uyması gereken Min/Max değerleri girin.
+3. **Rapor Üret**: Test sonunda, tıbbi standartlara uygun, PDF olarak kaydedilebilen profesyonel bir doğrulama raporu alın.
+
+© 2026 Mustafa Sercan Sak — MedNet Suite Team v7.1.0

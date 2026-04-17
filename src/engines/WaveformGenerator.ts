@@ -23,7 +23,7 @@ function ease(t: number, curve: string): number {
 export function generateWaveformSample(config: WaveformConfig, timeMs: number): number {
   const { shape, frequency, amplitude, offset, noiseLevel, customPoints } = config;
   const period = 1000 / frequency; // ms per cycle
-  const t = (timeMs % period) / period; // 0 to 1 within current cycle
+  const t = ((timeMs % period) / period + (config.phase || 0)) % 1; // 0 to 1 with phase shift
 
   let value = 0;
 

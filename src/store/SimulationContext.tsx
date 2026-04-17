@@ -85,7 +85,8 @@ const INITIAL_STATE: SimulationState = {
   playbackTotal: 0,
   logicHistory: [
     { id: 'tx-main', name: 'UART TX', transitions: [] }
-  ]
+  ],
+  validationSession: null
 };
 
 type SimAction =
@@ -129,7 +130,12 @@ type SimAction =
   | { type: 'REMOVE_WIDGET'; id: string }
   | { type: 'UPDATE_LAYOUT'; widgets: DashboardWidget[] }
   | { type: 'MASTER_TICK'; updates: Partial<SimulationState>; points: Array<Record<string, number>>; logEntries: Array<SimulationState['logEntries'][0]>; elapsedMs: number }
-  | { type: 'BATCH_UPDATE'; updates: Partial<SimulationState> };
+  | { type: 'BATCH_UPDATE'; updates: Partial<SimulationState> }
+  | { type: 'START_VALIDATION'; session: any }
+  | { type: 'STOP_VALIDATION'; endTime: number; score: number }
+  | { type: 'CANCEL_VALIDATION' }
+  | { type: 'ADD_VALIDATION_EVENT'; event: any }
+  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: any };
 
 function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -350,6 +356,39 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       };
     case 'BATCH_UPDATE':
       return { ...state, ...action.updates };
+    case 'START_VALIDATION':
+      return { ...state, validationSession: action.session };
+    case 'STOP_VALIDATION':
+      if (!state.validationSession) return state;
+      return {
+        ...state,
+        validationSession: {
+          ...state.validationSession,
+          endTime: action.endTime,
+          status: 'completed',
+          complianceScore: action.score
+        }
+      };
+    case 'CANCEL_VALIDATION':
+      return { ...state, validationSession: null };
+    case 'ADD_VALIDATION_EVENT':
+      if (!state.validationSession) return state;
+      return {
+        ...state,
+        validationSession: {
+          ...state.validationSession,
+          events: [...state.validationSession.events, action.event]
+        }
+      };
+    case 'UPDATE_VALIDATION_HISTORY':
+      if (!state.validationSession) return state;
+      return {
+        ...state,
+        validationSession: {
+          ...state.validationSession,
+          dataHistory: [...state.validationSession.dataHistory, action.entry].slice(-1000)
+        }
+      };
     default:
       return state;
   }
@@ -526,8 +565,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
                 msg.frame.fields.forEach((f: any) => point[f.name] = f.decimal);
                 newPoints.push(point);
 
-                const now = new Date();
-                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+                const txDate = msg.frame.timestampMs ? new Date(msg.frame.timestampMs) : new Date();
+                const timeStr = `${txDate.getHours().toString().padStart(2, '0')}:${txDate.getMinutes().toString().padStart(2, '0')}:${txDate.getSeconds().toString().padStart(2, '0')}.${txDate.getMilliseconds().toString().padStart(3, '0')}`;
                 newLogs.push({ time: timeStr, text: `TX: ${msg.frame.rawHex}`, type: 'tx' });
                 break;
               case 'LOG':
@@ -603,6 +642,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         let latestLat: number | null = null;
 
         exEntries.forEach(ex => {
+
           const idx = currentExchanges.findIndex(e => e.id === ex.id);
           if (idx !== -1) currentExchanges[idx] = ex;
           else currentExchanges.unshift(ex);
@@ -789,6 +829,52 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
     });
   }, []);
+  
+  // ── MEDICAL VALIDATION MONITORING ───────────
+  React.useEffect(() => {
+    if (!state.validationSession || state.validationSession.status !== 'running' || !state.lastRxFrame) return;
+
+    const frame = state.lastRxFrame;
+    const session = state.validationSession;
+    const timestamp = Date.now();
+
+    // 1. Log History Point
+    const currentFields: Record<string, number> = {};
+    frame.fields.forEach(f => currentFields[f.name] = f.decimal);
+    dispatch({ type: 'UPDATE_VALIDATION_HISTORY', entry: { timestamp, fields: currentFields } });
+
+    // 2. Compliance Check
+    session.targets.forEach(target => {
+      const field = frame.fields.find(f => f.name.toLowerCase().replace(/[^a-z0-9]/g, '') === target.fieldName.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      if (field) {
+        const value = field.decimal;
+        const isSuccess = value >= target.expectedMin && value <= target.expectedMax;
+        
+        // Only log failures or major successes to avoid spamming the event list
+        // However, for certification, we log state changes
+        const lastEvent = session.events.filter(e => e.fieldName === target.fieldName).slice(-1)[0];
+        const wasSuccess = lastEvent ? lastEvent.type === 'compliance_success' : true;
+
+        if (isSuccess !== wasSuccess) {
+          dispatch({
+            type: 'ADD_VALIDATION_EVENT',
+            event: {
+              id: uuidv4(),
+              timestamp,
+              type: isSuccess ? 'compliance_success' : 'compliance_failure',
+              message: isSuccess 
+                ? `${target.fieldName} normale döndü: ${value} ${target.unit}`
+                : `${target.fieldName} limit dışı: ${value} ${target.unit} (Beklenen: ${target.expectedMin}-${target.expectedMax})`,
+              fieldName: target.fieldName,
+              value,
+              targetRange: [target.expectedMin, target.expectedMax]
+            }
+          });
+        }
+      }
+    });
+
+  }, [state.lastRxFrame, state.validationSession?.status]);
 
   const disconnectNetwork = useCallback(() => {
     if (wsRef.current) {
@@ -960,6 +1046,45 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setResponderRules: (rules: ResponderRule[]) => {
           backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RULES', rules }));
           dispatch({ type: 'SET_RESPONDER_RULES', rules });
+        },
+        startValidation: ({ name, deviceId, operator, targets }) => {
+          const session: any = {
+            id: uuidv4(),
+            name,
+            deviceId,
+            operator,
+            status: 'running',
+            startTime: Date.now(),
+            targets,
+            events: [{
+              id: uuidv4(),
+              timestamp: Date.now(),
+              type: 'session_start',
+              message: `Validasyon seansı başlatıldı: ${name}`
+            }],
+            dataHistory: [],
+            complianceScore: 100
+          };
+          dispatch({ type: 'START_VALIDATION', session });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `VALIDASYON BAŞLATILDI: ${name}` });
+        },
+        stopValidation: () => {
+          if (!state.validationSession) return;
+          
+          // Calculate final score
+          const failures = state.validationSession.events.filter(e => e.type === 'compliance_failure').length;
+          const totalEvents = state.validationSession.events.length;
+          const score = Math.max(0, 100 - (failures * 10)); // Simple scoring logic
+
+          dispatch({ type: 'STOP_VALIDATION', endTime: Date.now(), score });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `VALIDASYON TAMAMLANDI. Skor: ${score}%` });
+        },
+        cancelValidation: () => {
+          dispatch({ type: 'CANCEL_VALIDATION' });
+        },
+        deleteValidationSession: (id) => {
+          // Implement if we add session history
+          dispatch({ type: 'CANCEL_VALIDATION' });
         }
       }}
     >

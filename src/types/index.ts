@@ -11,9 +11,16 @@ export type FieldType =
   | 'flags'
   | 'computed'
   | 'script';
+  
+export interface ParsedField {
+  name: string;
+  hex: string;
+  decimal: number;
+  flags?: Record<string, number>;
+}
 
 export type ProtocolType = 'UART' | 'SPI' | 'I2C' | 'CAN';
-export type WidgetType = 'chart' | 'gauge' | 'led' | '7segment';
+export type WidgetType = 'chart' | 'gauge' | 'led' | '7segment' | 'sparkline' | 'bar';
 
 // ── Virtual Peripherals ──────────────────────
 export interface PeripheralState {
@@ -65,6 +72,7 @@ export interface WaveformConfig {
   amplitude: number;
   offset: number;
   noiseLevel: number;
+  phase?: number; // 0.0 to 1.0 phase shift
   customPoints?: number[];
 }
 
@@ -386,6 +394,43 @@ export interface GeneratedFrame {
   errors: string[];
 }
 
+// ─────────────────────────────────────────────
+// MEDICAL VALIDATION & CERTIFICATION TİPLERİ
+// ─────────────────────────────────────────────
+
+export interface ValidationTarget {
+  id: string;
+  fieldName: string;
+  expectedMin: number;
+  expectedMax: number;
+  unit: string;
+  description?: string;
+}
+
+export interface ValidationEvent {
+  id: string;
+  timestamp: number;
+  type: 'compliance_success' | 'compliance_failure' | 'session_start' | 'session_stop';
+  message: string;
+  fieldName?: string;
+  value?: number;
+  targetRange?: [number, number];
+}
+
+export interface ValidationSession {
+  id: string;
+  name: string;
+  deviceId: string;
+  operator: string;
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
+  startTime: number;
+  endTime?: number;
+  targets: ValidationTarget[];
+  events: ValidationEvent[];
+  dataHistory: Array<{ timestamp: number; fields: Record<string, number> }>;
+  complianceScore: number; // 0-100
+}
+
 export interface SimulationState {
   status: SimulationStatus;
   profileId: string | null;
@@ -444,6 +489,8 @@ export interface SimulationState {
   recordings: RecordingMetadata[];
   playbackIndex?: number;
   playbackTotal?: number;
+  // Medical Validation
+  validationSession: ValidationSession | null;
 }
 
 export interface SignalIntegrity {
@@ -581,6 +628,11 @@ export interface SimulationContextType {
   addWidget: (type: WidgetType, fieldId: string) => void;
   removeWidget: (id: string) => void;
   updateLayout: (widgets: DashboardWidget[]) => void;
+  // Medical Validation Actions
+  startValidation: (config: { name: string; deviceId: string; operator: string; targets: ValidationTarget[] }) => void;
+  stopValidation: () => void;
+  cancelValidation: () => void;
+  deleteValidationSession: (id: string) => void;
 }
 
 export interface GridPanel {

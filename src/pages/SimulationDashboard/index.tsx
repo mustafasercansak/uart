@@ -26,6 +26,8 @@ import { useSimulation } from '../../hooks/useSimulation';
 import { parseFrame } from '../../engines/FrameParser';
 import ProfileEditorModal from './components/ProfileEditorModal';
 import TriggerManager from './components/TriggerManager';
+import ValidationControls from './components/ValidationControls';
+import ValidationReport from './components/ValidationReport';
 
 // Sub-components
 import StatBar from './components/StatBar';
@@ -100,7 +102,8 @@ export default function SimulationDashboard() {
     setAnalyzerMode, selectExchange, setDisplayFilter,
     setDiffFrame, setResponderRules,
     deleteRecording, refreshRecordings,
-    setSignalIntegrity, setTriggers
+    setSignalIntegrity, setTriggers,
+    startValidation, stopValidation, cancelValidation, deleteValidationSession
   } = useSimulation();
 
   const { 
@@ -140,7 +143,10 @@ export default function SimulationDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editingProfile, setEditingProfile] = useState<FrameProfile | null>(null);
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer'>('waveforms');
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+  const [isReportViewOpen, setIsReportViewOpen] = useState(false);
+
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer'>('waveforms');
 
   const handleSaveProfile = (profile: FrameProfile) => {
     persistProfile(profile);
@@ -285,6 +291,10 @@ export default function SimulationDashboard() {
         formatMs={formatMs}
         timingStats={timingStats}
         signalIntegrity={state.signalIntegrity}
+        validationSession={state.validationSession}
+        onStartValidation={() => setIsValidationModalOpen(true)}
+        onStopValidation={stopValidation}
+        onViewReport={() => setIsReportViewOpen(true)}
       />
 
       {/* Main layout container */}
@@ -346,10 +356,7 @@ export default function SimulationDashboard() {
                         profile={selectedProfile}
                     />
                     <div className="h-72 shrink-0 glass-panel rounded-2xl overflow-hidden shadow-2xl">
-                         <LogicAnalyzer 
-                            lastTxFrame={lastFrame}
-                            lastRxFrame={lastRxFrame}
-                         />
+                         <LogicAnalyzer />
                     </div>
                 </div>
 
@@ -599,6 +606,24 @@ export default function SimulationDashboard() {
             profile={editingProfile}
             onSave={handleSaveProfile}
             onClose={() => setIsEditingProfile(false)}
+          />
+        )}
+
+        {isValidationModalOpen && (
+          <ValidationControls 
+            profile={selectedProfile}
+            onStart={(config) => {
+              startValidation(config);
+              setIsValidationModalOpen(false);
+            }}
+            onClose={() => setIsValidationModalOpen(false)}
+          />
+        )}
+
+        {isReportViewOpen && state.validationSession && (
+          <ValidationReport 
+            session={state.validationSession}
+            onClose={() => setIsReportViewOpen(false)}
           />
         )}
       </div>

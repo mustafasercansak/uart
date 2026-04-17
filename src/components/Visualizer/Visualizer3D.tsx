@@ -206,7 +206,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
         texture.needsUpdate = true;
 
         // HUD Sparkline Engine
-        const drawSpark = (canvasRef: React.RefObject<HTMLCanvasElement>, data: number[], color: string, inv=false) => {
+        const drawSpark = (canvasRef: React.RefObject<HTMLCanvasElement | null>, data: number[], color: string, inv=false) => {
             const sc = canvasRef.current; if(!sc) return;
             const sctx = sc.getContext('2d'); if(!sctx) return;
             sctx.clearRect(0,0,sc.width,sc.height);

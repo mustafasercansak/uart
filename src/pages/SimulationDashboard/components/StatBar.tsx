@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3 } from 'lucide-react';
+import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3, ShieldCheck, FileText, ClipboardCheck } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 
 interface StatBarProps {
@@ -48,6 +48,10 @@ interface StatBarProps {
     jitterMs: number;
     bitFlipsEnabled: boolean;
   };
+  validationSession: SimulationState['validationSession'];
+  onStartValidation: () => void;
+  onStopValidation: () => void;
+  onViewReport: () => void;
 }
 
 const StatBar = memo(({
@@ -86,7 +90,11 @@ const StatBar = memo(({
   onStopRecording,
   onAddProfile,
   onEditProfile,
-  signalIntegrity
+  signalIntegrity,
+  validationSession,
+  onStartValidation,
+  onStopValidation,
+  onViewReport
 }: StatBarProps) => {
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
@@ -256,6 +264,36 @@ const StatBar = memo(({
           <FileDown size={14} />
           Rapor Al
         </button>
+
+        {/* MEDICAL VALIDATION BUTTONS */}
+        {!validationSession ? (
+          <button 
+            onClick={onStartValidation}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+            title="Validasyon Oturumu Başlat"
+          >
+            <ShieldCheck size={14} />
+            Yeterlilik
+          </button>
+        ) : validationSession.status === 'running' ? (
+          <button 
+            onClick={onStopValidation}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-rose-500 bg-rose-500/10 text-rose-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+            title="Validasyon Oturumunu Bitir"
+          >
+            <ClipboardCheck size={14} />
+            STOP TEST
+          </button>
+        ) : (
+          <button 
+            onClick={onViewReport}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-blue-500/50 bg-blue-500/10 text-blue-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 shadow-lg shadow-blue-500/10"
+            title="Validasyon Raporunu Görüntüle"
+          >
+            <FileText size={14} />
+            RAPORU GÖR
+          </button>
+        )}
 
         <button 
           onClick={isRecording ? onStopRecording : onStartRecording}

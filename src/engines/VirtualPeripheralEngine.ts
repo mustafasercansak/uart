@@ -132,10 +132,10 @@ export class VirtualConsoleDriver extends PeripheralDriver {
         bytes: Array.from('System OK. Uptime: 1042s\r\n').map(c => c.charCodeAt(0)),
         log: 'UART: Console STATUS command'
       };
-    } else if (text.length > 0) {
+    } else if (input.length > 0) {
       return {
-        bytes: Array.from(`Echo: ${text}\r\n`).map(c => c.charCodeAt(0)),
-        log: `UART: Console Received -> "${text}"`
+        bytes: [...input],
+        log: `UART: Raw Loopback (Jumper) -> ${input.length} bytes`
       };
     }
     return null;

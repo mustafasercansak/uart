@@ -579,35 +579,31 @@ export class SimulationEngine {
 
     // ── VIRTUAL PERIPHERAL PASS-THROUGH ───────
     // If the tool is acting as a master, check if a virtual peripheral responds to this frame
-    const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' : 
-                     (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
-    
-    // In a real lab, TX from MCU is RX for Peripheral
-    const pResponses = this.peripheralEngine.processIncoming(protocol as any, frame.rawBytes);
+    if (!this.state.serialConnected) {
+      const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' : 
+                       (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
+      
+      const pResponses = this.peripheralEngine.processIncoming(protocol as any, frame.rawBytes);
 
-    pResponses.forEach(res => {
-      // Small delay to simulate processing time
-      setTimeout(() => {
-        if (res.log) {
-          const logEntry = { 
-            time: new Date().toLocaleTimeString(), 
-            text: `[PERIPHERAL] ${res.log}`, 
-            type: 'info' as const 
-          };
-          this.onConversation?.({
-            id: uuidv4(),
-            timestamp: Date.now(),
-            type: 'match',
-            rawHex: '',
-            details: res.log
-          });
-        }
-        
-        if (res.bytes.length > 0) {
-          this.processIncomingData(res.bytes);
-        }
-      }, 5 + Math.random() * 10);
-    });
+      pResponses.forEach(res => {
+        // Small delay to simulate processing time
+        setTimeout(() => {
+          if (res.log) {
+            this.onConversation?.({
+              id: uuidv4(),
+              timestamp: Date.now(),
+              type: 'match',
+              rawHex: '',
+              details: res.log
+            });
+          }
+          
+          if (res.bytes.length > 0) {
+            this.processIncomingData(res.bytes);
+          }
+        }, 5 + Math.random() * 10);
+      });
+    }
 
     // Clear one-shot error if it was applied
     if (this.state.pendingErrors.length > 0) {

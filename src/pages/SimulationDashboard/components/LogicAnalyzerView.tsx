@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { useSimulation } from '../../../../store/context';
-import { BitTransition, LogicSignal } from '../../../../types';
+import { useSimulation } from '../../../hooks/useSimulation';
+import { BitTransition, LogicSignal } from '../../../types';
 
 const COLORS = {
   bg: '#0a0c10',
@@ -32,7 +32,7 @@ export const LogicAnalyzerView: React.FC = () => {
   // Auto-scroll logic: if near the end, keep scrolling
   const autoScroll = useRef(true);
 
-  const signal = state.logicHistory.find(s => s.id === 'tx-main') || { id: 'tx-main', transitions: [] };
+  const signal = state.logicHistory.find((s: LogicSignal) => s.id === 'tx-main') || { id: 'tx-main', transitions: [] };
 
   useEffect(() => {
     const updateSize = () => {
@@ -112,7 +112,7 @@ export const LogicAnalyzerView: React.FC = () => {
     ctx.shadowColor = COLORS.signalShadow;
     ctx.beginPath();
 
-    const visibleTransitions = signal.transitions.filter(tr => tr.t >= startTime - (1000/zoom) && tr.t <= endTime + (1000/zoom));
+    const visibleTransitions = signal.transitions.filter((tr: BitTransition) => tr.t >= startTime - (1000/zoom) && tr.t <= endTime + (1000/zoom));
     
     if (visibleTransitions.length > 0) {
       let lastX = (visibleTransitions[0].t - startTime) * zoom;

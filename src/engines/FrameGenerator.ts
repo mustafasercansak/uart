@@ -12,6 +12,8 @@ import type {
   ParsedField,
   SimulationState,
   ErrorType,
+  BitTransition,
+  Parity,
 } from '../types';
 import { calculateChecksum } from './ChecksumCalculator';
 import { generateWaveformSample, interpolateRamp } from './WaveformGenerator';

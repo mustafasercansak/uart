@@ -1,4 +1,4 @@
-import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, ChecksumConfig } from '../types';
+import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, ChecksumConfig, FlagsConfig } from '../types';
 
 // ─────────────────────────────────────────────
 // LOCALSTORAGE TABANLI DEPOLAMA
@@ -25,9 +25,10 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'm3', name: 'SpO2', type: 'range', byteWidth: 1, endianness: 'big', order: 2, typeConfig: { min: 94, max: 100, distribution: 'uniform' } as RangeConfig },
       { id: 'm4', name: 'RR', type: 'range', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { min: 12, max: 20, distribution: 'uniform' } as RangeConfig },
       { id: 'm5', name: 'Temp', type: 'range', byteWidth: 2, endianness: 'big', order: 4, typeConfig: { min: 360, max: 375, distribution: 'gaussian' } as RangeConfig },
-      { id: 'm6', name: 'Lead-I', type: 'waveform', byteWidth: 2, endianness: 'big', order: 5, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 1000, offset: 2048, noiseLevel: 3 } as WaveformConfig },
-      { id: 'm7', name: 'SpO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 6, typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 30, offset: 128, noiseLevel: 1 } as WaveformConfig },
-      { id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 7, typeConfig: { bits: [
+      { id: 'm6', name: 'Lead-I', type: 'waveform', byteWidth: 2, endianness: 'big', order: 5, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 800, offset: 2048, noiseLevel: 3, phase: 0 } as WaveformConfig },
+      { id: 'm6_2', name: 'Lead-II', type: 'waveform', byteWidth: 2, endianness: 'big', order: 6, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 1200, offset: 2048, noiseLevel: 3, phase: 0.04 } as WaveformConfig },
+      { id: 'm7', name: 'SpO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 7, typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 30, offset: 128, noiseLevel: 1 } as WaveformConfig },
+      { id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 8, typeConfig: { bits: [
         { index: 0, name: 'Lead-Off', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
         { index: 1, name: 'Low-SPO2', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
         { index: 2, name: 'Battery-Low', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }

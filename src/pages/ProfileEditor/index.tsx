@@ -43,6 +43,7 @@ function newProfile(): FrameProfile {
     parity: 'None',
     stopBits: 1,
     sendIntervalMs: 100,
+    framing: { mode: 'fixed' },
     createdAt: now,
     updatedAt: now,
     fields: [

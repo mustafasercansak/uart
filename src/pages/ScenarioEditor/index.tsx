@@ -370,6 +370,42 @@ export default function ScenarioEditor() {
         )}
       </main>
 
+      {/* Help Panel Layer */}
+      {showHelp && (
+        <div className="absolute top-0 right-0 bottom-0 w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-[150] animate-in slide-in-from-right duration-300 flex flex-col">
+          <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-950/40">
+            <h3 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-widest">Senaryo Rehberi</h3>
+            <button onClick={() => setShowHelp(false)} className="text-gray-500 hover:text-white text-xl p-1">×</button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar space-y-6">
+             <div className="space-y-4">
+               <div>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⏱ Zamanlama (atMs)</h4>
+                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">Simülasyon başladıktan kaç milisaniye sonra bu adımın tetikleneceğini belirler. Adımlar otomatik olarak zamana göre sıralanır.</p>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">🎯 Hedef (Target)</h4>
+                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">`field:İsim` formatında profilinizdeki bir alanı hedefleyebilirsiniz. Örn: `field:BPM`</p>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⚡ İşlem Türleri</h4>
+                  <ul className="space-y-2">
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-emerald-500">SET:</span> Değeri aniden değiştirir.</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-blue-500">RAMP:</span> Değeri yumuşak bir geçişle değiştirir (Örn: nabız düşüşü).</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-rose-500">INJECT_ERROR:</span> Protokol seviyesinde hata üretir (CRC/Sync).</li>
+                  </ul>
+               </div>
+             </div>
+             <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl">
+               <p className="text-[10px] font-mono text-blue-400 italic">"Bu aracı sensörünüz olmadığında donanımınızı stres testine sokmak için kullanabilirsiniz."</p>
+             </div>
+             <div className="pt-4">
+                <a href="/docs/automation.md" target="_blank" className="text-[10px] font-mono text-blue-400 underline hover:text-blue-300">DETAYLI REHBERİ AÇ (YENİ SEKME)</a>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Preset Modal */}
       {showPresets && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] backdrop-blur-md" onClick={() => setShowPresets(false)}>
@@ -470,41 +506,7 @@ function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: 
         <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">Açıklama</label>
         <textarea className={`${inputCls} min-h-[100px] text-gray-500 italic`} value={step.description ?? ''} onChange={(e) => update({ description: e.target.value })} placeholder="Notlar..." />
       </div>
-      {/* Help Panel Layer */}
-      {showHelp && (
-        <div className="absolute top-0 right-0 bottom-0 w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-[150] animate-in slide-in-from-right duration-300 flex flex-col">
-          <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-950/40">
-            <h3 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-widest">Senaryo Rehberi</h3>
-            <button onClick={() => setShowHelp(false)} className="text-gray-500 hover:text-white text-xl p-1">×</button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar space-y-6">
-             <div className="space-y-4">
-               <div>
-                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⏱ Zamanlama (atMs)</h4>
-                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">Simülasyon başladıktan kaç milisaniye sonra bu adımın tetikleneceğini belirler. Adımlar otomatik olarak zamana göre sıralanır.</p>
-               </div>
-               <div>
-                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">🎯 Hedef (Target)</h4>
-                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">`field:İsim` formatında profilinizdeki bir alanı hedefleyebilirsiniz. Örn: `field:BPM`</p>
-               </div>
-               <div>
-                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⚡ İşlem Türleri</h4>
-                  <ul className="space-y-2">
-                    <li className="text-[10px] font-mono text-gray-500"><span className="text-emerald-500">SET:</span> Değeri aniden değiştirir.</li>
-                    <li className="text-[10px] font-mono text-gray-500"><span className="text-blue-500">RAMP:</span> Değeri yumuşak bir geçişle değiştirir (Örn: nabız düşüşü).</li>
-                    <li className="text-[10px] font-mono text-gray-500"><span className="text-rose-500">INJECT_ERROR:</span> Protokol seviyesinde hata üretir (CRC/Sync).</li>
-                  </ul>
-               </div>
-             </div>
-             <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl">
-               <p className="text-[10px] font-mono text-blue-400 italic">"Bu aracı sensörünüz olmadığında donanımınızı stres testine sokmak için kullanabilirsiniz."</p>
-             </div>
-             <div className="pt-4">
-                <a href="/docs/automation.md" target="_blank" className="text-[10px] font-mono text-blue-400 underline hover:text-blue-300">DETAYLI REHBERİ AÇ (YENİ SEKME)</a>
-             </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

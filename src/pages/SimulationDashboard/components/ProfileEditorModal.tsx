@@ -28,6 +28,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
 
   const [importText, setImportText] = useState('');
   const [showImporter, setShowImporter] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
 
   const handleImport = () => {
     const fields = parseCHeader(importText);
@@ -180,32 +181,150 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                 </div>
               )}
               {edited.fields.map((field, idx) => (
-                <div key={field.id} className="bg-gray-900/40 border border-gray-800 p-3 rounded-lg flex items-center gap-3 group relative hover:border-gray-700">
-                  <div className="text-[10px] text-gray-600 font-bold w-4">#{idx}</div>
-                  <div className="flex-1">
-                    <input 
-                      value={field.name}
-                      onChange={e => {
-                        const newFields = [...edited.fields];
-                        newFields[idx].name = e.target.value;
-                        setEdited({...edited, fields: newFields});
-                      }}
-                      className="bg-transparent text-[11px] font-bold text-gray-300 w-full outline-none focus:text-emerald-400"
-                    />
-                    <div className="text-[9px] text-gray-600 mt-1 uppercase flex gap-2">
-                       <span>Boyut: {field.byteWidth} Byte</span>
-                       <span>•</span>
-                       <span>{field.endianness}</span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setEdited({...edited, fields: edited.fields.filter(f => f.id !== field.id)});
-                    }}
-                    className="p-1.5 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                <div key={field.id} className="space-y-2">
+                  <div 
+                    onClick={() => setSelectedFieldId(selectedFieldId === field.id ? null : field.id)}
+                    className={`bg-gray-900/40 border p-3 rounded-lg flex items-center gap-3 group relative transition-all cursor-pointer ${
+                      selectedFieldId === field.id ? 'border-emerald-500 shadow-lg shadow-emerald-900/10 bg-gray-900' : 'border-gray-800 hover:border-gray-700'
+                    }`}
                   >
-                    <Trash2 size={14} />
-                  </button>
+                    <div className="text-[10px] text-gray-600 font-bold w-4">#{idx}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-gray-300">{field.name}</span>
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase font-black ${
+                          field.type === 'waveform' ? 'bg-emerald-500/10 text-emerald-500' : 
+                          field.type === 'checksum' ? 'bg-blue-500/10 text-blue-500' : 
+                          'bg-gray-800 text-gray-500'
+                        }`}>
+                          {field.type}
+                        </span>
+                      </div>
+                      <div className="text-[9px] text-gray-600 mt-1 uppercase flex gap-2">
+                         <span>{field.byteWidth} Byte</span>
+                         <span>•</span>
+                         <span>{field.endianness}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEdited({...edited, fields: edited.fields.filter(f => f.id !== field.id)});
+                        if (selectedFieldId === field.id) setSelectedFieldId(null);
+                      }}
+                      className="p-1.5 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  {/* Inline Field Editor */}
+                  {selectedFieldId === field.id && (
+                    <div className="ml-7 p-4 bg-gray-950 border border-emerald-500/20 rounded-lg space-y-4 animate-in slide-in-from-top-2 duration-200">
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[9px] text-gray-500 uppercase block mb-1">Tip</label>
+                            <select 
+                              value={field.type}
+                              onChange={e => {
+                                const newFields = [...edited.fields];
+                                newFields[idx].type = e.target.value as any;
+                                // Initialize default config if type changes
+                                if (e.target.value === 'waveform') {
+                                  newFields[idx].typeConfig = { shape: 'sine', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 0, phase: 0 };
+                                }
+                                setEdited({...edited, fields: newFields});
+                              }}
+                              className="w-full bg-gray-900 border border-gray-800 text-[10px] p-2 rounded outline-none text-gray-300"
+                            >
+                              <option value="fixed">Fixed (Sabit)</option>
+                              <option value="range">Range (Aralık)</option>
+                              <option value="waveform">Waveform (Dalga)</option>
+                              <option value="flags">Flags (Bitler)</option>
+                              <option value="checksum">Checksum</option>
+                              <option value="computed">Computed</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-gray-500 uppercase block mb-1">Byte Genişliği</label>
+                            <input 
+                              type="number"
+                              value={field.byteWidth}
+                              onChange={e => {
+                                const newFields = [...edited.fields];
+                                newFields[idx].byteWidth = parseInt(e.target.value);
+                                setEdited({...edited, fields: newFields});
+                              }}
+                              className="w-full bg-gray-900 border border-gray-800 text-[10px] p-2 rounded outline-none text-gray-300"
+                            />
+                          </div>
+                       </div>
+
+                       {field.type === 'waveform' && (
+                         <div className="space-y-3 pt-2 border-t border-gray-800">
+                           <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[9px] text-gray-400 uppercase block mb-1">Form (Shape)</label>
+                                <select 
+                                  value={(field.typeConfig as any).shape}
+                                  onChange={e => {
+                                    const newFields = [...edited.fields];
+                                    (newFields[idx].typeConfig as any).shape = e.target.value;
+                                    setEdited({...edited, fields: newFields});
+                                  }}
+                                  className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"
+                                >
+                                  <option value="sine">Sinüs</option>
+                                  <option value="ecg">ECG (Kalp)</option>
+                                  <option value="square">Kare</option>
+                                  <option value="triangle">Üçgen</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[9px] text-gray-400 uppercase block mb-1">Frekans (Hz)</label>
+                                <input 
+                                  type="number" step="0.1"
+                                  value={(field.typeConfig as any).frequency}
+                                  onChange={e => {
+                                    const newFields = [...edited.fields];
+                                    (newFields[idx].typeConfig as any).frequency = parseFloat(e.target.value);
+                                    setEdited({...edited, fields: newFields});
+                                  }}
+                                  className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[9px] text-emerald-500 uppercase block mb-1 font-bold">Faz Kayması (0-1)</label>
+                                <input 
+                                  type="range" min="0" max="1" step="0.01"
+                                  value={(field.typeConfig as any).phase || 0}
+                                  onChange={e => {
+                                    const newFields = [...edited.fields];
+                                    (newFields[idx].typeConfig as any).phase = parseFloat(e.target.value);
+                                    setEdited({...edited, fields: newFields});
+                                  }}
+                                  className="w-full accent-emerald-500 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <div className="text-[8px] text-emerald-600 mt-1 text-right font-mono">{( (field.typeConfig as any).phase || 0).toFixed(2)} φ</div>
+                              </div>
+                              <div>
+                                <label className="text-[9px] text-gray-400 uppercase block mb-1">Genlik (Amp)</label>
+                                <input 
+                                  type="number"
+                                  value={(field.typeConfig as any).amplitude}
+                                  onChange={e => {
+                                    const newFields = [...edited.fields];
+                                    (newFields[idx].typeConfig as any).amplitude = parseInt(e.target.value);
+                                    setEdited({...edited, fields: newFields});
+                                  }}
+                                  className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"
+                                />
+                              </div>
+                           </div>
+                         </div>
+                       )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
