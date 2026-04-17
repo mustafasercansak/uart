@@ -100,26 +100,34 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                   <span className="text-xs font-mono text-gray-500 animate-pulse">Doküman Hazırlanıyor...</span>
                </div>
             ) : (
-               <article className="prose prose-invert prose-blue max-w-none 
-                 prose-headings:font-mono prose-headings:uppercase prose-headings:tracking-widest
-                 prose-h1:text-3xl prose-h1:font-black prose-h1:mb-8 prose-h1:pb-4 prose-h1:border-b prose-h1:border-white/10
-                 prose-h2:text-xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-blue-400
-                 prose-p:text-gray-400 prose-p:leading-relaxed prose-p:mb-4
-                 prose-li:text-gray-400 prose-li:mb-2
-                 prose-code:text-blue-300 prose-code:bg-blue-900/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-                 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-2xl
-                 prose-img:rounded-3xl prose-img:border prose-img:border-white/10 prose-img:shadow-2xl prose-img:my-8
-                 prose-strong:text-white prose-strong:font-bold
-                 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:p-4 prose-blockquote:rounded-r-2xl prose-blockquote:italic
-               ">
-                 <ReactMarkdown 
-                   components={{
-                     img: ({node, ...props}) => <img {...props} style={{maxWidth: '100%'}} />
-                   }}
-                 >
-                   {content}
-                 </ReactMarkdown>
-               </article>
+                <article className="prose prose-invert prose-blue max-w-none 
+                  prose-headings:font-mono prose-headings:uppercase prose-headings:tracking-widest
+                  prose-h1:text-3xl prose-h1:font-black prose-h1:mb-8 prose-h1:pb-4 prose-h1:border-b prose-h1:border-white/10
+                  prose-h2:text-xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-blue-400
+                  prose-h3:text-sm prose-h3:font-bold prose-h3:text-gray-200 prose-h3:mb-4
+                  prose-p:text-gray-400 prose-p:leading-relaxed prose-p:mb-4
+                  prose-li:text-gray-400 prose-li:mb-2
+                  prose-code:text-blue-300 prose-code:bg-blue-900/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                  prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-2xl
+                  prose-img:rounded-[2rem] prose-img:border prose-img:border-white/10 prose-img:shadow-[0_20px_50px_rgba(0,0,0,0.5)] prose-img:my-10
+                  prose-strong:text-white prose-strong:font-bold
+                  prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:p-4 prose-blockquote:rounded-r-2xl prose-blockquote:italic
+                ">
+                  <ReactMarkdown 
+                    components={{
+                      img: ({node, ...props}) => (
+                        <div className="relative group">
+                          <img {...props} style={{maxWidth: '100%'}} className="transition-transform duration-500 group-hover:scale-[1.01]" />
+                          <div className="absolute inset-x-0 -bottom-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                             <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">{props.alt}</span>
+                          </div>
+                        </div>
+                      )
+                    }}
+                  >
+                    {content}
+                  </ReactMarkdown>
+                </article>
             )}
         </div>
 
