@@ -129,6 +129,7 @@ engine.onFrame = (frame) => {
     type: 'TICK',
     frame,
     elapsedMs: engine.getState().elapsedMs,
+    framesPerSecond: engine.getState().framesPerSecond,
     status: engine.getState().status,
     selectedProfileId: engine.getProfile()?.id,
     pendingErrors: engine.getState().pendingErrors,
@@ -282,6 +283,12 @@ wss.on('connection', (ws) => {
           break;
         case 'UPDATE_RESPONDER_RULES':
           engine.setResponderRules(data.rules as ResponderRule[]);
+          break;
+        case 'SET_TRIGGERS':
+          engine.setTriggers(data.triggers);
+          break;
+        case 'SET_SIGNAL_INTEGRITY':
+          engine.setSignalIntegrity(data.integrity);
           break;
         case 'GET_PORTS':
           SerialPort.list().then(ports => {

@@ -30,6 +30,9 @@ export class SimulationEngine {
   private startTime = 0;
   private pausedAt = 0;
 
+  // FPS tracking
+  private fpsFrameTimes: number[] = [];
+
   // Recording & Replay State
   private isRecording = false;
   private recordingBuffer: Array<{ time: number; frame: GeneratedFrame }> = [];
@@ -330,6 +333,14 @@ export class SimulationEngine {
     }
   }
 
+  public setTriggers(triggers: import('../types').Trigger[]) {
+    this.state.triggers = triggers;
+  }
+
+  public setSignalIntegrity(integrity: Partial<import('../types').SignalIntegrity>) {
+    this.state.signalIntegrity = { ...this.state.signalIntegrity, ...integrity };
+  }
+
   public onRawResponse: (bytes: number[]) => void = () => {};
   public onConversation: (entry: ConversationEntry) => void = () => {};
   public onExchange: (exchange: Exchange) => void = () => {};
@@ -492,6 +503,13 @@ export class SimulationEngine {
     }
     
     this.frameCount++;
+
+    // FPS calculation (rolling 2-second window)
+    const now = Date.now();
+    this.fpsFrameTimes.push(now);
+    const cutoff = now - 2000;
+    this.fpsFrameTimes = this.fpsFrameTimes.filter(t => t >= cutoff);
+    this.state.framesPerSecond = this.fpsFrameTimes.length / 2;
 
     // Process scenario
     let scenarioUpdates = {};

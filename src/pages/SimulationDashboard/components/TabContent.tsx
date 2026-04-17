@@ -12,6 +12,10 @@ import SequenceRunner from './SequenceRunner';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import TriggerManager from './TriggerManager';
 import Visualizer3D from '../../../components/Visualizer/Visualizer3D';
+import ProtocolDecoderPanel from './ProtocolDecoderPanel';
+import TestSuiteRunner from './TestSuiteRunner';
+import ErrorReportPanel from './ErrorReportPanel';
+import FrameBuilder from './FrameBuilder';
 import { GeneratedFrame, FrameProfile, SimulationState } from '../../../types';
 
 interface TabContentProps {
@@ -33,20 +37,29 @@ interface TabContentProps {
     setDiffFrame: any;
     setResponderRules: any;
     setTriggers: any;
-  }
+    onSendFrame?: (bytes: number[]) => void;
+  };
+  elapsedMs?: number;
+  frameCount?: number;
+  errorCount?: number;
 }
 
-export default function TabContent({ 
-  activeTab, 
-  state, 
-  lastFrame, 
-  lastRxFrame, 
-  selectedProfile, 
+export default function TabContent({
+  activeTab,
+  state,
+  lastFrame,
+  lastRxFrame,
+  selectedProfile,
   waveformHistory,
   exchanges,
-  hooks
+  hooks,
+  elapsedMs = 0,
+  frameCount: frameCountProp,
+  errorCount: errorCountProp,
 }: TabContentProps) {
-  const { timingStats, frameCount, errorCount, status, recordings, playbackIndex, playbackTotal, responderRules, diffFrames, watchlist, triggers } = state;
+  const { timingStats, frameCount, errorCount, status, recordings, playbackIndex, playbackTotal, responderRules, diffFrames, watchlist, triggers, recentFrames } = state;
+  const resolvedFrameCount = frameCountProp ?? frameCount;
+  const resolvedErrorCount = errorCountProp ?? errorCount;
 
   switch (activeTab) {
     case 'waveforms':
@@ -114,7 +127,13 @@ export default function TabContent({
         />
       );
     case 'timeline':
-      return <CommunicationTimeline exchanges={exchanges} onSelectFrame={() => {}} />;
+      return (
+        <CommunicationTimeline
+          exchanges={exchanges}
+          onSelectFrame={() => {}}
+          hasRealDevice={state.serialConnected || state.networkConnected}
+        />
+      );
     case 'diagnostics':
       return (
         <Diagnostics 
@@ -150,6 +169,37 @@ export default function TabContent({
       );
     case 'visualizer':
       return <Visualizer3D lastFrame={lastFrame} />;
+    case 'decoder':
+      return (
+        <ProtocolDecoderPanel
+          frames={recentFrames}
+          profile={selectedProfile}
+        />
+      );
+    case 'testsuite':
+      return (
+        <TestSuiteRunner
+          frames={recentFrames}
+          profile={selectedProfile}
+        />
+      );
+    case 'report':
+      return (
+        <ErrorReportPanel
+          frames={recentFrames}
+          profile={selectedProfile}
+          elapsedMs={elapsedMs}
+          frameCount={resolvedFrameCount}
+          errorCount={resolvedErrorCount}
+        />
+      );
+    case 'builder':
+      return (
+        <FrameBuilder
+          profile={selectedProfile}
+          onSendFrame={hooks.onSendFrame ?? (() => {})}
+        />
+      );
     default:
       return null;
   }

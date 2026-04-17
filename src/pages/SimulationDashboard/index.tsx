@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Menu, 
-  Activity, 
-  Settings2, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  Activity,
+  Settings2,
   LayoutDashboard,
   LineChart,
   Gauge as GaugeIcon,
@@ -18,7 +18,11 @@ import {
   CheckSquare,
   Zap,
   Box,
-  Waves
+  Waves,
+  Binary,
+  ClipboardList,
+  FileDown,
+  Hammer,
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios, saveProfile as persistProfile } from '../../store/storage';
@@ -36,8 +40,6 @@ import RxMonitor from './components/RxMonitor';
 import ControlPanel from './components/ControlPanel';
 import LogicAnalyzer from './components/LogicAnalyzer';
 import PacketInspector from './components/PacketInspector';
-import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
-import ExchangeMonitor from './components/ExchangeMonitor';
 import TraceTable from './components/TraceTable';
 import LiveDashboard from './components/LiveDashboard';
 import TabContent from './components/TabContent';
@@ -146,7 +148,7 @@ export default function SimulationDashboard() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer'>('waveforms');
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder'>('waveforms');
 
   const handleSaveProfile = (profile: FrameProfile) => {
     persistProfile(profile);
@@ -315,16 +317,10 @@ export default function SimulationDashboard() {
                   selectedFrameId={selectedFrame?.frameNumber}
                   onSelectFrame={setSelectedFrame}
                 />
-                <RxMonitor 
+                <RxMonitor
                   lastRxFrame={lastRxFrame}
                   selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
                   onSelectFrame={setSelectedFrame}
-                />
-                <ExchangeMonitor 
-                  exchanges={exchanges}
-                  isLoopbackMode={outputMode === 'serial'}
-                  selectedId={selectedExchangeId || undefined}
-                  onSelect={selectExchange}
                 />
               </div>
             </div>
@@ -499,20 +495,56 @@ export default function SimulationDashboard() {
                     <Waves size={14} />
                     Spectrum
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveCenterTab('visualizer')}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                     activeCenterTab === 'visualizer' ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                    <Box size={14} />
-                    3D Visualizer
+                  <Box size={14} />
+                  3D Visualizer
+                </button>
+                <button
+                  onClick={() => setActiveCenterTab('decoder')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'decoder' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <Binary size={14} />
+                  Decoder
+                </button>
+                <button
+                  onClick={() => setActiveCenterTab('testsuite')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'testsuite' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <ClipboardList size={14} />
+                  Test Suite
+                </button>
+                <button
+                  onClick={() => setActiveCenterTab('report')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'report' ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <FileDown size={14} />
+                  Rapor
+                </button>
+                <button
+                  onClick={() => setActiveCenterTab('builder')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'builder' ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <Hammer size={14} />
+                  Builder
                 </button>
               </div>
 
               {/* Tab Content Area */}
               <div className="flex-1 min-h-0 glass-panel rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-                <TabContent 
+                <TabContent
                   activeTab={activeCenterTab}
                   state={state}
                   lastFrame={lastFrame}
@@ -520,6 +552,9 @@ export default function SimulationDashboard() {
                   selectedProfile={selectedProfile}
                   waveformHistory={waveformHistory}
                   exchanges={exchanges}
+                  elapsedMs={elapsedMs}
+                  frameCount={frameCount}
+                  errorCount={errorCount}
                   hooks={{
                     startPlayback,
                     deleteRecording,
@@ -530,34 +565,17 @@ export default function SimulationDashboard() {
                     stepPlayback,
                     setDiffFrame,
                     setResponderRules,
-                    setTriggers
+                    setTriggers,
+                    onSendFrame: (bytes: number[]) => {
+                      const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+                      console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);
+                      // WebSocket modu aktifse engine.processIncomingData'ya iletilir.
+                      // Client-side modda conversation log'a manuel TX olarak düşer.
+                    }
                   }}
                 />
               </div>
 
-              {/* Bottom Analyzer / Inspector (Unified) */}
-              {(selectedFrame || (activeCenterTab === 'waveforms' && lastFrame)) && (
-                <div className="shrink-0 mt-4 rounded-xl overflow-hidden shadow-xl border border-gray-800/30 animate-in fade-in slide-in-from-bottom-5">
-                  <div className="bg-gray-800/80 px-4 py-2 flex justify-between items-center border-b border-gray-700">
-                     <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                       <LayoutDashboard size={12} className={!selectedFrame ? 'text-emerald-500 animate-pulse' : 'text-blue-500'} />
-                       {selectedFrame ? `Paket Detayları (F# ${selectedFrame.frameNumber})` : 'Canlı Protokol Analizörü'}
-                     </span>
-                     {selectedFrame && (
-                       <button 
-                         onClick={() => setSelectedFrame(null)} 
-                         className="px-2 py-0.5 bg-gray-700 hover:bg-red-900/40 text-gray-400 hover:text-red-400 text-[9px] font-mono rounded transition-all flex items-center gap-1 border border-gray-600"
-                       >
-                         Seçimi Kapat
-                       </button>
-                     )}
-                  </div>
-                  <VisualProtocolAnalyzer 
-                    frame={selectedFrame || lastFrame}
-                    profile={selectedProfile}
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
