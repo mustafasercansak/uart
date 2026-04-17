@@ -113,6 +113,9 @@ engine.onFrame = (frame) => {
   const now = new Date();
   const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 
+  // Update timestamp to real-world time for UI animations (Hardware TX active etc)
+  frame.timestampMs = Date.now();
+
   broadcast({
     type: 'TICK',
     frame,
@@ -283,58 +286,91 @@ wss.on('connection', (ws) => {
           });
           break;
         case 'CONNECT_SERIAL': {
-          const config = data.config as SerialConfig;
-          const closePort = () => new Promise<void>((resolve) => {
-            if (!activePort || !activePort.isOpen) return resolve();
-            activePort.close(() => {
-              activePort = null;
-              setTimeout(resolve, 100);
-            });
-          });
-
-          await closePort();
-          console.log(`\x1b[34m[SERIAL]\x1b[0m Bağlanılıyor: ${config.portName}`);
-          activePort = new SerialPort({ path: config.portName, baudRate: config.baudRate, autoOpen: false });
-
-          activePort.open((err) => {
-            if (err) {
-              const msg = err.message.includes('Access denied') ? 'Port kilitli' : err.message;
-              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false, error: msg }));
+          try {
+            const config = data.config as SerialConfig;
+            if (!config || !config.portName) {
+              console.error('\x1b[31m[SERIAL ERR]\x1b[0m Geçersiz port yapılandırması alındı.');
               return;
             }
-            broadcast({ type: 'SERIAL_STATUS', connected: true });
-          });
 
-          let rxBuffer: number[] = [];
-          let rxTimeout: NodeJS.Timeout | null = null;
+            // If we're already connecting or connected to THIS port, ignore
+            if (activePort && activePort.path === config.portName && activePort.isOpen) {
+              console.log(`\x1b[33m[SERIAL]\x1b[0m ${config.portName} zaten bağlı.`);
+              ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: true }));
+              return;
+            }
 
-          activePort.on('data', (bytes: Buffer) => {
-            const byteArr = Array.from(bytes);
-            rxBuffer.push(...byteArr);
+            const closePort = () => new Promise<void>((resolve) => {
+              if (!activePort || !activePort.isOpen) return resolve();
+              activePort.close(() => {
+                activePort = null;
+                setTimeout(resolve, 100);
+              });
+            });
 
-            if (rxTimeout) clearTimeout(rxTimeout);
+            await closePort();
+            console.log(`\x1b[34m[SERIAL]\x1b[0m Bağlanılıyor: ${config.portName} (${config.baudRate} baud)`);
+            
+            activePort = new SerialPort({ 
+              path: config.portName, 
+              baudRate: config.baudRate, 
+              autoOpen: false 
+            });
 
-            rxTimeout = setTimeout(() => {
-              if (rxBuffer.length === 0) return;
+            activePort.open((err) => {
+              if (err) {
+                const msg = err.message.includes('Access denied') 
+                  ? 'Port kilitli (Başka bir program kullanıyor olabilir)' 
+                  : err.message;
+                console.error(`\x1b[31m[SERIAL ERR]\x1b[0m ${config.portName} bağlantı hatası:`, err.message);
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false, error: msg }));
+                }
+                return;
+              }
+              console.log(`\x1b[32m[SERIAL]\x1b[0m ${config.portName} başarıyla bağlandı.`);
+              broadcast({ type: 'SERIAL_STATUS', connected: true });
+            });
 
-              const hex = rxBuffer.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-              console.log(`\x1b[35m[RX]\x1b[0m ${rxBuffer.length} bytes received: ${hex}`);
+            let rxBuffer: number[] = [];
+            let rxTimeout: NodeJS.Timeout | null = null;
 
-              broadcast({ type: 'RAW_RX_DATA', hex });
+            activePort.on('data', (bytes: Buffer) => {
+              try {
+                const byteArr = Array.from(bytes);
+                rxBuffer.push(...byteArr);
 
-              engine.processIncomingData(rxBuffer);
-              rxBuffer = [];
-              rxTimeout = null;
-            }, 50);
-          });
+                if (rxTimeout) clearTimeout(rxTimeout);
 
-          activePort.on('error', (err) => {
-            broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
-          });
+                rxTimeout = setTimeout(() => {
+                  if (rxBuffer.length === 0) return;
+
+                  const hex = rxBuffer.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+                  console.log(`\x1b[35m[RX]\x1b[0m ${rxBuffer.length} bytes received  : ${hex}`);
+
+                  broadcast({ type: 'RAW_RX_DATA', hex });
+
+                  engine.processIncomingData(rxBuffer);
+                  rxBuffer = [];
+                  rxTimeout = null;
+                }, 50);
+              } catch (err: any) {
+                console.error('\x1b[31m[RX DATA ERR]\x1b[0m', err.message);
+              }
+            });
+
+            activePort.on('error', (err) => {
+              console.error('\x1b[31m[SERIAL ERROR EVENT]\x1b[0m', err.message);
+              broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
+            });
+          } catch (err: any) {
+            console.error('\x1b[31m[CONNECT_SERIAL ERR]\x1b[0m', err.message);
+          }
           break;
         }
         case 'DISCONNECT_SERIAL':
           if (activePort) {
+            console.log('\x1b[33m[SERIAL]\x1b[0m Bağlantı kesiliyor...');
             activePort.close(() => {
               activePort = null;
               broadcast({ type: 'SERIAL_STATUS', connected: false });
@@ -351,4 +387,13 @@ wss.on('connection', (ws) => {
     clients.delete(ws);
     console.log(`\x1b[33m[DISCO]\x1b[0m Dashboard ayrıldı. Kalan: ${clients.size}`);
   });
+});
+
+// Global Error Handler to prevent exit code 1 crashes
+process.on('uncaughtException', (err) => {
+  console.error('\x1b[31m[FATAL ERROR]\x1b[0m', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('\x1b[31m[UNHANDLED REJECTION]\x1b[0m', reason);
 });

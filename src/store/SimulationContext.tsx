@@ -472,6 +472,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
               case 'RAW_RX_DATA':
                 if (profilesRef.current.length > 0) {
                   const profile = profilesRef.current.find(p => p.id === stateRef.current.profileId);
+                  
+                  const now = new Date();
+                  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+                  newLogs.push({ time: timeStr, text: `RX: ${msg.hex}`, type: 'rx' });
+
                   if (profile) {
                     const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));
                     const fields = parseFrame(profile, bytes);
@@ -491,6 +496,22 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
                 break;
               case 'PORTS_LIST':
                 masterBatch.availablePorts = msg.ports;
+                break;
+              case 'SERIAL_STATUS':
+                masterBatch.serialConnected = msg.connected;
+                if (msg.error) {
+                  newLogs.push({ 
+                    time: new Date().toLocaleTimeString(), 
+                    text: `SERİ PORT HATASI: ${msg.error}`, 
+                    type: 'error' 
+                  });
+                } else if (msg.connected) {
+                  newLogs.push({ 
+                    time: new Date().toLocaleTimeString(), 
+                    text: 'Seri port başarıyla bağlandı.', 
+                    type: 'info' 
+                  });
+                }
                 break;
             }
           }

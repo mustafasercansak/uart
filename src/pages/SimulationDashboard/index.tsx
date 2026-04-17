@@ -88,7 +88,7 @@ export default function SimulationDashboard() {
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
   const [selectedSnapshotFrame, setSelectedSnapshotFrame] = useState<GeneratedFrame | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   
   const { 
