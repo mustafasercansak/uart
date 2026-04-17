@@ -1,9 +1,8 @@
 import React, { memo, useState, useCallback, useMemo } from 'react';
-import { Settings2, Save, X, GripVertical } from 'lucide-react';
-import type { GeneratedFrame, Field } from '../../../../types';
+import { Settings2, Save, X, GripVertical, Plus } from 'lucide-react';
+import type { GeneratedFrame, Field, GridPanel, DashboardWidget } from '../../../../types';
 import { useSimulation } from '../../../../hooks/useSimulation';
-import Gauge from './Gauge';
-import Sparkline from './Sparkline';
+import DashboardGrid from '../DashboardGrid';
 
 interface TelemetryPanelProps {
   lastFrame: GeneratedFrame | null;
@@ -12,66 +11,35 @@ interface TelemetryPanelProps {
 }
 
 const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields }: TelemetryPanelProps) => {
-  const { state, setTelemetryLayout } = useSimulation();
-  const { telemetryLayouts, profileId } = state;
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const { state, updateLayout, removeWidget } = useSimulation();
+  const { dashboardLayout } = state;
 
-  // Helper to get smart defaults
-  const getSmartConfig = useCallback((field: Field) => {
-    if (field.widgetConfig) return field.widgetConfig;
-    const name = field.name.toLocaleLowerCase('tr-TR');
-    if (field.type === 'waveform' || name.includes('pleth') || name.includes('ecg') || name.includes('ppg') || name.includes('dalga')) {
-      return { type: 'sparkline' as const, color: '#10b981' };
-    }
-    if (name.includes('nabız') || name.includes('nabiz') || name.includes('bpm') || name.includes('spo2') || name.includes('sat') || name.includes('temp') || name.includes('sıcaklık') || name.includes('rpm')) {
-      return { type: 'gauge' as const, min: 0, max: 200, color: '#f87171' };
-    }
-    if (field.type === 'range' || name.includes('bar')) {
-       return { type: 'bar' as const, min: 0, max: 255, color: '#3b82f6' };
-    }
-    return null;
-  }, []);
+  // Convert dashboardLayout.widgets to GridPanel format for DashboardGrid
+  const panels = useMemo<GridPanel[]>(() => {
+    return (dashboardLayout?.widgets || []).map(w => ({
+      id: w.id,
+      fieldName: w.fieldId,
+      fieldType: 'number', // Default or derived
+      color: w.config?.color || '#3b82f6',
+      widgetType: w.type,
+      config: w.config
+    }));
+  }, [dashboardLayout]);
 
-  // Filter and Sort fields
-  const widgetFields = useMemo(() => {
-    const rawFields = fields
-      .map(f => ({ field: f, config: getSmartConfig(f) }))
-      .filter(item => item.config !== null);
+  const handleRemove = useCallback((id: string) => {
+    removeWidget(id);
+  }, [removeWidget]);
 
-    const layout = profileId ? telemetryLayouts[profileId] : null;
-    if (!layout) return rawFields;
-
-    // Sort based on saved layout
-    return [...rawFields].sort((a, b) => {
-      const idxA = layout.indexOf(a.field.name);
-      const idxB = layout.indexOf(b.field.name);
-      if (idxA === -1 && idxB === -1) return 0;
-      if (idxA === -1) return 1;
-      if (idxB === -1) return -1;
-      return idxA - idxB;
+  const handleLayoutChange = useCallback((layoutItems: any[]) => {
+    const updated = (dashboardLayout?.widgets || []).map(w => {
+      const l = layoutItems.find(li => li.i === w.id);
+      if (l) {
+        return { ...w, x: l.x, y: l.y, w: l.w, h: l.h };
+      }
+      return w;
     });
-  }, [fields, getSmartConfig, telemetryLayouts, profileId]);
-
-  // Drag and Drop handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedItemIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedItemIndex === null || draggedItemIndex === index) return;
-
-    const newLayoutList = widgetFields.map(w => w.field.name);
-    const itemToMove = newLayoutList.splice(draggedItemIndex, 1)[0];
-    newLayoutList.splice(index, 0, itemToMove);
-    
-    if (profileId) {
-       setTelemetryLayout(profileId, newLayoutList);
-       setDraggedItemIndex(index);
-    }
-  };
+    updateLayout(updated);
+  }, [dashboardLayout, updateLayout]);
 
   if (!lastFrame) {
     return (
@@ -82,82 +50,37 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields }: TelemetryPa
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 flex flex-col min-h-0 bg-gray-950/20">
       {/* Control Bar */}
       <div className="shrink-0 px-6 py-2 flex justify-between items-center bg-gray-950/50 border-b border-gray-800/50">
         <div className="flex items-center gap-2">
           <Settings2 size={12} className="text-gray-500" />
-          <span className="text-[10px] font-mono font-black uppercase tracking-widest text-gray-400">Panel Ayarları</span>
+          <span className="text-[10px] font-mono font-black uppercase tracking-widest text-gray-400">Designer Mode</span>
         </div>
-        <button 
-          onClick={() => setIsEditMode(!isEditMode)}
-          className={`px-3 py-1 rounded-lg text-[9px] font-mono font-black uppercase transition-all flex items-center gap-2 ${
-            isEditMode ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'bg-gray-800 text-gray-400 hover:text-white'
-          }`}
-        >
-          {isEditMode ? <><Save size={12} /> Yerleşimi Kaydet</> : <><Settings2 size={12} /> Düzenle</>}
-        </button>
+        <div className="flex items-center gap-3">
+            <span className="text-[9px] font-mono text-gray-600">PIN FIELDS FROM DISSECTOR TO ADD WIDGETS</span>
+            <div className="h-4 w-[1px] bg-gray-800" />
+            <span className="text-[9px] font-mono text-emerald-500/60 uppercase tracking-tighter">Auto-Save Active</span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {widgetFields.map(({ field, config }, index) => {
-            const parsed = lastFrame.fields.find(f => f.name === field.name);
-            const value = parsed?.decimal ?? 0;
-            const history = waveformHistory.map(h => h[field.name] ?? 0).slice(-40);
-
-            return (
-              <div 
-                key={field.id}
-                draggable={isEditMode}
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing scale-[0.98]' : ''}`}
-              >
-                {isEditMode && (
-                  <div className="absolute inset-0 z-10 bg-emerald-500/5 border-2 border-dashed border-emerald-500/20 rounded-xl pointer-events-none animate-pulse-slow" />
-                )}
-                
-                {isEditMode && (
-                   <div className="absolute top-2 left-2 z-20 text-emerald-500 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <GripVertical size={16} />
-                   </div>
-                )}
-
-                {config!.type === 'gauge' && (
-                  <Gauge label={field.name} value={value} min={config!.min ?? 0} max={config!.max ?? 100} unit={config!.unit} color={config!.color} />
-                )}
-                
-                {config!.type === 'sparkline' && (
-                  <Sparkline label={field.name} data={history} color={config!.color} />
-                )}
-                
-                {config!.type === 'bar' && (
-                  <div className="flex flex-col p-4 rounded-xl bg-gray-900/40 border border-gray-800/50 backdrop-blur-sm group hover:border-gray-700/50 transition-all">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-[9px] font-mono font-black uppercase tracking-widest text-gray-500 group-hover:text-gray-300 transition-colors">{field.name}</span>
-                      <span className="text-xs font-mono font-bold text-gray-200">{value}</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full transition-all duration-500" 
-                        style={{ 
-                          width: `${Math.min(100, Math.max(0, ((value - (config!.min ?? 0)) / ((config!.max ?? 100) - (config!.min ?? 0))) * 100))}%`, 
-                          backgroundColor: config!.color || '#3b82f6',
-                          boxShadow: `0 0 10px ${config!.color || '#3b82f6'}88`
-                        }} 
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        
-        {widgetFields.length === 0 && (
-          <div className="text-center py-20 text-gray-600 font-mono text-[10px] uppercase tracking-widest">
-             Bu profil için görsel gösterge tanımlanmamış.
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+        {panels.length > 0 ? (
+          <DashboardGrid 
+            panels={panels} 
+            history={waveformHistory} 
+            onRemovePanel={handleRemove}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center py-24 px-12 text-center">
+             <div className="w-16 h-16 rounded-full bg-gray-900/50 flex items-center justify-center mb-4 border border-gray-800/50">
+                <Plus size={24} className="text-gray-700" />
+             </div>
+             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Dashboard Boş</h3>
+             <p className="text-[10px] text-gray-600 font-mono max-w-xs leading-relaxed">
+                Henüz bir gösterge eklenmemiş. <br/> 
+                <span className="text-blue-500">Packet Dissector</span> panelinden iğne (pin) ikonlarını kullanarak alanları buraya ekleyebilirsiniz.
+             </p>
           </div>
         )}
       </div>

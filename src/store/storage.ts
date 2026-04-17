@@ -27,7 +27,11 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'm5', name: 'Lead-II', type: 'waveform', byteWidth: 2, endianness: 'big', order: 4, typeConfig: { shape: 'ecg', frequency: 1, amplitude: 1200, offset: 2000, noiseLevel: 7 } as WaveformConfig },
       { id: 'm6', name: 'SPO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 5, typeConfig: { shape: 'sine', frequency: 1, amplitude: 40, offset: 128, noiseLevel: 2 } as WaveformConfig },
       { id: 'm7', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 6, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'm1', endFieldId: 'm6' } } as ChecksumConfig }
-    ]
+    ],
+    framing: {
+      mode: 'fixed',
+      header: [0x55, 0xAA]
+    }
   }
 ];
 

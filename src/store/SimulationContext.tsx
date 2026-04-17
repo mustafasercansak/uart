@@ -10,8 +10,13 @@ import type {
   TimingStats,
   ResponderRule,
   RecordingMetadata,
-  SimulationStatus
+  SimulationStatus,
+  Trigger,
+  SignalIntegrity,
+  DashboardWidget,
+  WidgetType
 } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 import { generateFrame } from '../engines/FrameGenerator';
 import { parseFrame } from '../engines/FrameParser';
 import { tickScenarioEngine } from '../engines/ScenarioEngine';
@@ -56,6 +61,15 @@ const INITIAL_STATE: SimulationState = {
   displayFilter: '',
   watchlist: [],
   snapshots: [],
+  triggers: [],
+  signalIntegrity: {
+    noiseLevel: 0,
+    jitterMs: 0,
+    bitFlipsEnabled: false
+  },
+  dashboardLayout: {
+    widgets: []
+  },
   timingStats: {
     averageLatencyMs: 0,
     minLatencyMs: 0,
@@ -96,6 +110,8 @@ type SimAction =
   | { type: 'SET_ANALYZER_MODE'; enabled: boolean }
   | { type: 'SET_DISPLAY_FILTER'; filter: string }
   | { type: 'TOGGLE_WATCHLIST'; fieldName: string }
+  | { type: 'SET_SIGNAL_INTEGRITY'; integrity: Partial<SimulationState['signalIntegrity']> }
+  | { type: 'SET_TRIGGERS'; triggers: Trigger[] }
   | { type: 'SAVE_SNAPSHOT'; frame: GeneratedFrame }
   | { type: 'DELETE_SNAPSHOT'; frameNumber: number }
   | { type: 'INIT_STATE'; newState: Partial<SimulationState> }
@@ -106,6 +122,9 @@ type SimAction =
   | { type: 'SET_TELEMETRY_LAYOUT'; profileId: string; layout: string[] }
   | { type: 'SET_RECORDINGS'; recordings: RecordingMetadata[] }
   | { type: 'SET_STATUS'; status: SimulationStatus }
+  | { type: 'ADD_WIDGET'; widget: DashboardWidget }
+  | { type: 'REMOVE_WIDGET'; id: string }
+  | { type: 'UPDATE_LAYOUT'; widgets: DashboardWidget[] }
   | { type: 'MASTER_TICK'; updates: Partial<SimulationState>; points: Array<Record<string, number>>; logEntries: Array<SimulationState['logEntries'][0]>; elapsedMs: number }
   | { type: 'BATCH_UPDATE'; updates: Partial<SimulationState> };
 
@@ -240,6 +259,13 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
         return { ...state, snapshots: [...state.snapshots, action.frame] };
     case 'DELETE_SNAPSHOT':
         return { ...state, snapshots: state.snapshots.filter(s => s.frameNumber !== action.frameNumber) };
+    case 'SET_SIGNAL_INTEGRITY':
+      return {
+        ...state,
+        signalIntegrity: { ...state.signalIntegrity, ...action.integrity }
+      };
+    case 'SET_TRIGGERS':
+      return { ...state, triggers: action.triggers };
     case 'INIT_STATE':
       return { 
         ...state, 
@@ -278,6 +304,30 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
       return { ...state, recordings: action.recordings };
     case 'SET_RESPONDER_RULES':
       return { ...state, responderRules: action.rules };
+    case 'ADD_WIDGET':
+      return {
+        ...state,
+        dashboardLayout: {
+          ...state.dashboardLayout,
+          widgets: [...(state.dashboardLayout?.widgets || []), action.widget]
+        }
+      };
+    case 'REMOVE_WIDGET':
+      return {
+        ...state,
+        dashboardLayout: {
+          ...state.dashboardLayout,
+          widgets: (state.dashboardLayout?.widgets || []).filter(w => w.id !== action.id)
+        }
+      };
+    case 'UPDATE_LAYOUT':
+      return {
+        ...state,
+        dashboardLayout: {
+          ...state.dashboardLayout,
+          widgets: action.widgets
+        }
+      };
     case 'BATCH_UPDATE':
       return { ...state, ...action.updates };
     default:
@@ -792,6 +842,37 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     backendWsRef.current?.send(JSON.stringify({ type: 'STEP_PLAYBACK', delta }));
   }, []);
 
+  const setSignalIntegrity = useCallback((integrity: Partial<SignalIntegrity>) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'SET_SIGNAL_INTEGRITY', integrity }));
+    dispatch({ type: 'SET_SIGNAL_INTEGRITY', integrity });
+  }, []);
+
+  const setTriggers = useCallback((triggers: Trigger[]) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'SET_TRIGGERS', triggers }));
+    dispatch({ type: 'SET_TRIGGERS', triggers });
+  }, []);
+
+  const addWidget = useCallback((type: WidgetType, fieldId: string) => {
+    const newWidget: DashboardWidget = {
+      id: uuidv4(),
+      type,
+      fieldId,
+      x: 0,
+      y: 0,
+      w: type === 'chart' ? 4 : 2,
+      h: type === 'chart' ? 4 : 3
+    };
+    dispatch({ type: 'ADD_WIDGET', widget: newWidget });
+  }, []);
+
+  const removeWidget = useCallback((id: string) => {
+    dispatch({ type: 'REMOVE_WIDGET', id });
+  }, []);
+
+  const updateLayout = useCallback((widgets: DashboardWidget[]) => {
+    dispatch({ type: 'UPDATE_LAYOUT', widgets });
+  }, []);
+
   return (
     <SimulationContext.Provider
       value={{
@@ -851,6 +932,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setTelemetryLayout: (profileId: string, layout: string[]) => {
           dispatch({ type: 'SET_TELEMETRY_LAYOUT', profileId, layout });
         },
+        setSignalIntegrity,
+        setTriggers,
+        addWidget,
+        removeWidget,
+        updateLayout,
         setResponderRules: (rules: ResponderRule[]) => {
           backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RULES', rules }));
           dispatch({ type: 'SET_RESPONDER_RULES', rules });

@@ -1,5 +1,6 @@
 import { generateFrame } from '../engines/FrameGenerator';
 import { tickScenarioEngine } from '../engines/ScenarioEngine';
+import { evaluateTriggers } from '../engines/TriggerEngine';
 import { VirtualPeripheralEngine } from '../engines/VirtualPeripheralEngine';
 import type { 
   SimulationState, 
@@ -91,79 +92,101 @@ export class SimulationEngine {
     // 1. Accumulate all incoming bytes into the persistent buffer
     this.rxBuffer.push(...bytes);
 
-    // 2. Determine frame width and sync pattern (first 2 bytes usually)
+    // 2. Decode frames based on the framing mode
+    const framing = this.profile?.framing || { mode: 'fixed' as const };
     const frameSize = this.profile ? this.profile.fields.reduce((sum, f) => sum + f.byteWidth, 0) : 0;
     
-    // Fallback if no profile or invalid size
-    if (!frameSize || frameSize <= 0) {
-      if (this.rxBuffer.length > 100) this.rxBuffer = this.rxBuffer.slice(-100);
-      return;
-    }
-
-    // 3. Extraction loop: Try to find and pull whole frames from the buffer
     let processed = true;
-    while (processed && this.rxBuffer.length >= frameSize) {
+    while (processed && this.rxBuffer.length > 0) {
       processed = false;
+      let chunk: number[] | null = null;
+      let bytesToSlice = 0;
 
-      // Look for the header (55 AA for YS2000A)
-      // We assume the first field(s) with constant values or common headers are sync.
-      // For now, let's just use the frameSize as the trigger, but ideally look for 0x55 0xAA
-      const headerIdx = this.rxBuffer.indexOf(0x55);
-      
-      if (headerIdx === -1) {
-        // No header found, clear buffer to prevent overflow but keep last few bytes in case 0x55 is split
-        if (this.rxBuffer.length > 20) this.rxBuffer = this.rxBuffer.slice(-5);
-        break;
-      }
-
-      // If header is not at 0, discard everything before it (garbage)
-      if (headerIdx > 0) {
-        this.rxBuffer = this.rxBuffer.slice(headerIdx);
-        if (this.rxBuffer.length < frameSize) break;
-      }
-
-      // Check if we have enough bytes for a full frame starting at the header
-      if (this.rxBuffer.length >= frameSize) {
-        const chunk = this.rxBuffer.slice(0, frameSize);
-        this.rxBuffer = this.rxBuffer.slice(frameSize);
-        processed = true;
-
-        const hex = chunk.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      if (framing.mode === 'fixed') {
+        if (!frameSize || frameSize <= 0) break;
         
-        const rxEntry: ConversationEntry = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            type: 'rx',
-            rawHex: hex
-        };
-        this.addLog(rxEntry);
-
-        if (this.pendingExchanges.length > 0) {
-            const exchange = this.pendingExchanges.shift()!;
-            exchange.rx = rxEntry;
-            exchange.latencyMs = rxEntry.timestamp - exchange.startTime;
-            
-            if (exchange.tx) {
-                exchange.isLoopbackMatch = (exchange.tx.rawHex === rxEntry.rawHex);
-            }
-            this.updateExchange(exchange);
-        } else {
-            const rxExchange: Exchange = {
-                id: uuidv4(),
-                startTime: rxEntry.timestamp,
-                rx: rxEntry
-            };
-            this.addExchange(rxExchange);
+        // Find header if configured
+        if (framing.header && framing.header.length > 0) {
+          const headerIdx = this.findSequence(this.rxBuffer, framing.header);
+          if (headerIdx === -1) {
+            if (this.rxBuffer.length > 50) this.rxBuffer = this.rxBuffer.slice(-framing.header.length);
+            break;
+          }
+          if (headerIdx > 0) {
+            this.rxBuffer = this.rxBuffer.slice(headerIdx);
+          }
         }
-        
-        this.checkRules(rxEntry.id);
+
+        if (this.rxBuffer.length >= frameSize) {
+          bytesToSlice = frameSize;
+          chunk = this.rxBuffer.slice(0, frameSize);
+        }
+      } else if (framing.mode === 'delimiter') {
+        const delim = framing.delimiter ?? 0x0A; // \n
+        const delimIdx = this.rxBuffer.indexOf(delim);
+        if (delimIdx !== -1) {
+          bytesToSlice = delimIdx + 1;
+          chunk = this.rxBuffer.slice(0, bytesToSlice);
+        }
+      }
+
+      if (chunk && bytesToSlice > 0) {
+        this.rxBuffer = this.rxBuffer.slice(bytesToSlice);
+        processed = true;
+        this.processFullFrame(chunk);
       }
     }
 
     // Buffer safety limit
-    if (this.rxBuffer.length > 512) {
-      this.rxBuffer = this.rxBuffer.slice(-256);
+    if (this.rxBuffer.length > 1024) {
+      this.rxBuffer = this.rxBuffer.slice(-512);
     }
+  }
+
+  private findSequence(buffer: number[], seq: number[]): number {
+    for (let i = 0; i <= buffer.length - seq.length; i++) {
+        let match = true;
+        for (let j = 0; j < seq.length; j++) {
+            if (buffer[i + j] !== seq[j]) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return i;
+    }
+    return -1;
+  }
+
+  private processFullFrame(chunk: number[]) {
+    const hex = chunk.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    
+    const rxEntry: ConversationEntry = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        type: 'rx',
+        rawHex: hex
+    };
+    this.addLog(rxEntry);
+
+    if (this.pendingExchanges.length > 0) {
+        const exchange = this.pendingExchanges.shift()!;
+        exchange.rx = rxEntry;
+        exchange.latencyMs = rxEntry.timestamp - exchange.startTime;
+        
+        if (exchange.tx) {
+            exchange.isLoopbackMatch = (exchange.tx.rawHex === rxEntry.rawHex);
+        }
+        this.updateExchange(exchange);
+    } else {
+        const rxExchange: Exchange = {
+            id: uuidv4(),
+            startTime: rxEntry.timestamp,
+            rx: rxEntry
+        };
+        this.addExchange(rxExchange);
+    }
+    
+    this.checkRules(rxEntry.id);
   }
 
   private addLog(entry: ConversationEntry) {
@@ -515,6 +538,42 @@ export class SimulationEngine {
       this.recordingBuffer.push({ time: this.state.elapsedMs, frame });
     }
 
+    // ── TRIGGER EVALUATION ────────────────────
+    const triggerResults = evaluateTriggers(this.state.triggers || [], frame, this.state);
+    
+    for (const res of triggerResults) {
+      if (res.triggered) {
+        console.log(`\x1b[33m[TRIGGERED]\x1b[0m ${res.triggerName} -> ${res.action}`);
+        
+        switch (res.action) {
+          case 'stop_simulation':
+            this.stop();
+            break;
+          case 'inject_error':
+            if (res.payload) this.injectError(res.payload as ErrorType);
+            break;
+          case 'log_warning':
+            this.addLog({
+              id: uuidv4(),
+              timestamp: Date.now(),
+              type: 'error', // Use error type for high visibility warnings
+              rawHex: `WARNING: ${res.triggerName}`,
+              details: res.payload
+            });
+            break;
+          case 'set_field':
+            if (res.payload && res.payload.includes(':')) {
+              const [fid, val] = res.payload.split(':');
+              this.state.fieldOverrides[fid] = parseFloat(val);
+            }
+            break;
+          case 'start_recording':
+            if (!this.isRecording) this.startRecording();
+            break;
+        }
+      }
+    }
+
     // Callback or Event emission happens here
     this.onFrame(frame);
 
@@ -559,7 +618,18 @@ export class SimulationEngine {
 
     // Schedule next
     const drift = Date.now() - nextTickAt;
-    const nextDelay = Math.max(0, profile.sendIntervalMs - drift);
+    
+    // ── JITTER SIMULATION ─────────────────────
+    let jitter = 0;
+    if (this.state.signalIntegrity.jitterMs > 0) {
+       // Gaussian jitter: most deltas are near 0, some are large
+       const u1 = Math.random();
+       const u2 = Math.random();
+       const z0 = Math.sqrt(-2.0 * Math.log(u1 + 1e-10)) * Math.cos(2.0 * Math.PI * u2);
+       jitter = z0 * (this.state.signalIntegrity.jitterMs / 2); // Divide by 2 to keep it mostly within range
+    }
+
+    const nextDelay = Math.max(0, profile.sendIntervalMs - drift + jitter);
     this.interval = setTimeout(() => this.run(resumeStart), nextDelay);
   }
 

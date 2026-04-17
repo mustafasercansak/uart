@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Terminal, Activity, FileDown, Circle, Square, HelpCircle } from 'lucide-react';
+import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3 } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 
 interface StatBarProps {
@@ -24,6 +24,8 @@ interface StatBarProps {
   onConnectNetwork: (url: string) => void;
   onDisconnectNetwork: () => void;
   onToggleAnalyzerMode: () => void;
+  onAddProfile: () => void;
+  onEditProfile: (profile: FrameProfile) => void;
   analyzerModeLabel?: string;
   onGetPorts: () => void;
   availablePorts: Array<{ path: string }>;
@@ -41,6 +43,11 @@ interface StatBarProps {
   isRecording: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
+  signalIntegrity: {
+    noiseLevel: number;
+    jitterMs: number;
+    bitFlipsEnabled: boolean;
+  };
 }
 
 const StatBar = memo(({
@@ -76,7 +83,10 @@ const StatBar = memo(({
   timingStats = { averageLatencyMs: 0, minLatencyMs: 0, maxLatencyMs: 0, jitterMs: 0 },
   isRecording,
   onStartRecording,
-  onStopRecording
+  onStopRecording,
+  onAddProfile,
+  onEditProfile,
+  signalIntegrity
 }: StatBarProps) => {
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
@@ -141,6 +151,22 @@ const StatBar = memo(({
           <option value="">— Profil —</option>
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        <button 
+          onClick={onAddProfile}
+          className="p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-500 rounded transition-colors"
+          title="Yeni Profil Oluştur"
+        >
+          <Plus size={14} />
+        </button>
+        {selectedProfile && (
+          <button 
+            onClick={() => onEditProfile(selectedProfile)}
+            className="p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-blue-400 rounded transition-colors"
+            title="Seçili Profili Düzenle"
+          >
+            <Edit3 size={14} />
+          </button>
+        )}
 
         <select 
           className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700 w-32"
@@ -288,20 +314,29 @@ const StatBar = memo(({
 
       {/* Stats - Move to very end or potentially separate row if tiny */}
       <div className="flex gap-3 text-[9px] font-mono border-l border-gray-800 pl-3">
+        <div className="hidden lg:flex items-center gap-1.5 border-r border-gray-900 pr-3">
+             <span className="text-gray-600 uppercase">Signal:</span>
+             <div className="flex items-center gap-2">
+                 <div className="flex flex-col">
+                     <span className="text-[7px] text-gray-500 leading-none">NOISE</span>
+                     <span className={signalIntegrity.noiseLevel > 0.5 ? 'text-amber-500' : 'text-emerald-500'}>
+                         {(signalIntegrity.noiseLevel * 100).toFixed(0)}%
+                     </span>
+                 </div>
+                 <div className="flex flex-col">
+                     <span className="text-[7px] text-gray-500 leading-none">JITTER</span>
+                     <span className="text-blue-400">{signalIntegrity.jitterMs}ms</span>
+                 </div>
+             </div>
+        </div>
         <div className="hidden sm:block"><span className="text-gray-600">F:</span> <span className="text-gray-300">{frameCount}</span></div>
         <div>
-           <span className="text-gray-600">Latency:</span> 
+           <span className="text-gray-600">LAT:</span> 
            <span className={`ml-1 font-bold ${timingStats.averageLatencyMs > 100 ? 'text-red-400' : 'text-emerald-400'}`}>
              {timingStats.averageLatencyMs.toFixed(1)}ms
            </span>
         </div>
-        <div>
-           <span className="text-gray-600">Jitter:</span> 
-           <span className="ml-1 text-gray-300">
-             {timingStats.jitterMs.toFixed(2)}ms
-           </span>
-        </div>
-        <div><span className="text-gray-600">Err:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
+        <div><span className="text-gray-600">ERR:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
         <div><span className="text-gray-600">T:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
       </div>
     </div>

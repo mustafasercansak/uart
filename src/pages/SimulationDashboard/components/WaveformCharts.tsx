@@ -1,8 +1,8 @@
 import { memo, useState, useCallback, useMemo } from 'react';
 import { LayoutGrid, List, GripHorizontal, MousePointer2, Activity, Ruler } from 'lucide-react';
-import type { FrameProfile } from '../../../types';
+import type { FrameProfile, GridPanel } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
-import DashboardGrid, { type GridPanel } from './DashboardGrid';
+import DashboardGrid from './DashboardGrid';
 
 interface WaveformChartsProps {
   waveformHistory: Array<Record<string, number>>;
@@ -34,7 +34,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
         const color = CHART_COLORS_EXTENDED[colorIdx % CHART_COLORS_EXTENDED.length];
         setGridPanels(gp => [
           ...gp,
-          { id: `${fieldName}-${Date.now()}`, fieldName, fieldType, color }
+          { id: `${fieldName}-${Date.now()}`, fieldName, fieldType, color, widgetType: 'chart' }
         ]);
       } else {
         // Removing: remove from grid panels

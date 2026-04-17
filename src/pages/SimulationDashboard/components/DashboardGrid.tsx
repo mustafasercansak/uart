@@ -1,21 +1,16 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ResponsiveGridLayout } from 'react-grid-layout';
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
-import { X, GripHorizontal, RotateCcw } from 'lucide-react';
+import { X, GripHorizontal, RotateCcw, Activity, ChartLine, Gauge as GaugeIcon, Lightbulb } from 'lucide-react';
+import type { GridPanel, WidgetType } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
+import AnalogGauge from './Widgets/AnalogGauge';
+import LedIndicator from './Widgets/LedIndicator';
+import SevenSegment from './Widgets/SevenSegment';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
 const STORAGE_KEY = 'uart-dashboard-grid-v3';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface GridPanel {
-  id:        string;
-  fieldName: string;
-  fieldType: string;
-  color:     string;
-}
 
 interface DashboardGridProps {
   panels:        GridPanel[];
@@ -122,20 +117,44 @@ export default function DashboardGrid({ panels, history, onRemovePanel }: Dashbo
 
   const lastPoint = history[history.length - 1] ?? {};
 
-  if (panels.length === 0) return null;
+  const renderWidgetContent = (panel: GridPanel, value: number) => {
+    switch (panel.widgetType) {
+      case 'gauge':
+        return <AnalogGauge value={value} color={panel.color} label={panel.fieldName} />;
+      case 'led':
+        return <LedIndicator active={value > 0} color={panel.color} label={panel.fieldName} />;
+      case '7segment':
+        return <SevenSegment value={value} color={panel.color} label={panel.fieldName} />;
+      case 'chart':
+      default:
+        return (
+          <div className="flex-1 min-h-0">
+            <CanvasWaveform dataKey={panel.fieldName} history={history} color={panel.color} />
+          </div>
+        );
+    }
+  };
+
+  const getWidgetIcon = (type: WidgetType) => {
+    switch (type) {
+      case 'gauge': return <GaugeIcon size={10} />;
+      case 'led': return <Lightbulb size={10} />;
+      case '7segment': return <Activity size={10} />;
+      case 'chart': return <ChartLine size={10} />;
+      default: return <GripHorizontal size={10} />;
+    }
+  };
 
   return (
     <div ref={containerRef} className="w-full">
-      {/* Toolbar */}
       <div className="flex items-center justify-end px-4 py-1.5 gap-2 border-b border-gray-800/40">
-        <span className="text-[9px] font-mono text-gray-600">{panels.length} panel</span>
+        <span className="text-[9px] font-mono text-gray-600">{panels.length} WIDGET ACTIVE</span>
         <button
           onClick={handleReset}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-all border border-gray-800/50"
-          title="Yerleşimi sıfırla"
         >
           <RotateCcw size={10} />
-          Sıfırla
+          RESET LAYOUT
         </button>
       </div>
 
@@ -146,59 +165,49 @@ export default function DashboardGrid({ panels, history, onRemovePanel }: Dashbo
         cols={{ lg: 12, md: 12, sm: 12, xs: 8, xxs: 4 }}
         rowHeight={38}
         onLayoutChange={handleLayoutChange}
-        dragConfig={{ enabled: true, handle: '.drag-handle', threshold: 4 }}
-        resizeConfig={{ enabled: true, handles: ['se', 's', 'e'] }}
         margin={[8, 8]}
         containerPadding={[8, 8]}
+        {...({ draggableHandle: ".drag-handle" } as any)}
       >
         {panels.map(panel => {
           const currentVal = lastPoint[panel.fieldName] ?? 0;
           return (
             <div
               key={panel.id}
-              className="bg-gray-900/80 rounded-lg border border-gray-800/60 overflow-hidden flex flex-col"
+              className="bg-gray-900/80 rounded-lg border border-gray-800/60 overflow-hidden flex flex-col group"
               style={{
                 boxShadow: `0 0 16px ${panel.color}0f, 0 2px 12px rgba(0,0,0,0.6)`,
               }}
             >
-              {/* ─ Drag handle header ─ */}
               <div
                 className="drag-handle flex items-center justify-between px-2.5 py-1.5 bg-gray-800/50 border-b border-gray-700/30 cursor-grab active:cursor-grabbing shrink-0 select-none"
               >
                 <div className="flex items-center gap-1.5 overflow-hidden">
-                  <GripHorizontal size={10} className="text-gray-600 shrink-0" />
+                  <div className="text-gray-600 group-hover:text-white transition-colors">
+                    {getWidgetIcon(panel.widgetType)}
+                  </div>
                   <span
                     className="text-[10px] font-mono font-bold uppercase tracking-widest truncate"
                     style={{ color: panel.color, textShadow: `0 0 6px ${panel.color}50` }}
                   >
                     {panel.fieldName}
                   </span>
-                  <span className="text-[8px] font-mono text-gray-600 shrink-0">{panel.fieldType}</span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span
-                    className="text-[11px] font-bold font-mono tabular-nums"
-                    style={{ color: panel.color }}
-                  >
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold font-mono tabular-nums opacity-60" style={{ color: panel.color }}>
                     {typeof currentVal === 'number' ? currentVal.toFixed(0) : currentVal}
                   </span>
                   <button
                     onClick={() => onRemovePanel(panel.id)}
-                    className="text-gray-600 hover:text-red-400 transition-colors p-0.5 rounded hover:bg-red-900/20"
-                    title="Kapat"
+                    className="text-gray-600 hover:text-red-400 p-0.5 rounded transition-colors"
                   >
                     <X size={10} />
                   </button>
                 </div>
               </div>
 
-              {/* ─ Chart area ─ */}
-              <div className="flex-1 min-h-0">
-                <CanvasWaveform
-                  dataKey={panel.fieldName}
-                  history={history}
-                  color={panel.color}
-                />
+              <div className="flex-1 min-h-0 relative">
+                 {renderWidgetContent(panel, currentVal)}
               </div>
             </div>
           );

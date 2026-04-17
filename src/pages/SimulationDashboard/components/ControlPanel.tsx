@@ -16,6 +16,8 @@ interface ControlPanelProps {
   onInjectError: (type: ErrorType) => void;
   onResetOverrides: () => void;
   onExportLogs: () => void;
+  signalIntegrity: { noiseLevel: number; jitterMs: number; bitFlipsEnabled: boolean };
+  onSetSignalIntegrity: (integrity: any) => void;
 }
 
 const ControlPanel = memo(({
@@ -31,7 +33,9 @@ const ControlPanel = memo(({
   onOverrideBit,
   onInjectError,
   onResetOverrides,
-  onExportLogs
+  onExportLogs,
+  signalIntegrity,
+  onSetSignalIntegrity
 }: ControlPanelProps) => {
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +139,50 @@ const ControlPanel = memo(({
             {pendingErrors.length} hata sırada bekleniyor
           </div>
         )}
+      </div>
+
+      {/* Signal Integrity Controls */}
+      <div className="p-4 border-b border-gray-800 bg-gray-900/40">
+        <div className="flex items-center justify-between mb-3 text-gray-500 text-xs font-mono uppercase tracking-wider">
+          <span>Sinyal Kalitesi</span>
+          <div className="flex items-center gap-2">
+             <span className="text-[9px] text-gray-600 uppercase">Bit Flip</span>
+             <button 
+               onClick={() => onSetSignalIntegrity({ bitFlipsEnabled: !signalIntegrity.bitFlipsEnabled })}
+               className={`w-7 h-3.5 rounded-full relative transition-colors ${signalIntegrity.bitFlipsEnabled ? 'bg-amber-600' : 'bg-gray-700'}`}
+             >
+               <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${signalIntegrity.bitFlipsEnabled ? 'left-4' : 'left-0.5'}`} />
+             </button>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between text-[10px] font-mono mb-1">
+              <span className="text-gray-400">Noise (Gürültü)</span>
+              <span className="text-amber-400">{(signalIntegrity.noiseLevel * 100).toFixed(1)}%</span>
+            </div>
+            <input
+              type="range" min="0" max="0.05" step="0.001"
+              value={signalIntegrity.noiseLevel}
+              onChange={(e) => onSetSignalIntegrity({ noiseLevel: parseFloat(e.target.value) })}
+              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+            />
+          </div>
+
+          <div>
+             <div className="flex justify-between text-[10px] font-mono mb-1">
+              <span className="text-gray-400">Jitter (Titreme)</span>
+              <span className="text-blue-400">{signalIntegrity.jitterMs.toFixed(1)}ms</span>
+            </div>
+            <input
+              type="range" min="0" max="50" step="0.5"
+              value={signalIntegrity.jitterMs}
+              onChange={(e) => onSetSignalIntegrity({ jitterMs: parseFloat(e.target.value) })}
+              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Log */}

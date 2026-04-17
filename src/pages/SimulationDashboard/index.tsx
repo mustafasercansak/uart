@@ -16,12 +16,15 @@ import {
   PlayCircle,
   Cpu as CpuIcon,
   CheckSquare,
-  Waves
+  Waves,
+  Zap
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
-import { loadProfiles, loadScenarios } from '../../store/storage';
+import { loadProfiles, loadScenarios, saveProfile as persistProfile } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
 import { parseFrame } from '../../engines/FrameParser';
+import ProfileEditorModal from './components/ProfileEditorModal';
+import TriggerManager from './components/TriggerManager';
 
 // Sub-components
 import StatBar from './components/StatBar';
@@ -38,7 +41,7 @@ import LiveDashboard from './components/LiveDashboard';
 import TelemetryPanel from './components/Telemetry/TelemetryPanel';
 import DiffLab from './components/Lab/DiffLab';
 import ScriptEditor from './components/Lab/ScriptEditor';
-import Timeline from './components/Timeline';
+import CommunicationTimeline from './components/CommunicationTimeline';
 import Diagnostics from './components/Diagnostics';
 import PlaybackPanel from './components/PlaybackPanel';
 import HardwareLayout from './components/HardwareLayout';
@@ -83,7 +86,7 @@ function formatMs(ms: number): string {
 const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316'];
 
 export default function SimulationDashboard() {
-  const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
+  const [profiles, setProfilesStore] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
   const [selectedSnapshotFrame, setSelectedSnapshotFrame] = useState<GeneratedFrame | null>(null);
@@ -104,7 +107,8 @@ export default function SimulationDashboard() {
     getPorts,
     setAnalyzerMode, selectExchange, setDisplayFilter,
     setDiffFrame, setResponderRules,
-    deleteRecording, refreshRecordings
+    deleteRecording, refreshRecordings,
+    setSignalIntegrity, setTriggers
   } = useSimulation();
 
   const { 
@@ -141,7 +145,27 @@ export default function SimulationDashboard() {
     playbackTotal
   } = state;
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum'>('waveforms');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<FrameProfile | null>(null);
+
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers'>('waveforms');
+
+  const handleSaveProfile = (profile: FrameProfile) => {
+    persistProfile(profile);
+    setProfilesStore(loadProfiles());
+    setIsEditingProfile(false);
+    setEditingProfile(null);
+  };
+
+  const handleAddProfile = () => {
+    setEditingProfile(null);
+    setIsEditingProfile(true);
+  };
+
+  const handleEditProfile = (profile: FrameProfile) => {
+    setEditingProfile(profile);
+    setIsEditingProfile(true);
+  };
 
   // Sync profiles with context for RX parsing
   useEffect(() => {
@@ -257,6 +281,8 @@ export default function SimulationDashboard() {
         onConnectNetwork={connectNetwork}
         onDisconnectNetwork={disconnectNetwork}
         onToggleAnalyzerMode={() => setAnalyzerMode(!analyzerMode)}
+        onAddProfile={handleAddProfile}
+        onEditProfile={handleEditProfile}
         analyzerModeLabel={analyzerMode ? 'Standart Mod' : 'Pro Mod\'a Geç'}
         onGetPorts={getPorts}
         availablePorts={availablePorts || []}
@@ -266,6 +292,7 @@ export default function SimulationDashboard() {
         onResume={handleResume}
         formatMs={formatMs}
         timingStats={timingStats}
+        signalIntegrity={state.signalIntegrity}
       />
 
       {/* Main layout container */}
@@ -466,6 +493,15 @@ export default function SimulationDashboard() {
                     <Waves size={14} />
                     Spectrum
                 </button>
+                <button 
+                  onClick={() => setActiveCenterTab('triggers')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'triggers' ? 'bg-yellow-600 text-black shadow-lg shadow-yellow-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                    <Zap size={14} />
+                    Triggers
+                </button>
               </div>
 
               {/* Tab Content Area */}
@@ -531,7 +567,7 @@ export default function SimulationDashboard() {
                   />
                 )}
                 {activeCenterTab === 'timeline' && (
-                  <Timeline 
+                  <CommunicationTimeline 
                     exchanges={exchanges}
                     onSelectFrame={setSelectedFrame}
                   />
@@ -558,6 +594,12 @@ export default function SimulationDashboard() {
                   <SpectrumAnalyzer 
                     waveformHistory={waveformHistory}
                     dataKey={watchlist.length > 0 ? watchlist[0] : (lastFrame?.fields[0]?.name || null)}
+                  />
+                )}
+                {activeCenterTab === 'triggers' && (
+                  <TriggerManager 
+                    triggers={state.triggers}
+                    onSetTriggers={setTriggers}
                   />
                 )}
               </div>
@@ -622,10 +664,19 @@ export default function SimulationDashboard() {
               onInjectError={injectError}
               onResetOverrides={resetOverrides}
               onExportLogs={exportLogs}
+              signalIntegrity={state.signalIntegrity}
+              onSetSignalIntegrity={setSignalIntegrity}
             />
           </div>
         </div>
 
+        {isEditingProfile && (
+          <ProfileEditorModal 
+            profile={editingProfile}
+            onSave={handleSaveProfile}
+            onClose={() => setIsEditingProfile(false)}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { X, Activity, Camera, Pin, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Activity, Camera, Pin, ArrowUp, ArrowDown, ChartLine, Gauge as GaugeIcon, Lightbulb, Hash } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { parseFrame } from '../../../engines/FrameParser';
 import type { FrameProfile, Exchange, GeneratedFrame } from '../../../types';
@@ -11,7 +11,7 @@ interface PacketInspectorProps {
 }
 
 const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorProps) => {
-  const { state, toggleWatchlist, saveSnapshot } = useSimulation();
+  const { state, addWidget, saveSnapshot } = useSimulation();
   
   if (!exchange) return null;
 
@@ -41,24 +41,47 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
                <th className="p-2 w-24">Field</th>
                <th className="p-2 w-16">Hex</th>
                <th className="p-2 w-16">Dec</th>
-               <th className="p-2 w-8"></th>
+               <th className="p-2 w-12">Action</th>
              </tr>
            </thead>
            <tbody className="divide-y divide-gray-800/50">
              {frame.fields.map((f: any) => {
-               const isWatched = state.watchlist.includes(f.name);
                return (
                  <tr key={f.name} className="hover:bg-white/5 transition-colors group">
                    <td className="p-2 text-gray-500 font-bold">{f.name}</td>
                    <td className="p-2 text-blue-500">{f.hex}</td>
                    <td className="p-2 text-emerald-500">{f.decimal}</td>
                    <td className="p-2">
-                     <button 
-                        onClick={() => toggleWatchlist(f.name)}
-                        className={`transition-colors ${isWatched ? 'text-yellow-500' : 'text-gray-800 hover:text-gray-600'}`}
-                     >
-                       <Pin size={10} />
-                     </button>
+                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                           onClick={() => addWidget('chart', f.name)}
+                           className="p-1 text-gray-700 hover:text-blue-400"
+                           title="Grafik Ekle"
+                        >
+                          <ChartLine size={10} />
+                        </button>
+                        <button 
+                           onClick={() => addWidget('gauge', f.name)}
+                           className="p-1 text-gray-700 hover:text-amber-400"
+                           title="Kadran Ekle"
+                        >
+                          <GaugeIcon size={10} />
+                        </button>
+                        <button 
+                           onClick={() => addWidget('led', f.name)}
+                           className="p-1 text-gray-700 hover:text-emerald-400"
+                           title="LED Ekle"
+                        >
+                          <Lightbulb size={10} />
+                        </button>
+                        <button 
+                           onClick={() => addWidget('7segment', f.name)}
+                           className="p-1 text-gray-700 hover:text-red-400"
+                           title="7-Segment Ekle"
+                        >
+                          <Hash size={10} />
+                        </button>
+                     </div>
                    </td>
                  </tr>
                );
@@ -99,13 +122,11 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
       </div>
 
       <div className="flex-1 p-3 flex flex-col gap-3 min-h-0 overflow-hidden bg-gray-950/50">
-        {/* Comparison Row */}
         <div className="flex gap-2 h-1/2 min-h-0">
             {txFrame && renderFieldTable(txFrame, 'Master TX', 'text-blue-400')}
             {rxFrame && renderFieldTable(rxFrame, 'Slave RX', 'text-emerald-400')}
         </div>
 
-        {/* Bit-Level Analysis */}
         <div className="flex-1 min-h-0 flex flex-col bg-black/60 border border-gray-800 rounded-lg p-3 shadow-2xl">
             <div className="flex items-center justify-between mb-2">
                 <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest font-mono">Binary Diff Analysis</span>

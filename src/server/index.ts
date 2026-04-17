@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { SimulationEngine } from './engine.ts';
+import { SimulationEngine } from './engine';
 import type { SimulationState, SerialConfig, ResponderRule } from '../types';
 import { SerialPort } from 'serialport';
 import fs from 'fs';
@@ -63,7 +63,14 @@ const INITIAL_STATE: SimulationState = {
   telemetryLayouts: {},
   recordings: [],
   playbackIndex: 0,
-  playbackTotal: 0
+  playbackTotal: 0,
+  triggers: [],
+  signalIntegrity: {
+    noiseLevel: 0,
+    jitterMs: 0,
+    bitFlipsEnabled: false
+  },
+  dashboardLayout: { widgets: [] }
 };
 
 let activePort: SerialPort | null = null;

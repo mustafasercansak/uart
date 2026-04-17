@@ -235,8 +235,14 @@ export function generateFrame(
     parsedFields.push(parsed);
   }
 
-  // Apply error injection
+  // Apply signal integrity noise (random bit flips)
   let finalBytes = [...allBytes];
+  
+  if (state.signalIntegrity.bitFlipsEnabled && state.signalIntegrity.noiseLevel > 0) {
+    finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel);
+  }
+
+  // Apply error injection (one-shot logic errors)
   const pendingError = state.pendingErrors[0];
   if (pendingError) {
     const result = applyError(finalBytes, pendingError);
@@ -244,7 +250,10 @@ export function generateFrame(
     if (result.error) errors.push(result.error);
   }
 
-  const rawHex = finalBytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  // Apply framing protocol wrappers (Level 1: Smart Protocol Decoders)
+  finalBytes = applyFraming(finalBytes, profile.framing);
+
+  const rawHex = finalBytes.map((b: number) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
   return {
     uId: `generated-${elapsedMs}-${Math.random()}`,
@@ -255,6 +264,119 @@ export function generateFrame(
     fields: parsedFields,
     errors,
   };
+}
+
+/**
+ * Level 1: Protocol Framing Wrappers
+ */
+function applyFraming(bytes: number[], config: any): number[] {
+  if (!config || !config.mode || config.mode === 'fixed') {
+    const header = config?.header || [];
+    const footer = config?.footer || [];
+    return [...header, ...bytes, ...footer];
+  }
+
+  switch (config.mode) {
+    case 'slip':
+      return encodeSLIP(bytes);
+    case 'cobs':
+      return encodeCOBS(bytes);
+    case 'modbus':
+      return encodeModbus(bytes);
+    case 'delimiter':
+      const delim = config.delimiter !== undefined ? config.delimiter : 0x0A;
+      return [...bytes, delim];
+    default:
+      return bytes;
+  }
+}
+
+function encodeSLIP(bytes: number[]): number[] {
+  const SLIP_END = 0xC0;
+  const SLIP_ESC = 0xDB;
+  const SLIP_ESC_END = 0xDC;
+  const SLIP_ESC_ESC = 0xDD;
+
+  const result: number[] = [SLIP_END];
+  for (const b of bytes) {
+    if (b === SLIP_END) {
+      result.push(SLIP_ESC, SLIP_ESC_END);
+    } else if (b === SLIP_ESC) {
+      result.push(SLIP_ESC, SLIP_ESC_ESC);
+    } else {
+      result.push(b);
+    }
+  }
+  result.push(SLIP_END);
+  return result;
+}
+
+function encodeCOBS(bytes: number[]): number[] {
+  const result: number[] = [];
+  let codeIndex = 0;
+  let code = 1;
+
+  result.push(0x00); // Placeholder for first code
+
+  for (const b of bytes) {
+    if (b === 0) {
+      result[codeIndex] = code;
+      codeIndex = result.length;
+      result.push(0x00);
+      code = 1;
+    } else {
+      result.push(b);
+      code++;
+      if (code === 0xFF) {
+        result[codeIndex] = code;
+        codeIndex = result.length;
+        result.push(0x00);
+        code = 1;
+      }
+    }
+  }
+  result[codeIndex] = code;
+  result.push(0x00); // Frame end marker
+  return result;
+}
+
+function encodeModbus(bytes: number[]): number[] {
+  // Simple Modbus RTU framing: Data + CRC16
+  const crc = calculateCRC16(bytes);
+  return [...bytes, crc & 0xFF, (crc >> 8) & 0xFF];
+}
+
+function calculateCRC16(bytes: number[]): number {
+  let crc = 0xFFFF;
+  for (const b of bytes) {
+    crc ^= b;
+    for (let i = 0; i < 8; i++) {
+      if ((crc & 0x0001) !== 0) {
+        crc = (crc >> 1) ^ 0xA001;
+      } else {
+        crc = crc >> 1;
+      }
+    }
+  }
+  return crc;
+}
+
+/**
+ * Simulates physical layer noise by flipping bits randomly based on noiseLevel.
+ */
+function applySignalNoise(bytes: number[], noiseLevel: number): number[] {
+  if (noiseLevel <= 0) return bytes;
+  
+  return bytes.map(byte => {
+    let corruptedByte = byte;
+    for (let bit = 0; bit < 8; bit++) {
+      // If noiseLevel is 0.01, there is a 1% chance for EACH BIT to flip
+      if (Math.random() < noiseLevel) {
+        corruptedByte ^= (1 << bit);
+      }
+    }
+    return corruptedByte;
+  });
 }
 
 interface ErrorResult {

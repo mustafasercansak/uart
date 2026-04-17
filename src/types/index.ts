@@ -13,6 +13,7 @@ export type FieldType =
   | 'script';
 
 export type ProtocolType = 'UART' | 'SPI' | 'I2C' | 'CAN';
+export type WidgetType = 'chart' | 'gauge' | 'led' | '7segment';
 
 // ── Virtual Peripherals ──────────────────────
 export interface PeripheralState {
@@ -153,7 +154,6 @@ export interface Field {
   widgetConfig?: WidgetConfig;
 }
 
-export type WidgetType = 'gauge' | 'sparkline' | 'bar' | 'value' | 'custom';
 
 export interface WidgetConfig {
   type: WidgetType;
@@ -161,6 +161,15 @@ export interface WidgetConfig {
   max?: number;
   unit?: string;
   color?: string;
+}
+
+export type FramingMode = 'fixed' | 'delimiter' | 'slip' | 'cobs' | 'modbus';
+
+export interface FramingConfig {
+  mode: FramingMode;
+  delimiter?: number; // e.g. 0x0A (\n)
+  header?: number[];  // e.g. [0x55, 0xAA]
+  footer?: number[];
 }
 
 // ── Frame Profile ────────────────────────────
@@ -174,6 +183,7 @@ export interface FrameProfile {
   stopBits: StopBits;
   sendIntervalMs: number;
   fields: Field[];
+  framing: FramingConfig; // New: Framing logic
   createdAt: string;
   updatedAt: string;
 }
@@ -271,6 +281,28 @@ export interface Scenario {
   category?: ScenarioCategory;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─────────────────────────────────────────────
+// TETIKLEYICI (TRIGGER) TİPLERİ
+// ─────────────────────────────────────────────
+
+export type TriggerAction = 
+  | 'stop_simulation' 
+  | 'start_recording' 
+  | 'log_warning' 
+  | 'inject_error' 
+  | 'set_field';
+
+export interface Trigger {
+  id: string;
+  name: string;
+  enabled: boolean;
+  condition: string; // e.g. "BPM > 100"
+  action: TriggerAction;
+  actionPayload?: string;
+  cooldownMs?: number;
+  lastTriggeredAt?: number;
 }
 
 export type ScenarioCategory =
@@ -384,7 +416,11 @@ export interface SimulationState {
   selectedExchangeId: string | null;
   analyzerMode: boolean;
   displayFilter: string;
+  // Digital Twin & Dashboard Layout
+  dashboardLayout?: DashboardLayout;
   // Professional Suite
+  triggers: Trigger[];
+  signalIntegrity: SignalIntegrity;
   watchlist: string[]; // Field IDs or Names
   snapshots: GeneratedFrame[];
   // Available Serial Ports (added for backend bridge)
@@ -401,6 +437,27 @@ export interface SimulationState {
   recordings: RecordingMetadata[];
   playbackIndex?: number;
   playbackTotal?: number;
+}
+
+export interface SignalIntegrity {
+  noiseLevel: number; // 0.0 - 1.0
+  jitterMs: number;  // 0 - 50ms
+  bitFlipsEnabled: boolean;
+}
+
+export interface DashboardLayout {
+  widgets: DashboardWidget[];
+}
+
+export interface DashboardWidget {
+  id: string;
+  type: WidgetType;
+  fieldId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  config?: Record<string, any>;
 }
 
 export interface RecordingMetadata {
@@ -512,4 +569,18 @@ export interface SimulationContextType {
   resumePlayback: () => void;
   seekPlayback: (index: number) => void;
   stepPlayback: (delta: number) => void;
+  setSignalIntegrity: (integrity: Partial<SignalIntegrity>) => void;
+  setTriggers: (triggers: Trigger[]) => void;
+  addWidget: (type: WidgetType, fieldId: string) => void;
+  removeWidget: (id: string) => void;
+  updateLayout: (widgets: DashboardWidget[]) => void;
+}
+
+export interface GridPanel {
+  id: string;
+  fieldName: string;
+  fieldType: string;
+  color: string;
+  widgetType: WidgetType;
+  config?: any;
 }
