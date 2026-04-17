@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ResponsiveGridLayout } from 'react-grid-layout';
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
-import { X, GripHorizontal, RotateCcw, Activity, ChartLine, Gauge as GaugeIcon, Lightbulb } from 'lucide-react';
+import { X, GripHorizontal, RotateCcw, Activity, ChartLine, Gauge as GaugeIcon, Lightbulb, Settings, Check } from 'lucide-react';
 import type { GridPanel, WidgetType } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
 import AnalogGauge from './Widgets/AnalogGauge';
@@ -16,6 +16,7 @@ interface DashboardGridProps {
   panels:        GridPanel[];
   history:       Array<Record<string, number>>;
   onRemovePanel: (id: string) => void;
+  onUpdatePanel?: (id: string, updates: Partial<GridPanel>) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -58,9 +59,10 @@ function savePerPanelPositions(
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DashboardGrid({ panels, history, onRemovePanel }: DashboardGridProps) {
+export default function DashboardGrid({ panels, history, onRemovePanel, onUpdatePanel }: DashboardGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
+  const [settingsOpen, setSettingsOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -120,7 +122,7 @@ export default function DashboardGrid({ panels, history, onRemovePanel }: Dashbo
   const renderWidgetContent = (panel: GridPanel, value: number) => {
     switch (panel.widgetType) {
       case 'gauge':
-        return <AnalogGauge value={value} color={panel.color} label={panel.fieldName} />;
+        return <AnalogGauge value={value} color={panel.color} label={panel.fieldName} min={panel.config?.min ?? 0} max={panel.config?.max ?? 255} />;
       case 'led':
         return <LedIndicator active={value > 0} color={panel.color} label={panel.fieldName} />;
       case '7segment':
@@ -198,6 +200,16 @@ export default function DashboardGrid({ panels, history, onRemovePanel }: Dashbo
                     {typeof currentVal === 'number' ? currentVal.toFixed(0) : currentVal}
                   </span>
                   <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSettingsOpen(prev => prev === panel.id ? null : panel.id);
+                    }}
+                    className={`p-0.5 rounded transition-colors ${settingsOpen === panel.id ? 'text-blue-400 bg-blue-900/30' : 'text-gray-500 hover:text-gray-300'}`}
+                    title="Ayarlar"
+                  >
+                    <Settings size={10} />
+                  </button>
+                  <button
                     onClick={() => onRemovePanel(panel.id)}
                     className="text-gray-600 hover:text-red-400 p-0.5 rounded transition-colors"
                   >
@@ -207,6 +219,56 @@ export default function DashboardGrid({ panels, history, onRemovePanel }: Dashbo
               </div>
 
               <div className="flex-1 min-h-0 relative">
+                 {settingsOpen === panel.id && (
+                   <div className="absolute inset-0 z-[100] bg-gray-950/95 backdrop-blur-md p-3 flex flex-col gap-2.5">
+                     <div className="text-[9px] uppercase font-bold text-gray-500 tracking-widest border-b border-gray-800 pb-1 mb-1">
+                       WIDGET SETTINGS
+                     </div>
+                     <div className="flex flex-col gap-1">
+                       <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">TYPE</label>
+                       <select 
+                         className="bg-gray-900 text-xs text-gray-200 p-1.5 rounded border border-gray-800 font-mono focus:outline-none focus:border-blue-500/50"
+                         value={panel.widgetType}
+                         onChange={(e) => onUpdatePanel?.(panel.id, { widgetType: e.target.value as WidgetType })}
+                       >
+                         <option value="chart">Waveform Chart</option>
+                         <option value="gauge">Analog Gauge</option>
+                         <option value="led">LED Indicator</option>
+                         <option value="7segment">7-Segment Display</option>
+                       </select>
+                     </div>
+                     <div className="flex gap-2">
+                       <div className="flex-1 flex flex-col gap-1">
+                         <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">MIN VAL</label>
+                         <input 
+                           type="number"
+                           className="bg-gray-900 text-[11px] text-gray-200 p-1.5 rounded border border-gray-800 w-full font-mono focus:outline-none focus:border-blue-500/50"
+                           value={panel.config?.min ?? 0}
+                           onChange={(e) => onUpdatePanel?.(panel.id, { config: { ...(panel.config || {}), min: Number(e.target.value) } })}
+                           step="any"
+                         />
+                       </div>
+                       <div className="flex-1 flex flex-col gap-1">
+                         <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">MAX VAL</label>
+                         <input 
+                           type="number"
+                           className="bg-gray-900 text-[11px] text-gray-200 p-1.5 rounded border border-gray-800 w-full font-mono focus:outline-none focus:border-blue-500/50"
+                           value={panel.config?.max ?? 255}
+                           onChange={(e) => onUpdatePanel?.(panel.id, { config: { ...(panel.config || {}), max: Number(e.target.value) } })}
+                           step="any"
+                         />
+                       </div>
+                     </div>
+                     <div className="flex-1"></div>
+                     <button
+                       onClick={() => setSettingsOpen(null)}
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white py-1.5 rounded flex items-center justify-center gap-1.5 text-[9px] font-bold tracking-widest uppercase transition-colors"
+                     >
+                       <Check size={11} strokeWidth={3} />
+                       APPLY
+                     </button>
+                   </div>
+                 )}
                  {renderWidgetContent(panel, currentVal)}
               </div>
             </div>

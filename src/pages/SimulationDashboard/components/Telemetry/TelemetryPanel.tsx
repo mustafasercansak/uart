@@ -80,6 +80,20 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
     });
     updateLayout(updated);
   }, [dashboardLayout, updateLayout]);
+
+  const handleUpdatePanel = useCallback((id: string, updates: Partial<GridPanel>) => {
+    const updated = (dashboardLayout?.widgets || []).map(w => {
+      if (w.id === id) {
+        return {
+          ...w,
+          type: updates.widgetType || w.type,
+          config: { ...(w.config || {}), ...(updates.config || {}) }
+        };
+      }
+      return w;
+    });
+    updateLayout(updated);
+  }, [dashboardLayout, updateLayout]);
   
   // Dashboard boşsa ve eşleşen şablon varsa otomatik uygula
   useEffect(() => {
@@ -121,6 +135,7 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
             panels={panels} 
             history={waveformHistory} 
             onRemovePanel={handleRemove}
+            onUpdatePanel={handleUpdatePanel}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center py-24 px-12 text-center">
