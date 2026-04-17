@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import type { FrameProfile } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 // ─────────────────────────────────────────────
 // TİPLER
@@ -85,6 +86,7 @@ function ByteInput({
   selected: boolean;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const valid = isValidHex(cell.hex) && cell.hex.length > 0;
   const decimal = valid ? parseInt(cell.hex, 16) : null;
 
@@ -137,7 +139,7 @@ function ByteInput({
               onInsertAfter(cell.id);
             }}
             className="p-0.5 text-gray-600 hover:text-blue-400 transition-colors"
-            title="Sonraya byte ekle"
+            title={t('builder.insertAfter')}
           >
             <Plus size={9} />
           </button>
@@ -147,7 +149,7 @@ function ByteInput({
               onDelete(cell.id);
             }}
             className="p-0.5 text-gray-600 hover:text-red-400 transition-colors"
-            title="Sil"
+            title={t('builder.delete')}
           >
             <Trash2 size={9} />
           </button>
@@ -164,6 +166,7 @@ function ByteInput({
 type CSAlgo = 'xor' | 'sum256' | 'crc16_modbus' | 'none';
 
 function ChecksumBar({ bytes }: { bytes: number[] }) {
+  const { t } = useTranslation();
   const [algo, setAlgo] = useState<CSAlgo>('xor');
 
   const result = useMemo(() => {
@@ -187,7 +190,7 @@ function ChecksumBar({ bytes }: { bytes: number[] }) {
         <option value="xor">XOR</option>
         <option value="sum256">SUM MOD 256</option>
         <option value="crc16_modbus">CRC-16 Modbus</option>
-        <option value="none">Hesaplama</option>
+        <option value="none">{t('builder.noCalculation')}</option>
       </select>
       {result !== null && (
         <span className="text-emerald-400 font-bold">
@@ -210,7 +213,9 @@ function SentFrameRow({
   frame: BuiltFrame;
   onResend: (bytes: number[]) => void;
 }) {
+  const { t, language } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const locale = language === 'tr' ? 'tr-TR' : 'en-US';
 
   const copy = useCallback(() => {
     navigator.clipboard.writeText(frame.hex);
@@ -221,7 +226,7 @@ function SentFrameRow({
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-800/40 rounded font-mono text-[10px] group">
       <span className="text-gray-600 w-20 shrink-0 text-[9px]">
-        {new Date(frame.timestamp).toLocaleTimeString('tr-TR', { hour12: false })}
+        {new Date(frame.timestamp).toLocaleTimeString(locale, { hour12: false })}
       </span>
       <span className="flex-1 text-gray-300 truncate">{frame.hex}</span>
       <span className="text-gray-600 shrink-0">{frame.bytes.length}B</span>
@@ -229,14 +234,14 @@ function SentFrameRow({
         <button
           onClick={copy}
           className="p-1 text-gray-600 hover:text-blue-400 transition-colors"
-          title="Kopyala"
+          title={t('builder.copy')}
         >
           {copied ? <CheckCircle size={11} className="text-emerald-400" /> : <Copy size={11} />}
         </button>
         <button
           onClick={() => onResend(frame.bytes)}
           className="p-1 text-gray-600 hover:text-emerald-400 transition-colors"
-          title="Tekrar gönder"
+          title={t('builder.resend')}
         >
           <Send size={11} />
         </button>
@@ -255,6 +260,7 @@ interface Props {
 }
 
 export default function FrameBuilder({ profile, onSendFrame }: Props) {
+  const { t } = useTranslation();
   const [cells, setCells] = useState<ByteCell[]>([
     { id: makeId(), hex: 'AA', label: 'Sync' },
     { id: makeId(), hex: '01', label: 'Addr' },
@@ -382,7 +388,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 bg-gray-900/40">
         <Hammer size={14} className="text-amber-400" />
         <span className="text-[11px] font-black uppercase tracking-widest text-gray-300">
-          Frame Builder
+          {t('builder.title')}
         </span>
 
         <div className="flex items-center gap-2 ml-4">
@@ -390,14 +396,14 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
             onClick={addCell}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/50 transition-all"
           >
-            <Plus size={11} /> Byte Ekle
+            <Plus size={11} /> {t('builder.addByte')}
           </button>
           {profile?.framing?.header && profile.framing.header.length > 0 && (
             <button
               onClick={loadFromProfile}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-indigo-900/40 hover:bg-indigo-800/50 text-indigo-300 border border-indigo-800/40 transition-all"
             >
-              Profil Başlığı Ekle
+              {t('builder.addHeader')}
             </button>
           )}
           <button
@@ -413,7 +419,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
           disabled={bytes.length === 0 || hasInvalidCells}
           className="ml-auto flex items-center gap-2 px-4 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-lg shadow-emerald-900/30"
         >
-          <Send size={13} /> Gönder ({bytes.length}B)
+          <Send size={13} /> {t('builder.send')} ({bytes.length}B)
         </button>
       </div>
 
@@ -444,7 +450,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
         {hasInvalidCells && (
           <div className="flex items-center gap-2 text-[10px] text-yellow-400 bg-yellow-950/30 border border-yellow-900/40 rounded-lg px-3 py-2">
             <AlertTriangle size={12} />
-            Geçersiz byte değeri var — tüm hücreler 00–FF aralığında olmalı
+            {t('builder.invalidWarning')}
           </div>
         )}
 
@@ -462,7 +468,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Not (opsiyonel — geçmişte görünür)"
+          placeholder={t('builder.notePlaceholder')}
           className="w-full bg-gray-900/50 border border-gray-700/50 text-gray-300 text-[10px] rounded-lg px-3 py-2 outline-none focus:border-gray-500 transition-all"
         />
 
@@ -471,7 +477,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
           <input
             value={hexInput}
             onChange={(e) => setHexInput(e.target.value)}
-            placeholder="Hex yapıştır: AA 01 03 00 00 veya AA,01,03,00,00"
+            placeholder={t('builder.hexPlaceholder')}
             className="flex-1 bg-gray-900/50 border border-gray-700/50 text-gray-300 text-[10px] rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all"
             onKeyDown={(e) => e.key === 'Enter' && loadFromHex()}
           />
@@ -480,7 +486,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
             disabled={!hexInput.trim()}
             className="px-3 py-2 rounded-lg text-[10px] font-bold bg-indigo-900/50 hover:bg-indigo-800/60 disabled:opacity-40 text-indigo-300 border border-indigo-800/50 transition-all"
           >
-            Yükle
+            {t('builder.load')}
           </button>
         </div>
 
@@ -496,7 +502,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
                 className={`transition-transform ${showHistory ? '' : '-rotate-90'}`}
               />
               <span className="font-bold uppercase tracking-wider">
-                Gönderilen Geçmiş
+                {t('builder.history')}
               </span>
               <span className="ml-auto text-gray-600">{sentFrames.length} frame</span>
             </button>

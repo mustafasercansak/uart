@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
-import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3, ShieldCheck, FileText, ClipboardCheck } from 'lucide-react';
+import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3, ShieldCheck, FileText, ClipboardCheck, Globe } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface StatBarProps {
   status: SimulationState['status'];
@@ -96,6 +97,7 @@ const StatBar = memo(({
   onStopValidation,
   onViewReport
 }: StatBarProps) => {
+  const { t, locale, setLocale } = useTranslation();
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
   const [selectedPort, setSelectedPort] = React.useState('');
@@ -120,7 +122,6 @@ const StatBar = memo(({
         avgLatency: timingStats.averageLatencyMs,
         jitter: timingStats.jitterMs
       },
-      // Note: Full log export could be added here if passed as prop
     };
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
@@ -137,7 +138,7 @@ const StatBar = memo(({
       <div className="flex items-center gap-3 pr-4 border-r border-white/5">
         <div className={`w-3 h-3 rounded-full ${status === 'running' ? 'bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,0.4)]' : status === 'paused' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.3)]' : 'bg-gray-600'}`} />
         <span className={`text-[11px] font-mono uppercase font-black tracking-widest ${status === 'running' ? 'text-emerald-400' : status === 'paused' ? 'text-amber-400' : 'text-gray-500'}`}>
-          {status === 'running' ? 'LIVE' : status === 'paused' ? 'PAUSED' : 'IDLE'}
+          {status === 'running' ? t('common.live') : status === 'paused' ? t('common.paused') : t('common.idle')}
         </span>
       </div>
 
@@ -145,7 +146,7 @@ const StatBar = memo(({
       <div className="flex items-center gap-2 pr-4 border-r border-white/5">
         <div className={`w-2.5 h-2.5 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
         <span className={`text-[10px] font-mono font-black uppercase tracking-tight ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
-          {networkConnected ? 'ENGINE: ONLINE' : 'ENGINE: OFFLINE'}
+          {t('common.engine')}: {networkConnected ? t('common.online') : t('common.offline')}
         </span>
       </div>
 
@@ -156,13 +157,13 @@ const StatBar = memo(({
           onChange={(e) => onSetProfile(e.target.value)} 
           disabled={status !== 'stopped'}
         >
-          <option value="">— Profil —</option>
+          <option value="">— {t('dashboard.profile')} —</option>
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <button 
           onClick={onAddProfile}
           className="p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-500 rounded transition-colors"
-          title="Yeni Profil Oluştur"
+          title={t('dashboard.profile')}
         >
           <Plus size={14} />
         </button>
@@ -170,7 +171,6 @@ const StatBar = memo(({
           <button 
             onClick={() => onEditProfile(selectedProfile)}
             className="p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-blue-400 rounded transition-colors"
-            title="Seçili Profili Düzenle"
           >
             <Edit3 size={14} />
           </button>
@@ -182,7 +182,7 @@ const StatBar = memo(({
           onChange={(e) => onSetScenario(e.target.value)} 
           disabled={status !== 'stopped'}
         >
-          <option value="">— Senaryo Yok —</option>
+          <option value="">— {t('dashboard.noScenario')} —</option>
           {scenarios.filter((s) => !selectedProfileId || s.profileId === selectedProfileId).map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
@@ -220,7 +220,7 @@ const StatBar = memo(({
                 disabled={status !== 'stopped' || !networkConnected}
               >
                 {availablePorts.length === 0 ? (
-                    <option value="">{networkConnected ? 'Port Yok' : 'Backend Bekleniyor'}</option>
+                    <option value="">{networkConnected ? t('common.offline') : '...'}</option>
                 ) : (
                     availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)
                 )}
@@ -229,9 +229,8 @@ const StatBar = memo(({
                 onClick={() => onConnectSerial(selectedPort)} 
                 disabled={!selectedProfileId || status !== 'stopped' || !selectedPort || !networkConnected}
                 className="px-2 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-mono rounded font-bold transition-all"
-                title={!networkConnected ? "Backend bağlantısı bekleniyor" : !selectedPort ? "Lütfen port seçin" : ""}
               >
-                Bağlan
+                {t('dashboard.connect')}
               </button>
             </div>
           ) : (
@@ -240,7 +239,7 @@ const StatBar = memo(({
               disabled={status !== 'stopped'}
               className="px-2 py-1 bg-red-700 hover:bg-red-600 text-white text-[10px] font-mono rounded font-bold"
             >
-              Kopar
+              {t('dashboard.disconnect')}
             </button>
           )}
         </div>
@@ -254,15 +253,14 @@ const StatBar = memo(({
           }`}
         >
           <Activity size={14} className={analyzerMode ? 'animate-pulse' : ''} />
-          {analyzerModeLabel}
+          {analyzerMode ? t('dashboard.standardMode') : t('dashboard.analyzerMode')}
         </button>
         <button 
           onClick={handleExport}
           className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
-          title="Seans Raporunu İndir (JSON)"
         >
           <FileDown size={14} />
-          Rapor Al
+          {t('dashboard.report')}
         </button>
 
         {/* MEDICAL VALIDATION BUTTONS */}
@@ -270,16 +268,14 @@ const StatBar = memo(({
           <button 
             onClick={onStartValidation}
             className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-            title="Validasyon Oturumu Başlat"
           >
             <ShieldCheck size={14} />
-            Yeterlilik
+            {t('dashboard.compliance')}
           </button>
         ) : validationSession.status === 'running' ? (
           <button 
             onClick={onStopValidation}
             className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-rose-500 bg-rose-500/10 text-rose-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-            title="Validasyon Oturumunu Bitir"
           >
             <ClipboardCheck size={14} />
             STOP TEST
@@ -288,7 +284,6 @@ const StatBar = memo(({
           <button 
             onClick={onViewReport}
             className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-blue-500/50 bg-blue-500/10 text-blue-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 shadow-lg shadow-blue-500/10"
-            title="Validasyon Raporunu Görüntüle"
           >
             <FileText size={14} />
             RAPORU GÖR
@@ -303,27 +298,34 @@ const StatBar = memo(({
               ? 'bg-red-900/20 border-red-500/50 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
               : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white hover:border-gray-500'
           } disabled:opacity-30`}
-          title={status !== 'running' ? "Kayıt için simülasyon çalışıyor olmalı" : isRecording ? "Kaydı Durdur" : "Kaydı Başlat"}
         >
           {isRecording ? (
             <>
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-              RECORDING
+              {t('dashboard.recording')}
               <Square size={10} className="fill-current" />
             </>
           ) : (
             <>
               <Circle size={10} className="text-gray-600 fill-current group-hover:text-red-500" />
-              REC
+              {t('dashboard.rec')}
             </>
           )}
         </button>
 
         <div className="flex gap-1 border-l border-gray-800 pl-3">
+          {/* Language Switcher */}
+          <button 
+            onClick={() => setLocale(locale === 'tr' ? 'en' : 'tr')}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-emerald-500"
+          >
+            <Globe size={14} className={locale === 'en' ? 'text-blue-400' : 'text-emerald-400'} />
+            {locale.toUpperCase()}
+          </button>
+
           <button 
             onClick={() => window.open('/help', '_blank')}
             className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
-            title="Yardım"
           >
             <HelpCircle size={14} />
           </button>
@@ -332,9 +334,8 @@ const StatBar = memo(({
               onClick={onStart} 
               disabled={!selectedProfileId || (outputMode === 'serial' && !serialConnected) || (outputMode === 'tcp' && !networkConnected)}
               className="px-3 py-1 bg-green-700 hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-mono rounded font-bold transition-all shadow-lg shadow-green-900/10"
-              title={!selectedProfileId ? "Lütfen profil seçin" : (outputMode === 'serial' && !serialConnected) ? "Seri porta bağlanmalısınız" : ""}
             >
-              ▶ Başlat
+              ▶ {t('common.start')}
             </button>
           ) : status === 'running' ? (
             <>
@@ -350,32 +351,32 @@ const StatBar = memo(({
         </div>
       </div>
 
-      {/* Stats - Move to very end or potentially separate row if tiny */}
+      {/* Stats */}
       <div className="flex gap-3 text-[9px] font-mono border-l border-gray-800 pl-3">
         <div className="hidden lg:flex items-center gap-1.5 border-r border-gray-900 pr-3">
              <span className="text-gray-600 uppercase">Signal:</span>
              <div className="flex items-center gap-2">
                  <div className="flex flex-col">
-                     <span className="text-[7px] text-gray-500 leading-none">NOISE</span>
+                     <span className="text-[7px] text-gray-500 leading-none">{t('stats.noise')}</span>
                      <span className={signalIntegrity.noiseLevel > 0.5 ? 'text-amber-500' : 'text-emerald-500'}>
                          {(signalIntegrity.noiseLevel * 100).toFixed(0)}%
                      </span>
                  </div>
                  <div className="flex flex-col">
-                     <span className="text-[7px] text-gray-500 leading-none">JITTER</span>
+                     <span className="text-[7px] text-gray-500 leading-none">{t('stats.jitter')}</span>
                      <span className="text-blue-400">{signalIntegrity.jitterMs}ms</span>
                  </div>
              </div>
         </div>
-        <div className="hidden sm:block"><span className="text-gray-600">F:</span> <span className="text-gray-300">{frameCount}</span></div>
+        <div className="hidden sm:block"><span className="text-gray-600 font-black">{t('stats.frames')}:</span> <span className="text-gray-300">{frameCount}</span></div>
         <div>
-           <span className="text-gray-600">LAT:</span> 
+           <span className="text-gray-600 font-black">{t('stats.latency')}:</span> 
            <span className={`ml-1 font-bold ${timingStats.averageLatencyMs > 100 ? 'text-red-400' : 'text-emerald-400'}`}>
              {timingStats.averageLatencyMs.toFixed(1)}ms
            </span>
         </div>
-        <div><span className="text-gray-600">ERR:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
-        <div><span className="text-gray-600">T:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
+        <div><span className="text-gray-600 font-black">{t('stats.error')}:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
+        <div><span className="text-gray-600 font-black">{t('stats.time')}:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
       </div>
     </div>
   );

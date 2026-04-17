@@ -3,6 +3,7 @@ import { X, Save, Code, Plus, Trash2, Settings2 } from 'lucide-react';
 import type { FrameProfile, Field, FramingConfig, FramingMode } from '../../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseCHeader } from '../../../engines/CHeaderImporter';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface ProfileEditorModalProps {
   profile: FrameProfile | null;
@@ -11,9 +12,10 @@ interface ProfileEditorModalProps {
 }
 
 const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave, onClose }) => {
+  const { t } = useTranslation();
   const [edited, setEdited] = useState<FrameProfile>(profile || {
     id: uuidv4(),
-    name: 'Yeni Profil',
+    name: t('profileEditor.fixed'), // Default name
     description: '',
     baudRate: 9600,
     dataBits: 8,
@@ -60,8 +62,8 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                 <Settings2 className="text-emerald-500" size={20} />
              </div>
              <div>
-                <h2 className="text-sm font-black text-gray-200 uppercase tracking-tighter">Profil Düzenleyici</h2>
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Gelişmiş Paket Yapılandırması</p>
+                <h2 className="text-sm font-black text-gray-200 uppercase tracking-tighter">{t('profileEditor.title')}</h2>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest">{t('profileEditor.subtitle')}</p>
              </div>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
@@ -73,10 +75,10 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
           {/* Left Column: Basic Info & Framing */}
           <div className="space-y-6">
             <section className="space-y-3">
-              <h3 className="text-[11px] text-emerald-500 font-bold uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Temel Ayarlar</h3>
+              <h3 className="text-[11px] text-emerald-500 font-bold uppercase tracking-widest border-l-2 border-emerald-500 pl-2">{t('profileEditor.basicSettings')}</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-[10px] text-gray-500 uppercase block mb-1">Profil Adı</label>
+                  <label className="text-[10px] text-gray-500 uppercase block mb-1">{t('profileEditor.profileName')}</label>
                   <input 
                     value={edited.name}
                     onChange={e => setEdited({...edited, name: e.target.value})}
@@ -84,7 +86,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-500 uppercase block mb-1">Baud Rate</label>
+                  <label className="text-[10px] text-gray-500 uppercase block mb-1">{t('profileEditor.baudRate')}</label>
                   <input 
                     type="number"
                     value={edited.baudRate}
@@ -93,7 +95,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-500 uppercase block mb-1">Interval (ms)</label>
+                  <label className="text-[10px] text-gray-500 uppercase block mb-1">{t('profileEditor.interval')}</label>
                   <input 
                     type="number"
                     value={edited.sendIntervalMs}
@@ -105,16 +107,16 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
             </section>
 
             <section className="space-y-3">
-               <h3 className="text-[11px] text-blue-500 font-bold uppercase tracking-widest border-l-2 border-blue-500 pl-2">Framing (Paketleme)</h3>
+               <h3 className="text-[11px] text-blue-500 font-bold uppercase tracking-widest border-l-2 border-blue-500 pl-2">{t('profileEditor.framing')}</h3>
                <div className="bg-gray-900/50 p-4 border border-gray-800 rounded-lg space-y-4">
                   <div>
-                    <label className="text-[10px] text-gray-500 uppercase block mb-1">Mod</label>
+                    <label className="text-[10px] text-gray-500 uppercase block mb-1">{t('profileEditor.mode')}</label>
                     <select 
                       value={edited.framing.mode}
                       onChange={e => setEdited({...edited, framing: {...edited.framing, mode: e.target.value as FramingMode}})}
                       className="w-full bg-gray-950 border border-gray-800 text-xs p-2 rounded outline-none text-gray-300"
                     >
-                      <option value="fixed">Fixed Width (Sabit)</option>
+                      <option value="fixed">{t('profileEditor.fixed')}</option>
                       <option value="delimiter">Delimiter (\n, \r)</option>
                       <option value="slip">SLIP Protocol</option>
                       <option value="cobs">COBS Protocol</option>
@@ -122,7 +124,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                   </div>
                   {edited.framing.mode === 'delimiter' && (
                     <div>
-                      <label className="text-[10px] text-gray-500 uppercase block mb-1">Delimiter (HEX)</label>
+                      <label className="text-[10px] text-gray-500 uppercase block mb-1">{t('profileEditor.delimiter')}</label>
                       <input 
                         placeholder="Örn: 0A"
                         onChange={e => setEdited({...edited, framing: {...edited.framing, delimiter: parseInt(e.target.value, 16)}})}
@@ -137,28 +139,28 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
           {/* Right Column: Fields & Importer */}
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center">
-               <h3 className="text-[11px] text-purple-500 font-bold uppercase tracking-widest border-l-2 border-purple-500 pl-2">Alanlar (Fields)</h3>
+               <h3 className="text-[11px] text-purple-500 font-bold uppercase tracking-widest border-l-2 border-purple-500 pl-2">{t('profileEditor.fields')}</h3>
                <div className="flex gap-2">
                  <button 
                    onClick={() => setShowImporter(!showImporter)}
                    className="text-[9px] flex items-center gap-1 bg-purple-900/30 text-purple-400 border border-purple-800 px-2 py-1 rounded hover:bg-purple-900/50"
                  >
                    <Code size={12} />
-                   C STRUCT IMPORT
+                   {t('profileEditor.cStructImport')}
                  </button>
                  <button 
                    onClick={addField}
                    className="text-[9px] flex items-center gap-1 bg-emerald-900/30 text-emerald-400 border border-emerald-800 px-2 py-1 rounded hover:bg-emerald-900/50"
                  >
                    <Plus size={12} />
-                   EKLE
+                   {t('profileEditor.add')}
                  </button>
                </div>
             </div>
 
             {showImporter && (
               <div className="bg-gray-900 border border-purple-500/30 p-3 rounded-lg space-y-2 animate-in fade-in zoom-in-95">
-                <p className="text-[9px] text-purple-400 uppercase font-bold">C struct kodunu buraya yapıştırın:</p>
+                <p className="text-[9px] text-purple-400 uppercase font-bold">{t('profileEditor.importPlaceholder')}</p>
                 <textarea 
                   value={importText}
                   onChange={e => setImportText(e.target.value)}
@@ -169,7 +171,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                   onClick={handleImport}
                   className="w-full bg-purple-600 text-white text-[10px] py-1.5 rounded font-black hover:bg-purple-500"
                 >
-                  PARSE VE EKLE
+                  {t('profileEditor.parseAndAdd')}
                 </button>
               </div>
             )}
@@ -177,7 +179,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
             <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
               {edited.fields.length === 0 && (
                 <div className="text-center py-10 text-gray-700 text-[10px] uppercase tracking-widest border border-dashed border-gray-800 rounded-lg">
-                  Henüz alan tanımlanmadı
+                  {t('profileEditor.noFields')}
                 </div>
               )}
               {edited.fields.map((field, idx) => (
@@ -223,7 +225,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                     <div className="ml-7 p-4 bg-gray-950 border border-emerald-500/20 rounded-lg space-y-4 animate-in slide-in-from-top-2 duration-200">
                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="text-[9px] text-gray-500 uppercase block mb-1">Tip</label>
+                            <label className="text-[9px] text-gray-500 uppercase block mb-1">{t('profileEditor.type')}</label>
                             <select 
                               value={field.type}
                               onChange={e => {
@@ -237,16 +239,16 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                               }}
                               className="w-full bg-gray-900 border border-gray-800 text-[10px] p-2 rounded outline-none text-gray-300"
                             >
-                              <option value="fixed">Fixed (Sabit)</option>
-                              <option value="range">Range (Aralık)</option>
-                              <option value="waveform">Waveform (Dalga)</option>
-                              <option value="flags">Flags (Bitler)</option>
+                              <option value="fixed">{t('profileEditor.fixed')}</option>
+                              <option value="range">{t('profileEditor.range')}</option>
+                              <option value="waveform">{t('profileEditor.waveform')}</option>
+                              <option value="flags">{t('profileEditor.flags')}</option>
                               <option value="checksum">Checksum</option>
                               <option value="computed">Computed</option>
                             </select>
                           </div>
                           <div>
-                            <label className="text-[9px] text-gray-500 uppercase block mb-1">Byte Genişliği</label>
+                            <label className="text-[9px] text-gray-500 uppercase block mb-1">{t('profileEditor.width')}</label>
                             <input 
                               type="number"
                               value={field.byteWidth}
@@ -264,7 +266,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                          <div className="space-y-3 pt-2 border-t border-gray-800">
                            <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="text-[9px] text-gray-400 uppercase block mb-1">Form (Shape)</label>
+                                <label className="text-[9px] text-gray-400 uppercase block mb-1">{t('profileEditor.shape')}</label>
                                 <select 
                                   value={(field.typeConfig as any).shape}
                                   onChange={e => {
@@ -274,14 +276,14 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                                   }}
                                   className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"
                                 >
-                                  <option value="sine">Sinüs</option>
-                                  <option value="ecg">ECG (Kalp)</option>
-                                  <option value="square">Kare</option>
-                                  <option value="triangle">Üçgen</option>
+                                  <option value="sine">{t('profileEditor.sine')}</option>
+                                  <option value="ecg">{t('profileEditor.ecg')}</option>
+                                  <option value="square">{t('profileEditor.square')}</option>
+                                  <option value="triangle">{t('profileEditor.triangle')}</option>
                                 </select>
                               </div>
                               <div>
-                                <label className="text-[9px] text-gray-400 uppercase block mb-1">Frekans (Hz)</label>
+                                <label className="text-[9px] text-gray-400 uppercase block mb-1">{t('profileEditor.frequency')}</label>
                                 <input 
                                   type="number" step="0.1"
                                   value={(field.typeConfig as any).frequency}
@@ -294,7 +296,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                                 />
                               </div>
                               <div>
-                                <label className="text-[9px] text-emerald-500 uppercase block mb-1 font-bold">Faz Kayması (0-1)</label>
+                                <label className="text-[9px] text-emerald-500 uppercase block mb-1 font-bold">{t('profileEditor.phase')} (0-1)</label>
                                 <input 
                                   type="range" min="0" max="1" step="0.01"
                                   value={(field.typeConfig as any).phase || 0}
@@ -308,7 +310,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                                 <div className="text-[8px] text-emerald-600 mt-1 text-right font-mono">{( (field.typeConfig as any).phase || 0).toFixed(2)} φ</div>
                               </div>
                               <div>
-                                <label className="text-[9px] text-gray-400 uppercase block mb-1">Genlik (Amp)</label>
+                                <label className="text-[9px] text-gray-400 uppercase block mb-1">{t('profileEditor.amplitude')}</label>
                                 <input 
                                   type="number"
                                   value={(field.typeConfig as any).amplitude}
@@ -337,14 +339,14 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
             onClick={onClose}
             className="px-6 py-2 text-xs font-bold text-gray-500 hover:text-white transition-colors uppercase"
           >
-            İptal
+            {t('common.cancel')}
           </button>
           <button 
             onClick={() => onSave(edited)}
             className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 uppercase tracking-tighter"
           >
             <Save size={16} />
-            Profili Kaydet
+            {t('profileEditor.saveProfile')}
           </button>
         </div>
       </div>

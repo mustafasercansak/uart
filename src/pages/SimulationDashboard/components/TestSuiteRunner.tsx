@@ -12,6 +12,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { GeneratedFrame, FrameProfile } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 // ─────────────────────────────────────────────
 // TİPLER
@@ -51,27 +52,14 @@ interface TestResult {
 }
 
 // ─────────────────────────────────────────────
-// ASSERTION LABELS
-// ─────────────────────────────────────────────
-
-const ASSERTION_LABELS: Record<AssertionType, string> = {
-  field_in_range: 'Field aralık içinde',
-  field_equals: 'Field değere eşit',
-  no_errors: 'Hata yok',
-  checksum_valid: 'Checksum geçerli',
-  frame_rate_min: 'Minimum FPS',
-  byte_count_equals: 'Frame boyutu eşit',
-  hex_contains: 'Hex pattern içeriyor',
-};
-
-// ─────────────────────────────────────────────
 // TEST RUNNER
 // ─────────────────────────────────────────────
 
 function runTest(
   tc: TestCase,
   frames: GeneratedFrame[],
-  profile: FrameProfile | null
+  profile: FrameProfile | null,
+  t: (key: string, data?: any) => string
 ): TestResult {
   const base: TestResult = {
     caseId: tc.id,
@@ -81,43 +69,49 @@ function runTest(
     failedFrames: [],
   };
 
-  if (!tc.enabled) return { ...base, status: 'skip', message: 'Test devre dışı' };
-  if (frames.length === 0) return { ...base, status: 'skip', message: 'Frame yok' };
+  if (!tc.enabled) return { ...base, status: 'skip', message: t('testSuite.messages.disabled') };
+  if (frames.length === 0) return { ...base, status: 'skip', message: t('testSuite.messages.noFrames') };
 
   switch (tc.assertion) {
     case 'no_errors': {
       const failed = frames.filter((f) => f.errors.length > 0);
       if (failed.length === 0) {
-        return { ...base, status: 'pass', message: `${frames.length} frame, hata yok ✓` };
+        return { 
+          ...base, 
+          status: 'pass', 
+          message: t('testSuite.messages.noErrors').replace('{count}', frames.length.toString()) 
+        };
       }
       return {
         ...base,
         status: 'fail',
-        message: `${failed.length}/${frames.length} frame hatalı`,
+        message: t('testSuite.messages.errorsFound')
+          .replace('{failed}', failed.length.toString())
+          .replace('{total}', frames.length.toString()),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
 
     case 'checksum_valid': {
-      const checksumField = profile?.fields.find((f) => f.type === 'checksum');
-      if (!checksumField) return { ...base, status: 'skip', message: 'Profilde checksum alanı yok' };
-      // Hata mesajlarında checksum hatalarını ara
+      if (!profile?.fields.some((f) => f.type === 'checksum')) {
+        return { ...base, status: 'skip', message: t('testSuite.messages.noChecksumField') };
+      }
       const failed = frames.filter((f) =>
         f.errors.some((e) => e.toLowerCase().includes('checksum') || e.toLowerCase().includes('crc'))
       );
       if (failed.length === 0) {
-        return { ...base, status: 'pass', message: `Tüm checksum'lar geçerli ✓` };
+        return { ...base, status: 'pass', message: t('testSuite.messages.checksumsValid') };
       }
       return {
         ...base,
         status: 'fail',
-        message: `${failed.length} checksum hatası`,
+        message: t('testSuite.messages.checksumErrors').replace('{count}', failed.length.toString()),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
 
     case 'field_in_range': {
-      if (!tc.fieldName) return { ...base, status: 'skip', message: 'Field adı belirtilmedi' };
+      if (!tc.fieldName) return { ...base, status: 'skip', message: t('testSuite.messages.noFieldName') };
       const min = tc.expectedMin ?? -Infinity;
       const max = tc.expectedMax ?? Infinity;
       const failed: number[] = [];
@@ -131,18 +125,27 @@ function runTest(
       }
 
       if (failed.length === 0) {
-        return { ...base, status: 'pass', message: `'${tc.fieldName}' her zaman [${min}, ${max}] aralığında ✓` };
+        return { 
+          ...base, 
+          status: 'pass', 
+          message: t('testSuite.messages.inRange')
+            .replace('{field}', tc.fieldName)
+            .replace('{min}', min.toString())
+            .replace('{max}', max.toString()) 
+        };
       }
       return {
         ...base,
         status: 'fail',
-        message: `'${tc.fieldName}': ${failed.length} frame aralık dışında`,
+        message: t('testSuite.messages.outOfRange')
+          .replace('{field}', tc.fieldName)
+          .replace('{count}', failed.length.toString()),
         failedFrames: failed,
       };
     }
 
     case 'field_equals': {
-      if (!tc.fieldName) return { ...base, status: 'skip', message: 'Field adı belirtilmedi' };
+      if (!tc.fieldName) return { ...base, status: 'skip', message: t('testSuite.messages.noFieldName') };
       const expected = Number(tc.expectedValue);
       const failed = frames.filter((f) => {
         const pf = f.fields.find((p) => p.name === tc.fieldName);
@@ -150,60 +153,93 @@ function runTest(
       });
 
       if (failed.length === 0) {
-        return { ...base, status: 'pass', message: `'${tc.fieldName}' her zaman ${expected} ✓` };
+        return { 
+          ...base, 
+          status: 'pass', 
+          message: t('testSuite.messages.equals')
+            .replace('{field}', tc.fieldName)
+            .replace('{expected}', expected.toString()) 
+        };
       }
       return {
         ...base,
         status: 'fail',
-        message: `'${tc.fieldName}': ${failed.length} frame ${expected} değil`,
+        message: t('testSuite.messages.notEquals')
+          .replace('{field}', tc.fieldName)
+          .replace('{count}', failed.length.toString())
+          .replace('{expected}', expected.toString()),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
 
     case 'frame_rate_min': {
-      if (frames.length < 2) return { ...base, status: 'skip', message: 'Hesaplamak için yeterli frame yok' };
+      if (frames.length < 2) return { ...base, status: 'skip', message: t('testSuite.messages.notEnoughFrames') };
       const durationMs = frames[frames.length - 1].timestampMs - frames[0].timestampMs;
       const fps = durationMs > 0 ? (frames.length / durationMs) * 1000 : 0;
       const minFPS = tc.minFPS ?? 1;
       if (fps >= minFPS) {
-        return { ...base, status: 'pass', message: `FPS: ${fps.toFixed(1)} ≥ ${minFPS} ✓` };
+        return { 
+          ...base, 
+          status: 'pass', 
+          message: t('testSuite.messages.fpsOk')
+            .replace('{actual}', fps.toFixed(1))
+            .replace('{min}', minFPS.toString()) 
+        };
       }
-      return { ...base, status: 'fail', message: `FPS: ${fps.toFixed(1)} < ${minFPS} (beklenen min)` };
+      return { 
+        ...base, 
+        status: 'fail', 
+        message: t('testSuite.messages.fpsLow')
+          .replace('{actual}', fps.toFixed(1))
+          .replace('{min}', minFPS.toString()) 
+      };
     }
 
     case 'byte_count_equals': {
       const expected = tc.expectedByteCount ?? 0;
       const failed = frames.filter((f) => f.rawBytes.length !== expected);
       if (failed.length === 0) {
-        return { ...base, status: 'pass', message: `Tüm frame'ler ${expected} byte ✓` };
+        return { 
+          ...base, 
+          status: 'pass', 
+          message: t('testSuite.messages.sizeOk').replace('{expected}', expected.toString()) 
+        };
       }
       return {
         ...base,
         status: 'fail',
-        message: `${failed.length} frame ${expected} byte değil`,
+        message: t('testSuite.messages.sizeError')
+          .replace('{count}', failed.length.toString())
+          .replace('{expected}', expected.toString()),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
 
     case 'hex_contains': {
-      if (!tc.hexPattern) return { ...base, status: 'skip', message: 'Hex pattern belirtilmedi' };
+      if (!tc.hexPattern) return { ...base, status: 'skip', message: t('testSuite.messages.noHexPattern') };
       const pattern = tc.hexPattern.replace(/\s+/g, '').toUpperCase();
       const failed = frames.filter(
         (f) => !f.rawHex.replace(/\s+/g, '').toUpperCase().includes(pattern)
       );
       if (failed.length === 0) {
-        return { ...base, status: 'pass', message: `Tüm frame'ler '${tc.hexPattern}' içeriyor ✓` };
+        return { 
+          ...base, 
+          status: 'pass', 
+          message: t('testSuite.messages.hexOk').replace('{pattern}', tc.hexPattern) 
+        };
       }
       return {
         ...base,
         status: 'fail',
-        message: `${failed.length} frame '${tc.hexPattern}' içermiyor`,
+        message: t('testSuite.messages.hexError')
+          .replace('{count}', failed.length.toString())
+          .replace('{pattern}', tc.hexPattern),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
 
     default:
-      return { ...base, status: 'skip', message: 'Bilinmeyen assertion' };
+      return { ...base, status: 'skip', message: t('testSuite.messages.unknown') };
   }
 }
 
@@ -224,6 +260,7 @@ function TestCaseForm({
   onDelete: (id: string) => void;
   result?: TestResult;
 }) {
+  const { t } = useTranslation();
   const fieldNames = profile?.fields.map((f) => f.name) ?? [];
 
   const statusIcon =
@@ -255,7 +292,7 @@ function TestCaseForm({
           className="flex-1 bg-transparent text-[11px] font-mono text-gray-200 border-b border-gray-700 focus:border-blue-500 outline-none py-0.5"
           value={tc.name}
           onChange={(e) => onUpdate(tc.id, { name: e.target.value })}
-          placeholder="Test adı..."
+          placeholder={t('testSuite.testNamePlaceholder')}
         />
         <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer ml-2">
           <input
@@ -264,7 +301,7 @@ function TestCaseForm({
             onChange={(e) => onUpdate(tc.id, { enabled: e.target.checked })}
             className="w-3 h-3 accent-blue-500"
           />
-          Aktif
+          {t('testSuite.active')}
         </label>
         <button
           onClick={() => onDelete(tc.id)}
@@ -281,11 +318,13 @@ function TestCaseForm({
           onChange={(e) => onUpdate(tc.id, { assertion: e.target.value as AssertionType })}
           className="bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
         >
-          {Object.entries(ASSERTION_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
+          <option value="field_in_range">{t('testSuite.assertions.field_in_range')}</option>
+          <option value="field_equals">{t('testSuite.assertions.field_equals')}</option>
+          <option value="no_errors">{t('testSuite.assertions.no_errors')}</option>
+          <option value="checksum_valid">{t('testSuite.assertions.checksum_valid')}</option>
+          <option value="frame_rate_min">{t('testSuite.assertions.frame_rate_min')}</option>
+          <option value="byte_count_equals">{t('testSuite.assertions.byte_count_equals')}</option>
+          <option value="hex_contains">{t('testSuite.assertions.hex_contains')}</option>
         </select>
 
         {/* Field name (for field assertions) */}
@@ -295,7 +334,7 @@ function TestCaseForm({
             onChange={(e) => onUpdate(tc.id, { fieldName: e.target.value })}
             className="bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           >
-            <option value="">-- Field seçin --</option>
+            <option value="">{t('testSuite.selectField')}</option>
             {fieldNames.map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -331,7 +370,7 @@ function TestCaseForm({
             type="number"
             value={tc.expectedValue ?? ''}
             onChange={(e) => onUpdate(tc.id, { expectedValue: Number(e.target.value) })}
-            placeholder="Beklenen değer"
+            placeholder="Value"
             className="w-32 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           />
         )}
@@ -353,7 +392,7 @@ function TestCaseForm({
             type="number"
             value={tc.expectedByteCount ?? ''}
             onChange={(e) => onUpdate(tc.id, { expectedByteCount: Number(e.target.value) })}
-            placeholder="Byte sayısı"
+            placeholder="Byte count"
             className="w-28 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           />
         )}
@@ -363,7 +402,7 @@ function TestCaseForm({
           <input
             value={tc.hexPattern ?? ''}
             onChange={(e) => onUpdate(tc.id, { hexPattern: e.target.value })}
-            placeholder="örn. 55 AA"
+            placeholder="e.g. 55 AA"
             className="w-36 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] font-mono rounded px-2 py-1"
           />
         )}
@@ -405,26 +444,32 @@ function makeId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-const DEFAULT_TESTS: TestCase[] = [
-  {
-    id: makeId(),
-    name: 'Hata sıfır olmalı',
-    assertion: 'no_errors',
-    enabled: true,
-  },
-  {
-    id: makeId(),
-    name: 'Checksum hep geçerli',
-    assertion: 'checksum_valid',
-    enabled: true,
-  },
-];
-
 export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProps) {
-  const [tests, setTests] = useState<TestCase[]>(DEFAULT_TESTS);
+  const { t } = useTranslation();
+  const [tests, setTests] = useState<TestCase[]>([]);
   const [results, setResults] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);
   const runId = useRef(0);
+
+  // Initialize default tests with translations
+  React.useEffect(() => {
+    if (tests.length === 0) {
+      setTests([
+        {
+            id: makeId(),
+            name: t('testSuite.assertions.no_errors'),
+            assertion: 'no_errors',
+            enabled: true,
+        },
+        {
+            id: makeId(),
+            name: t('testSuite.assertions.checksum_valid'),
+            assertion: 'checksum_valid',
+            enabled: true,
+        },
+      ]);
+    }
+  }, [t, tests.length]);
 
   const addTest = useCallback(() => {
     setTests((prev) => [
@@ -458,26 +503,26 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
       if (runId.current !== currentRunId) break;
       // Small delay to show progress
       await new Promise((r) => setTimeout(r, 40));
-      newResults.push(runTest(tc, frames, profile));
+      newResults.push(runTest(tc, frames, profile, t));
       setResults([...newResults]);
     }
 
     setRunning(false);
-  }, [tests, frames, profile]);
+  }, [tests, frames, profile, t]);
 
   const resetResults = useCallback(() => {
     setResults([]);
   }, []);
 
   const exportResults = useCallback(() => {
-    const lines = ['Test Suite Raporu', `Tarih: ${new Date().toISOString()}`, `Toplam Frame: ${frames.length}`, ''];
+    const lines = [t('testSuite.title'), `Date: ${new Date().toISOString()}`, `Total Frames: ${frames.length}`, ''];
     for (const r of results) {
       const tc = tests.find((t) => t.id === r.caseId);
       const label = tc?.name ?? r.caseId;
       lines.push(`[${r.status.toUpperCase()}] ${label}`);
       lines.push(`  ${r.message}`);
       if (r.failedFrames.length > 0) {
-        lines.push(`  Başarısız frame'ler: ${r.failedFrames.slice(0, 20).join(', ')}${r.failedFrames.length > 20 ? '...' : ''}`);
+        lines.push(`  Failed frames: ${r.failedFrames.slice(0, 20).join(', ')}${r.failedFrames.length > 20 ? '...' : ''}`);
       }
       lines.push('');
     }
@@ -485,16 +530,16 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
     const pass = results.filter((r) => r.status === 'pass').length;
     const fail = results.filter((r) => r.status === 'fail').length;
     const skip = results.filter((r) => r.status === 'skip').length;
-    lines.push(`Özet: ${pass} PASS / ${fail} FAIL / ${skip} SKIP`);
+    lines.push(`Summary: ${pass} PASS / ${fail} FAIL / ${skip} SKIP`);
 
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `test_raporu_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `test_report_${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [results, tests, frames]);
+  }, [results, tests, frames, t]);
 
   const pass = results.filter((r) => r.status === 'pass').length;
   const fail = results.filter((r) => r.status === 'fail').length;
@@ -510,7 +555,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 bg-gray-900/40">
         <FlaskConical size={14} className="text-purple-400" />
         <span className="text-[11px] font-black uppercase tracking-widest text-gray-300">
-          Test Suite
+          {t('testSuite.title')}
         </span>
 
         <div className="flex items-center gap-2 ml-4">
@@ -518,15 +563,15 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
             onClick={addTest}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/50 transition-all"
           >
-            <Plus size={11} /> Test Ekle
+            <Plus size={11} /> {t('testSuite.addTest')}
           </button>
 
           <button
             onClick={runAll}
             disabled={running || frames.length === 0 || tests.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed text-white transition-all"
           >
-            <Play size={11} /> Tümünü Çalıştır
+            <Play size={11} /> {t('testSuite.runAll')}
           </button>
 
           {results.length > 0 && (
@@ -535,13 +580,13 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
                 onClick={resetResults}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700/50 transition-all"
               >
-                <RotateCcw size={11} /> Sıfırla
+                <RotateCcw size={11} /> {t('testSuite.reset')}
               </button>
               <button
                 onClick={exportResults}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-indigo-800 hover:bg-indigo-700 text-indigo-200 border border-indigo-700/50 transition-all"
               >
-                <Download size={11} /> Rapor İndir
+                <Download size={11} /> {t('testSuite.downloadReport')}
               </button>
             </>
           )}
@@ -571,7 +616,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
 
         {frames.length === 0 && (
           <span className="ml-auto text-[10px] text-yellow-500/80">
-            ⚠ Simülasyonu başlatın ve frame oluşturun
+            {t('testSuite.simulationRequired')}
           </span>
         )}
       </div>
@@ -591,7 +636,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
         {tests.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2">
             <FlaskConical size={32} className="opacity-30" />
-            <p className="text-[11px]">Test yok — "Test Ekle" ile başlayın</p>
+            <p className="text-[11px]">{t('testSuite.noTests')}</p>
           </div>
         ) : (
           tests.map((tc) => (

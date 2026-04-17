@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, memo } from 'react';
 import { useSimulation } from '../../../hooks/useSimulation';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 const COLORS = {
   bg: '#0a0c10',
@@ -14,6 +15,7 @@ const COLORS = {
 
 const LogicAnalyzer = memo(() => {
   const { state } = useSimulation();
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +72,7 @@ const LogicAnalyzer = memo(() => {
       ctx.fillStyle = COLORS.label;
       ctx.font = '10px ui-monospace, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('WAITING FOR HARDWARE SIGNAL...', width / 2, height / 2);
+      ctx.fillText(t('logic.waiting'), width / 2, height / 2);
       return;
     }
 
@@ -250,13 +252,13 @@ const LogicAnalyzer = memo(() => {
              onClick={() => { setCursorA(null); setCursorB(null); }}
              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-[9px] font-mono text-gray-400 uppercase transition-colors"
            >
-             Clear Cursors
+             {t('logic.clearCursors')}
            </button>
            <button 
              onClick={() => autoScroll.current = !autoScroll.current}
              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors font-bold ${autoScroll.current ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-800 text-gray-500'}`}
            >
-             {autoScroll.current ? '● Running' : 'Paused'}
+             {autoScroll.current ? t('logic.running') : t('logic.paused')}
            </button>
         </div>
       </div>
@@ -283,9 +285,9 @@ const LogicAnalyzer = memo(() => {
 
       <div className="px-4 py-1 bg-gray-900 border-t border-gray-800 flex justify-between items-center">
          <div className="flex gap-4 text-[9px] font-mono text-gray-600 uppercase">
-            <span>Scroll: Wheel</span>
-            <span>Zoom: Ctrl+Wheel</span>
-            <span>Measure: Click to set A/B</span>
+            <span>{t('logic.scrollInstr')}</span>
+            <span>{t('logic.zoomInstr')}</span>
+            <span>{t('logic.measureInstr')}</span>
          </div>
       </div>
     </div>

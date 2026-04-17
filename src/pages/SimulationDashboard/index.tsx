@@ -32,6 +32,7 @@ import ProfileEditorModal from './components/ProfileEditorModal';
 import TriggerManager from './components/TriggerManager';
 import ValidationControls from './components/ValidationControls';
 import ValidationReport from './components/ValidationReport';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 // Sub-components
 import StatBar from './components/StatBar';
@@ -44,12 +45,12 @@ import TraceTable from './components/TraceTable';
 import LiveDashboard from './components/LiveDashboard';
 import TabContent from './components/TabContent';
 
-const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
-  { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
-  { type: 'wrong_sync', label: 'Yanlış Sync', color: 'text-orange-400 border-orange-800/50 bg-orange-900/20 hover:bg-orange-900/40' },
-  { type: 'skip_bytes', label: 'Byte Atla', color: 'text-yellow-400 border-yellow-800/50 bg-yellow-900/20 hover:bg-yellow-900/40' },
-  { type: 'extra_bytes', label: 'Ekstra Byte', color: 'text-purple-400 border-purple-800/50 bg-purple-900/20 hover:bg-purple-900/40' },
-  { type: 'delay_frame', label: 'Frame Gecikmesi', color: 'text-blue-400 border-blue-800/50 bg-blue-900/20 hover:bg-blue-900/40' },
+const ERROR_TYPES: Array<{ type: ErrorType; key: string; color: string }> = [
+  { type: 'corrupt_checksum', key: 'errors.checksum', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
+  { type: 'wrong_sync', key: 'errors.sync', color: 'text-orange-400 border-orange-800/50 bg-orange-900/20 hover:bg-orange-900/40' },
+  { type: 'skip_bytes', key: 'errors.skip', color: 'text-yellow-400 border-yellow-800/50 bg-yellow-900/20 hover:bg-yellow-900/40' },
+  { type: 'extra_bytes', key: 'errors.extra', color: 'text-purple-400 border-purple-800/50 bg-purple-900/20 hover:bg-purple-900/40' },
+  { type: 'delay_frame', key: 'errors.delay', color: 'text-blue-400 border-blue-800/50 bg-blue-900/20 hover:bg-blue-900/40' },
 ];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -70,18 +71,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-function formatMs(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const h = Math.floor(m / 60);
-  if (h > 0) return `${h} sa ${m % 60} dk ${s % 60} sn`;
-  if (m > 0) return `${m} dk ${s % 60} sn`;
-  return `${s} sn ${ms % 1000} ms`;
-}
-
-const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316'];
-
 export default function SimulationDashboard() {
+  const { t } = useTranslation();
+
+  const formatMs = useCallback((ms: number): string => {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const h = Math.floor(m / 60);
+    const units = {
+      h: t('time.hour'),
+      m: t('time.minute'),
+      s: t('time.second'),
+      ms: t('time.ms')
+    };
+
+    if (h > 0) return `${h} ${units.h} ${m % 60} ${units.m} ${s % 60} ${units.s}`;
+    if (m > 0) return `${m} ${units.m} ${s % 60} ${units.s}`;
+    return `${s} ${units.s} ${ms % 1000} ${units.ms}`;
+  }, [t]);
+
+  const errorTypes = useMemo(() => ERROR_TYPES.map(et => ({
+    ...et,
+    label: t(et.key)
+  })), [t]);
   const [profiles, setProfilesStore] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
@@ -167,18 +179,15 @@ export default function SimulationDashboard() {
     setIsEditingProfile(true);
   };
 
-  // Sync profiles with context for RX parsing
   useEffect(() => {
     setProfiles(profiles);
   }, [profiles, setProfiles]);
 
-  // Sync visibility for performance
   useEffect(() => {
     setUiVisible(true);
     return () => setUiVisible(false);
   }, [setUiVisible]);
 
-  // Initialize global state with first profile if empty
   useEffect(() => {
     if (!selectedProfileId && profiles.length > 0) {
       setProfile(profiles[0].id);
@@ -188,7 +197,6 @@ export default function SimulationDashboard() {
   const selectedProfile = useMemo(() => profiles.find((p) => p.id === selectedProfileId) ?? null, [profiles, selectedProfileId]);
   const selectedScenario = useMemo(() => scenarios.find((s) => s.id === selectedScenarioId) ?? null, [scenarios, selectedScenarioId]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
@@ -219,18 +227,14 @@ export default function SimulationDashboard() {
   const flagsFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'flags') ?? [], [selectedProfile]);
   const allRangeFields = useMemo(() => selectedProfile?.fields.filter((f) => f.type === 'range') ?? [], [selectedProfile]);
 
-  // Unified Exchange selection
   const selectedExchange = useMemo(() => 
     exchanges.find(ex => ex.id === selectedExchangeId) || null, 
     [exchanges, selectedExchangeId]
   );
 
-  // Unified Frame selection logic for inspector
   const analyzerFrame = useMemo(() => {
-    // 1. If explicit snapshot is selected
     if (selectedSnapshotFrame) return selectedSnapshotFrame;
 
-    // 2. If explicit exchange is selected
     if (selectedExchange && selectedProfile) {
         const entry = selectedExchange.tx || selectedExchange.rx;
         if (entry) {
@@ -248,9 +252,7 @@ export default function SimulationDashboard() {
             } as GeneratedFrame;
         }
     }
-    // 3. Fallback to manually selected frame from monitors
     if (selectedFrame) return selectedFrame;
-    // 4. Fallback to live data
     return lastFrame;
   }, [exchanges, selectedExchangeId, selectedFrame, selectedSnapshotFrame, lastFrame, selectedProfile]);
 
@@ -283,7 +285,6 @@ export default function SimulationDashboard() {
         onToggleAnalyzerMode={() => setAnalyzerMode(!analyzerMode)}
         onAddProfile={handleAddProfile}
         onEditProfile={handleEditProfile}
-        analyzerModeLabel={analyzerMode ? 'Standart Mod' : 'Pro Mod\'a Geç'}
         onGetPorts={getPorts}
         availablePorts={availablePorts || []}
         onStart={handleStart}
@@ -299,10 +300,8 @@ export default function SimulationDashboard() {
         onViewReport={() => setIsReportViewOpen(true)}
       />
 
-      {/* Main layout container */}
       <div className="flex-1 min-h-0 flex relative bg-[#0a0a0d] overflow-hidden">
         
-        {/* LEFT PANEL (Monitors) */}
         {!analyzerMode && (
           <div 
             className={`shrink-0 flex flex-col bg-gray-900 border-r border-gray-800/50 transition-all duration-300 ease-in-out relative ${
@@ -327,7 +326,6 @@ export default function SimulationDashboard() {
           </div>
         )}
 
-        {/* LEFT PANEL TOGGLE BUTTON (Dashboard mode only) */}
         {!analyzerMode && (
           <button
             onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
@@ -337,11 +335,10 @@ export default function SimulationDashboard() {
           >
             {isLeftPanelOpen ? <ChevronLeft size={16} /> : <Activity size={16} />}
           </button>
-        )}        {/* CENTER PANEL (WAVEFORMS or TRACE TABLE) */}
+        )}
         <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#030712] to-[#0a0a1a]">
           {analyzerMode ? (
             <div className="flex-1 min-h-0 p-6 flex gap-6 overflow-hidden relative">
-                {/* Main Content Areas */}
                 <div className="flex-[3] min-h-0 flex flex-col gap-6">
                     <TraceTable 
                         exchanges={exchanges}
@@ -356,9 +353,7 @@ export default function SimulationDashboard() {
                     </div>
                 </div>
 
-                {/* Right Panel: Inspector and Telemetry */}
                 <div className="flex shrink-0">
-                  {/* Pro Packet Inspector */}
                   {analyzerMode && selectedExchange && (
                     <div className="w-[500px] shrink-0 border-l border-white/5 relative z-30 glass-panel rounded-l-2xl">
                       <PacketInspector 
@@ -369,7 +364,6 @@ export default function SimulationDashboard() {
                     </div>
                   )}
 
-                  {/* Live Telemetry Dashboard */}
                   {isDashboardOpen && (
                     <div className={`${(analyzerMode && selectedExchange) ? 'w-80' : 'w-96'} shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-md transition-all duration-300 relative z-20`}>
                       <LiveDashboard 
@@ -380,7 +374,6 @@ export default function SimulationDashboard() {
                   )}
                 </div>
 
-                {/* Dashboard Toggle Button */}
                 <button
                     onClick={() => setIsDashboardOpen(!isDashboardOpen)}
                     className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-2 bg-brand/10 hover:bg-brand/20 border border-brand/20 text-brand rounded-l-xl shadow-lg transition-all duration-300 ${
@@ -394,7 +387,6 @@ export default function SimulationDashboard() {
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-hidden relative p-6 flex flex-col">
-              {/* Professional Tab Navigation */}
               <div className="flex items-center gap-1 mb-6 glass-panel p-1 rounded-2xl self-start">
                 <button 
                   onClick={() => setActiveCenterTab('waveforms')}
@@ -403,7 +395,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <LineChart size={14} />
-                  Waveforms
+                  {t('dashboard.waveforms')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('logic')}
@@ -412,7 +404,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <Zap size={14} />
-                  Logic
+                  {t('dashboard.logic')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('telemetry')}
@@ -421,7 +413,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <GaugeIcon size={14} />
-                    Telemetry
+                    {t('dashboard.telemetry')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('lab')}
@@ -430,7 +422,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <FlaskConical size={14} />
-                    Lab (Diff)
+                    {t('dashboard.lab')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('timeline')}
@@ -439,7 +431,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <History size={14} />
-                    Timeline
+                    {t('dashboard.timeline')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('diagnostics')}
@@ -448,7 +440,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <BarChart3 size={14} />
-                    Diagnostics
+                    {t('dashboard.diagnostics')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('playback')}
@@ -457,7 +449,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <PlayCircle size={14} />
-                    Playback
+                    {t('dashboard.playback')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('scripting')}
@@ -466,7 +458,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <Code size={14} />
-                    Scripting
+                    {t('dashboard.scripting')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('hardware')}
@@ -475,7 +467,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <CpuIcon size={14} />
-                    Hardware
+                    {t('dashboard.hardware')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('testing')}
@@ -484,7 +476,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <CheckSquare size={14} />
-                    Testing
+                    {t('dashboard.testing')}
                 </button>
                 <button 
                   onClick={() => setActiveCenterTab('spectrum')}
@@ -493,7 +485,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                     <Waves size={14} />
-                    Spectrum
+                    {t('dashboard.spectrum')}
                 </button>
                 <button
                   onClick={() => setActiveCenterTab('visualizer')}
@@ -502,7 +494,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <Box size={14} />
-                  3D Visualizer
+                  {t('dashboard.visualizer')}
                 </button>
                 <button
                   onClick={() => setActiveCenterTab('decoder')}
@@ -511,7 +503,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <Binary size={14} />
-                  Decoder
+                  {t('dashboard.decoder')}
                 </button>
                 <button
                   onClick={() => setActiveCenterTab('testsuite')}
@@ -520,7 +512,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <ClipboardList size={14} />
-                  Test Suite
+                  {t('dashboard.testsuite')}
                 </button>
                 <button
                   onClick={() => setActiveCenterTab('report')}
@@ -529,7 +521,7 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <FileDown size={14} />
-                  Rapor
+                  {t('dashboard.report')}
                 </button>
                 <button
                   onClick={() => setActiveCenterTab('builder')}
@@ -538,11 +530,10 @@ export default function SimulationDashboard() {
                   }`}
                 >
                   <Hammer size={14} />
-                  Builder
+                  {t('dashboard.builder')}
                 </button>
               </div>
 
-              {/* Tab Content Area */}
               <div className="flex-1 min-h-0 glass-panel rounded-2xl overflow-hidden flex flex-col shadow-2xl">
                 <TabContent
                   activeTab={activeCenterTab}
@@ -569,8 +560,6 @@ export default function SimulationDashboard() {
                     onSendFrame: (bytes: number[]) => {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);
-                      // WebSocket modu aktifse engine.processIncomingData'ya iletilir.
-                      // Client-side modda conversation log'a manuel TX olarak düşer.
                     }
                   }}
                 />
@@ -580,7 +569,6 @@ export default function SimulationDashboard() {
           )}
         </div>
 
-        {/* RIGHT PANEL TOGGLE (Dashboard mode only) */}
         {!analyzerMode && (
           <button
             onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
@@ -592,7 +580,6 @@ export default function SimulationDashboard() {
           </button>
         )}
 
-        {/* RIGHT PANEL (Controls) */}
         <div 
           className={`shrink-0 flex flex-col bg-gray-900 border-l border-gray-800/50 transition-all duration-300 ease-in-out relative ${
             (isRightPanelOpen || analyzerMode) ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0'
@@ -607,7 +594,7 @@ export default function SimulationDashboard() {
               fieldOverrides={fieldOverrides}
               pendingErrors={pendingErrors}
               logEntries={logEntries}
-              errorTypes={ERROR_TYPES}
+              errorTypes={errorTypes}
               onOverrideField={overrideField}
               onOverrideBit={overrideBit}
               onInjectError={injectError}

@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { Activity, Zap, AlertCircle, CheckCircle2, Timer } from 'lucide-react';
 import type { TimingStats } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface DiagnosticsProps {
   timingStats: TimingStats;
@@ -14,6 +15,9 @@ interface DiagnosticsProps {
 }
 
 const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: DiagnosticsProps) => {
+  const { t, language } = useTranslation();
+  const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+
   // Prepare Histogram Data (Inter-packet arrivals)
   const histogramData = useMemo(() => {
     const bins: Record<number, number> = {};
@@ -45,16 +49,16 @@ const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: Di
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-gray-900/40 border border-gray-800/50 p-4 rounded-2xl backdrop-blur-sm">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">Başarı Oranı</span>
+            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">{t('report.successRate')}</span>
             <div className="p-1.5 bg-emerald-500/10 rounded-lg"><CheckCircle2 size={14} className="text-emerald-500" /></div>
           </div>
           <div className="text-2xl font-black font-mono text-gray-100">%{successRate}</div>
-          <div className="text-[9px] font-mono text-gray-600 mt-1">{frameCount} Toplam Paket</div>
+          <div className="text-[9px] font-mono text-gray-600 mt-1">{frameCount.toLocaleString(locale)} {t('report.cleanFrames').replace('{count}', '')}</div>
         </div>
 
         <div className="bg-gray-900/40 border border-gray-800/50 p-4 rounded-2xl backdrop-blur-sm">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">Ort. Gecikme</span>
+            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">{t('diagnostics.avgLatency')}</span>
             <div className="p-1.5 bg-blue-500/10 rounded-lg"><Timer size={14} className="text-blue-500" /></div>
           </div>
           <div className="text-2xl font-black font-mono text-gray-100">{timingStats.averageLatencyMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">ms</span></div>
@@ -63,20 +67,20 @@ const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: Di
 
         <div className="bg-gray-900/40 border border-gray-800/50 p-4 rounded-2xl backdrop-blur-sm">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">Jitter (Sapma)</span>
+            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">{t('diagnostics.jitter')}</span>
             <div className="p-1.5 bg-purple-500/10 rounded-lg"><Activity size={14} className="text-purple-500" /></div>
           </div>
           <div className="text-2xl font-black font-mono text-gray-100">{timingStats.jitterMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">ms</span></div>
-          <div className="text-[9px] font-mono text-gray-600 mt-1">Timing Stability</div>
+          <div className="text-[9px] font-mono text-gray-600 mt-1">{t('diagnostics.timingStability')}</div>
         </div>
 
         <div className="bg-gray-900/40 border border-gray-800/50 p-4 rounded-2xl backdrop-blur-sm">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">Yanıt Hataları</span>
+            <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">{t('diagnostics.responseErrors')}</span>
             <div className="p-1.5 bg-red-500/10 rounded-lg"><AlertCircle size={14} className="text-red-500" /></div>
           </div>
-          <div className="text-2xl font-black font-mono text-gray-100">{errorCount}</div>
-          <div className="text-[9px] font-mono text-gray-600 mt-1">Simulated/Real Errors</div>
+          <div className="text-2xl font-black font-mono text-gray-100">{errorCount.toLocaleString(locale)}</div>
+          <div className="text-[9px] font-mono text-gray-600 mt-1">{t('diagnostics.errorTypeSub')}</div>
         </div>
       </div>
 
@@ -85,7 +89,7 @@ const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: Di
         <div className="bg-gray-900/40 border border-gray-800/50 p-6 rounded-2xl flex flex-col min-h-[300px]">
           <div className="flex items-center gap-2 mb-6">
              <Zap size={14} className="text-orange-500" />
-             <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-[0.2em]">Varış Süresi Kararlılığı (Last 50)</span>
+             <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-[0.2em]">{t('diagnostics.latencyStability')}</span>
           </div>
           <div className="flex-1">
             <ResponsiveContainer width="100%" height={220}>
@@ -114,7 +118,7 @@ const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: Di
         <div className="bg-gray-900/40 border border-gray-800/50 p-6 rounded-2xl flex flex-col min-h-[300px]">
           <div className="flex items-center gap-2 mb-6">
              <Activity size={14} className="text-emerald-500" />
-             <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-[0.2em]">Paket Aralığı Dağılımı (Histogram)</span>
+             <span className="text-[10px] font-mono font-black text-gray-300 uppercase tracking-[0.2em]">{t('diagnostics.arrivalDistribution')}</span>
           </div>
           <div className="flex-1">
             <ResponsiveContainer width="100%" height={220}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Play, Pause, Trash2, Calendar, Database, Clock, RefreshCw, Layers, ChevronLeft, ChevronRight, FastForward } from 'lucide-react';
 import type { RecordingMetadata, SimulationStatus } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface PlaybackPanelProps {
   recordings: RecordingMetadata[];
@@ -29,7 +30,9 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
   onSeek, 
   onStep 
 }) => {
+  const { t, language } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const locale = language === 'tr' ? 'tr-TR' : 'en-US';
 
   useEffect(() => {
     onRefresh();
@@ -42,7 +45,7 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
   };
 
   const formatDate = (ms: number) => {
-    return new Date(ms).toLocaleString('tr-TR', {
+    return new Date(ms).toLocaleString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -66,15 +69,15 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                         <FastForward className="text-white" size={20} />
                     </div>
                     <div>
-                        <h2 className="text-sm font-black font-mono text-white uppercase tracking-tighter">Aktif Oynatıcı</h2>
-                        <p className="text-[10px] font-mono text-orange-400/80">Yüksek hassasiyetli UART Replay modunda</p>
+                        <h2 className="text-sm font-black font-mono text-white uppercase tracking-tighter">{t('playback.activePlayer')}</h2>
+                        <p className="text-[10px] font-mono text-orange-400/80">{t('playback.activeSub')}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
                       onClick={() => onStep(-1)}
                       className="p-2 bg-black/40 hover:bg-black/60 text-gray-400 hover:text-white rounded-xl border border-white/5 transition-all"
-                      title="Geri Adım (Packet)"
+                      title={t('playback.stepBack')}
                     >
                       <ChevronLeft size={18} />
                     </button>
@@ -98,7 +101,7 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                     <button 
                       onClick={() => onStep(1)}
                       className="p-2 bg-black/40 hover:bg-black/60 text-gray-400 hover:text-white rounded-xl border border-white/5 transition-all"
-                      title="İleri Adım (Packet)"
+                      title={t('playback.stepForward')}
                     >
                       <ChevronRight size={18} />
                     </button>
@@ -107,8 +110,8 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
 
             <div className="space-y-2">
                 <div className="flex justify-between text-[10px] font-mono text-gray-500 mb-1">
-                    <span>PAKET #{playbackIndex + 1}</span>
-                    <span>TOPLAM {playbackTotal} PAKET</span>
+                    <span>{t('playback.packetIndex').replace('{index}', (playbackIndex + 1).toString())}</span>
+                    <span>{t('playback.packetTotal').replace('{count}', playbackTotal.toString())}</span>
                 </div>
                 <input 
                   type="range"
@@ -128,14 +131,14 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                 <Layers size={20} className="text-orange-500" />
             </div>
             <div>
-                <h2 className="text-sm font-black font-mono uppercase tracking-widest text-gray-100">Kayıt Kütüphanesi</h2>
-                <p className="text-[10px] font-mono text-gray-500">Saklanan UART seanslarını yönetin ve yeniden oynatın</p>
+                <h2 className="text-sm font-black font-mono uppercase tracking-widest text-gray-100">{t('playback.library')}</h2>
+                <p className="text-[10px] font-mono text-gray-500">{t('playback.librarySub')}</p>
             </div>
         </div>
         <button 
           onClick={handleRefresh}
           className={`p-2 bg-gray-900 border border-gray-800 rounded-lg text-gray-400 hover:text-white transition-all ${loading ? 'animate-spin' : ''}`}
-          title="Listeyi Yenile"
+          title={t('playback.refreshList')}
         >
           <RefreshCw size={16} />
         </button>
@@ -160,7 +163,7 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                     className="p-2 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl border border-emerald-500/20 transition-all flex items-center gap-2 text-[10px] font-mono font-black uppercase"
                   >
                     <Play size={14} fill="currentColor" />
-                    Oynat
+                    {t('playback.play')}
                   </button>
                   <button 
                     onClick={() => onDelete(rec.id)}
@@ -175,14 +178,14 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                 <div className="bg-black/30 rounded-xl p-2 border border-gray-800/50 flex items-center gap-2">
                     <Database size={12} className="text-gray-500" />
                     <div>
-                        <div className="text-[8px] font-mono text-gray-600 uppercase">Paket Sayısı</div>
-                        <div className="text-[10px] font-mono font-bold text-gray-300">{rec.frameCount} Frame</div>
+                        <div className="text-[8px] font-mono text-gray-600 uppercase">{t('playback.packetCount')}</div>
+                        <div className="text-[10px] font-mono font-bold text-gray-300">{rec.frameCount} {t('report.avgFrame')}</div>
                     </div>
                 </div>
                 <div className="bg-black/30 rounded-xl p-2 border border-gray-800/50 flex items-center gap-2">
                     <Clock size={12} className="text-gray-500" />
                     <div>
-                        <div className="text-[8px] font-mono text-gray-600 uppercase">Toplam Süre</div>
+                        <div className="text-[8px] font-mono text-gray-600 uppercase">{t('playback.totalDuration')}</div>
                         <div className="text-[10px] font-mono font-bold text-gray-300">{formatDuration(rec.durationMs)}</div>
                     </div>
                 </div>
@@ -193,8 +196,8 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
         {recordings.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-gray-600 border-2 border-dashed border-gray-900 rounded-3xl opacity-30">
              <Layers size={48} className="mb-4" />
-             <span className="text-xs font-mono uppercase tracking-[0.3em]">Henüz kayıt bulunmuyor</span>
-             <span className="text-[10px] font-mono mt-2">REC butonuna basarak seans kaydedebilirsiniz</span>
+             <span className="text-xs font-mono uppercase tracking-[0.3em]">{t('playback.noRecordings')}</span>
+             <span className="text-[10px] font-mono mt-2">{t('playback.recHelp')}</span>
           </div>
         )}
       </div>

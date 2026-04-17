@@ -12,6 +12,7 @@ import {
     X
 } from 'lucide-react';
 import type { ValidationSession } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface ValidationReportProps {
   session: ValidationSession;
@@ -19,6 +20,7 @@ interface ValidationReportProps {
 }
 
 export default function ValidationReport({ session, onClose }: ValidationReportProps) {
+  const { t } = useTranslation();
   const handlePrint = () => {
     window.print();
   };
@@ -37,7 +39,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all"
         >
           <Printer size={18} />
-          PDF Olarak Yazdır
+          {t('validation.printPdf')}
         </button>
         <button 
           onClick={onClose}
@@ -61,7 +63,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
           </div>
           <div className="text-right">
             <div className={`px-4 py-2 rounded-xl border-2 font-black text-sm uppercase tracking-widest ${isPass ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-rose-200 text-rose-700 bg-rose-50'}`}>
-                {isPass ? 'DOĞRULANDI - PASSED' : 'BAŞARISIZ - FAILED'}
+                {isPass ? t('validation.passed') : t('validation.failed')}
             </div>
             <p className="text-[10px] text-gray-400 mt-2 font-mono">DOC-ID: {session.id.slice(0, 8).toUpperCase()}</p>
           </div>
@@ -70,9 +72,9 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
         {/* Informational Header */}
         <div className="grid grid-cols-2 gap-12 mb-12">
           <div className="space-y-4">
-            <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest border-b border-gray-100 pb-2">Test Bilgileri</h3>
+            <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest border-b border-gray-100 pb-2">{t('validation.testInfo')}</h3>
             <div className="grid grid-cols-[80px_1fr] gap-y-2 text-[11px]">
-              <span className="text-gray-400 font-bold uppercase">Test Adı:</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validation.testName')}:</span>
               <span className="font-bold">{session.name}</span>
               <span className="text-gray-400 font-bold uppercase">Tarih:</span>
               <span className="font-mono">{new Date(session.startTime).toLocaleString()}</span>
@@ -83,9 +85,9 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
             </div>
           </div>
           <div className="space-y-4">
-            <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest border-b border-gray-100 pb-2">Personel Bilgileri</h3>
+            <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest border-b border-gray-100 pb-2">{t('validation.personnelInfo')}</h3>
             <div className="grid grid-cols-[80px_1fr] gap-y-2 text-[11px]">
-              <span className="text-gray-400 font-bold uppercase">Operatör:</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validation.operator')}:</span>
               <span className="font-bold">{session.operator}</span>
               <span className="text-gray-400 font-bold uppercase">Kurum:</span>
               <span className="font-bold">Mustafa Sercan Sak Diagnostics</span>
@@ -98,7 +100,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
         {/* Statistical Overview */}
         <div className="bg-gray-50 rounded-2xl p-8 mb-12 flex justify-around border border-gray-100">
            <div className="text-center">
-             <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest block mb-1">Başarı Skoru</span>
+             <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('validation.successScore')}</span>
              <span className="text-4xl font-black text-gray-900">{session.complianceScore}%</span>
            </div>
            <div className="w-px bg-gray-200" />
@@ -108,7 +110,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
            </div>
            <div className="w-px bg-gray-200" />
            <div className="text-center">
-             <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest block mb-1">Breaches</span>
+             <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('validation.breaches')}</span>
              <span className="text-4xl font-black text-rose-600">{failCount}</span>
            </div>
         </div>
@@ -117,14 +119,14 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
         <div className="mb-12">
           <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-3">
             <Activity className="text-emerald-600" size={18} />
-            Doğrulama Kriterleri ve Sonuçlar
+            {t('validation.resultsTitle')}
           </h3>
           <table className="w-full text-[10px]">
             <thead>
               <tr className="bg-gray-900 text-white font-black uppercase tracking-widest">
-                <th className="py-4 px-4 text-left">Alan Adı</th>
-                <th className="py-4 px-4 text-center">Beklenen Aralık</th>
-                <th className="py-4 px-4 text-center">Birim</th>
+                <th className="py-4 px-4 text-left">{t('validation.fieldName')}</th>
+                <th className="py-4 px-4 text-center">{t('validation.expectedRange')}</th>
+                <th className="py-4 px-4 text-center">{t('validation.unit')}</th>
                 <th className="py-4 px-4 text-right">Durum</th>
               </tr>
             </thead>
@@ -140,9 +142,9 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
                     <td className="py-4 px-4 border-r border-gray-100 text-center uppercase text-gray-500">{target.unit}</td>
                     <td className="py-4 px-4 text-right">
                       {hadFail ? (
-                        <span className="text-rose-600 font-black flex items-center justify-end gap-1"><XCircle size={12} /> HATA</span>
+                        <span className="text-rose-600 font-black flex items-center justify-end gap-1"><XCircle size={12} /> {t('validation.errorLabel')}</span>
                       ) : (
-                        <span className="text-emerald-600 font-black flex items-center justify-end gap-1"><CheckCircle2 size={12} /> ONAYLANDI</span>
+                        <span className="text-emerald-600 font-black flex items-center justify-end gap-1"><CheckCircle2 size={12} /> {t('validation.verified')}</span>
                       )}
                     </td>
                   </tr>
@@ -154,7 +156,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
 
         {/* Events Log */}
         <div className="mb-12">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Oturum Olay Günlüğü (Event Log)</h3>
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">{t('validation.historyTitle')}</h3>
           <div className="border border-gray-100 rounded-xl overflow-hidden">
             {session.events.map((e, idx) => (
               <div key={e.id} className={`p-3 text-[9px] border-b border-gray-50 flex justify-between items-center ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
@@ -185,11 +187,11 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
           <div className="flex gap-12">
             <div className="text-center w-40">
               <div className="h-12 border-b-2 border-gray-200 mb-2" />
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Sorumlu Mühendis</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">{t('validation.engineer')}</p>
             </div>
             <div className="text-center w-40">
               <div className="h-12 border-b-2 border-gray-200 mb-2" />
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Kalite Onay (QA)</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">{t('validation.qualityAssurance')}</p>
             </div>
           </div>
         </div>

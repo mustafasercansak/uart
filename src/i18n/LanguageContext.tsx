@@ -1,0 +1,67 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import tr from './locales/tr.json';
+import en from './locales/en.json';
+
+type Locale = 'tr' | 'en';
+type Translations = typeof tr;
+
+interface LanguageContextType {
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  t: (path: string) => string;
+}
+
+const translations: Record<Locale, any> = { tr, en };
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    const saved = localStorage.getItem('uart_locale');
+    return (saved as Locale) || 'tr';
+  });
+
+  const setLocale = useCallback((newLocale: Locale) => {
+    setLocaleState(newLocale);
+    localStorage.setItem('uart_locale', newLocale);
+    document.documentElement.lang = newLocale;
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  const t = useCallback((path: string): string => {
+    const keys = path.split('.');
+    let current = translations[locale];
+    
+    for (const key of keys) {
+      if (current[key] === undefined) {
+        // Fallback to Turkish if key is missing in English
+        let fallback = translations['tr'];
+        for (const fKey of keys) {
+            if (fallback[fKey] === undefined) return path;
+            fallback = fallback[fKey];
+        }
+        return fallback as unknown as string;
+      }
+      current = current[key];
+    }
+    
+    return current as unknown as string;
+  }, [locale]);
+
+  return (
+    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useTranslation() {
+  const context = useContext(LanguageContext);
+  if (context === undefined) {
+    throw new Error('useTranslation must be used within a LanguageProvider');
+  }
+  return context;
+}

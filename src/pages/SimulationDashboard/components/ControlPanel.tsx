@@ -1,6 +1,7 @@
 import React, { memo, useRef, useEffect } from 'react';
 import { FileDown } from 'lucide-react';
 import type { FrameProfile, ErrorType, FlagsConfig, RangeConfig } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface ControlPanelProps {
   status: string;
@@ -37,6 +38,7 @@ const ControlPanel = memo(({
   signalIntegrity,
   onSetSignalIntegrity
 }: ControlPanelProps) => {
+  const { t } = useTranslation();
   const logRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll log
@@ -49,7 +51,7 @@ const ControlPanel = memo(({
       {/* Flag Toggles */}
       {flagsFields.length > 0 && (
         <div className="p-4 border-b border-gray-800">
-          <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">Bayrak Kontrolleri</div>
+          <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">{t('controls.flags')}</div>
           <div className="space-y-2">
             {flagsFields.map((field) => {
               const cfg = field.typeConfig as FlagsConfig;
@@ -86,8 +88,8 @@ const ControlPanel = memo(({
       {allRangeFields.length > 0 && (
         <div className="p-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Alan Geçersiz Kılma</div>
-            <button onClick={onResetOverrides} className="text-gray-600 hover:text-gray-400 text-xs font-mono transition-colors">Sıfırla</button>
+            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">{t('controls.overrides')}</div>
+            <button onClick={onResetOverrides} className="text-gray-600 hover:text-gray-400 text-xs font-mono transition-colors">{t('controls.reset')}</button>
           </div>
           <div className="space-y-3">
             {allRangeFields.map((field) => {
@@ -121,7 +123,7 @@ const ControlPanel = memo(({
 
       {/* Error Injection */}
       <div className="p-4 border-b border-gray-800">
-        <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">Hata Enjeksiyonu</div>
+        <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">{t('controls.injection')}</div>
         <div className="grid grid-cols-2 gap-1.5">
           {errorTypes.map(({ type, label, color }) => (
             <button
@@ -136,7 +138,7 @@ const ControlPanel = memo(({
         </div>
         {pendingErrors.length > 0 && (
           <div className="mt-2 text-orange-400 text-[10px] font-mono">
-            {pendingErrors.length} hata sırada bekleniyor
+            {t('controls.pendingErrors').replace('{count}', pendingErrors.length.toString())}
           </div>
         )}
       </div>
@@ -144,7 +146,7 @@ const ControlPanel = memo(({
       {/* Signal Integrity Controls */}
       <div className="p-4 border-b border-gray-800 bg-gray-900/40">
         <div className="flex items-center justify-between mb-3 text-gray-500 text-xs font-mono uppercase tracking-wider">
-          <span>Sinyal Kalitesi</span>
+          <span>{t('controls.signalQuality')}</span>
           <div className="flex items-center gap-2">
              <span className="text-[9px] text-gray-600 uppercase">Bit Flip</span>
              <button 
@@ -159,7 +161,7 @@ const ControlPanel = memo(({
         <div className="space-y-4">
           <div>
             <div className="flex justify-between text-[10px] font-mono mb-1">
-              <span className="text-gray-400">Noise (Gürültü)</span>
+              <span className="text-gray-400">{t('controls.noise')}</span>
               <span className="text-amber-400">{(signalIntegrity.noiseLevel * 100).toFixed(1)}%</span>
             </div>
             <input
@@ -172,7 +174,7 @@ const ControlPanel = memo(({
 
           <div>
              <div className="flex justify-between text-[10px] font-mono mb-1">
-              <span className="text-gray-400">Jitter (Titreme)</span>
+              <span className="text-gray-400">{t('controls.jitter')}</span>
               <span className="text-blue-400">{signalIntegrity.jitterMs.toFixed(1)}ms</span>
             </div>
             <input
@@ -189,20 +191,20 @@ const ControlPanel = memo(({
       <div className="flex-1 flex flex-col min-h-[300px] p-3">
         <div className="flex flex-col gap-2 mb-3">
           <div className="flex items-center justify-between">
-            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Konsol Logları</div>
+            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">{t('controls.console')}</div>
             <button 
               onClick={onExportLogs}
               className="text-[10px] font-mono text-gray-500 hover:text-green-400 flex items-center gap-1 transition-colors"
               title="Tüm TX/RX kaydını CSV olarak indir"
             >
               <FileDown size={14} />
-              CSV Aktar
+              {t('controls.csvExport')}
             </button>
           </div>
         </div>
         <div ref={logRef} className="flex-1 overflow-y-auto bg-gray-950 rounded border border-gray-800 p-2 font-mono text-[10px] space-y-0.5">
           {logEntries.length === 0 && (
-            <div className="text-gray-700">Simülasyon başlatıldığında log burada görünecek...</div>
+            <div className="text-gray-700">{t('controls.logEmpty')}</div>
           )}
           {logEntries.map((entry, i) => {
             const isTx = entry.type === 'tx';
