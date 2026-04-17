@@ -37,6 +37,41 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
       { id: '2', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 75 } as any },
     ],
   },
+  {
+    name: 'Bradycardia Atağı (Kritik Düşüş)',
+    description: 'Nabzın aniden düşüp kritik seviyede kalmasını simüle eder. Alarmları test etmek için idealdir.',
+    category: 'physiological',
+    durationMs: 30000,
+    loop: false,
+    steps: [
+      { id: 'b1', atMs: 0, target: 'field:BPM', action: 'set', actionConfig: { value: 80 } as any },
+      { id: 'b2', atMs: 2000, target: 'field:BPM', action: 'ramp', actionConfig: { to: 35, durationMs: 5000, curve: 'ease-in-out' } as any },
+      { id: 'b3', atMs: 10000, target: 'field:Pulse', action: 'inject_error', actionConfig: { errorType: 'corrupt_checksum', count: 5 } as any },
+    ],
+  },
+  {
+    name: 'Sensor Disconnect (Lead-Off)',
+    description: 'Sensörün fiziksel olarak koptuğu durumu simüle eder. Tüm dalga formları sıfıra iner.',
+    category: 'error',
+    durationMs: 20000,
+    loop: false,
+    steps: [
+      { id: 'd1', atMs: 0, target: 'field:Lead-I', action: 'set', actionConfig: { value: 0 } as any },
+      { id: 'd2', atMs: 100, target: 'field:Lead-II', action: 'set', actionConfig: { value: 0 } as any },
+      { id: 'd3', atMs: 200, target: 'field:SPO2-Wave', action: 'set', actionConfig: { value: 0 } as any },
+      { id: 'd4', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 0 } as any },
+    ],
+  },
+  {
+    name: 'CRC Stress Test',
+    description: 'Yüksek frekansta checksum hataları göndererek alıcı cihazın hata ayıklama kapasitesini zorlar.',
+    category: 'stress',
+    durationMs: 60000,
+    loop: true,
+    steps: [
+      { id: 's1', atMs: 1000, target: 'system', action: 'inject_error', actionConfig: { errorType: 'corrupt_checksum', count: 10 } as any },
+    ],
+  },
 ];
 
 export default function ScenarioEditor() {
@@ -50,6 +85,7 @@ export default function ScenarioEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [showPresets, setShowPresets] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Load Initial Data
   useEffect(() => {
@@ -200,6 +236,13 @@ export default function ScenarioEditor() {
         <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/40 whitespace-nowrap">
           <span className="text-gray-400 text-xs font-mono uppercase tracking-widest font-bold">Senaryolar</span>
           <div className="flex gap-1 items-center">
+            <button
+               onClick={() => setShowHelp(!showHelp)}
+               className={`p-1.5 rounded-lg transition-all font-bold ${showHelp ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-800'}`}
+               title="Yardım Rehberi"
+            >
+              ❓
+            </button>
             <label className="text-gray-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-gray-800 transition-all cursor-pointer font-bold" title="Dosyadan Yükle">
               📂
               <input type="file" className="hidden" accept=".json" onChange={importScenario} />
@@ -427,6 +470,41 @@ function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: 
         <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">Açıklama</label>
         <textarea className={`${inputCls} min-h-[100px] text-gray-500 italic`} value={step.description ?? ''} onChange={(e) => update({ description: e.target.value })} placeholder="Notlar..." />
       </div>
+      {/* Help Panel Layer */}
+      {showHelp && (
+        <div className="absolute top-0 right-0 bottom-0 w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-[150] animate-in slide-in-from-right duration-300 flex flex-col">
+          <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-950/40">
+            <h3 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-widest">Senaryo Rehberi</h3>
+            <button onClick={() => setShowHelp(false)} className="text-gray-500 hover:text-white text-xl p-1">×</button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar space-y-6">
+             <div className="space-y-4">
+               <div>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⏱ Zamanlama (atMs)</h4>
+                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">Simülasyon başladıktan kaç milisaniye sonra bu adımın tetikleneceğini belirler. Adımlar otomatik olarak zamana göre sıralanır.</p>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">🎯 Hedef (Target)</h4>
+                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">`field:İsim` formatında profilinizdeki bir alanı hedefleyebilirsiniz. Örn: `field:BPM`</p>
+               </div>
+               <div>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⚡ İşlem Türleri</h4>
+                  <ul className="space-y-2">
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-emerald-500">SET:</span> Değeri aniden değiştirir.</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-blue-500">RAMP:</span> Değeri yumuşak bir geçişle değiştirir (Örn: nabız düşüşü).</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-rose-500">INJECT_ERROR:</span> Protokol seviyesinde hata üretir (CRC/Sync).</li>
+                  </ul>
+               </div>
+             </div>
+             <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl">
+               <p className="text-[10px] font-mono text-blue-400 italic">"Bu aracı sensörünüz olmadığında donanımınızı stres testine sokmak için kullanabilirsiniz."</p>
+             </div>
+             <div className="pt-4">
+                <a href="/docs/automation.md" target="_blank" className="text-[10px] font-mono text-blue-400 underline hover:text-blue-300">DETAYLI REHBERİ AÇ (YENİ SEKME)</a>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

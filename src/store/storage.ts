@@ -10,27 +10,56 @@ const SCENARIOS_KEY = 'uart_scenarios';
 const INITIAL_PROFILES: FrameProfile[] = [
   {
     id: 'medical-monitor-01',
-    name: 'YS2000A Medical Monitor',
-    description: 'ECG, SpO2 ve BPM simülasyonu içeren tıbbi monitör profili.',
-    baudRate: 9600,
+    name: 'YS2000A Patient Monitor',
+    description: 'ECG (Lead I, II), SpO2, BPM ve RR simülasyonu içeren profesyonel hasta başı monitör profili.',
+    baudRate: 115200,
     dataBits: 8,
     parity: 'None',
     stopBits: 1,
-    sendIntervalMs: 50,
+    sendIntervalMs: 40,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     fields: [
       { id: 'm1', name: 'Sync', type: 'fixed', byteWidth: 2, endianness: 'big', order: 0, typeConfig: { value: 0x55AA } as FixedConfig },
-      { id: 'm2', name: 'BPM', type: 'range', byteWidth: 1, endianness: 'big', order: 1, typeConfig: { min: 40, max: 200, distribution: 'uniform' } as RangeConfig },
-      { id: 'm3', name: 'SpO2', type: 'range', byteWidth: 1, endianness: 'big', order: 2, typeConfig: { min: 90, max: 100, distribution: 'uniform' } as RangeConfig },
-      { id: 'm4', name: 'Lead-I', type: 'waveform', byteWidth: 2, endianness: 'big', order: 3, typeConfig: { shape: 'ecg', frequency: 1, amplitude: 1000, offset: 2000, noiseLevel: 5 } as WaveformConfig },
-      { id: 'm5', name: 'Lead-II', type: 'waveform', byteWidth: 2, endianness: 'big', order: 4, typeConfig: { shape: 'ecg', frequency: 1, amplitude: 1200, offset: 2000, noiseLevel: 7 } as WaveformConfig },
-      { id: 'm6', name: 'SPO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 5, typeConfig: { shape: 'sine', frequency: 1, amplitude: 40, offset: 128, noiseLevel: 2 } as WaveformConfig },
-      { id: 'm7', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 6, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'm1', endFieldId: 'm6' } } as ChecksumConfig }
+      { id: 'm2', name: 'BPM', type: 'range', byteWidth: 1, endianness: 'big', order: 1, typeConfig: { min: 60, max: 100, distribution: 'uniform' } as RangeConfig },
+      { id: 'm3', name: 'SpO2', type: 'range', byteWidth: 1, endianness: 'big', order: 2, typeConfig: { min: 94, max: 100, distribution: 'uniform' } as RangeConfig },
+      { id: 'm4', name: 'RR', type: 'range', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { min: 12, max: 20, distribution: 'uniform' } as RangeConfig },
+      { id: 'm5', name: 'Temp', type: 'range', byteWidth: 2, endianness: 'big', order: 4, typeConfig: { min: 360, max: 375, distribution: 'gaussian' } as RangeConfig },
+      { id: 'm6', name: 'Lead-I', type: 'waveform', byteWidth: 2, endianness: 'big', order: 5, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 1000, offset: 2048, noiseLevel: 3 } as WaveformConfig },
+      { id: 'm7', name: 'SpO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 6, typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 30, offset: 128, noiseLevel: 1 } as WaveformConfig },
+      { id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 7, typeConfig: { bits: [
+        { index: 0, name: 'Lead-Off', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+        { index: 1, name: 'Low-SPO2', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+        { index: 2, name: 'Battery-Low', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
+      ]} as FlagsConfig },
+      { id: 'm9', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 8, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'm1', endFieldId: 'm8' } } as ChecksumConfig }
     ],
     framing: {
       mode: 'fixed',
       header: [0x55, 0xAA]
+    }
+  },
+  {
+    id: 'oximeter-pro-01',
+    name: 'Masimo Signal Oximeter',
+    description: 'Yüksek hassasiyetli SpO2 ve Perfüzyon İndeksi (PI) simülatörü.',
+    baudRate: 9600,
+    dataBits: 8,
+    parity: 'None',
+    stopBits: 1,
+    sendIntervalMs: 100,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    fields: [
+      { id: 'o1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xBE } as FixedConfig },
+      { id: 'o2', name: 'SpO2', type: 'range', byteWidth: 1, endianness: 'big', order: 1, typeConfig: { min: 90, max: 100, distribution: 'uniform' } as RangeConfig },
+      { id: 'o3', name: 'Pulse', type: 'range', byteWidth: 1, endianness: 'big', order: 2, typeConfig: { min: 40, max: 220, distribution: 'uniform' } as RangeConfig },
+      { id: 'o4', name: 'PI', type: 'range', byteWidth: 2, endianness: 'big', order: 3, typeConfig: { min: 20, max: 200, distribution: 'uniform' } as RangeConfig },
+      { id: 'o5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'xor', scope: { startFieldId: 'o2', endFieldId: 'o4' } } as ChecksumConfig }
+    ],
+    framing: {
+      mode: 'fixed',
+      header: [0xBE]
     }
   }
 ];

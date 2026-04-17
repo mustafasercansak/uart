@@ -12,8 +12,13 @@ interface WaveformChartsProps {
 }
 
 const CHART_COLORS_EXTENDED = [
-  '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316',
-  '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#eab308', '#22d3ee',
+  '#10b981', // ECG Green
+  '#22d3ee', // SpO2 Cyan
+  '#eab308', // Resp Yellow
+  '#f43f5e', // BP Pink/Red
+  '#8b5cf6', // Temp Purple
+  '#f97316', // Pulse Orange
+  '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#3b82f6', '#ef4444',
 ];
 
 const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: WaveformChartsProps) => {
@@ -73,15 +78,22 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
           </div>
           <div className="flex flex-col divide-y divide-gray-800/40">
             {waveformFields.map((f, i) => {
-              const color = chartColors[i % chartColors.length];
+              // Clinical color mapping
+              const name = f.name.toLowerCase();
+              let color = CHART_COLORS_EXTENDED[i % CHART_COLORS_EXTENDED.length];
+              if (name.includes('lead') || name.includes('ecg')) color = '#10b981';
+              else if (name.includes('spo2')) color = '#06b6d4';
+              else if (name.includes('resp') || name.includes('rr')) color = '#eab308';
+              
               const cv = (lastPoint[f.name] ?? 0).toFixed(0);
               return (
                 <div key={f.id} className="relative group px-3 pb-2 pt-1" style={{ height: 100 }}>
                   <div className="absolute top-2 left-4 z-10 flex items-center gap-2 pointer-events-none">
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: color }} />
                     <span className="text-[9px] font-mono font-bold uppercase tracking-wider" style={{ color, textShadow: `0 0 8px ${color}80` }}>
                       {f.name}
                     </span>
-                    <span className="text-[8px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">{f.byteWidth}B</span>
+                    <span className="text-[8px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">LIVE</span>
                   </div>
                   <div className="absolute top-2 right-4 z-10 text-base font-bold font-mono tabular-nums pointer-events-none" style={{ color, textShadow: `0 0 10px ${color}60` }}>
                     {cv}

@@ -1,0 +1,95 @@
+{
+    "name": "Flight Controller IMU",
+    "description": "Pitch, Roll, Yaw ve İrtifa verisi içeren drone telemetri profili.",
+    "baudRate": 115200,
+    "dataBits": 8,
+    "parity": "None",
+    "stopBits": 1,
+    "sendIntervalMs": 20,
+    "fields": [
+        {
+            "id": "i1",
+            "name": "Header",
+            "type": "fixed",
+            "byteWidth": 1,
+            "endianness": "big",
+            "order": 0,
+            "typeConfig": {
+                "value": 253
+            }
+        },
+        {
+            "id": "i2",
+            "name": "Roll",
+            "type": "range",
+            "byteWidth": 2,
+            "endianness": "little",
+            "order": 1,
+            "typeConfig": {
+                "min": -180,
+                "max": 180,
+                "distribution": "uniform"
+            }
+        },
+        {
+            "id": "i3",
+            "name": "Pitch",
+            "type": "range",
+            "byteWidth": 2,
+            "endianness": "little",
+            "order": 2,
+            "typeConfig": {
+                "min": -90,
+                "max": 90,
+                "distribution": "uniform"
+            }
+        },
+        {
+            "id": "i4",
+            "name": "Yaw",
+            "type": "range",
+            "byteWidth": 2,
+            "endianness": "little",
+            "order": 3,
+            "typeConfig": {
+                "min": 0,
+                "max": 360,
+                "distribution": "uniform"
+            }
+        },
+        {
+            "id": "i5",
+            "name": "Alt",
+            "type": "range",
+            "byteWidth": 2,
+            "endianness": "little",
+            "order": 4,
+            "typeConfig": {
+                "min": 0,
+                "max": 1000,
+                "distribution": "uniform"
+            }
+        },
+        {
+            "id": "i6",
+            "name": "CRC",
+            "type": "checksum",
+            "byteWidth": 1,
+            "endianness": "big",
+            "order": 5,
+            "typeConfig": {
+                "algorithm": "xor",
+                "scope": {
+                    "startFieldId": "i2",
+                    "endFieldId": "i5"
+                }
+            }
+        }
+    ],
+    "framing": {
+        "mode": "fixed",
+        "header": [
+            253
+        ]
+    }
+}

@@ -16,8 +16,9 @@ import {
   PlayCircle,
   Cpu as CpuIcon,
   CheckSquare,
-  Waves,
-  Zap
+  Zap,
+  Box,
+  Waves
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios, saveProfile as persistProfile } from '../../store/storage';
@@ -30,7 +31,6 @@ import TriggerManager from './components/TriggerManager';
 import StatBar from './components/StatBar';
 import FrameMonitor from './components/FrameMonitor';
 import RxMonitor from './components/RxMonitor';
-import WaveformCharts from './components/WaveformCharts';
 import ControlPanel from './components/ControlPanel';
 import LogicAnalyzer from './components/LogicAnalyzer';
 import PacketInspector from './components/PacketInspector';
@@ -38,15 +38,7 @@ import VisualProtocolAnalyzer from './components/VisualProtocolAnalyzer';
 import ExchangeMonitor from './components/ExchangeMonitor';
 import TraceTable from './components/TraceTable';
 import LiveDashboard from './components/LiveDashboard';
-import TelemetryPanel from './components/Telemetry/TelemetryPanel';
-import DiffLab from './components/Lab/DiffLab';
-import ScriptEditor from './components/Lab/ScriptEditor';
-import CommunicationTimeline from './components/CommunicationTimeline';
-import Diagnostics from './components/Diagnostics';
-import PlaybackPanel from './components/PlaybackPanel';
-import HardwareLayout from './components/HardwareLayout';
-import SequenceRunner from './components/SequenceRunner';
-import SpectrumAnalyzer from './components/SpectrumAnalyzer';
+import TabContent from './components/TabContent';
 
 const ERROR_TYPES: Array<{ type: ErrorType; label: string; color: string }> = [
   { type: 'corrupt_checksum', label: 'Checksum Boz', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -148,7 +140,7 @@ export default function SimulationDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editingProfile, setEditingProfile] = useState<FrameProfile | null>(null);
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers'>('waveforms');
+  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer'>('waveforms');
 
   const handleSaveProfile = (profile: FrameProfile) => {
     persistProfile(profile);
@@ -339,14 +331,12 @@ export default function SimulationDashboard() {
           >
             {isLeftPanelOpen ? <ChevronLeft size={16} /> : <Activity size={16} />}
           </button>
-        )}
-
-        {/* CENTER PANEL (WAVEFORMS or TRACE TABLE) */}
-        <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#0a0a0d] to-[#12121a]">
+        )}        {/* CENTER PANEL (WAVEFORMS or TRACE TABLE) */}
+        <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#030712] to-[#0a0a1a]">
           {analyzerMode ? (
-            <div className="flex-1 min-h-0 p-4 flex gap-4 overflow-hidden relative">
+            <div className="flex-1 min-h-0 p-6 flex gap-6 overflow-hidden relative">
                 {/* Main Content Areas */}
-                <div className="flex-[3] min-h-0 flex flex-col gap-4">
+                <div className="flex-[3] min-h-0 flex flex-col gap-6">
                     <TraceTable 
                         exchanges={exchanges}
                         selectedId={selectedExchangeId}
@@ -355,7 +345,7 @@ export default function SimulationDashboard() {
                         onFilterChange={setDisplayFilter}
                         profile={selectedProfile}
                     />
-                    <div className="h-64 shrink-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden shadow-2xl">
+                    <div className="h-72 shrink-0 glass-panel rounded-2xl overflow-hidden shadow-2xl">
                          <LogicAnalyzer 
                             lastTxFrame={lastFrame}
                             lastRxFrame={lastRxFrame}
@@ -367,7 +357,7 @@ export default function SimulationDashboard() {
                 <div className="flex shrink-0">
                   {/* Pro Packet Inspector */}
                   {analyzerMode && selectedExchange && (
-                    <div className="w-[500px] shrink-0 border-l border-gray-800 relative z-30">
+                    <div className="w-[500px] shrink-0 border-l border-white/5 relative z-30 glass-panel rounded-l-2xl">
                       <PacketInspector 
                         exchange={selectedExchange} 
                         profile={selectedProfile} 
@@ -378,7 +368,7 @@ export default function SimulationDashboard() {
 
                   {/* Live Telemetry Dashboard */}
                   {isDashboardOpen && (
-                    <div className={`${(analyzerMode && selectedExchange) ? 'w-80' : 'w-96'} shrink-0 border-l border-gray-800 bg-gray-950 transition-all duration-300 relative z-20`}>
+                    <div className={`${(analyzerMode && selectedExchange) ? 'w-80' : 'w-96'} shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-md transition-all duration-300 relative z-20`}>
                       <LiveDashboard 
                         onSelectSnapshot={setSelectedSnapshotFrame}
                         selectedSnapshotId={selectedSnapshotFrame?.frameNumber}
@@ -390,19 +380,19 @@ export default function SimulationDashboard() {
                 {/* Dashboard Toggle Button */}
                 <button
                     onClick={() => setIsDashboardOpen(!isDashboardOpen)}
-                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700/50 text-emerald-400 hover:text-emerald-300 rounded-l-md shadow-lg transition-all duration-300 ${
-                      isDashboardOpen ? 'translate-x-0' : 'translate-x-[-10px] scale-110'
+                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-2 bg-brand/10 hover:bg-brand/20 border border-brand/20 text-brand rounded-l-xl shadow-lg transition-all duration-300 ${
+                      isDashboardOpen ? 'translate-x-0' : 'translate-x-[-12px] scale-110'
                     }`}
                     title={isDashboardOpen ? "Close Dashboard" : "Open Live Dashboard"}
                 >
-                    <LayoutDashboard size={14} />
-                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
+                    <LayoutDashboard size={18} />
+                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand rounded-full animate-pulse border-2 border-[#030712]" />}
                 </button>
             </div>
           ) : (
-            <div className="flex-1 min-h-0 overflow-hidden relative p-4 flex flex-col">
+            <div className="flex-1 min-h-0 overflow-hidden relative p-6 flex flex-col">
               {/* Professional Tab Navigation */}
-              <div className="flex items-center gap-1 mb-4 bg-gray-900/50 p-1 rounded-xl border border-gray-800/50 self-start">
+              <div className="flex items-center gap-1 mb-6 glass-panel p-1 rounded-2xl self-start">
                 <button 
                   onClick={() => setActiveCenterTab('waveforms')}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
@@ -503,120 +493,39 @@ export default function SimulationDashboard() {
                     Spectrum
                 </button>
                 <button 
-                  onClick={() => setActiveCenterTab('triggers')}
+                  onClick={() => setActiveCenterTab('visualizer')}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'triggers' ? 'bg-yellow-600 text-black shadow-lg shadow-yellow-900/40' : 'text-gray-500 hover:text-gray-300'
+                    activeCenterTab === 'visualizer' ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                    <Zap size={14} />
-                    Triggers
+                    <Box size={14} />
+                    3D Visualizer
                 </button>
               </div>
 
               {/* Tab Content Area */}
-              <div className="flex-1 min-h-0 bg-gray-900/40 rounded-xl border border-gray-800/30 overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm">
-                {activeCenterTab === 'waveforms' && (
-                  <WaveformCharts 
-                    waveformHistory={waveformHistory}
-                    selectedProfile={selectedProfile}
-                    CustomTooltip={CustomTooltip}
-                    chartColors={CHART_COLORS}
-                  />
-                )}
-                {activeCenterTab === 'logic' && (
-                  <LogicAnalyzer 
-                    lastTxFrame={lastFrame}
-                    lastRxFrame={lastRxFrame}
-                  />
-                )}
-                {activeCenterTab === 'telemetry' && selectedProfile && (
-                   <TelemetryPanel 
-                     lastFrame={lastFrame}
-                     waveformHistory={waveformHistory}
-                     fields={selectedProfile.fields}
-                   />
-                )}
-                {activeCenterTab === 'lab' && (
-                  <DiffLab 
-                    frameA={diffFrames[0]} 
-                    frameB={diffFrames[1]} 
-                    onClear={() => {
-                        setDiffFrame(0, null);
-                        setDiffFrame(1, null);
-                    }}
-                  />
-                )}
-                {activeCenterTab === 'playback' && (
-                  <PlaybackPanel 
-                    recordings={recordings}
-                    onPlay={startPlayback}
-                    onDelete={deleteRecording}
-                    onRefresh={refreshRecordings}
-                    status={status}
-                    playbackIndex={playbackIndex || 0}
-                    playbackTotal={playbackTotal || 0}
-                    onPause={pausePlayback}
-                    onResume={resumePlayback}
-                    onSeek={seekPlayback}
-                    onStep={stepPlayback}
-                  />
-                )}
-                {activeCenterTab === 'scripting' && (
-                  <ScriptEditor 
-                    initialCode={responderRules?.find(r => r.id === 'dynamic-script')?.script}
-                    onSave={(code) => {
-                      const dynamicRule = {
-                        id: 'dynamic-script',
-                        name: 'Dynamic JS Responder',
-                        enabled: true,
-                        pattern: '01', // Example: Match sync byte 0x01
-                        patternType: 'hex' as const,
-                        actions: [],
-                        script: code
-                      };
-                      
-                      // Filter out old version and add new one
-                      const newRules = (responderRules || []).filter(r => r.id !== 'dynamic-script');
-                      setResponderRules([...newRules, dynamicRule]);
-                    }}
-                  />
-                )}
-                {activeCenterTab === 'timeline' && (
-                  <CommunicationTimeline 
-                    exchanges={exchanges}
-                    onSelectFrame={setSelectedFrame}
-                  />
-                )}
-                {activeCenterTab === 'diagnostics' && (
-                  <Diagnostics 
-                    timingStats={timingStats}
-                    exchanges={exchanges}
-                    errorCount={errorCount}
-                    frameCount={frameCount}
-                  />
-                )}
-                {activeCenterTab === 'hardware' && (
-                  <HardwareLayout 
-                    lastTxFrame={lastFrame}
-                    lastRxFrame={lastRxFrame}
-                    protocol={selectedProfile?.name.includes('SPI') ? 'SPI' : selectedProfile?.name.includes('I2C') ? 'I2C' : 'UART'}
-                  />
-                )}
-                {activeCenterTab === 'testing' && (
-                  <SequenceRunner />
-                )}
-                {activeCenterTab === 'spectrum' && (
-                  <SpectrumAnalyzer 
-                    waveformHistory={waveformHistory}
-                    dataKey={watchlist.length > 0 ? watchlist[0] : (lastFrame?.fields[0]?.name || null)}
-                  />
-                )}
-                {activeCenterTab === 'triggers' && (
-                  <TriggerManager 
-                    triggers={state.triggers}
-                    onSetTriggers={setTriggers}
-                  />
-                )}
+              <div className="flex-1 min-h-0 glass-panel rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+                <TabContent 
+                  activeTab={activeCenterTab}
+                  state={state}
+                  lastFrame={lastFrame}
+                  lastRxFrame={lastRxFrame}
+                  selectedProfile={selectedProfile}
+                  waveformHistory={waveformHistory}
+                  exchanges={exchanges}
+                  hooks={{
+                    startPlayback,
+                    deleteRecording,
+                    refreshRecordings,
+                    pausePlayback,
+                    resumePlayback,
+                    seekPlayback,
+                    stepPlayback,
+                    setDiffFrame,
+                    setResponderRules,
+                    setTriggers
+                  }}
+                />
               </div>
 
               {/* Bottom Analyzer / Inspector (Unified) */}

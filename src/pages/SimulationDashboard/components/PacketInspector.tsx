@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { X, Activity, Camera, Pin, ArrowUp, ArrowDown, ChartLine, Gauge as GaugeIcon, Lightbulb, Hash } from 'lucide-react';
+import { X, Activity, Camera, Code2, Copy, FileJson, Hash, ChartLine, Gauge as GaugeIcon, Lightbulb, ArrowUp, ArrowDown } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { parseFrame } from '../../../engines/FrameParser';
 import type { FrameProfile, Exchange, GeneratedFrame } from '../../../types';
@@ -14,6 +14,22 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
   const { state, addWidget, saveSnapshot } = useSimulation();
   
   if (!exchange) return null;
+
+  const copyToClipboard = (type: 'json' | 'cstruct' | 'hex') => {
+    const frame = txFrame || rxFrame;
+    if (!frame) return;
+
+    let text = '';
+    if (type === 'json') {
+      text = JSON.stringify(frame, null, 2);
+    } else if (type === 'hex') {
+      text = frame.rawHex;
+    } else if (type === 'cstruct') {
+      text = `struct UART_Packet {\n${frame.fields.map((f: any) => `  uint${f.byteWidth * 8}_t ${f.name.replace(/\s+/g, '_')}; // ${f.hex}`).join('\n')}\n};`;
+    }
+
+    navigator.clipboard.writeText(text);
+  };
 
   // Decide which frame to show primary or show comparison
   const txFrame = exchange.tx ? {
@@ -93,29 +109,57 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
   );
 
   return (
-    <div className="h-full flex flex-col bg-gray-950 border-l border-gray-800 animate-in slide-in-from-right duration-300 shadow-2xl relative z-50">
-      <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-black/40 backdrop-blur-md">
+    <div className="h-full flex flex-col glass-panel border-l-0 shadow-2xl relative z-50 animate-in slide-in-from-right duration-300 rounded-l-2xl overflow-hidden">
+      <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02] backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <Activity size={18} className="text-blue-500" />
+          <div className="p-2 bg-blue-500/10 rounded-lg">
+            <Activity size={18} className="text-blue-400" />
+          </div>
           <div className="flex flex-col">
-            <h2 className="text-xs font-bold text-gray-100 uppercase tracking-widest font-mono">Packet Dissector</h2>
-            <div className={`text-[9px] uppercase font-bold font-mono ${exchange.isLoopbackMatch ? 'text-emerald-500' : 'text-amber-500'}`}>
-                {exchange.isLoopbackMatch ? 'Loopback Integrity OK' : 'Analysis Mode'}
+            <h2 className="text-xs font-black text-white uppercase tracking-widest font-mono line-height-none">Dissector Engine</h2>
+            <div className={`text-[9px] uppercase font-black font-mono ${exchange.isLoopbackMatch ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {exchange.isLoopbackMatch ? 'Integrity Verified' : 'Deep Analysis'}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+           <div className="flex bg-white/5 rounded-lg border border-white/5 p-0.5 mr-1">
+             <button 
+                onClick={() => copyToClipboard('hex')}
+                className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 transition-all rounded-md"
+                title="Copy Hex"
+             >
+                <Hash size={12} />
+             </button>
+             <button 
+                onClick={() => copyToClipboard('cstruct')}
+                className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 transition-all rounded-md"
+                title="Copy as C-Struct"
+             >
+                <Code2 size={12} />
+             </button>
+             <button 
+                onClick={() => copyToClipboard('json')}
+                className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 transition-all rounded-md"
+                title="Copy as JSON"
+             >
+                <FileJson size={12} />
+             </button>
+           </div>
            <button 
             onClick={() => {
                 const primaryFrame = txFrame || rxFrame;
                 if (primaryFrame) saveSnapshot(primaryFrame as any);
             }}
-            className="p-1.5 text-gray-500 hover:text-emerald-400 transition-colors bg-gray-900 border border-gray-800 rounded shadow-lg"
-            title="Snapshot Al"
+            className="p-1.5 text-gray-400 hover:text-white transition-all bg-white/5 border border-white/10 rounded-lg shadow-xl"
+            title="Snapshot"
            >
              <Camera size={14} />
            </button>
-           <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white transition-colors bg-gray-900 border border-gray-800 rounded shadow-lg">
+           <button 
+                onClick={onClose} 
+                className="p-1.5 text-gray-400 hover:text-white transition-all bg-white/5 border border-white/10 rounded-lg shadow-xl ml-2"
+            >
              <X size={14} />
            </button>
         </div>
