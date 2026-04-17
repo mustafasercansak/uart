@@ -362,11 +362,16 @@ export interface Exchange {
 export type SimulationStatus = 'stopped' | 'running' | 'paused';
 export type OutputMode = 'serial' | 'tcp' | 'log';
 
-export interface ParsedField {
+export interface BitTransition {
+  t: number; // Elapsed time in ms (can be fractional for us precision)
+  v: 0 | 1;  // Bit value
+  label?: string; // e.g., 'START', 'D0', 'STOP', 'PARITY'
+}
+
+export interface LogicSignal {
+  id: string;
   name: string;
-  hex: string;
-  decimal: number;
-  flags?: Record<string, number>;
+  transitions: BitTransition[];
 }
 
 export interface GeneratedFrame {
@@ -376,6 +381,7 @@ export interface GeneratedFrame {
   rawHex: string;
   rawBytes: number[];
   fields: ParsedField[];
+  bitStream?: BitTransition[]; // Level 4: Hardware bit timing
   activeScenarioStep?: string;
   errors: string[];
 }
@@ -397,6 +403,7 @@ export interface SimulationState {
   lastRxFrame: GeneratedFrame | null;
   recentFrames: GeneratedFrame[];
   waveformHistory: Array<Record<string, number>>;
+  logicHistory: LogicSignal[]; // Level 4: Logic Analyzer History
   logEntries: Array<{ time: string; text: string; type: 'info' | 'tx' | 'rx' | 'error' }>;
   // Runtime field value overrides
   fieldOverrides: Record<string, number>;

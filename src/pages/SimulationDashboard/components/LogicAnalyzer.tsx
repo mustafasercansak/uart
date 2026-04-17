@@ -1,157 +1,292 @@
-import React, { useMemo, memo, useState } from 'react';
-import type { GeneratedFrame, ProtocolType } from '../../../types';
-import { AlertCircle, Zap, Cpu, Settings2 } from 'lucide-react';
-import { getDecodedLines, SignalLine, BitAnnotation } from '../../../engines/ProtocolDecoders';
+import React, { useRef, useEffect, useState, memo } from 'react';
+import { useSimulation } from '../../../hooks/useSimulation';
 
-interface LogicAnalyzerProps {
-  lastTxFrame: GeneratedFrame | null;
-  lastRxFrame: GeneratedFrame | null;
-}
+const COLORS = {
+  bg: '#0a0c10',
+  grid: '#1e293b',
+  signal: '#10b981', // Emerald-500
+  signalShadow: 'rgba(16, 185, 129, 0.2)',
+  cursor: '#f59e0b', // Amber-500
+  label: '#64748b',
+  text: '#ffffff',
+  header: '#111827',
+};
 
+const LogicAnalyzer = memo(() => {
+  const { state } = useSimulation();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  const [zoom, setZoom] = useState(200); // px per ms
+  const [scrollX, setScrollX] = useState(0); // in ms
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-const LogicAnalyzer = memo(({ lastTxFrame, lastRxFrame }: LogicAnalyzerProps) => {
-  const [protocol, setProtocol] = useState<ProtocolType>('UART');
-  
-  const txData = useMemo(() => {
-    if (!lastTxFrame) return [];
-    return getDecodedLines(protocol, lastTxFrame.rawBytes);
-  }, [lastTxFrame, protocol]);
+  const [cursorA, setCursorA] = useState<number | null>(null);
+  const [cursorB, setCursorB] = useState<number | null>(null);
+  const [isDraggingA, setIsDraggingA] = useState(false);
+  const [isDraggingB, setIsDraggingB] = useState(false);
 
-  const rxData = useMemo(() => {
-    if (!lastRxFrame) return [];
-    return getDecodedLines(protocol, lastRxFrame.rawBytes);
-  }, [lastRxFrame, protocol]);
+  const autoScroll = useRef(true);
 
-  const renderTimeline = (lines: SignalLine[], sourceLabel: string) => {
-    if (lines.length === 0) {
-      return (
-        <div className="h-20 flex items-center justify-center border-t border-gray-800/50 italic text-[10px] text-gray-700">
-          {sourceLabel} hattında sinyal bekleniyor...
-        </div>
-      );
+  // Get the default signal from state (Level 4 addition)
+  const signal = state.logicHistory?.find(s => s.id === 'tx-main') || { id: 'tx-main', transitions: [] };
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setCanvasSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Update scrollX during simulation if autoScroll is enabled
+  useEffect(() => {
+    if (autoScroll.current && signal.transitions.length > 0) {
+      const lastT = signal.transitions[signal.transitions.length - 1].t;
+      const visibleMs = canvasSize.width / zoom;
+      setScrollX(Math.max(0, lastT - visibleMs * 0.8));
+    }
+  }, [signal.transitions.length, zoom, canvasSize.width]);
+
+  const draw = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const { width, height } = canvasSize;
+    if (width === 0 || height === 0) return;
+    
+    ctx.clearRect(0, 0, width, height);
+
+    if (signal.transitions.length === 0) {
+      ctx.fillStyle = COLORS.label;
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('WAITING FOR HARDWARE SIGNAL...', width / 2, height / 2);
+      return;
     }
 
-    const step = 20;
-    const height = 40;
+    const plotHeight = height * 0.4;
+    const centerY = height / 2;
+    const highY = centerY - plotHeight / 2;
+    const lowY = centerY + plotHeight / 2;
 
-    return (
-      <div className="flex flex-col border-t border-gray-800/40 hover:bg-white/[0.02] transition-colors group relative overflow-hidden pb-2">
-        {lines.map((line, lineIdx) => {
-           const { bits, annotations, label, color } = line;
-           const path = bits.map((bit, i) => {
-             const x = i * step;
-             const y = bit === 1 ? 8 : height - 8;
-             return `V ${y} H ${x + step}`;
-           }).join(' ');
+    const startTime = scrollX;
+    const endTime = startTime + width / zoom;
 
-           const fullPath = `M 0 ${bits[0] === 1 ? 8 : height - 8} ${path}`;
+    // 1. Draw Grid
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    const gridStep = zoom > 500 ? 0.1 : zoom > 100 ? 1 : zoom > 20 ? 10 : 100;
+    const firstGrid = Math.floor(startTime / gridStep) * gridStep;
+    for (let t = firstGrid; t <= endTime; t += gridStep) {
+      const x = (t - startTime) * zoom;
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+    }
+    ctx.stroke();
 
-           return (
-             <div key={`${sourceLabel}-${label}`} className="flex items-center gap-4 px-4 py-1.5">
-               <div className="w-12 flex flex-col items-center gap-0.5 shrink-0">
-                  <span className={`text-[8px] font-mono font-black ${color} tracking-tighter`}>{lineIdx === 0 ? sourceLabel : ''}</span>
-                  <span className={`text-[9px] font-mono font-bold text-gray-500`}>{label}</span>
-               </div>
-               
-               <div className="flex-1 overflow-x-auto custom-scrollbar-hide h-14 relative">
-                 <svg width={bits.length * step} height="55" className="overflow-visible">
-                   {/* Grid Lines */}
-                   {bits.map((_, i) => (
-                     <line 
-                       key={`grid-${i}`} 
-                       x1={i * step} y1="0" x2={i * step} y2="40" 
-                       stroke="#111827" strokeWidth="0.5" 
-                       strokeDasharray={i % 10 === 0 ? "" : "2,2"} 
-                     />
-                   ))}
+    // 2. Draw Signal Path
+    ctx.strokeStyle = COLORS.signal;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = autoScroll.current ? 8 : 0;
+    ctx.shadowColor = COLORS.signalShadow;
+    ctx.beginPath();
 
-                   {/* Timing Path */}
-                   <path
-                     key={Date.now() + Math.random()} 
-                     d={fullPath}
-                     fill="none"
-                     stroke={color.includes('green') ? '#10b981' : color.includes('blue') ? '#3b82f6' : color.includes('yellow') ? '#f59e0b' : color.includes('purple') ? '#8b5cf6' : '#f97316'}
-                     strokeWidth="1.5"
-                     strokeLinejoin="round"
-                   />
+    // Find first point in view
+    let firstIdx = signal.transitions.findIndex(tr => tr.t >= startTime);
+    if (firstIdx === -1) firstIdx = signal.transitions.length - 1;
+    if (firstIdx > 0) firstIdx--;
 
-                   {/* Annotations */}
-                   {annotations.map((ann, i) => (
-                     <g key={`ann-${i}`} transform={`translate(${ann.index * step + step/2}, 0)`}>
-                        <text 
-                          y="50" 
-                          textAnchor="middle" 
-                          className={`text-[8px] font-mono font-bold ${
-                              ann.type === 'start' || ann.type === 'sof' ? 'fill-yellow-500' : 
-                              ann.type === 'stop' || ann.type === 'eof' ? 'fill-purple-500' : 
-                              ann.type === 'ack' ? 'fill-emerald-500' :
-                              ann.type === 'id' ? 'fill-orange-500' :
-                              ann.type === 'idle' ? 'fill-gray-700' : 'fill-gray-400'
-                          }`}
-                        >
-                          {ann.label}
-                        </text>
-                        <circle 
-                          cy={ann.value === 1 ? 8 : 32} 
-                          r="1.5" 
-                          className={
-                              ann.type === 'start' || ann.type === 'sof' ? 'fill-yellow-500' : 
-                              ann.type === 'stop' || ann.type === 'eof' ? 'fill-purple-500' : 'fill-blue-500/20'
-                          } 
-                        />
-                     </g>
-                   ))}
-                 </svg>
-               </div>
-             </div>
-           );
-        })}
-      </div>
-    );
+    const visibleTransitions = signal.transitions.slice(firstIdx);
+    
+    if (visibleTransitions.length > 0) {
+      let lastV = visibleTransitions[0].v;
+      let lastX = (visibleTransitions[0].t - startTime) * zoom;
+      ctx.moveTo(lastX, lastV === 1 ? highY : lowY);
+
+      for (let i = 1; i < visibleTransitions.length; i++) {
+        const tr = visibleTransitions[i];
+        const x = (tr.t - startTime) * zoom;
+        if (x > width + 10) break;
+        
+        ctx.lineTo(x, lastV === 1 ? highY : lowY);
+        ctx.lineTo(x, tr.v === 1 ? highY : lowY);
+        
+        // Protocol Decoding Overlay
+        if (tr.label && zoom > 150) {
+           ctx.save();
+           ctx.shadowBlur = 0;
+           ctx.fillStyle = tr.label === 'START' ? '#f59e0b' : tr.label === 'STOP' ? '#8b5cf6' : tr.label === 'PARITY' ? '#3b82f6' : '#94a3b8';
+           ctx.font = 'bold 8px ui-monospace';
+           ctx.textAlign = 'center';
+           ctx.fillText(tr.label, x, highY - 15);
+           ctx.restore();
+        }
+
+        lastX = x;
+        lastV = tr.v;
+      }
+      ctx.lineTo(width, lastV === 1 ? highY : lowY);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 3. Draw Cursors
+    [cursorA, cursorB].forEach((cTime, i) => {
+      if (cTime !== null) {
+        const x = (cTime - startTime) * zoom;
+        if (x >= 0 && x <= width) {
+          ctx.strokeStyle = COLORS.cursor;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = COLORS.cursor;
+          ctx.fillRect(x - 8, 5, 16, 16);
+          ctx.fillStyle = 'black';
+          ctx.font = 'bold 10px ui-monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(i === 0 ? 'A' : 'B', x, 17);
+        }
+      }
+    });
+
+    // 4. Differential Measurements
+    if (cursorA !== null && cursorB !== null) {
+      const deltaT = Math.abs(cursorB - cursorA);
+      const freq = deltaT > 0 ? 1000 / deltaT : 0;
+      
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.fillRect(width - 160, 10, 150, 45);
+      ctx.strokeStyle = COLORS.cursor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(width - 160, 10, 150, 45);
+      
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '10px ui-monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`ΔT: ${deltaT.toFixed(3)} ms`, width - 150, 25);
+      ctx.fillText(`Freq: ${freq.toFixed(1)} Hz`, width - 150, 42);
+    }
+
+    requestAnimationFrame(draw);
+  };
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [canvasSize, zoom, scrollX, signal.transitions.length, cursorA, cursorB]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const t = scrollX + x / zoom;
+
+    if (cursorA !== null && Math.abs((cursorA - scrollX) * zoom - x) < 15) setIsDraggingA(true);
+    else if (cursorB !== null && Math.abs((cursorB - scrollX) * zoom - x) < 15) setIsDraggingB(true);
+    else {
+      if (cursorA === null) setCursorA(t);
+      else if (cursorB === null) setCursorB(t);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingA && !isDraggingB) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    setCursorA(prev => isDraggingA ? scrollX + x / zoom : prev);
+    setCursorB(prev => isDraggingB ? scrollX + x / zoom : prev);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.8 : 1.2;
+      setZoom(prev => Math.min(10000, Math.max(5, prev * delta)));
+    } else {
+      setScrollX(prev => Math.max(0, prev + e.deltaY / zoom));
+      autoScroll.current = false;
+    }
   };
 
   return (
-    <div className="bg-gray-950 border-t border-gray-800 shadow-2xl">
-      <div className="px-4 py-2 flex items-center justify-between border-b border-gray-800 bg-gray-900/40 backdrop-blur">
-        <div className="flex items-center gap-3">
-            <div className="p-1 bg-blue-500/10 rounded">
-                <Cpu size={14} className="text-blue-500" />
-            </div>
-            <div className="flex flex-col">
-                <span className="text-gray-300 text-[10px] font-mono font-bold uppercase tracking-widest">Genişletilmiş Mantık Analizörü</span>
-                <span className="text-gray-600 text-[8px] font-mono uppercase">Multi-Protocol Timing & Decoding</span>
-            </div>
+    <div className="flex flex-col h-full bg-black border-t border-gray-800">
+      <div className="px-4 py-1.5 bg-gray-900/50 border-b border-gray-800 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-mono font-bold text-gray-300 uppercase tracking-widest">Logic Analyzer v4.0</span>
+          </div>
+          <div className="h-4 w-px bg-gray-800" />
+          <div className="flex gap-4">
+             <div className="flex items-center gap-2">
+                <span className="text-[9px] text-gray-500 uppercase">Zoom</span>
+                <input 
+                  type="range" min="5" max="2000" step="5" value={zoom} 
+                  onChange={e => setZoom(Number(e.target.value))}
+                  className="w-20 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+             </div>
+          </div>
         </div>
-
+        
         <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 mr-4 bg-gray-950 p-0.5 rounded-lg border border-gray-800">
-                {(['UART', 'SPI', 'I2C', 'CAN'] as ProtocolType[]).map((p) => (
-                    <button
-                        key={p}
-                        onClick={() => setProtocol(p)}
-                        className={`px-3 py-1 rounded-md text-[9px] font-mono font-bold transition-all ${
-                            protocol === p 
-                            ? 'bg-blue-600 text-white shadow-lg' 
-                            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
-                        }`}
-                    >
-                        {p}
-                    </button>
-                ))}
-            </div>
-            
-            <div className="flex items-center gap-3 text-[8px] font-mono">
-                <div className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-yellow-500" /> <span className="text-gray-500">START</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500" /> <span className="text-gray-500">ACK</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-purple-500" /> <span className="text-gray-500">STOP</span></div>
-            </div>
+           <button 
+             onClick={() => { setCursorA(null); setCursorB(null); }}
+             className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-[9px] font-mono text-gray-400 uppercase transition-colors"
+           >
+             Clear Cursors
+           </button>
+           <button 
+             onClick={() => autoScroll.current = !autoScroll.current}
+             className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors font-bold ${autoScroll.current ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-800 text-gray-500'}`}
+           >
+             {autoScroll.current ? '● Running' : 'Paused'}
+           </button>
         </div>
       </div>
-      
-      <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-        {renderTimeline(txData, 'MASTER')}
-        {renderTimeline(rxData, 'SLAVE')}
+
+      <div ref={containerRef} className="flex-1 relative cursor-crosshair select-none bg-gray-950">
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={() => { setIsDraggingA(false); setIsDraggingB(false); }}
+          onMouseLeave={() => { setIsDraggingA(false); setIsDraggingB(false); }}
+          onWheel={handleWheel}
+          className="w-full h-full"
+        />
+        
+        {/* Signal Labels */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-1 pointer-events-none opacity-40">
+           <span className="text-[10px] font-mono font-black text-emerald-500 uppercase">TX_LINE</span>
+           <div className="h-px w-8 bg-emerald-500" />
+        </div>
+      </div>
+
+      <div className="px-4 py-1 bg-gray-900 border-t border-gray-800 flex justify-between items-center">
+         <div className="flex gap-4 text-[9px] font-mono text-gray-600 uppercase">
+            <span>Scroll: Wheel</span>
+            <span>Zoom: Ctrl+Wheel</span>
+            <span>Measure: Click to set A/B</span>
+         </div>
       </div>
     </div>
   );

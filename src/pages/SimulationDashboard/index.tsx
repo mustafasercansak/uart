@@ -413,6 +413,15 @@ export default function SimulationDashboard() {
                   Waveforms
                 </button>
                 <button 
+                  onClick={() => setActiveCenterTab('logic')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                    activeCenterTab === 'logic' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <Zap size={14} />
+                  Logic
+                </button>
+                <button 
                   onClick={() => setActiveCenterTab('telemetry')}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                     activeCenterTab === 'telemetry' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-gray-500 hover:text-gray-300'
@@ -512,6 +521,12 @@ export default function SimulationDashboard() {
                     selectedProfile={selectedProfile}
                     CustomTooltip={CustomTooltip}
                     chartColors={CHART_COLORS}
+                  />
+                )}
+                {activeCenterTab === 'logic' && (
+                  <LogicAnalyzer 
+                    lastTxFrame={lastFrame}
+                    lastRxFrame={lastRxFrame}
                   />
                 )}
                 {activeCenterTab === 'telemetry' && selectedProfile && (

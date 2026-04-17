@@ -82,7 +82,10 @@ const INITIAL_STATE: SimulationState = {
   telemetryLayouts: {},
   recordings: [],
   playbackIndex: 0,
-  playbackTotal: 0
+  playbackTotal: 0,
+  logicHistory: [
+    { id: 'tx-main', name: 'UART TX', transitions: [] }
+  ]
 };
 
 type SimAction =
@@ -170,12 +173,29 @@ function reducer(state: SimulationState, action: SimAction): SimulationState {
         ? [...state.logEntries.slice(-(MAX_LOG_ENTRIES - logEntries.length)), ...logEntries]
         : state.logEntries;
 
+      // Handle Logic Analyzer History Update
+      let newLogicHistory = [...state.logicHistory];
+      if (updates.lastFrame && updates.lastFrame.bitStream) {
+        newLogicHistory = newLogicHistory.map(sig => {
+          if (sig.id === 'tx-main') {
+            const updatedTransitions = [...sig.transitions, ...(updates.lastFrame!.bitStream || [])];
+            // Keep last 4000 transitions for performance
+            return {
+              ...sig,
+              transitions: updatedTransitions.slice(-4000)
+            };
+          }
+          return sig;
+        });
+      }
+
       return {
         ...state,
         ...updates,
         logEntries: combinedLogEntries,
         recentFrames: updatedRecent,
         waveformHistory: updatedWaveform,
+        logicHistory: newLogicHistory,
         elapsedMs: elapsedMs !== undefined ? elapsedMs : state.elapsedMs,
         // Preserve specific UI states
         selectedExchangeId: updates.selectedExchangeId !== undefined ? updates.selectedExchangeId : state.selectedExchangeId,

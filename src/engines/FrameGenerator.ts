@@ -253,6 +253,9 @@ export function generateFrame(
   // Apply framing protocol wrappers (Level 1: Smart Protocol Decoders)
   finalBytes = applyFraming(finalBytes, profile.framing);
 
+  // Level 4: Generate Logic Bitstream
+  const bitStream = bytesToBitstream(finalBytes, profile, elapsedMs);
+
   const rawHex = finalBytes.map((b: number) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
   return {
@@ -262,8 +265,66 @@ export function generateFrame(
     rawHex,
     rawBytes: finalBytes,
     fields: parsedFields,
+    bitStream,
     errors,
   };
+}
+
+/**
+ * Level 4: UART Bitstream Generator
+ * Converts byte array to a sequence of bits with timing
+ */
+function bytesToBitstream(bytes: number[], profile: FrameProfile, startT: number): BitTransition[] {
+  const baudRate = profile.baudRate || 9600;
+  const bitDurationMs = 1000 / baudRate;
+  const transitions: BitTransition[] = [];
+  let currentT = startT;
+
+  // UART Idle state is High (1)
+  transitions.push({ t: currentT, v: 1 });
+
+  for (const byte of bytes) {
+    // 1. START BIT (0)
+    transitions.push({ t: currentT, v: 0, label: 'START' });
+    currentT += bitDurationMs;
+
+    // 2. DATA BITS (LSB First)
+    for (let i = 0; i < (profile.dataBits || 8); i++) {
+      const bitValue = ((byte >> i) & 1) as 0 | 1;
+      // Only record transition if value changed or it's the first bit of the byte
+      transitions.push({ t: currentT, v: bitValue, label: `D${i}` });
+      currentT += bitDurationMs;
+    }
+
+    // 3. PARITY BIT (Optional)
+    if (profile.parity && profile.parity !== 'None') {
+      const parityBit = calculateParity(byte, profile.parity);
+      transitions.push({ t: currentT, v: parityBit as 0 | 1, label: 'PARITY' });
+      currentT += bitDurationMs;
+    }
+
+    // 4. STOP BIT (1)
+    transitions.push({ t: currentT, v: 1, label: 'STOP' });
+    currentT += bitDurationMs * (profile.stopBits || 1);
+  }
+
+  // Back to IDLE
+  transitions.push({ t: currentT, v: 1 });
+
+  return transitions;
+}
+
+function calculateParity(byte: number, mode: Parity): number {
+  let ones = 0;
+  for (let i = 0; i < 8; i++) {
+    if ((byte >> i) & 1) ones++;
+  }
+  
+  if (mode === 'Even') return ones % 2 === 0 ? 0 : 1;
+  if (mode === 'Odd') return ones % 2 === 0 ? 1 : 0;
+  if (mode === 'Mark') return 1;
+  if (mode === 'Space') return 0;
+  return 0;
 }
 
 /**

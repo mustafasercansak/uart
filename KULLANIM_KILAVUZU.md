@@ -50,4 +50,16 @@ Simülasyon seanslarınızı kaydedin ve daha sonra **Playback** sekmesinden san
 ![Playback Kontrol Merkezi](/docs/images/playback.png)
 
 ---
+
+## 🔬 Seviye 4: Donanım Teşhis & Mantık Analizörü (Logic Analyzer)
+
+Derin donanım hata ayıklaması için Pro Suite, yüksek performanslı bir **Bit Seviyesinde Mantık Analizörü** içerir.
+- **Zamanlama Hassasiyeti:** Mikrosaniye (µs) seviyesinde bit geçiş takibi.
+- **Ölçüm İmleçleri:** A ve B imleçlerini sürükleyerek bit geçişleri arasındaki kesin süreyi (ΔT) ve frekansı ölçün.
+- **Protokol Çözümleme:** UART TX hatları için START, DATA ve STOP bit etiketleri ile donatılmış özel donanım izleri.
+
+![Donanım Teşhis Analizörü](/docs/images/pro_logic.png)
+
+---
+
 © 2026 Mustafa Sercan Sak
