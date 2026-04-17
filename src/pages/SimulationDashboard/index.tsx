@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -160,7 +160,55 @@ export default function SimulationDashboard() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
 
-  const [activeCenterTab, setActiveCenterTab] = useState<'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder'>('waveforms');
+  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder';
+  const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>('waveforms');
+
+  const tabContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    if (tabContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabContainerRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(checkScroll, 100);
+    window.addEventListener('resize', checkScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -300 : 300;
+      tabContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const tabs: Array<{ id: CenterTabType; icon: any; label: string; color: string; shadow: string }> = [
+    { id: 'waveforms', icon: LineChart, label: 'dashboard.waveforms', color: 'bg-blue-600', shadow: 'shadow-blue-900/20' },
+    { id: 'logic', icon: Zap, label: 'dashboard.logic', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
+    { id: 'telemetry', icon: GaugeIcon, label: 'dashboard.telemetry', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/20' },
+    { id: 'lab', icon: FlaskConical, label: 'dashboard.lab', color: 'bg-purple-600', shadow: 'shadow-purple-900/20' },
+    { id: 'timeline', icon: History, label: 'dashboard.timeline', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/20' },
+    { id: 'diagnostics', icon: BarChart3, label: 'dashboard.diagnostics', color: 'bg-rose-600', shadow: 'shadow-rose-900/20' },
+    { id: 'playback', icon: PlayCircle, label: 'dashboard.playback', color: 'bg-orange-600', shadow: 'shadow-orange-900/20' },
+    { id: 'scripting', icon: Code, label: 'dashboard.scripting', color: 'bg-yellow-600 text-black', shadow: 'shadow-yellow-900/20' },
+    { id: 'hardware', icon: CpuIcon, label: 'dashboard.hardware', color: 'bg-gray-200 text-black', shadow: 'shadow-gray-400/20' },
+    { id: 'testing', icon: CheckSquare, label: 'dashboard.testing', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
+    { id: 'spectrum', icon: Waves, label: 'dashboard.spectrum', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/40' },
+    { id: 'visualizer', icon: Box, label: 'dashboard.visualizer', color: 'bg-brand', shadow: 'shadow-brand/20' },
+    { id: 'decoder', icon: Binary, label: 'dashboard.decoder', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/40' },
+    { id: 'testsuite', icon: ClipboardList, label: 'dashboard.testsuite', color: 'bg-purple-600', shadow: 'shadow-purple-900/40' },
+    { id: 'report', icon: FileDown, label: 'dashboard.report', color: 'bg-rose-600', shadow: 'shadow-rose-900/40' },
+    { id: 'builder', icon: Hammer, label: 'dashboard.builder', color: 'bg-amber-600', shadow: 'shadow-amber-900/40' },
+  ];
 
   const handleSaveProfile = (profile: FrameProfile) => {
     persistProfile(profile);
@@ -387,157 +435,51 @@ export default function SimulationDashboard() {
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-hidden relative p-6 flex flex-col">
-              <div className="flex items-center gap-1 mb-6 glass-panel p-1 rounded-2xl self-start">
-                <button 
-                  onClick={() => setActiveCenterTab('waveforms')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'waveforms' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
+              <div className="relative mb-6 flex items-center group max-w-full overflow-hidden">
+                {showLeftArrow && (
+                  <button 
+                    onClick={() => scrollTabs('left')}
+                    className="absolute left-0 z-20 p-2 bg-gray-900/80 backdrop-blur-md border border-white/5 text-gray-400 hover:text-white rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                )}
+                
+                <div 
+                  ref={tabContainerRef}
+                  onScroll={checkScroll}
+                  className="flex items-center gap-1 glass-panel p-1 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth"
+                  style={{ maskImage: `linear-gradient(to right, ${showLeftArrow ? 'transparent' : 'black'} 0%, black 5%, black 95%, ${showRightArrow ? 'transparent' : 'black'} 100%)` }}
                 >
-                  <LineChart size={14} />
-                  {t('dashboard.waveforms')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('logic')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'logic' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <Zap size={14} />
-                  {t('dashboard.logic')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('telemetry')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'telemetry' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <GaugeIcon size={14} />
-                    {t('dashboard.telemetry')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('lab')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'lab' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <FlaskConical size={14} />
-                    {t('dashboard.lab')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('timeline')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'timeline' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <History size={14} />
-                    {t('dashboard.timeline')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('diagnostics')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'diagnostics' ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <BarChart3 size={14} />
-                    {t('dashboard.diagnostics')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('playback')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'playback' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <PlayCircle size={14} />
-                    {t('dashboard.playback')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('scripting')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'scripting' ? 'bg-yellow-600 text-black shadow-lg shadow-yellow-900/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <Code size={14} />
-                    {t('dashboard.scripting')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('hardware')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'hardware' ? 'bg-gray-200 text-black shadow-lg shadow-gray-400/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <CpuIcon size={14} />
-                    {t('dashboard.hardware')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('testing')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'testing' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <CheckSquare size={14} />
-                    {t('dashboard.testing')}
-                </button>
-                <button 
-                  onClick={() => setActiveCenterTab('spectrum')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'spectrum' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                    <Waves size={14} />
-                    {t('dashboard.spectrum')}
-                </button>
-                <button
-                  onClick={() => setActiveCenterTab('visualizer')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'visualizer' ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <Box size={14} />
-                  {t('dashboard.visualizer')}
-                </button>
-                <button
-                  onClick={() => setActiveCenterTab('decoder')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'decoder' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <Binary size={14} />
-                  {t('dashboard.decoder')}
-                </button>
-                <button
-                  onClick={() => setActiveCenterTab('testsuite')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'testsuite' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <ClipboardList size={14} />
-                  {t('dashboard.testsuite')}
-                </button>
-                <button
-                  onClick={() => setActiveCenterTab('report')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'report' ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <FileDown size={14} />
-                  {t('dashboard.report')}
-                </button>
-                <button
-                  onClick={() => setActiveCenterTab('builder')}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeCenterTab === 'builder' ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40' : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <Hammer size={14} />
-                  {t('dashboard.builder')}
-                </button>
+                  {tabs.map((tab) => (
+                    <button 
+                      key={tab.id}
+                      onClick={() => setActiveCenterTab(tab.id)}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap shrink-0 group/tab ${
+                        activeCenterTab === tab.id ? `${tab.color} text-white shadow-lg ${tab.shadow}` : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      <tab.icon size={14} className={activeCenterTab === tab.id ? 'animate-pulse' : 'group-hover/tab:scale-110 transition-transform'} />
+                      {t(tab.label)}
+                    </button>
+                  ))}
+                </div>
+
+                {showRightArrow && (
+                  <button 
+                    onClick={() => scrollTabs('right')}
+                    className="absolute right-0 z-20 p-2 bg-gray-900/80 backdrop-blur-md border border-white/5 text-gray-400 hover:text-white rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                )}
               </div>
 
               <div className="flex-1 min-h-0 glass-panel rounded-2xl overflow-hidden flex flex-col shadow-2xl">
                 <TabContent
                   activeTab={activeCenterTab}
                   state={state}
+                  profiles={profiles}
                   lastFrame={lastFrame}
                   lastRxFrame={lastRxFrame}
                   selectedProfile={selectedProfile}

@@ -71,7 +71,9 @@ const INITIAL_STATE: SimulationState = {
     bitFlipsEnabled: false
   },
   dashboardLayout: { widgets: [] },
-  logicHistory: [],
+  logicHistory: [
+    { id: 'tx-main', name: 'UART TX', transitions: [] }
+  ],
   validationSession: null
 };
 

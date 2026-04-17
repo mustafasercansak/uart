@@ -1,30 +1,70 @@
-import React, { memo, useState, useCallback, useMemo } from 'react';
-import { Settings2, Save, X, GripVertical, Plus } from 'lucide-react';
-import type { GeneratedFrame, Field, GridPanel, DashboardWidget } from '../../../../types';
+import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
+import { Settings2, Save, X, GripVertical, Plus, LayoutDashboard, Wand2, Activity } from 'lucide-react';
+import type { GeneratedFrame, Field, GridPanel, DashboardWidget, FrameProfile } from '../../../../types';
 import { useSimulation } from '../../../../hooks/useSimulation';
+import { SENSOR_TEMPLATES } from '../../../../data/templates';
 import DashboardGrid from '../DashboardGrid';
 
 interface TelemetryPanelProps {
   lastFrame: GeneratedFrame | null;
   waveformHistory: Array<Record<string, number>>;
   fields: Field[];
+  profiles: FrameProfile[];
 }
 
-const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields }: TelemetryPanelProps) => {
+const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: TelemetryPanelProps) => {
   const { state, updateLayout, removeWidget } = useSimulation();
-  const { dashboardLayout } = state;
+  const { dashboardLayout, profileId } = state;
+  const currentProfile = useMemo(() => profiles?.find((p: FrameProfile) => p.id === profileId), [profiles, profileId]);
+
+  const matchingTemplate = useMemo(() => {
+    if (!currentProfile) return null;
+    
+    // 1. Doğrudan isim eşleşmesi
+    const directMatch = SENSOR_TEMPLATES.find(t => t.name.toLowerCase() === currentProfile.name.toLowerCase());
+    if (directMatch) return directMatch;
+    
+    // 2. Kısmi isim eşleşmesi (Fuzzy)
+    const fuzzyMatch = SENSOR_TEMPLATES.find(t => 
+      currentProfile.name.toLowerCase().includes(t.name.toLowerCase()) || 
+      t.name.toLowerCase().includes(currentProfile.name.toLowerCase()) ||
+      (currentProfile.name.includes('Monitor') && t.name.includes('Monitor'))
+    );
+    if (fuzzyMatch) return fuzzyMatch;
+    
+    // 3. Alan bazlı eşleşme (BPM, SpO2 gibi kritik alanlar)
+    const profileFieldNames = fields.map(f => f.name.toLowerCase());
+    const fieldMatch = SENSOR_TEMPLATES.find(t => {
+      const templateFieldNames = t.profile.fields.map(f => f.name.toLowerCase());
+      const commonFields = profileFieldNames.filter(name => templateFieldNames.includes(name));
+      // En az 2 ortak alan varsa veya alan sayısı tutuyorsa
+      return commonFields.length >= 2 || (t.profile.fields.length === fields.length && fields.length > 0);
+    });
+    
+    return fieldMatch || null;
+  }, [currentProfile, fields]);
 
   // Convert dashboardLayout.widgets to GridPanel format for DashboardGrid
   const panels = useMemo<GridPanel[]>(() => {
-    return (dashboardLayout?.widgets || []).map(w => ({
-      id: w.id,
-      fieldName: w.fieldId,
-      fieldType: 'number', // Default or derived
-      color: w.config?.color || '#3b82f6',
-      widgetType: w.type,
-      config: w.config
-    }));
-  }, [dashboardLayout]);
+    return (dashboardLayout?.widgets || []).map(w => {
+      // Find the actual field to get the correct casing/metadata if needed
+      const field = fields.find(f => f.name.toLowerCase() === w.fieldId.toLowerCase());
+      return {
+        id: w.id,
+        fieldName: field?.name || w.fieldId,
+        fieldType: 'number',
+        color: w.config?.color || '#3b82f6',
+        widgetType: w.type,
+        config: w.config
+      };
+    });
+  }, [dashboardLayout, fields]);
+
+  const handleApplyTemplate = useCallback(() => {
+    if (matchingTemplate?.defaultLayout) {
+      updateLayout(matchingTemplate.defaultLayout.widgets);
+    }
+  }, [matchingTemplate, updateLayout]);
 
   const handleRemove = useCallback((id: string) => {
     removeWidget(id);
@@ -40,11 +80,22 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields }: TelemetryPa
     });
     updateLayout(updated);
   }, [dashboardLayout, updateLayout]);
+  
+  // Dashboard boşsa ve eşleşen şablon varsa otomatik uygula
+  useEffect(() => {
+    if (panels.length === 0 && matchingTemplate?.defaultLayout && lastFrame) {
+      handleApplyTemplate();
+    }
+  }, [panels.length, matchingTemplate, lastFrame, handleApplyTemplate]);
 
   if (!lastFrame) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 text-gray-700 font-mono text-xs uppercase tracking-widest border-2 border-dashed border-gray-900/50 rounded-2xl m-4">
-        Veri akışı bekleniyor...
+      <div className="flex-1 flex flex-col items-center justify-center p-8 m-4 border-2 border-dashed border-gray-900/50 rounded-2xl bg-gray-950/20">
+        <Activity size={32} className="text-gray-800 mb-4 animate-pulse" />
+        <div className="text-gray-700 font-mono text-xs uppercase tracking-widest text-center">
+            Veri akışı bekleniyor... <br/>
+            <span className="text-[10px] text-gray-800 mt-2 block opacity-50">Simülasyonu başlatın veya harici cihazı bağlayın</span>
+        </div>
       </div>
     );
   }
@@ -58,7 +109,7 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields }: TelemetryPa
           <span className="text-[10px] font-mono font-black uppercase tracking-widest text-gray-400">Designer Mode</span>
         </div>
         <div className="flex items-center gap-3">
-            <span className="text-[9px] font-mono text-gray-600">PIN FIELDS FROM DISSECTOR TO ADD WIDGETS</span>
+            <span className="text-[9px] font-mono text-gray-600">PIN FIELDS FROM SIDEBAR OR DISSECTOR</span>
             <div className="h-4 w-[1px] bg-gray-800" />
             <span className="text-[9px] font-mono text-emerald-500/60 uppercase tracking-tighter">Auto-Save Active</span>
         </div>
@@ -73,14 +124,30 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields }: TelemetryPa
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center py-24 px-12 text-center">
-             <div className="w-16 h-16 rounded-full bg-gray-900/50 flex items-center justify-center mb-4 border border-gray-800/50">
-                <Plus size={24} className="text-gray-700" />
+             <div className="w-16 h-16 rounded-full bg-gray-900/50 flex items-center justify-center mb-6 border border-gray-800/50 shadow-2xl relative group">
+                <LayoutDashboard size={24} className="text-gray-700 group-hover:text-blue-500 transition-colors" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-gray-950">
+                    <Plus size={10} className="text-white" />
+                </div>
              </div>
-             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Dashboard Boş</h3>
-             <p className="text-[10px] text-gray-600 font-mono max-w-xs leading-relaxed">
+             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 font-mono">Dashboard Hazır</h3>
+             <p className="text-[10px] text-gray-600 font-mono max-w-xs leading-relaxed mb-8">
                 Henüz bir gösterge eklenmemiş. <br/> 
-                <span className="text-blue-500">Packet Dissector</span> panelinden iğne (pin) ikonlarını kullanarak alanları buraya ekleyebilirsiniz.
+                Sol taraftaki <span className="text-blue-500">Sidebar (Frame Monitor)</span> veya <span className="text-emerald-500">Çözücü</span> panelindeki iğne ikonlarını kullanarak alanları buraya ekleyebilirsiniz.
              </p>
+
+             {matchingTemplate?.defaultLayout && (
+                <button
+                    onClick={handleApplyTemplate}
+                    className="flex items-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all shadow-lg shadow-blue-900/20 group"
+                >
+                    <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
+                    <div className="flex flex-col items-start">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Şablon Düzenini Uygula</span>
+                        <span className="text-[8px] opacity-70 font-mono italic">{matchingTemplate.name} varsayılan widget'larını yükle</span>
+                    </div>
+                </button>
+             )}
           </div>
         )}
       </div>

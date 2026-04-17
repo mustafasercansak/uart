@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { GitCompare } from 'lucide-react';
+import { GitCompare, LayoutDashboard } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
 
@@ -11,7 +11,7 @@ interface FrameMonitorProps {
 }
 
 const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectFrame }: FrameMonitorProps) => {
-  const { setDiffFrame } = useSimulation();
+  const { setDiffFrame, addWidget } = useSimulation();
 
   return (
     <div className="flex flex-col border-r border-gray-800 flex-1">
@@ -52,17 +52,27 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
             </div>
             {/* Field breakdown (Compact) */}
             <div className="flex flex-wrap gap-1">
-              {lastFrame.fields.slice(0, 4).map((f) => (
-                <div key={f.name} className="bg-gray-800/50 rounded px-1.5 py-0.5 border border-gray-700/50">
-                  <span className="text-gray-500 text-[9px] font-mono mr-1">{f.name}:</span>
-                  <span className="text-gray-200 text-[9px] font-mono font-bold">{f.decimal}</span>
+              {lastFrame.fields.map((f) => (
+                <div 
+                  key={f.name} 
+                  className="group/field bg-gray-800/50 hover:bg-gray-700/80 rounded px-1.5 py-0.5 border border-gray-700/50 transition-colors flex items-center gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addWidget(f.name.toLowerCase().includes('wave') || f.name.toLowerCase().includes('plet') ? 'chart' : 'gauge', f.name);
+                  }}
+                  title={`Pano'ya ekle (${f.name})`}
+                >
+                  <span className="text-gray-500 text-[9px] font-mono">{f.name}:</span>
+                  <span className="text-gray-200 text-[9px] font-mono font-bold whitespace-nowrap">{f.decimal}</span>
+                  <LayoutDashboard size={8} className="text-blue-500 opacity-0 group-hover/field:opacity-100 transition-opacity" />
                 </div>
               ))}
-              {lastFrame.fields.length > 4 && <span className="text-gray-700 text-[9px] font-mono">...</span>}
             </div>
           </div>
         ) : (
-          <div className="text-gray-700 font-mono text-xs">Simülasyon başlatılmadı...</div>
+          <div className="text-gray-500 font-mono text-[10px] animate-pulse py-4 text-center border border-dashed border-gray-800 rounded-lg">
+            Veri bekleniyor...
+          </div>
         )}
       </div>
 

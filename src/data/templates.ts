@@ -58,6 +58,13 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       ],
     },
     scenarios: [],
+    defaultLayout: {
+      widgets: [
+        { id: 'ys-w-pleth', type: 'sparkline', fieldId: 'PPG Dalga', x: 0, y: 0, w: 12, h: 4, config: { color: '#10b981' } },
+        { id: 'ys-w-pulse', type: 'gauge', fieldId: 'Nabız', x: 0, y: 4, w: 6, h: 4, config: { unit: 'BPM', color: '#f87171' } },
+        { id: 'ys-w-spo2', type: 'gauge', fieldId: 'SpO2', x: 6, y: 4, w: 6, h: 4, config: { unit: '%', color: '#60a5fa' } }
+      ]
+    }
   },
 
   // ── Berry BM1000 Oksimetre ──────────────────
@@ -113,6 +120,13 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       ],
     },
     scenarios: [],
+    defaultLayout: {
+      widgets: [
+        { id: 'bm-w-pleth', type: 'sparkline', fieldId: 'Waveform', x: 0, y: 0, w: 12, h: 4, config: { color: '#3b82f6' } },
+        { id: 'bm-w-pulse', type: 'gauge', fieldId: 'PR', x: 0, y: 4, w: 6, h: 4, config: { unit: 'BPM', color: '#f87171' } },
+        { id: 'bm-w-spo2', type: 'gauge', fieldId: 'SpO2', x: 6, y: 4, w: 6, h: 4, config: { unit: '%', color: '#10b981' } }
+      ]
+    }
   },
   // ── SpO2 Modülü ─────────────────────────────
   {
@@ -204,6 +218,12 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
         ],
       },
     ],
+    defaultLayout: {
+      widgets: [
+        { id: 'spo2-w-pulse', type: 'gauge', fieldId: 'Nabız', x: 0, y: 0, w: 6, h: 4, config: { unit: 'BPM', color: '#f87171' } },
+        { id: 'spo2-w-val', type: 'gauge', fieldId: 'SpO2', x: 6, y: 0, w: 6, h: 4, config: { unit: '%', color: '#3b82f6' } }
+      ]
+    }
   },
 
   // ── Nabız Oksimetre ──────────────────────────
@@ -292,6 +312,14 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       ],
     },
     scenarios: [],
+    defaultLayout: {
+      widgets: [
+        { id: 'pox-w-pleth', type: 'sparkline', fieldId: 'Pletismogram', x: 0, y: 0, w: 12, h: 4, config: { color: '#10b981' } },
+        { id: 'pox-w-bar', type: 'bar', fieldId: 'Bar', x: 0, y: 4, w: 4, h: 4, config: { color: '#3b82f6' } },
+        { id: 'pox-w-pulse', type: 'gauge', fieldId: 'Nabız LSB', x: 4, y: 4, w: 4, h: 4, config: { unit: 'BPM', color: '#f87171' } },
+        { id: 'pox-w-spo2', type: 'gauge', fieldId: 'SpO2', x: 8, y: 4, w: 4, h: 4, config: { unit: '%', color: '#60a5fa' } }
+      ]
+    }
   },
 
   // ── Sıcaklık Sensörü ─────────────────────────
@@ -823,5 +851,59 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       },
     ],
   },
-
+  // ── Humanitarian Open Ventilator ─────────────
+  {
+    id: 'humanitarian-ventilator-open',
+    name: 'Açık Kaynak Ventilatör',
+    description: 'Acil durum ventilatörleri için yüksek sadakalık. Havayolu basıncı ve akış döngülerini simüle eder.',
+    icon: '🫁',
+    category: 'Tıbbi (İnsanlık İçin)',
+    profile: {
+      name: 'OpenVentilator-V1',
+      description: 'Humanitarian Open Source Ventilator Protocol',
+      baudRate: 115200,
+      dataBits: 8,
+      parity: 'None',
+      stopBits: 1,
+      sendIntervalMs: 20,
+      framing: { mode: 'fixed', header: [0x5A, 0xA5] },
+      fields: [
+        { id: 'v-head', name: 'Header', order: 0, byteWidth: 2, endianness: 'big', type: 'fixed', typeConfig: { value: 0x5AA5 } },
+        { id: 'v-rr', name: 'RR', order: 1, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 10, max: 30, distribution: 'gaussian', mean: 15, stddev: 2 }, widgetConfig: { type: 'gauge', min: 0, max: 40, unit: 'bpm', color: '#10b981' } },
+        { id: 'v-paw', name: 'Paw', order: 2, byteWidth: 2, endianness: 'big', type: 'waveform', typeConfig: { shape: 'resp_pressure', frequency: 0.25, amplitude: 25, offset: 5, noiseLevel: 1 }, widgetConfig: { type: 'sparkline', color: '#3b82f6', unit: 'cmH2O' } },
+        { id: 'v-flow', name: 'Flow', order: 3, byteWidth: 2, endianness: 'big', type: 'waveform', typeConfig: { shape: 'resp_flow', frequency: 0.25, amplitude: 40, offset: 128, noiseLevel: 2 }, widgetConfig: { type: 'sparkline', color: '#f59e0b', unit: 'L/min' } },
+        { id: 'v-vol', name: 'Volume', order: 4, byteWidth: 2, endianness: 'big', type: 'computed', typeConfig: { expression: 'Flow * 10', clampMin: 0, clampMax: 800 }, widgetConfig: { type: 'bar', min: 0, max: 800, unit: 'mL', color: '#8b5cf6' } },
+        { id: 'v-status', name: 'Status', order: 5, byteWidth: 1, endianness: 'big', type: 'flags', typeConfig: { bits: [
+          { index: 0, name: 'Apnea', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+          { index: 1, name: 'High Press', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+          { index: 2, name: 'Low PEEP', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+          { index: 3, name: 'Battery', defaultValue: 1, behavior: 'fixed', behaviorConfig: {} }
+        ] } },
+        { id: 'v-crc', name: 'CRC', order: 6, byteWidth: 1, endianness: 'big', type: 'checksum', typeConfig: { algorithm: 'xor', scope: { startFieldId: 'v-rr', endFieldId: 'v-status' } } }
+      ]
+    },
+    scenarios: [
+      {
+        name: 'Apne Senaryosu',
+        description: 'Solunumun aniden durması ve alarm durumunu test eder.',
+        loop: false,
+        durationMs: 15000,
+        category: 'physiological',
+        steps: [
+          { id: 'ap1', atMs: 2000, target: 'field:RR', action: 'ramp', actionConfig: { from: 15, to: 0, durationMs: 3000, curve: 'ease-in' }, description: 'Solunum yavaşlıyor' },
+          { id: 'ap2', atMs: 5000, target: 'bit:Status.Apnea', action: 'set', actionConfig: { value: 1 }, description: 'Apne alarmı aktif' },
+          { id: 'ap3', atMs: 10000, target: 'field:RR', action: 'ramp', actionConfig: { from: 0, to: 18, durationMs: 2000, curve: 'ease-out' }, description: 'Resüsitasyon başladı' },
+          { id: 'ap4', atMs: 12000, target: 'bit:Status.Apnea', action: 'set', actionConfig: { value: 0 }, description: 'Alarm kapandı' }
+        ]
+      }
+    ],
+    defaultLayout: {
+      widgets: [
+        { id: 'w-paw', type: 'sparkline', fieldId: 'Paw', x: 0, y: 0, w: 12, h: 4, config: { unit: 'cmH2O', color: '#3b82f6' } },
+        { id: 'w-flow', type: 'sparkline', fieldId: 'Flow', x: 0, y: 4, w: 12, h: 4, config: { unit: 'L/min', color: '#f59e0b' } },
+        { id: 'w-rr', type: 'gauge', fieldId: 'RR', x: 0, y: 8, w: 4, h: 4, config: { unit: 'bpm', color: '#10b981' } },
+        { id: 'w-vol', type: 'bar', fieldId: 'Volume', x: 4, y: 8, w: 4, h: 4, config: { unit: 'mL', color: '#8b5cf6' } }
+      ]
+    }
+  },
 ];

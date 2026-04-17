@@ -262,5 +262,25 @@
     "error": "ERROR",
     "time": "TIME",
     "frames": "FRAMES"
+  },
+  "medical": {
+    "pump": "Infusion Pump",
+    "clamp": "Flow Control Clamp",
+    "flowRate": "Flow Rate",
+    "volInfused": "Volume Infused",
+    "occlusion": "Occlusion",
+    "airInLine": "Air in Line",
+    "clampPos": "Clamp Position",
+    "pressure": "Pressure",
+    "running": "Running",
+    "bolus": "Bolus",
+    "ventilator": "Ventilator",
+    "rr": "Respiratory Rate",
+    "peep": "PEEP",
+    "pip": "PIP",
+    "tidalVol": "Tidal Volume",
+    "flow": "Flow",
+    "paw": "Airway Pressure",
+    "fiO2": "FiO2"
   }
 }

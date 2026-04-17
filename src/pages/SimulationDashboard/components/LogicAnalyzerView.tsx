@@ -186,11 +186,11 @@ export const LogicAnalyzerView: React.FC = () => {
       ctx.fillText(`ΔT: ${(deltaT * 1000).toFixed(1)} µs`, 20, 40);
       ctx.fillText(`Freq: ${freq.toFixed(2)} Hz`, 20, 55);
     }
+    // Static draw session
   };
 
   useEffect(() => {
-    const frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    draw();
   }, [canvasSize, zoom, scrollX, signal.transitions.length, cursorA, cursorB]);
 
   // Handle Dragging

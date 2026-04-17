@@ -62,10 +62,39 @@ export function generateWaveformSample(config: WaveformConfig, timeMs: number): 
         const tw = g(t, 0.65, 0.05,  0.25);   // T wave
 
         value = (p + q + r + s + st + tw) * amplitude;
-      }
-      break;
     }
-    case 'custom':
+    break;
+  }
+  case 'resp_pressure': {
+    // ── Respiratory Airway Pressure (Paw) ──────────
+    // Inspiration: 0 to 0.33 (Ramp)
+    // Expiration: 0.33 to 1.0 (Exp Decay)
+    const ieRatio = 0.33;
+    if (t < ieRatio) {
+      // Linearly ramp up to peak pressure
+      value = (t / ieRatio) * amplitude;
+    } else {
+      // Exponential decay back to baseline (PEEP is handled by offset)
+      const expT = (t - ieRatio) / (1 - ieRatio);
+      value = amplitude * Math.exp(-5 * expT);
+    }
+    break;
+  }
+  case 'resp_flow': {
+    // ── Respiratory Flow ─────────────────────────
+    // Inspiration: Constant Flow
+    // Expiration: Sharp Negative Peak + Decay
+    const ieRatio = 0.33;
+    if (t < ieRatio) {
+      value = amplitude; // Constant flow during inspiration
+    } else {
+      const expT = (t - ieRatio) / (1 - ieRatio);
+      // Sharp negative recoil peak followed by decay to zero
+      value = -amplitude * 1.5 * Math.exp(-8 * expT);
+    }
+    break;
+  }
+  case 'custom':
       if (customPoints && customPoints.length > 1) {
         const segLen = 1 / (customPoints.length - 1);
         const segIdx = Math.min(Math.floor(t / segLen), customPoints.length - 2);

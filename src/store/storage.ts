@@ -62,6 +62,61 @@ const INITIAL_PROFILES: FrameProfile[] = [
       mode: 'fixed',
       header: [0xBE]
     }
+  },
+  {
+    id: 'medical-pump-01',
+    name: 'Infusion Pump X1',
+    description: 'Akıllı infüzyon pompası simülasyonu. Akış hızı, toplam hacim ve kritik alarmları simüle eder.',
+    baudRate: 19200,
+    dataBits: 8,
+    parity: 'None',
+    stopBits: 1,
+    sendIntervalMs: 500,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    fields: [
+      { id: 'p1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xFB } as FixedConfig },
+      { id: 'p2', name: 'Flow Rate', type: 'range', byteWidth: 2, endianness: 'big', order: 1, typeConfig: { min: 50, max: 250, distribution: 'uniform' } as RangeConfig },
+      { id: 'p3', name: 'Volume', type: 'range', byteWidth: 4, endianness: 'big', order: 2, typeConfig: { min: 0, max: 10000, distribution: 'uniform' } as RangeConfig },
+      { id: 'p4', name: 'Status', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { bits: [
+        { index: 0, name: 'Running', defaultValue: 1, behavior: 'manual', behaviorConfig: {} },
+        { index: 1, name: 'Air-In-Line', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+        { index: 2, name: 'Occlusion', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+        { index: 3, name: 'Bolus', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
+      ]} as FlagsConfig },
+      { id: 'p5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'p2', endFieldId: 'p4' } } as ChecksumConfig }
+    ],
+    framing: {
+      mode: 'fixed',
+      header: [0xFB]
+    }
+  },
+  {
+    id: 'medical-clamp-01',
+    name: 'Flow Control Clamp',
+    description: 'Hassas akış kontrol ünitesi ve oklüzyon klebi simülatörü.',
+    baudRate: 115200,
+    dataBits: 8,
+    parity: 'None',
+    stopBits: 1,
+    sendIntervalMs: 200,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    fields: [
+      { id: 'c1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xFE } as FixedConfig },
+      { id: 'c2', name: 'Position', type: 'range', byteWidth: 1, endianness: 'big', order: 1, typeConfig: { min: 0, max: 100, distribution: 'uniform' } as RangeConfig },
+      { id: 'c3', name: 'Pressure', type: 'range', byteWidth: 2, endianness: 'big', order: 2, typeConfig: { min: 0, max: 400, distribution: 'gaussian' } as RangeConfig },
+      { id: 'c4', name: 'Flags', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { bits: [
+        { index: 0, name: 'Moving', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+        { index: 1, name: 'Error', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+        { index: 2, name: 'Calibrated', defaultValue: 1, behavior: 'manual', behaviorConfig: {} }
+      ]} as FlagsConfig },
+      { id: 'c5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'xor', scope: { startFieldId: 'c2', endFieldId: 'c4' } } as ChecksumConfig }
+    ],
+    framing: {
+      mode: 'fixed',
+      header: [0xFE]
+    }
   }
 ];
 

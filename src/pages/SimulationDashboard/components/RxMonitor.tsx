@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { GitCompare, Radio, Trash2 } from 'lucide-react';
+import { GitCompare, Radio, Trash2, LayoutDashboard } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
 
@@ -12,7 +12,7 @@ interface RxMonitorProps {
 const MAX_RX_HISTORY = 50;
 
 const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonitorProps) => {
-  const { setDiffFrame } = useSimulation();
+  const { setDiffFrame, addWidget } = useSimulation();
   const [rxHistory, setRxHistory] = useState<GeneratedFrame[]>([]);
   const prevRxUid = useRef<string | null>(null);
 
@@ -156,20 +156,21 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
                   {/* Fields (sadece ilk satır için) */}
                   {isLatest && frame.fields.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {frame.fields.slice(0, 4).map((f) => (
+                      {frame.fields.map((f) => (
                         <div
                           key={f.name}
-                          className="bg-blue-900/15 rounded px-1.5 py-0.5 border border-blue-900/20"
+                          className="group/field bg-blue-900/15 hover:bg-blue-900/30 rounded px-1.5 py-0.5 border border-blue-900/20 transition-colors flex items-center gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addWidget(f.name.toLowerCase().includes('wave') || f.name.toLowerCase().includes('plet') ? 'chart' : 'gauge', f.name);
+                          }}
+                          title={`Pano'ya ekle (${f.name})`}
                         >
-                          <span className="text-blue-500/60 text-[8px] font-mono mr-1">{f.name}:</span>
-                          <span className="text-blue-100 text-[8px] font-mono font-bold">{f.decimal}</span>
+                          <span className="text-blue-500/60 text-[8px] font-mono">{f.name}:</span>
+                          <span className="text-blue-100 text-[8px] font-mono font-bold whitespace-nowrap">{f.decimal}</span>
+                          <LayoutDashboard size={7} className="text-blue-400 opacity-0 group-hover/field:opacity-100 transition-opacity" />
                         </div>
                       ))}
-                      {frame.fields.length > 4 && (
-                        <span className="text-gray-700 text-[8px] font-mono self-center">
-                          +{frame.fields.length - 4}
-                        </span>
-                      )}
                     </div>
                   )}
                 </div>

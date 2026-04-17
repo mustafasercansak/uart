@@ -21,6 +21,7 @@ import { GeneratedFrame, FrameProfile, SimulationState } from '../../../types';
 interface TabContentProps {
   activeTab: string;
   state: SimulationState;
+  profiles: FrameProfile[];
   lastFrame: GeneratedFrame | null;
   lastRxFrame: GeneratedFrame | null;
   selectedProfile: FrameProfile | null;
@@ -47,6 +48,7 @@ interface TabContentProps {
 export default function TabContent({
   activeTab,
   state,
+  profiles,
   lastFrame,
   lastRxFrame,
   selectedProfile,
@@ -78,6 +80,7 @@ export default function TabContent({
           lastFrame={lastFrame}
           waveformHistory={waveformHistory}
           fields={selectedProfile.fields}
+          profiles={profiles}
         />
       ) : null;
     case 'lab':

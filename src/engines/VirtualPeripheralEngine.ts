@@ -132,12 +132,124 @@ export class VirtualConsoleDriver extends PeripheralDriver {
         bytes: Array.from('System OK. Uptime: 1042s\r\n').map(c => c.charCodeAt(0)),
         log: 'UART: Console STATUS command'
       };
-    } else if (input.length > 0) {
-      return {
-        bytes: [...input],
-        log: `UART: Raw Loopback (Jumper) -> ${input.length} bytes`
-      };
     }
+    return null;
+    return null;
+  }
+}
+
+// ── Infusion Pump (UART/Medical) ──────────────
+export class InfusionPumpDriver extends PeripheralDriver {
+  id = 'pump';
+  name = 'Smart Infusion Pump';
+  protocol: ProtocolType = 'UART';
+
+  constructor() {
+    super({
+      running: 1,
+      flowRate: 125,
+      volumeInfused: 450,
+      airInLine: 0,
+      occlusion: 0,
+      bolus: 0
+    });
+  }
+
+  process(input: number[]): PeripheralResponse | null {
+    if (input.length === 0) return null;
+    
+    // Command Processing (Simplified)
+    const cmd = input[0];
+    
+    if (cmd === 0x01) { // START
+      this.state.running = 1;
+      return { bytes: [0x06], log: 'PUMP: Started Infusion' }; // 0x06 (ACK)
+    } else if (cmd === 0x02) { // STOP
+      this.state.running = 0;
+      return { bytes: [0x06], log: 'PUMP: Stopped Infusion' };
+    } else if (cmd === 0x03 && input.length >= 3) { // SET FLOW
+      const flow = (input[1] << 8) | input[2];
+      this.state.flowRate = flow;
+      return { bytes: [0x06], log: `PUMP: Set Flow Rate to ${flow} mL/h` };
+    } else if (cmd === 0x07) { // TRIGGER AIR ALARM
+      return { bytes: [0x06], log: 'PUMP: INJECTED AIR ALARM' };
+    } else if (cmd === 0x10) { // BOLUS
+       this.state.bolus = 1;
+       return { bytes: [0x06], log: 'PUMP: Bolus verildi' };
+    }
+
+    return null;
+  }
+}
+
+// ── Flow Control Clamp (UART/Medical) ──────────
+export class ClampDriver extends PeripheralDriver {
+  id = 'clamp';
+  name = 'Precision Flow Clamp';
+  protocol: ProtocolType = 'UART';
+
+  constructor() {
+    super({
+      position: 0, // 0 = fully open, 100 = fully closed
+      pressure: 45,
+      moving: 0,
+      error: 0,
+      calibrated: 1
+    });
+  }
+
+  process(input: number[]): PeripheralResponse | null {
+    if (input.length === 0) return null;
+
+    const cmd = input[0];
+
+    if (cmd === 0x10 && input.length >= 2) { // SET POSITION
+      const pos = input[1];
+      this.state.position = pos;
+      this.state.moving = 1;
+      
+      // Simulate movement completion
+      setTimeout(() => { this.state.moving = 0; }, 500);
+      
+      return { bytes: [0x06], log: `CLAMP: Setting position to ${pos}%` };
+    } else if (cmd === 0x11) { // CALIBRATE
+      this.state.calibrated = 1;
+      return { bytes: [0x06], log: 'CLAMP: Calibrating...' };
+    }
+
+    return null;
+  }
+}
+
+// ── Open Source Ventilator (Humanitarian) ─────
+export class VentilatorDriver extends PeripheralDriver {
+  id = 'ventilator';
+  name = 'Global Open Ventilator';
+  protocol: ProtocolType = 'UART';
+
+  constructor() {
+    super({
+      running: 1,
+      rr: 15,
+      pressure: 25,
+      peep: 5,
+      apnea: 0
+    });
+  }
+
+  process(input: number[]): PeripheralResponse | null {
+    if (input.length === 0) return null;
+
+    const cmd = input[0];
+
+    if (cmd === 0x20 && input.length >= 2) { // SET RR
+      const rr = input[1];
+      this.state.rr = rr;
+      return { bytes: [0x06], log: `VENT: Solunum hızı ${rr} BPM olarak güncellendi` };
+    } else if (cmd === 0x25) { // SELF TEST
+       return { bytes: [0x06], log: 'VENT: Kendi kendine test başlatıldı... Tamam.' };
+    }
+
     return null;
   }
 }
@@ -146,7 +258,10 @@ export class VirtualPeripheralEngine {
   private peripherals: PeripheralDriver[] = [
     new LM75Driver(),
     new EEPROMDriver(),
-    new VirtualConsoleDriver()
+    new VirtualConsoleDriver(),
+    new InfusionPumpDriver(),
+    new ClampDriver(),
+    new VentilatorDriver()
   ];
 
   processIncoming(protocol: ProtocolType, bytes: number[]): PeripheralResponse[] {

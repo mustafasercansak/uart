@@ -7,6 +7,7 @@ import {
   detectProtocol,
   type DecodedField,
 } from '../../../engines/HighLevelDecoders';
+import { parseFrame } from '../../../engines/FrameParser';
 
 interface Props {
   frames: GeneratedFrame[];
@@ -38,23 +39,48 @@ function FrameDecodeCard({
   frame,
   protocol,
   index,
+  profile,
 }: {
   frame: GeneratedFrame;
   protocol: Protocol;
   index: number;
+  profile: FrameProfile | null;
 }) {
   const [expanded, setExpanded] = useState(index === 0);
 
   const detected = useMemo(() => {
     if (protocol !== 'auto') return protocol;
+    if (!frame.rawBytes || !Array.isArray(frame.rawBytes)) return 'unknown';
     return detectProtocol(frame.rawBytes);
   }, [frame.rawBytes, protocol]);
 
   const decoded = useMemo(() => {
-    if (detected === 'modbus_rtu') return decodeModbusRTU(frame.rawBytes);
-    if (detected === 'nmea') return decodeNMEA(frame.rawBytes);
+    if (!frame.rawBytes || !Array.isArray(frame.rawBytes)) return null;
+
+    try {
+      if (detected === 'modbus_rtu') return decodeModbusRTU(frame.rawBytes);
+      if (detected === 'nmea') return decodeNMEA(frame.rawBytes);
+      
+      // Fallback: Aktif Profil Tanımı
+      if (profile) {
+        const parsed = parseFrame(profile, frame.rawBytes);
+        if (parsed) {
+          return {
+            valid: true,
+            fields: parsed.map(f => ({
+              name: f.name,
+              value: f.decimal,
+              hex: f.hex,
+              highlight: 'ok' as const
+            }))
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Decode error for frame', frame.frameNumber, err);
+    }
     return null;
-  }, [detected, frame.rawBytes]);
+  }, [detected, frame.rawBytes, profile, frame.frameNumber]);
 
   const isValid = decoded?.valid ?? false;
   const isCRCOk =
@@ -69,7 +95,7 @@ function FrameDecodeCard({
       ? 'Modbus RTU'
       : detected === 'nmea'
       ? 'NMEA 0183'
-      : 'Bilinmeyen';
+      : profile ? profile.name : 'Bilinmeyen';
 
   return (
     <div className="border border-gray-800/60 rounded-lg overflow-hidden mb-2">
@@ -84,7 +110,9 @@ function FrameDecodeCard({
           <ChevronRight size={12} className="text-gray-500 shrink-0" />
         )}
         <span className="font-mono text-[10px] text-gray-400">F#{frame.frameNumber}</span>
-        <span className="font-mono text-[10px] text-gray-600">{frame.rawHex.slice(0, 30)}{frame.rawHex.length > 30 ? '…' : ''}</span>
+        <span className="font-mono text-[10px] text-gray-600">
+          {(frame.rawHex || '').slice(0, 30)}{(frame.rawHex || '').length > 30 ? '…' : ''}
+        </span>
 
         <span className="ml-auto flex items-center gap-2">
           <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-indigo-900/40 text-indigo-300 border border-indigo-800/40">
@@ -139,7 +167,9 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
 
   const autoDetected = useMemo(() => {
     if (frames.length === 0) return 'unknown';
-    return detectProtocol(frames[frames.length - 1].rawBytes);
+    const last = frames[frames.length - 1];
+    if (!last || !last.rawBytes) return 'unknown';
+    return detectProtocol(last.rawBytes);
   }, [frames]);
 
   return (
@@ -197,7 +227,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
           </div>
         ) : (
           visibleFrames.map((f, i) => (
-            <FrameDecodeCard key={f.uId} frame={f} protocol={protocol} index={i} />
+            <FrameDecodeCard key={f.uId} frame={f} protocol={protocol} index={i} profile={_profile} />
           ))
         )}
       </div>

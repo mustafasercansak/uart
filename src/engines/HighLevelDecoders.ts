@@ -377,7 +377,7 @@ export function decodeNMEA(bytes: number[]): NMEASentence {
 export type HighLevelProtocol = 'modbus_rtu' | 'nmea' | 'unknown';
 
 export function detectProtocol(bytes: number[]): HighLevelProtocol {
-  if (bytes.length === 0) return 'unknown';
+  if (!bytes || !Array.isArray(bytes) || bytes.length === 0) return 'unknown';
   // NMEA starts with '$' (0x24)
   if (bytes[0] === 0x24) return 'nmea';
   // Modbus RTU: device address 1–247, valid function code, at least 4 bytes

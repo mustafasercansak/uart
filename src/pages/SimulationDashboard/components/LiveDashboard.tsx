@@ -45,8 +45,9 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
             <div className="space-y-3">
                 <h3 className="text-[9px] text-gray-600 font-mono uppercase tracking-widest px-1">Active Watchers</h3>
                 {widgets.map((widget) => {
-                const fieldData = lastFrame?.fields.find(f => f.name === widget.fieldId);
+                const fieldData = lastFrame?.fields.find(f => f.name.toLowerCase() === widget.fieldId.toLowerCase());
                 const value = fieldData?.decimal ?? 0;
+                const fieldName = fieldData?.name || widget.fieldId;
                 const color = widget.config?.color || '#3b82f6';
                 
                 return (

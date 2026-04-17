@@ -262,5 +262,25 @@
     "error": "HATA",
     "time": "SÜRE",
     "frames": "KARE"
+  },
+  "medical": {
+    "pump": "İnfüzyon Pompası",
+    "clamp": "Akış Kontrol Klebi",
+    "flowRate": "Akış Hızı",
+    "volInfused": "Verilen Hacim",
+    "occlusion": "Oklüzyon",
+    "airInLine": "Hatta Hava",
+    "clampPos": "Klep Pozisyonu",
+    "pressure": "Basınç",
+    "running": "Çalışıyor",
+    "bolus": "Bolus",
+    "ventilator": "Ventilatör",
+    "rr": "Solunum Hızı",
+    "peep": "PEEP",
+    "pip": "PIP",
+    "tidalVol": "Tidal Hacim",
+    "flow": "Akış",
+    "paw": "Havayolu Basıncı",
+    "fiO2": "FiO2"
   }
 }

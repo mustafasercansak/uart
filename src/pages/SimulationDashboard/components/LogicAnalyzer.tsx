@@ -184,12 +184,15 @@ const LogicAnalyzer = memo(() => {
       ctx.fillText(`Freq: ${freq.toFixed(1)} Hz`, width - 150, 42);
     }
 
-    requestAnimationFrame(draw);
+    // No recursive requestAnimationFrame here anymore. 
+    // This function now just performs a single static draw of the current state.
   };
 
   useEffect(() => {
-    const frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    // Only trigger a draw when something meaningful changes.
+    // We don't need a continuous loop because the component already re-renders 
+    // and this effect runs when transitions or zoom changes.
+    draw();
   }, [canvasSize, zoom, scrollX, signal.transitions.length, cursorA, cursorB]);
 
   const handleMouseDown = (e: React.MouseEvent) => {

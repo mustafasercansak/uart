@@ -15,7 +15,8 @@ const AnalogGauge: React.FC<AnalogGaugeProps> = ({
   color,
   label 
 }) => {
-  const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+  const range = max - min;
+  const percentage = range === 0 ? 0 : Math.min(100, Math.max(0, ((value - min) / range) * 100));
   const rotation = (percentage * 1.8) - 90; // -90 to 90 degrees
 
   return (

@@ -4,15 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import type { FrameProfile, Scenario } from '../../types';
 import { SENSOR_TEMPLATES } from '../../data/templates';
 import { saveProfile, saveScenario } from '../../store/storage';
+import { useSimulation } from '../../hooks/useSimulation';
 
 const CATEGORY_COLORS: Record<string, string> = {
   Tıbbi: 'text-red-400 bg-red-900/20 border-red-800/40',
+  'Tıbbi (İnsanlık İçin)': 'text-emerald-400 bg-emerald-900/20 border-emerald-800/40',
   Çevresel: 'text-green-400 bg-green-900/20 border-green-800/40',
   Genel: 'text-gray-400 bg-gray-800/40 border-gray-700/40',
 };
 
 export default function TemplateBrowser() {
   const navigate = useNavigate();
+  const { setProfile, updateLayout, setScenario } = useSimulation();
   const [applying, setApplying] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tümü');
@@ -41,10 +44,13 @@ export default function TemplateBrowser() {
     saveProfile(profile);
 
     // Create scenarios
+    let firstScenarioId: string | null = null;
     for (const scenarioDef of template.scenarios) {
+      const sId = uuidv4();
+      if (!firstScenarioId) firstScenarioId = sId;
       const scenario: Scenario = {
         ...scenarioDef,
-        id: uuidv4(),
+        id: sId,
         profileId,
         steps: scenarioDef.steps.map((s) => ({ ...s, id: uuidv4() })),
         createdAt: now,
@@ -53,9 +59,22 @@ export default function TemplateBrowser() {
       saveScenario(scenario);
     }
 
+    // Apply to current simulation state
+    setProfile(profileId);
+    if (template.defaultLayout) {
+      updateLayout(template.defaultLayout.widgets);
+    }
+    if (firstScenarioId) {
+      setScenario(firstScenarioId);
+    }
+
     setApplied(templateId);
     setApplying(null);
-    setTimeout(() => setApplied(null), 3000);
+    
+    // Auto-navigate to dashboard
+    setTimeout(() => {
+      navigate('/');
+    }, 1000);
   };
 
   return (

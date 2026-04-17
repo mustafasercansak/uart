@@ -64,7 +64,7 @@ export interface RampConfig {
 }
 
 // ── Waveform Field ───────────────────────────
-export type WaveformShape = 'sine' | 'triangle' | 'sawtooth' | 'square' | 'custom' | 'ecg';
+export type WaveformShape = 'sine' | 'triangle' | 'sawtooth' | 'square' | 'custom' | 'ecg' | 'resp_pressure' | 'resp_flow';
 
 export interface WaveformConfig {
   shape: WaveformShape;
@@ -573,6 +573,7 @@ export interface SensorTemplate {
   category: string;
   profile: Omit<FrameProfile, 'id' | 'createdAt' | 'updatedAt'>;
   scenarios: Array<Omit<Scenario, 'id' | 'profileId' | 'createdAt' | 'updatedAt'>>;
+  defaultLayout?: DashboardLayout;
 }
 
 // ── Log Entry ────────────────────────────────

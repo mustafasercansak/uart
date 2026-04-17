@@ -153,6 +153,14 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         scenarioId: action.scenarioId,
         outputMode: action.outputMode,
         startedAt: Date.now(),
+        // Clear history on new start
+        logicHistory: [
+          { id: 'tx-main', name: 'UART TX', transitions: [] }
+        ],
+        waveformHistory: [],
+        recentFrames: [],
+        frameCount: 0,
+        elapsedMs: 0
       };
     case 'STOP':
       return { ...state, status: 'stopped' };
@@ -182,10 +190,15 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
       // Handle Logic Analyzer History Update
       let newLogicHistory = [...state.logicHistory];
       if (updates.lastFrame && updates.lastFrame.bitStream) {
+        // Ensure "tx-main" exists in our history even if it was lost during sync
+        if (!newLogicHistory.find(s => s.id === 'tx-main')) {
+          newLogicHistory.push({ id: 'tx-main', name: 'UART TX', transitions: [] });
+        }
+
         newLogicHistory = newLogicHistory.map(sig => {
           if (sig.id === 'tx-main') {
             const updatedTransitions = [...sig.transitions, ...(updates.lastFrame!.bitStream || [])];
-            // Keep last 4000 transitions for performance
+            // Keep last 4000 transitions for performance (approx 4 seconds of UART at 9600)
             return {
               ...sig,
               transitions: updatedTransitions.slice(-4000)
@@ -302,6 +315,7 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         diffFrames: action.newState.diffFrames !== undefined ? action.newState.diffFrames : state.diffFrames,
         responderRules: action.newState.responderRules !== undefined ? action.newState.responderRules : state.responderRules,
         telemetryLayouts: action.newState.telemetryLayouts || state.telemetryLayouts || {},
+        dashboardLayout: action.newState.dashboardLayout || state.dashboardLayout || { widgets: [] },
         // Ensure specific arrays are initialized if everything else fails
         watchlist: action.newState.watchlist || state.watchlist || [],
         snapshots: action.newState.snapshots || state.snapshots || []
@@ -421,6 +435,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const frameCounterRef = useRef(0);
   const msgBufferRef = useRef<string[]>([]);
   const waveformBufferRef = useRef<Array<Record<string, number>>>([]);
+  const isInitializedRef = useRef(false);
 
   const assignUid = useCallback((frame: any) => ({
     ...frame,
@@ -447,21 +462,27 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         watchlist: parsed.watchlist || [],
         snapshots: parsed.snapshots || [],
         analyzerMode: parsed.analyzerMode ?? true,
-        telemetryLayouts: layouts
-      }});
-    } catch (e) {
-      console.error('Failed to load persisted state', e);
-    }
-  }, []);
+        telemetryLayouts: layouts,
+        dashboardLayout: parsed.dashboardLayout || { widgets: [] }
+        }});
+        isInitializedRef.current = true;
+      } catch (e) {
+        console.error('Failed to load persisted state', e);
+        isInitializedRef.current = true; // Still mark as initialized to allow saving even after error
+      }
+    }, []);
 
   React.useEffect(() => {
+    if (!isInitializedRef.current) return;
+
     const toPersist = {
       watchlist: state.watchlist,
       snapshots: state.snapshots,
-      analyzerMode: state.analyzerMode
+      analyzerMode: state.analyzerMode,
+      dashboardLayout: state.dashboardLayout
     };
     localStorage.setItem('uart_pro_state', JSON.stringify(toPersist));
-  }, [state.watchlist, state.snapshots, state.analyzerMode]);
+  }, [state.watchlist, state.snapshots, state.analyzerMode, state.dashboardLayout]);
 
   // ── BACKEND CONNECTION ───────────────────────
   React.useEffect(() => {
@@ -959,7 +980,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const addWidget = useCallback((type: WidgetType, fieldId: string) => {
-    const newWidget: DashboardWidget = {
+    dispatch({ type: 'ADD_WIDGET', widget: {
       id: uuidv4(),
       type,
       fieldId,
@@ -967,8 +988,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       y: 0,
       w: type === 'chart' ? 4 : 2,
       h: type === 'chart' ? 4 : 3
-    };
-    dispatch({ type: 'ADD_WIDGET', widget: newWidget });
+    }});
   }, []);
 
   const removeWidget = useCallback((id: string) => {

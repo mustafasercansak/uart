@@ -99,6 +99,13 @@ function getFieldValue(
         }
       }
       
+      if (cfg.shape === 'resp_pressure' || cfg.shape === 'resp_flow') {
+        const rr = namedValues['RR'] || namedValues['Respiration'] || 0;
+        if (rr > 0) {
+           cfg.frequency = rr / 60;
+        }
+      }
+      
       return clampValue(generateWaveformSample(cfg, elapsedMs), byteWidth);
     }
     case 'checksum':
