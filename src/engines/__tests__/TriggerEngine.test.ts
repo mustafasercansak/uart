@@ -4,17 +4,23 @@ import type { Trigger, GeneratedFrame, SimulationState } from '../../types';
 
 describe('TriggerEngine', () => {
     const mockFrame: GeneratedFrame = {
+        uId: 'test-frame',
         frameNumber: 100,
+        timestampMs: 5000,
+        rawHex: '78 58',
+        rawBytes: [0x78, 0x58],
         fields: [
-            { name: 'BPM', decimal: 120, hex: '78' },
-            { name: 'SPO2', decimal: 88, hex: '58' }
-        ]
-    } as any;
+            { name: 'BPM', decimal: 120, hex: '78', flags: {} },
+            { name: 'SPO2', decimal: 88, hex: '58', flags: {} }
+        ],
+        errors: []
+    } as unknown as GeneratedFrame;
 
     const mockState: SimulationState = {
         elapsedMs: 5000,
-        errorCount: 2
-    } as any;
+        errorCount: 2,
+        frameCount: 100
+    } as unknown as SimulationState;
 
     it('triggers when condition is met', () => {
         const triggers: Trigger[] = [

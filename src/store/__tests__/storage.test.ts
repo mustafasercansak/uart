@@ -6,8 +6,17 @@ describe('storage.ts', () => {
     const mockProfile: FrameProfile = {
         id: 'test-id',
         name: 'Test Profile',
-        fields: []
-    } as any;
+        description: 'Test Description',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'None',
+        stopBits: 1,
+        sendIntervalMs: 100,
+        fields: [],
+        framing: { mode: 'fixed' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
 
     beforeEach(() => {
         // Mock localStorage

@@ -195,7 +195,7 @@ const ControlPanel = memo(({
             <button 
               onClick={onExportLogs}
               className="text-[10px] font-mono text-gray-500 hover:text-green-400 flex items-center gap-1 transition-colors"
-              title="Tüm TX/RX kaydını CSV olarak indir"
+              title={t('controls.csvExport')}
             >
               <FileDown size={14} />
               {t('controls.csvExport')}

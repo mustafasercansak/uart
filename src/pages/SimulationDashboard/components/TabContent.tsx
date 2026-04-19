@@ -11,7 +11,8 @@ import HardwareLayout from './HardwareLayout';
 import SequenceRunner from './SequenceRunner';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import TriggerManager from './TriggerManager';
-import Visualizer3D from '../../../components/Visualizer/Visualizer3D';
+import MedicalRoomScene from '../../../components/Visualizer/MedicalRoomScene';
+import LearningMode from '../../../components/LearningMode/LearningMode';
 import ProtocolDecoderPanel from './ProtocolDecoderPanel';
 import TestSuiteRunner from './TestSuiteRunner';
 import ErrorReportPanel from './ErrorReportPanel';
@@ -171,7 +172,7 @@ export default function TabContent({
         />
       );
     case 'visualizer':
-      return <Visualizer3D lastFrame={lastFrame} />;
+      return <MedicalRoomScene lastFrame={lastFrame} activeProfileId={selectedProfile?.id ?? null} profiles={profiles} />;
     case 'decoder':
       return (
         <ProtocolDecoderPanel
@@ -201,6 +202,13 @@ export default function TabContent({
         <FrameBuilder
           profile={selectedProfile}
           onSendFrame={hooks.onSendFrame ?? (() => {})}
+        />
+      );
+    case 'learn':
+      return (
+        <LearningMode
+          lastFrame={lastFrame}
+          activeProfile={selectedProfile}
         />
       );
     default:

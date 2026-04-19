@@ -1,5 +1,4 @@
-export { reducer, INITIAL_STATE } from './simulationReducer';
-export type { SimAction } from './simulationReducer';
+
 
 import React, { useRef, useCallback, useReducer } from 'react';
 import { SimulationContext } from './context';
@@ -14,7 +13,8 @@ import type {
   SignalIntegrity,
   DashboardWidget,
   WidgetType,
-  ValidationTarget
+  ValidationTarget,
+  Field
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -26,13 +26,15 @@ import type { SimulationState } from '../types';
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const stateRef = useRef(state);
-  stateRef.current = state;
+  React.useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const msgBufferRef = useRef<string[]>([]);
   const profilesRef = useRef<FrameProfile[]>([]);
   const uiVisibleRef = useRef(false);
-  const conversationBufferRef = useRef<any[]>([]);
-  const exchangeBufferRef = useRef<any[]>([]);
+  const conversationBufferRef = useRef<ConversationEntry[]>([]);
+  const exchangeBufferRef = useRef<Exchange[]>([]);
   const pendingUiUpdateRef = useRef<Partial<SimulationState> | null>(null);
   const rxBufferRef = useRef<number[]>([]);
   const fullLogRef = useRef<Array<{ time: string; text: string; type: string }>>([]);
@@ -70,8 +72,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         }
       });
       isInitializedRef.current = true;
-    } catch (e) {
-      console.error('Failed to load persisted state', e);
+    } catch (error) {
+      console.error('Failed to load persisted state', error);
       isInitializedRef.current = true;
     }
   }, []);
@@ -127,57 +129,57 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         });
       }
     });
-  }, [state.lastRxFrame, state.validationSession?.status]);
+  }, [state.lastRxFrame, state.validationSession, state.validationSession?.status]);
 
   // ── SIMULATION CONTROLS ──────────────────────
   const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'START', profile, scenario, outputMode }));
     dispatch({ type: 'START', profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const stop = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'STOP' }));
     dispatch({ type: 'STOP' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const pause = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE' }));
     dispatch({ type: 'PAUSE' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
-  const resume = useCallback((_profile: FrameProfile, _scenario: Scenario | null) => {
+  const resume = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'RESUME' }));
     dispatch({ type: 'RESUME' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const overrideField = useCallback((fieldId: string, value: number) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_FIELD', fieldId, value }));
     dispatch({ type: 'OVERRIDE_FIELD', fieldId, value });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const overrideBit = useCallback((bitKey: string, value: number) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_BIT', bitKey, value }));
     dispatch({ type: 'OVERRIDE_BIT', bitKey, value });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const injectError = useCallback((errorType: ErrorType) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'INJECT_ERROR', errorType }));
     dispatch({ type: 'INJECT_ERROR', errorType });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const resetOverrides = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'RESET_OVERRIDES' }));
     dispatch({ type: 'RESET_OVERRIDES' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   // ── SERIAL / NETWORK ─────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_SERIAL', config: { portName, baudRate } }));
-  }, []);
+  }, [backendWsRef]);
 
   const disconnectSerial = useCallback(async () => {
     backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_SERIAL' }));
-  }, []);
+  }, [backendWsRef]);
 
   const connectNetwork = useCallback(async (url: string) => {
     return new Promise<void>((resolve, reject) => {
@@ -207,7 +209,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
           if (currentProfile) {
             rxBufferRef.current.push(...bytes);
-            const totalWidth = currentProfile.fields.reduce((s: number, f: any) => s + f.byteWidth, 0);
+            const totalWidth = currentProfile.fields.reduce((s: number, f: Field) => s + f.byteWidth, 0);
             if (rxBufferRef.current.length >= totalWidth) {
               const frameBytes = rxBufferRef.current.slice(0, totalWidth);
               rxBufferRef.current = rxBufferRef.current.slice(totalWidth);
@@ -236,18 +238,16 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
         ws.onerror = (err) => {
           console.error('WS Error:', err);
-          dispatch({ type: 'ADD_LOG', entryType: 'error', text: 'Network hatası oluştu' });
-          reject(err);
         };
-      } catch (err: any) {
-        reject(err);
+      } catch (error) {
+        reject(error);
       }
     });
-  }, []);
+  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef]);
 
   const disconnectNetwork = useCallback(() => {
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-  }, []);
+  }, [wsRef]);
 
   // ── LOGGING ──────────────────────────────────
   const exportLogs = useCallback(() => {
@@ -264,64 +264,64 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, []);
+  }, [fullLogRef]);
 
   // ── RECORDING & PLAYBACK ─────────────────────
   const startRecording = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
     dispatch({ type: 'SET_RECORDING', recording: true });
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Kayıt başlatıldı...' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const stopRecording = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
-  }, []);
+  }, [backendWsRef]);
 
-  const saveRecording = useCallback((name: string, data: any[]) => {
+  const saveRecording = useCallback((name: string, data: Array<{ time: number; frame: GeneratedFrame }>) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'SAVE_RECORDING', name, data }));
-  }, []);
+  }, [backendWsRef]);
 
   const deleteRecording = useCallback((id: string) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'DELETE_RECORDING', id }));
-  }, []);
+  }, [backendWsRef]);
 
   const refreshRecordings = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'LIST_RECORDINGS' }));
-  }, []);
+  }, [backendWsRef]);
 
-  const startPlayback = useCallback((data: any) => {
+  const startPlayback = useCallback((data: Array<{ time: number; frame: GeneratedFrame }>) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt oynatılıyor: ${data.length} frame.` });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const pausePlayback = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE_PLAYBACK' }));
     dispatch({ type: 'PAUSE' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const resumePlayback = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'RESUME_PLAYBACK' }));
     dispatch({ type: 'RESUME' });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const seekPlayback = useCallback((index: number) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'SEEK_PLAYBACK', index }));
-  }, []);
+  }, [backendWsRef]);
 
   const stepPlayback = useCallback((delta: number) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'STEP_PLAYBACK', delta }));
-  }, []);
+  }, [backendWsRef]);
 
   // ── SIGNAL & TRIGGERS ────────────────────────
   const setSignalIntegrity = useCallback((integrity: Partial<SignalIntegrity>) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'SET_SIGNAL_INTEGRITY', integrity }));
     dispatch({ type: 'SET_SIGNAL_INTEGRITY', integrity });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   const setTriggers = useCallback((triggers: Trigger[]) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'SET_TRIGGERS', triggers }));
     dispatch({ type: 'SET_TRIGGERS', triggers });
-  }, []);
+  }, [backendWsRef, dispatch]);
 
   // ── DASHBOARD WIDGETS ────────────────────────
   const addWidget = useCallback((type: WidgetType, fieldId: string) => {
@@ -333,21 +333,21 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         h: type === 'chart' ? 4 : 3
       }
     });
-  }, []);
+  }, [dispatch]);
 
   const removeWidget = useCallback((id: string) => {
     dispatch({ type: 'REMOVE_WIDGET', id });
-  }, []);
+  }, [dispatch]);
 
   const updateLayout = useCallback((widgets: DashboardWidget[]) => {
     dispatch({ type: 'UPDATE_LAYOUT', widgets });
-  }, []);
+  }, [dispatch]);
 
   // ── VALIDATION ───────────────────────────────
   const startValidation = useCallback(({ name, deviceId, operator, targets }: {
     name: string; deviceId: string; operator: string; targets: ValidationTarget[];
   }) => {
-    const session: any = {
+    const session: ValidationSession = {
       id: uuidv4(), name, deviceId, operator,
       status: 'running',
       startTime: Date.now(),
@@ -358,7 +358,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     };
     dispatch({ type: 'START_VALIDATION', session });
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: `VALIDASYON BAŞLATILDI: ${name}` });
-  }, []);
+  }, [dispatch]);
 
   const stopValidation = useCallback(() => {
     if (!stateRef.current.validationSession) return;
@@ -366,7 +366,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     const score = Math.max(0, 100 - (failures * 10));
     dispatch({ type: 'STOP_VALIDATION', endTime: Date.now(), score });
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: `VALIDASYON TAMAMLANDI. Skor: ${score}%` });
-  }, []);
+  }, [dispatch, stateRef]);
 
   return (
     <SimulationContext.Provider
@@ -421,7 +421,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         startValidation,
         stopValidation,
         cancelValidation: () => dispatch({ type: 'CANCEL_VALIDATION' }),
-        deleteValidationSession: (_id) => dispatch({ type: 'CANCEL_VALIDATION' }),
+        deleteValidationSession: () => dispatch({ type: 'CANCEL_VALIDATION' }),
       }}
     >
       {children}

@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Columns, ArrowRight, Zap, Target } from 'lucide-react';
 import type { GeneratedFrame } from '../../../../types';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface DiffLabProps {
   frameA: GeneratedFrame | null;
@@ -9,14 +10,13 @@ interface DiffLabProps {
 }
 
 const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
+  const { t } = useTranslation();
   if (!frameA || !frameB) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-500 font-mono">
         <Columns size={48} className="mb-4 text-gray-800" />
-        <h3 className="text-gray-300 font-black uppercase tracking-widest mb-2">Protokol Karşılaştırma Laboratuvarı</h3>
-        <p className="max-w-md text-xs leading-relaxed">
-          Kıyaslama yapmak için iki paket seçin. Geçmiş listesindeki veya snapshotlardaki paketleri 'Karşılaştır' butonuna basarak buraya ekleyebilirsiniz.
-        </p>
+        <h3 className="text-gray-300 font-black uppercase tracking-widest mb-2">{t('diffLab.title')}</h3>
+        <p className="max-w-md text-xs leading-relaxed">{t('diffLab.description')}</p>
       </div>
     );
   }
@@ -87,7 +87,7 @@ const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
         <div className="flex items-center gap-3">
           <Target className="text-blue-500" size={20} />
           <div>
-            <h2 className="text-gray-200 text-xs font-black uppercase tracking-widest">Diferansiyel Analiz</h2>
+            <h2 className="text-gray-200 text-xs font-black uppercase tracking-widest">{t('diffLab.analysisTitle')}</h2>
             <p className="text-[10px] text-gray-500 font-mono">F# {frameA.frameNumber} vs F# {frameB.frameNumber}</p>
           </div>
         </div>
@@ -95,7 +95,7 @@ const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
           onClick={onClear}
           className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-mono rounded-lg transition-colors border border-gray-700"
         >
-          SIFIRLA
+          {t('diffLab.reset')}
         </button>
       </div>
 
@@ -104,7 +104,7 @@ const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-[10px] font-mono text-gray-400 uppercase font-black">Referans Paket (A)</span>
+            <span className="text-[10px] font-mono text-gray-400 uppercase font-black">{t('diffLab.referencePacket')}</span>
           </div>
           {renderHexGrid(frameA, frameB)}
         </div>
@@ -113,7 +113,7 @@ const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-purple-500" />
-            <span className="text-[10px] font-mono text-gray-400 uppercase font-black">Test Paketi (B)</span>
+            <span className="text-[10px] font-mono text-gray-400 uppercase font-black">{t('diffLab.testPacket')}</span>
           </div>
           {renderHexGrid(frameB, frameA)}
         </div>
@@ -122,14 +122,14 @@ const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
       <div className="space-y-4 pt-4">
         <div className="flex items-center gap-2">
            <Zap size={14} className="text-yellow-500" />
-           <span className="text-[10px] font-mono text-gray-400 uppercase font-black">Bit-Düzeyinde Değişim Haritası (B)</span>
+           <span className="text-[10px] font-mono text-gray-400 uppercase font-black">{t('diffLab.bitChangeMap')}</span>
         </div>
         {renderBitDiff(frameA.rawBytes, frameB.rawBytes)}
       </div>
 
       <div className="mt-auto p-4 bg-blue-500/5 rounded-xl border border-blue-500/10">
          <p className="text-[10px] text-blue-400/80 font-mono italic">
-           İpucu: Kırmızı ile işaretlenmiş alanlar, iki paket arasındaki değişen değerleri göstermektedir. Bit-Düzeyinde harita ise (B) paketinin (A) paketine göre olan değişimlerini gösterir.
+           {t('diffLab.tip')}
          </p>
       </div>
     </div>

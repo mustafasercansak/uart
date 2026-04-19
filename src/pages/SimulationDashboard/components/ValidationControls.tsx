@@ -79,7 +79,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
               <input 
                 value={name} onChange={e => setName(e.target.value)}
                 className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-mono text-white focus:border-emerald-500/50 outline-none transition-all"
-                placeholder="Örn: EKG Kararlılık Testi"
+                placeholder={t('validation.testNamePlaceholder')}
               />
             </div>
             <div className="space-y-4">
@@ -89,7 +89,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
               <input 
                 value={deviceId} onChange={e => setDeviceId(e.target.value)}
                 className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-mono text-white focus:border-emerald-500/50 outline-none transition-all"
-                placeholder="Örn: MN-9920"
+                placeholder={t('validation.deviceIdPlaceholder')}
               />
             </div>
             <div className="space-y-4 col-span-2">
@@ -127,7 +127,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
                       onChange={e => updateTarget(target.id, { fieldName: e.target.value })}
                       className="w-full bg-gray-800 border border-white/5 rounded-lg px-3 py-2 text-xs text-white outline-none"
                     >
-                      <option value="">Seçiniz...</option>
+                      <option value="">{t('validation.selectField')}</option>
                       {profile?.fields.map(f => (
                         <option key={f.id} value={f.name}>{f.name}</option>
                       ))}

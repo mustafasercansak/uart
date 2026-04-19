@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Book, HelpCircle, FileText, Globe, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 type DocType = 'tr' | 'en' | 'readme';
 
 const HelpPage: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<DocType>('tr');
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -24,7 +26,7 @@ const HelpPage: React.FC = () => {
         const text = await response.text();
         setContent(text);
       } catch (err) {
-        setContent('# Hata\nDoküman yüklenirken bir sorun oluştu.');
+        setContent(t('helpPage.loadError'));
       } finally {
         setLoading(false);
       }
@@ -50,7 +52,7 @@ const HelpPage: React.FC = () => {
          <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-2.5 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-gray-300 hover:text-white transition-all text-xs font-mono font-black uppercase tracking-widest">
                <ArrowLeft size={18} />
-               Sisteme Dön
+               {t('helpPage.backToSystem')}
             </Link>
             <div className="h-6 w-px bg-white/10" />
             <div className="flex items-center gap-4">
@@ -58,13 +60,13 @@ const HelpPage: React.FC = () => {
                   <Globe size={20} className="text-blue-400" />
                </div>
                <div>
-                  <h1 className="text-sm font-black font-mono uppercase tracking-[0.4em] text-white leading-none mb-1">Dökümantasyon Arşivi</h1>
-                  <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none">Resmi UART Simülatörü Bilgi Bankası</p>
+                  <h1 className="text-sm font-black font-mono uppercase tracking-[0.4em] text-white leading-none mb-1">{t('helpPage.archiveTitle')}</h1>
+                  <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none">{t('helpPage.archiveSubtitle')}</p>
                </div>
             </div>
          </div>
          <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-emerald-500/5 border border-emerald-500/10 px-4 py-2 rounded-xl">
-            Sistem Sürümü: <span className="text-emerald-400 font-black">v1.2.0-STABLE</span>
+            {t('helpPage.systemVersion')} <span className="text-emerald-400 font-black">v1.2.0-STABLE</span>
          </div>
       </header>
 
@@ -72,7 +74,7 @@ const HelpPage: React.FC = () => {
         {/* Sidebar */}
         <aside className="w-80 shrink-0 border-r border-white/5 bg-[#05070a] p-10 hidden lg:flex flex-col gap-12">
            <section>
-              <h3 className="text-[11px] font-mono font-black text-gray-600 uppercase tracking-[0.2em] mb-8 border-l-2 border-blue-500/30 pl-4">Rehber Seçimi</h3>
+              <h3 className="text-[11px] font-mono font-black text-gray-600 uppercase tracking-[0.2em] mb-8 border-l-2 border-blue-500/30 pl-4">{t('helpPage.guideSelection')}</h3>
               <nav className="flex flex-col gap-3">
                  {(Object.keys(docs) as DocType[]).map((key) => {
                     const doc = docs[key];
@@ -98,9 +100,9 @@ const HelpPage: React.FC = () => {
            </section>
 
            <div className="mt-auto p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10">
-              <h4 className="text-[11px] font-mono font-black text-blue-400 uppercase tracking-widest mb-4">Teknik Not</h4>
+              <h4 className="text-[11px] font-mono font-black text-blue-400 uppercase tracking-widest mb-4">{t('helpPage.techNote')}</h4>
               <p className="text-[11px] font-mono leading-relaxed text-gray-500">
-                 Dökümantasyon portalı her sürümde güncellenmektedir.
+                 {t('helpPage.techNoteText')}
               </p>
            </div>
         </aside>
@@ -111,7 +113,7 @@ const HelpPage: React.FC = () => {
               {loading ? (
                  <div className="min-h-[50vh] flex flex-col items-center justify-center gap-8">
                     <div className="w-20 h-20 border-4 border-blue-500/10 border-t-blue-500 rounded-full animate-spin shadow-[0_0_50px_rgba(59,130,246,0.15)]" />
-                    <span className="text-sm font-mono text-white animate-pulse tracking-[0.3em] uppercase">Bilgi Paketi Çözülüyor</span>
+                    <span className="text-sm font-mono text-white animate-pulse tracking-[0.3em] uppercase">{t('helpPage.loadingText')}</span>
                  </div>
               ) : (
                  <article className="prose prose-invert prose-blue max-w-none">
@@ -142,7 +144,7 @@ const HelpPage: React.FC = () => {
                     <span>16 Nisan 2026</span>
                  </div>
                  <div className="flex gap-10">
-                    <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-blue-400 transition-all font-black">YUKARI DÖN ↑</button>
+                    <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-blue-400 transition-all font-black">{t('helpPage.scrollTop')}</button>
                  </div>
               </footer>
            </div>

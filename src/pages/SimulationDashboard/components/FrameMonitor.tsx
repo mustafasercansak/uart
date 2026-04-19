@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { GitCompare, LayoutDashboard } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface FrameMonitorProps {
   lastFrame: GeneratedFrame | null;
@@ -12,24 +13,25 @@ interface FrameMonitorProps {
 
 const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectFrame }: FrameMonitorProps) => {
   const { setDiffFrame, addWidget } = useSimulation();
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col border-r border-gray-800 flex-1">
       {/* Live Frame Monitor */}
       <div className="p-4 border-b border-gray-800">
         <div className="flex justify-between items-center mb-3">
-            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">Canlı Frame</div>
+            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">{t('frameMonitor.liveFrame')}</div>
             {lastFrame && (
                 <div className="flex gap-1">
                     <button 
                         onClick={() => setDiffFrame(0, lastFrame)}
-                        className="p-1 hover:bg-blue-500/20 text-blue-500 rounded transition-colors" title="A Slotuna Gönder"
+                        className="p-1 hover:bg-blue-500/20 text-blue-500 rounded transition-colors" title={t('frameMonitor.slotARef')}
                     >
                         <GitCompare size={12} />
                     </button>
                     <button 
                         onClick={() => setDiffFrame(1, lastFrame)}
-                        className="p-1 hover:bg-purple-500/20 text-purple-500 rounded transition-colors" title="B Slotuna Gönder"
+                        className="p-1 hover:bg-purple-500/20 text-purple-500 rounded transition-colors" title={t('frameMonitor.slotBTest')}
                     >
                         <GitCompare size={12} />
                     </button>
@@ -71,14 +73,14 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
           </div>
         ) : (
           <div className="text-gray-500 font-mono text-[10px] animate-pulse py-4 text-center border border-dashed border-gray-800 rounded-lg">
-            Veri bekleniyor...
+            {t('frameMonitor.waitingData')}
           </div>
         )}
       </div>
 
       {/* Recent Frames Scroll */}
       <div className="p-3 border-b border-gray-800 max-h-60 overflow-y-auto">
-        <div className="text-gray-600 text-[10px] font-mono uppercase tracking-wider mb-2">Son Frameler (İncelemek için tıkla)</div>
+        <div className="text-gray-600 text-[10px] font-mono uppercase tracking-wider mb-2">{t('frameMonitor.recentFrames')}</div>
         <div className="space-y-0.5">
           {recentFrames.slice(0, 30).map((frame) => (
             <div 
@@ -91,14 +93,14 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
                 <button 
                   onClick={(e) => { e.stopPropagation(); setDiffFrame(0, frame); }} 
                   className="p-1.5 hover:bg-blue-500/30 text-blue-400 rounded-md transition-all border border-transparent hover:border-blue-500/40 bg-gray-900/40"
-                  title="Slot A (Referans) Olarak Ayarla"
+                  title={t('frameMonitor.slotARef')}
                 >
                   <GitCompare size={14} />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setDiffFrame(1, frame); }} 
                   className="p-1.5 hover:bg-purple-500/30 text-purple-400 rounded-md transition-all border border-transparent hover:border-purple-500/40 bg-gray-900/40"
-                  title="Slot B (Test) Olarak Ayarla"
+                  title={t('frameMonitor.slotBTest')}
                 >
                   <GitCompare size={14} />
                 </button>

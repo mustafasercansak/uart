@@ -29,10 +29,10 @@ export interface SimulationContextType {
   disconnectNetwork: () => void;
   startRecording: () => void;
   stopRecording: () => void;
-  saveRecording: (name: string, data: any[]) => void;
+  saveRecording: (name: string, data: Array<{ time: number; frame: GeneratedFrame }>) => void;
   deleteRecording: (id: string) => void;
   refreshRecordings: () => void;
-  startPlayback: (data: any) => void;
+  startPlayback: (data: Array<{ time: number; frame: GeneratedFrame }>) => void;
   getPorts: () => void;
   selectExchange: (exchangeId: string | null) => void;
   setAnalyzerMode: (enabled: boolean) => void;

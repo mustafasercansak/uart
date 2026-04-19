@@ -15,6 +15,7 @@ import type {
   WaveformShape,
 } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface Props {
   field: Field;
@@ -27,6 +28,7 @@ const labelCls = 'text-gray-500 text-xs font-mono block mb-1';
 const sectionCls = 'mb-4';
 
 export function FieldEditor({ field, allFields, onChange }: Props) {
+  const { t } = useTranslation();
   const update = (patch: Partial<Field>) => onChange({ ...field, ...patch });
   const updateConfig = (patch: object) =>
     onChange({ ...field, typeConfig: { ...field.typeConfig, ...patch } });
@@ -48,22 +50,22 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
   return (
     <div className="p-4 space-y-4">
       <div className="text-green-400 text-xs font-mono font-bold uppercase tracking-wider border-b border-gray-800 pb-2">
-        Alan Yapılandırması
+        {t('profileEditor.fieldConfig')}
       </div>
 
       {/* Base properties */}
       <div className={sectionCls}>
         <div className="mb-2">
-          <label className={labelCls}>İsim</label>
+          <label className={labelCls}>{t('profileEditor.name')}</label>
           <input className={inputCls} value={field.name} onChange={(e) => update({ name: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
-            <label className={labelCls}>Byte Genişliği</label>
+            <label className={labelCls}>{t('profileEditor.byteWidth')}</label>
             <input type="number" min={1} max={4} className={inputCls} value={field.byteWidth} onChange={(e) => update({ byteWidth: Number(e.target.value) })} />
           </div>
           <div>
-            <label className={labelCls}>Bayt Sırası</label>
+            <label className={labelCls}>{t('profileEditor.byteOrder')}</label>
             <select className={inputCls} value={field.endianness} onChange={(e) => update({ endianness: e.target.value as Field['endianness'] })}>
               <option value="big">Big Endian</option>
               <option value="little">Little Endian</option>
@@ -71,16 +73,16 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
           </div>
         </div>
         <div>
-          <label className={labelCls}>Alan Türü</label>
+          <label className={labelCls}>{t('profileEditor.fieldType')}</label>
           <select className={inputCls} value={field.type} onChange={(e) => changeType(e.target.value as FieldType)}>
-            <option value="fixed">Sabit Değer</option>
-            <option value="range">Aralık (Rastgele)</option>
-            <option value="ramp">Ramp (Geçiş)</option>
-            <option value="waveform">Dalga Formu</option>
-            <option value="checksum">Checksum</option>
-            <option value="flags">Bayraklar (Bit)</option>
-            <option value="computed">Hesaplanmış</option>
-            <option value="script">Script (JS)</option>
+            <option value="fixed">{t('profileEditor.fixed')}</option>
+            <option value="range">{t('profileEditor.rangeRandom')}</option>
+            <option value="ramp">{t('profileEditor.rampTransition')}</option>
+            <option value="waveform">{t('profileEditor.waveformType')}</option>
+            <option value="checksum">{t('profileEditor.checksumType')}</option>
+            <option value="flags">{t('profileEditor.flagsBit')}</option>
+            <option value="computed">{t('profileEditor.computed')}</option>
+            <option value="script">{t('profileEditor.script')}</option>
           </select>
         </div>
       </div>
@@ -99,9 +101,10 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
 }
 
 function FixedEditor({ config, onChange }: { config: FixedConfig; onChange: (p: Partial<FixedConfig>) => void }) {
+  const { t } = useTranslation();
   return (
     <div>
-      <label className={labelCls}>Değer (0x hex veya decimal)</label>
+      <label className={labelCls}>{t('profileEditor.fixedValue')}</label>
       <input
         className={inputCls}
         value={`0x${config.value.toString(16).toUpperCase().padStart(2, '0')}`}
@@ -116,6 +119,7 @@ function FixedEditor({ config, onChange }: { config: FixedConfig; onChange: (p: 
 }
 
 function RangeEditor({ config, onChange }: { config: RangeConfig; onChange: (p: Partial<RangeConfig>) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
@@ -129,20 +133,20 @@ function RangeEditor({ config, onChange }: { config: RangeConfig; onChange: (p: 
         </div>
       </div>
       <div>
-        <label className={labelCls}>Dağılım</label>
+        <label className={labelCls}>{t('profileEditor.distribution')}</label>
         <select className={inputCls} value={config.distribution} onChange={(e) => onChange({ distribution: e.target.value as RangeConfig['distribution'] })}>
-          <option value="uniform">Düzgün (Uniform)</option>
-          <option value="gaussian">Gaussian (Normal)</option>
+          <option value="uniform">{t('profileEditor.uniform')}</option>
+          <option value="gaussian">{t('profileEditor.gaussian')}</option>
         </select>
       </div>
       {config.distribution === 'gaussian' && (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelCls}>Ortalama (μ)</label>
+            <label className={labelCls}>{t('profileEditor.mean')}</label>
             <input type="number" className={inputCls} value={config.mean ?? (config.min + config.max) / 2} onChange={(e) => onChange({ mean: Number(e.target.value) })} />
           </div>
           <div>
-            <label className={labelCls}>Std. Sapma (σ)</label>
+            <label className={labelCls}>{t('profileEditor.stddev')}</label>
             <input type="number" step="0.1" className={inputCls} value={config.stddev ?? 1} onChange={(e) => onChange({ stddev: Number(e.target.value) })} />
           </div>
         </div>
@@ -152,26 +156,27 @@ function RangeEditor({ config, onChange }: { config: RangeConfig; onChange: (p: 
 }
 
 function RampEditor({ config, onChange }: { config: RampConfig; onChange: (p: Partial<RampConfig>) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Başlangıç Değeri</label>
+          <label className={labelCls}>{t('profileEditor.startValue')}</label>
           <input type="number" className={inputCls} value={config.from} onChange={(e) => onChange({ from: Number(e.target.value) })} />
         </div>
         <div>
-          <label className={labelCls}>Bitiş Değeri</label>
+          <label className={labelCls}>{t('profileEditor.endValue')}</label>
           <input type="number" className={inputCls} value={config.to} onChange={(e) => onChange({ to: Number(e.target.value) })} />
         </div>
       </div>
       <div>
-        <label className={labelCls}>Süre (ms)</label>
+        <label className={labelCls}>{t('profileEditor.duration')}</label>
         <input type="number" min={100} className={inputCls} value={config.durationMs} onChange={(e) => onChange({ durationMs: Number(e.target.value) })} />
       </div>
       <div>
-        <label className={labelCls}>Eğri</label>
+        <label className={labelCls}>{t('profileEditor.curve')}</label>
         <select className={inputCls} value={config.curve} onChange={(e) => onChange({ curve: e.target.value as RampConfig['curve'] })}>
-          <option value="linear">Doğrusal</option>
+          <option value="linear">{t('profileEditor.linear')}</option>
           <option value="ease-in">Ease In</option>
           <option value="ease-out">Ease Out</option>
           <option value="ease-in-out">Ease In-Out</option>
@@ -182,42 +187,43 @@ function RampEditor({ config, onChange }: { config: RampConfig; onChange: (p: Pa
 }
 
 function WaveformEditor({ config, onChange }: { config: WaveformConfig; onChange: (p: Partial<WaveformConfig>) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <div>
-        <label className={labelCls}>Dalga Formu</label>
+        <label className={labelCls}>{t('profileEditor.waveformType')}</label>
         <select className={inputCls} value={config.shape} onChange={(e) => onChange({ shape: e.target.value as WaveformShape })}>
-          <option value="sine">Sinüs</option>
-          <option value="triangle">Üçgen</option>
-          <option value="sawtooth">Testere Dişi</option>
-          <option value="square">Kare</option>
-          <option value="ecg">EKG (P-QRS-T)</option>
-          <option value="custom">Özel</option>
+          <option value="sine">{t('profileEditor.sine')}</option>
+          <option value="triangle">{t('profileEditor.triangle')}</option>
+          <option value="sawtooth">{t('profileEditor.sawtooth')}</option>
+          <option value="square">{t('profileEditor.square')}</option>
+          <option value="ecg">{t('profileEditor.ecg')}</option>
+          <option value="custom">{t('profileEditor.custom')}</option>
         </select>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Frekans (Hz)</label>
+          <label className={labelCls}>{t('profileEditor.frequency')}</label>
           <input type="number" step="0.1" min={0.01} className={inputCls} value={config.frequency} onChange={(e) => onChange({ frequency: Number(e.target.value) })} />
         </div>
         <div>
-          <label className={labelCls}>Gürültü Seviyesi</label>
+          <label className={labelCls}>{t('profileEditor.noiseLevel')}</label>
           <input type="number" min={0} max={50} className={inputCls} value={config.noiseLevel} onChange={(e) => onChange({ noiseLevel: Number(e.target.value) })} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Genlik</label>
+          <label className={labelCls}>{t('profileEditor.amplitude')}</label>
           <input type="number" min={0} className={inputCls} value={config.amplitude} onChange={(e) => onChange({ amplitude: Number(e.target.value) })} />
         </div>
         <div>
-          <label className={labelCls}>Offset</label>
+          <label className={labelCls}>{t('profileEditor.offset')}</label>
           <input type="number" className={inputCls} value={config.offset} onChange={(e) => onChange({ offset: Number(e.target.value) })} />
         </div>
       </div>
       {config.shape === 'custom' && (
         <div>
-          <label className={labelCls}>Özel Noktalar (virgülle ayrılmış)</label>
+          <label className={labelCls}>{t('profileEditor.customPoints')}</label>
           <input className={inputCls}
             value={(config.customPoints ?? []).join(', ')}
             onChange={(e) => onChange({ customPoints: e.target.value.split(',').map((v) => Number(v.trim())).filter((n) => !isNaN(n)) })}
@@ -235,30 +241,31 @@ function ChecksumEditor({ config, allFields, field, onChange }: {
   field: Field;
   onChange: (p: Partial<ChecksumConfig>) => void;
 }) {
+  const { t } = useTranslation();
   const otherFields = allFields.filter((f) => f.id !== field.id);
   return (
     <div className="space-y-2">
       <div>
-        <label className={labelCls}>Algoritma</label>
+        <label className={labelCls}>{t('profileEditor.algorithm')}</label>
         <select className={inputCls} value={config.algorithm} onChange={(e) => onChange({ algorithm: e.target.value as ChecksumAlgorithm })}>
           <option value="xor">XOR</option>
-          <option value="sum_mod256">Toplam Mod 256</option>
+          <option value="sum_mod256">{t('profileEditor.sumMod256')}</option>
           <option value="crc8">CRC-8</option>
           <option value="crc16_ccitt">CRC-16 CCITT</option>
           <option value="crc16_modbus">CRC-16 Modbus</option>
           <option value="crc32">CRC-32</option>
-          <option value="custom">Özel</option>
+          <option value="custom">{t('profileEditor.custom')}</option>
         </select>
       </div>
       <div>
-        <label className={labelCls}>Başlangıç Alanı</label>
+        <label className={labelCls}>{t('profileEditor.startField')}</label>
         <select className={inputCls} value={config.scope.startFieldId}
           onChange={(e) => onChange({ scope: { ...config.scope, startFieldId: e.target.value } })}>
           {otherFields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
         </select>
       </div>
       <div>
-        <label className={labelCls}>Bitiş Alanı</label>
+        <label className={labelCls}>{t('profileEditor.endField')}</label>
         <select className={inputCls} value={config.scope.endFieldId}
           onChange={(e) => onChange({ scope: { ...config.scope, endFieldId: e.target.value } })}>
           {otherFields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -268,7 +275,7 @@ function ChecksumEditor({ config, allFields, field, onChange }: {
         <div className="space-y-2 pt-2 border-t border-gray-800">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className={labelCls}>Başlangıç Değeri (hex)</label>
+              <label className={labelCls}>{t('profileEditor.initialValue')}</label>
               <input className={inputCls}
                 value={`0x${(config.initialValue ?? 0).toString(16).toUpperCase().padStart(4, '0')}`}
                 onChange={(e) => { const v = parseInt(e.target.value, 16); if (!isNaN(v)) onChange({ initialValue: v }); }}
@@ -303,6 +310,7 @@ function FlagsEditor({ config, onChange, byteWidth }: {
   onChange: (p: Partial<FlagsConfig>) => void;
   byteWidth: number;
 }) {
+  const { t } = useTranslation();
   const maxBits = byteWidth * 8;
 
   const addBit = () => {
@@ -321,7 +329,7 @@ function FlagsEditor({ config, onChange, byteWidth }: {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-gray-500 text-xs font-mono">{maxBits} bit kapasitesi</span>
+        <span className="text-gray-500 text-xs font-mono">{t('profileEditor.bitCapacity').replace('{max}', String(maxBits))}</span>
         <button onClick={addBit} className="text-xs px-2 py-0.5 bg-green-900/30 border border-green-800/50 text-green-400 rounded hover:bg-green-900/50">+ Bit</button>
       </div>
       {config.bits.sort((a, b) => a.index - b.index).map((bit, idx) => (
@@ -340,26 +348,26 @@ function FlagsEditor({ config, onChange, byteWidth }: {
               className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-xs font-mono text-gray-200"
               value={bit.name}
               onChange={(e) => updateBit(idx, { name: e.target.value })}
-              placeholder="Bit ismi"
+              placeholder={t('profileEditor.name')}
             />
             <button onClick={() => removeBit(idx)} className="text-red-500 hover:text-red-400 text-xs">×</button>
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-gray-600 text-[10px] font-mono">Davranış</label>
+              <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.behavior')}</label>
               <select
                 className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                 value={bit.behavior}
                 onChange={(e) => updateBit(idx, { behavior: e.target.value as BitBehavior, behaviorConfig: {} })}
               >
-                <option value="fixed">Sabit</option>
-                <option value="manual">Manuel</option>
-                <option value="random">Rastgele</option>
-                <option value="timed">Zamanlı</option>
+                <option value="fixed">{t('profileEditor.fixed')}</option>
+                <option value="manual">{t('profileEditor.manual')}</option>
+                <option value="random">{t('profileEditor.random')}</option>
+                <option value="timed">{t('profileEditor.timed')}</option>
               </select>
             </div>
             <div>
-              <label className="text-gray-600 text-[10px] font-mono">Varsayılan</label>
+              <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.default')}</label>
               <select
                 className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                 value={bit.defaultValue}
@@ -375,7 +383,7 @@ function FlagsEditor({ config, onChange, byteWidth }: {
             return (
               <div className="grid grid-cols-3 gap-1">
                 <div>
-                  <label className="text-gray-600 text-[10px] font-mono">Olasılık</label>
+                  <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.probability')}</label>
                   <input type="number" step="0.01" min={0} max={1} className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                     value={cfg['probability'] ?? 0.05}
                     onChange={(e) => updateBit(idx, { behaviorConfig: { ...cfg, probability: Number(e.target.value) } as FlagBit['behaviorConfig'] })}
@@ -403,14 +411,14 @@ function FlagsEditor({ config, onChange, byteWidth }: {
             return (
               <div className="grid grid-cols-2 gap-1">
                 <div>
-                  <label className="text-gray-600 text-[10px] font-mono">Aktif (ms)</label>
+                  <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.activeMs')}</label>
                   <input type="number" className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                     value={cfg['activateAtMs'] ?? 0}
                     onChange={(e) => updateBit(idx, { behaviorConfig: { ...cfg, activateAtMs: Number(e.target.value) } as FlagBit['behaviorConfig'] })}
                   />
                 </div>
                 <div>
-                  <label className="text-gray-600 text-[10px] font-mono">Deaktif (ms)</label>
+                  <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.deactiveMs')}</label>
                   <input type="number" className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                     value={cfg['deactivateAtMs'] ?? 5000}
                     onChange={(e) => updateBit(idx, { behaviorConfig: { ...cfg, deactivateAtMs: Number(e.target.value) } as FlagBit['behaviorConfig'] })}
@@ -430,10 +438,11 @@ function ComputedEditor({ config, onChange, allFields }: {
   onChange: (p: Partial<ComputedConfig>) => void;
   allFields: Field[];
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <div>
-        <label className={labelCls}>İfade</label>
+        <label className={labelCls}>{t('profileEditor.expression')}</label>
         <textarea
           className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-full h-20 resize-none"
           value={config.expression}
@@ -441,16 +450,16 @@ function ComputedEditor({ config, onChange, allFields }: {
           placeholder="fields['Alan1'] * 2 + 10"
         />
         <div className="text-gray-600 text-[10px] mt-1 font-mono">
-          Kullanılabilir alanlar: {allFields.filter((f) => f.type !== 'computed').map((f) => `fields['${f.name}']`).join(', ')}
+          {t('profileEditor.availableFields')}: {allFields.filter((f) => f.type !== 'computed').map((f) => `fields['${f.name}']`).join(', ')}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Min Sıkıştırma</label>
+          <label className={labelCls}>{t('profileEditor.minClamp')}</label>
           <input type="number" className={inputCls} value={config.clampMin} onChange={(e) => onChange({ clampMin: Number(e.target.value) })} />
         </div>
         <div>
-          <label className={labelCls}>Max Sıkıştırma</label>
+          <label className={labelCls}>{t('profileEditor.maxClamp')}</label>
           <input type="number" className={inputCls} value={config.clampMax} onChange={(e) => onChange({ clampMax: Number(e.target.value) })} />
         </div>
       </div>
@@ -458,9 +467,10 @@ function ComputedEditor({ config, onChange, allFields }: {
   );
 }
 function ScriptEditor({ config, onChange }: { config: ScriptConfig; onChange: (p: Partial<ScriptConfig>) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
-      <label className={labelCls}>JavaScript Kodu</label>
+      <label className={labelCls}>{t('profileEditor.jsCode')}</label>
       <div className="relative group">
         <textarea
           className="bg-gray-950 border border-gray-800 rounded p-3 text-[11px] font-mono text-blue-300 outline-none focus:border-blue-600 w-full h-48 resize-none leading-relaxed"
@@ -474,12 +484,12 @@ function ScriptEditor({ config, onChange }: { config: ScriptConfig; onChange: (p
         </div>
       </div>
       <div className="bg-blue-900/10 border border-blue-900/30 rounded p-2">
-        <div className="text-blue-400 text-[10px] font-mono font-bold mb-1 uppercase tracking-tight">Kullanılabilir Değişkenler:</div>
+        <div className="text-blue-400 text-[10px] font-mono font-bold mb-1 uppercase tracking-tight">{t('profileEditor.availableVars')}</div>
         <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">t</code> - Geçen süre (ms)</div>
-          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">i</code> - Frame sayısı</div>
-          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">f</code> - Önceki alanlar</div>
-          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">Math.*</code> - Tüm JS math fonksiyonları</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">t</code> {t('profileEditor.varT')}</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">i</code> {t('profileEditor.varI')}</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">f</code> {t('profileEditor.varF')}</div>
+          <div className="text-gray-500 text-[10px] font-mono truncate"><code className="text-blue-300">Math.*</code> {t('profileEditor.varMath')}</div>
         </div>
       </div>
     </div>

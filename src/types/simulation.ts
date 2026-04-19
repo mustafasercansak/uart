@@ -45,7 +45,7 @@ export interface DashboardWidget {
   y: number;
   w: number;
   h: number;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 export interface DashboardLayout {
@@ -58,7 +58,7 @@ export interface RecordingMetadata {
   createdAt: number;
   frameCount: number;
   durationMs: number;
-  data?: any[];
+  data?: Array<{ time: number; frame: GeneratedFrame }>;
 }
 
 export interface TimingStats {

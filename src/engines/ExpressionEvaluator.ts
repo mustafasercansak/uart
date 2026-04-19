@@ -16,7 +16,7 @@ export function evaluateExpression(
     const fieldValues = Object.values(fields);
 
     // Replace fields['Name'] and fields["Name"] with variables
-    let safeExpr = expression.replace(
+    const safeExpr = expression.replace(
       /fields\[['"]([^'"]+)['"]\]/g,
       (_, name) => {
         const idx = fieldNames.indexOf(name);

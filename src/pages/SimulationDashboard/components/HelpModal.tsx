@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { X, Book, HelpCircle, FileText, Globe, MoveLeft } from 'lucide-react';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -10,12 +11,13 @@ interface HelpModalProps {
 type DocType = 'tr' | 'en' | 'readme';
 
 const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<DocType>('tr');
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   const docs = {
-    tr: { title: 'Kullanım Kılavuzu', file: '/docs/KULLANIM_KILAVUZU.md', icon: Book },
+    tr: { title: t('helpModal.userGuide'), file: '/docs/KULLANIM_KILAVUZU.md', icon: Book },
     en: { title: 'Quick Help', file: '/docs/HELP.md', icon: HelpCircle },
     readme: { title: 'README', file: '/docs/README.md', icon: FileText }
   };
@@ -30,7 +32,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         const text = await response.text();
         setContent(text);
       } catch (err) {
-        setContent('Doküman yüklenirken hata oluştu.');
+        setContent(t('helpModal.loadError'));
       } finally {
         setLoading(false);
       }
@@ -59,8 +61,8 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                  <Globe size={20} className="text-blue-400" />
               </div>
               <div>
-                 <h2 className="text-lg font-black font-mono uppercase tracking-widest text-white">Sistem Yardım & Dokümantasyon</h2>
-                 <p className="text-[10px] font-mono text-gray-500">UART Simülatörü kullanım detayları ve teknik referanslar</p>
+                 <h2 className="text-lg font-black font-mono uppercase tracking-widest text-white">{t('helpModal.title')}</h2>
+                 <p className="text-[10px] font-mono text-gray-500">{t('helpModal.subtitle')}</p>
               </div>
            </div>
            <button 
@@ -97,7 +99,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             {loading ? (
                <div className="h-full flex flex-col items-center justify-center gap-4 py-20">
                   <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-                  <span className="text-xs font-mono text-gray-500 animate-pulse">Doküman Hazırlanıyor...</span>
+                  <span className="text-xs font-mono text-gray-500 animate-pulse">{t('helpModal.loading')}</span>
                </div>
             ) : (
                 <article className="prose prose-invert prose-blue max-w-none 
@@ -133,7 +135,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
         {/* Footer */}
         <div className="shrink-0 px-8 py-4 bg-white/[0.02] border-t border-white/5 flex justify-between items-center text-[10px] font-mono text-gray-600">
-           <span>Dokümantasyon Sürümü: v1.2</span>
+           <span>{t('helpModal.docVersion')}</span>
            <div className="flex gap-4">
               <span>© 2026 Mustafa Sercan Sak</span>
            </div>

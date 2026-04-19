@@ -269,7 +269,7 @@ export class SimulationEngine {
                  });
                }
             }
-          } catch (err: any) {
+          } catch (err) {
             console.error(`\x1b[31m[SCRIPT EXEC ERR]\x1b[0m`, err);
           }
         }
@@ -289,7 +289,7 @@ export class SimulationEngine {
       } else {
         return Array.from(pattern).map(c => c.charCodeAt(0));
       }
-    } catch (e) {
+    } catch (_) {
         return [];
     }
   }
@@ -298,7 +298,7 @@ export class SimulationEngine {
     for (const action of actions) {
       setTimeout(() => {
         switch (action.type) {
-          case 'send_raw':
+          case 'send_raw': {
             const bytes = this.parsePattern(action.payload, 'hex');
             console.log(`\x1b[32m[RESP]\x1b[0m Yanıt gönderiliyor: ${action.payload}`);
             
@@ -321,13 +321,15 @@ export class SimulationEngine {
             
             this.onRawResponse?.(bytes);
             break;
+          }
           case 'inject_error':
-            this.injectError(action.payload as any);
+            this.injectError(action.payload as import('../types').ErrorType);
             break;
-          case 'set_field':
+          case 'set_field': {
             const [fieldId, value] = action.payload.split(':');
             this.state.fieldOverrides[fieldId] = parseFloat(value);
             break;
+          }
         }
       }, action.delayMs || 0);
     }
@@ -601,7 +603,7 @@ export class SimulationEngine {
       const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' : 
                        (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
       
-      const pResponses = this.peripheralEngine.processIncoming(protocol as any, frame.rawBytes);
+      const pResponses = this.peripheralEngine.processIncoming(protocol as import('../types').ProtocolType, frame.rawBytes);
 
       pResponses.forEach(res => {
         // Small delay to simulate processing time

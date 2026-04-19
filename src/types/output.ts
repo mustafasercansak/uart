@@ -47,5 +47,5 @@ export interface GridPanel {
   fieldType: string;
   color: string;
   widgetType: WidgetType;
-  config?: any;
+  config?: unknown;
 }

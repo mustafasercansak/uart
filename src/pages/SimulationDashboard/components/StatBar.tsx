@@ -197,7 +197,7 @@ const StatBar = memo(({
           disabled={status !== 'stopped'}
         >
           <option value="log">Log</option>
-          <option value="serial">Seri Port</option>
+          <option value="serial">{t('statBar.serialPort')}</option>
           <option value="tcp">TCP</option>
         </select>
         
@@ -286,7 +286,7 @@ const StatBar = memo(({
             className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-blue-500/50 bg-blue-500/10 text-blue-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 shadow-lg shadow-blue-500/10"
           >
             <FileText size={14} />
-            RAPORU GÖR
+            {t('dashboard.viewReport')}
           </button>
         )}
 

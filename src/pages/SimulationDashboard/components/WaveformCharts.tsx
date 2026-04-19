@@ -1,5 +1,6 @@
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { LayoutGrid, List, GripHorizontal, MousePointer2, Activity, Ruler } from 'lucide-react';
+import { useTranslation } from '../../../i18n/LanguageContext';
 import type { FrameProfile, GridPanel } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
 import DashboardGrid from './DashboardGrid';
@@ -7,8 +8,6 @@ import DashboardGrid from './DashboardGrid';
 interface WaveformChartsProps {
   waveformHistory: Array<Record<string, number>>;
   selectedProfile: FrameProfile | null;
-  CustomTooltip?: any;
-  chartColors: string[];
 }
 
 const CHART_COLORS_EXTENDED = [
@@ -21,7 +20,8 @@ const CHART_COLORS_EXTENDED = [
   '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#3b82f6', '#ef4444',
 ];
 
-const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: WaveformChartsProps) => {
+const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChartsProps) => {
+  const { t } = useTranslation();
   const [enabledCharts, setEnabledCharts] = useState<Record<string, boolean>>({});
   const [gridMode, setGridMode] = useState(false);
   const [gridPanels, setGridPanels] = useState<GridPanel[]>([]);
@@ -74,7 +74,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
         <div className="flex flex-col shrink-0 border-b border-gray-800/60 bg-black/50">
           <div className="flex items-center gap-2 px-4 pt-3 pb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ boxShadow: '0 0 6px #10b981' }} />
-            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-[0.2em]">Sinyal İzleme · Waveforms</span>
+            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-[0.2em]">{t('waveformCharts.signalMonitor')}</span>
           </div>
           <div className="flex flex-col divide-y divide-gray-800/40">
             {waveformFields.map((f, i) => {
@@ -121,7 +121,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
         <div className="flex items-center justify-between px-4 pt-2.5 pb-1.5">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-[0.2em]">Veri Kanalları</span>
+            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-[0.2em]">{t('waveformCharts.dataChannels')}</span>
             <span className="text-[9px] text-gray-600 font-mono bg-gray-800 px-1.5 py-0.5 rounded ml-1">
               {activeToggleFields.length}/{toggleableFields.length}
             </span>
@@ -131,14 +131,14 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
             <button
               onClick={() => setGridMode(false)}
               className={`p-1 rounded transition-all ${!gridMode ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-              title="Liste görünümü"
+              title={t('waveformCharts.listView')}
             >
               <List size={12} />
             </button>
             <button
               onClick={() => setGridMode(true)}
               className={`p-1 rounded transition-all ${gridMode ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-              title="Grid görünümü (Sürükle-Bırak)"
+              title={t('waveformCharts.gridView')}
             >
               <LayoutGrid size={12} />
             </button>
@@ -146,7 +146,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
             <button
               onClick={() => setShowCursors(!showCursors)}
               className={`p-1.5 rounded transition-all flex items-center gap-1.5 px-2 ${showCursors ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-gray-300'}`}
-              title="Ölçüm İmleçlerini Aç/Kapat"
+              title={t('waveformCharts.cursorsToggle')}
             >
               <MousePointer2 size={12} />
               <span className="text-[9px] font-bold font-mono">LAB CURSORS</span>
@@ -188,7 +188,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
         <div className="mx-4 mt-2 px-4 py-3 bg-blue-900/10 border border-blue-500/20 rounded-xl flex items-center justify-between animate-in zoom-in-95 duration-200">
            <div className="flex items-center gap-6">
               <div className="flex flex-col">
-                <span className="text-[9px] font-mono text-blue-400 uppercase font-black tracking-widest">Ölçüm (Lab)</span>
+                <span className="text-[9px] font-mono text-blue-400 uppercase font-black tracking-widest">{t('waveformCharts.measurement')}</span>
                 <div className="flex items-center gap-2 mt-1">
                   <Ruler size={14} className="text-blue-500" />
                   <span className="text-sm font-mono font-bold text-white">Δt: {Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0)).toFixed(2)}ms</span>
@@ -196,7 +196,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
               </div>
               <div className="w-[1px] h-8 bg-blue-500/20" />
               <div className="flex flex-col">
-                <span className="text-[9px] font-mono text-gray-500 uppercase">Frekans (Gevşek)</span>
+                <span className="text-[9px] font-mono text-gray-500 uppercase">{t('waveformCharts.frequency')}</span>
                 <span className="text-xs font-mono font-bold text-gray-300">
                   {1000 / Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0)) > 0 
                    ? (1000 / Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0))).toFixed(1) + ' Hz'
@@ -210,7 +210,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
                 onClick={() => { setCursorA(null); setCursorB(null); }}
                 className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-[10px] font-mono rounded-lg border border-blue-500/30 transition-all"
               >
-                İmleçleri Sıfırla
+                {t('waveformCharts.resetCursors')}
               </button>
            </div>
         </div>
@@ -261,7 +261,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile, chartColors }: 
       {gridMode && gridPanels.length === 0 && (
         <div className="flex-1 flex items-center justify-center text-gray-700 font-mono text-xs gap-2 py-8">
           <GripHorizontal size={16} />
-          <span>Yukarıdan kanalları aç — grid'e eklenecek</span>
+          <span>{t('waveformCharts.openChannels')}</span>
         </div>
       )}
     </div>

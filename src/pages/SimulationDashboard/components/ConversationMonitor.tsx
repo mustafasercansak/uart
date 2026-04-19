@@ -1,24 +1,26 @@
 import React, { memo } from 'react';
 import { ArrowRight, Zap, Send, LogIn } from 'lucide-react';
 import type { ConversationEntry } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface ConversationMonitorProps {
   entries: ConversationEntry[];
 }
 
 const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col h-full bg-gray-950 border-t border-gray-800/50">
       <div className="p-3 border-b border-gray-800 bg-gray-900/50 flex items-center gap-2">
         <Zap size={14} className="text-yellow-500" />
-        <span className="text-xs font-mono uppercase tracking-widest text-gray-400">Canlı Karşılaşma Günlüğü</span>
+        <span className="text-xs font-mono uppercase tracking-widest text-gray-400">{t('conversationMonitor.title')}</span>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {entries.length === 0 && (
           <div className="text-center py-10 opacity-30">
             <Activity size={40} className="mx-auto mb-2" />
-            <p className="text-[10px] font-mono">Trafik bekleniyor...</p>
+            <p className="text-[10px] font-mono">{t('conversationMonitor.waitingTraffic')}</p>
           </div>
         )}
         
@@ -31,7 +33,7 @@ const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-mono font-bold text-blue-500 uppercase tracking-tighter">Gelen Paket</span>
+                    <span className="text-[9px] font-mono font-bold text-blue-500 uppercase tracking-tighter">{t('conversationMonitor.incoming')}</span>
                     <span className="text-[8px] font-mono text-gray-600">{new Date(entry.timestamp).toLocaleTimeString()}</span>
                   </div>
                   <div className="bg-blue-900/10 p-2 rounded-lg border border-blue-500/10 font-mono text-[11px] text-blue-100 break-all">
@@ -48,7 +50,7 @@ const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-mono font-bold text-yellow-500 uppercase tracking-tighter">Kural Tetiklendi</span>
+                    <span className="text-[9px] font-mono font-bold text-yellow-500 uppercase tracking-tighter">{t('conversationMonitor.ruleTriggered')}</span>
                   </div>
                   <div className="bg-yellow-900/10 px-2 py-1 rounded-md border border-yellow-500/10 font-mono text-[10px] text-yellow-200">
                     {entry.details}
@@ -64,7 +66,7 @@ const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-mono font-bold text-emerald-500 uppercase tracking-tighter">Otomatik Yanıt</span>
+                    <span className="text-[9px] font-mono font-bold text-emerald-500 uppercase tracking-tighter">{t('conversationMonitor.autoResponse')}</span>
                   </div>
                   <div className="bg-emerald-900/10 p-2 rounded-lg border border-emerald-500/10 font-mono text-[10px] text-emerald-100 break-all">
                     {entry.rawHex}

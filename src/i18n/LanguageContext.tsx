@@ -7,6 +7,7 @@ type Translations = typeof tr;
 
 interface LanguageContextType {
   locale: Locale;
+  language: Locale; // alias for locale, used by some components
   setLocale: (locale: Locale) => void;
   t: (path: string) => string;
 }
@@ -37,13 +38,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     
     for (const key of keys) {
       if (current[key] === undefined) {
-        // Fallback to Turkish if key is missing in English
-        let fallback = translations['tr'];
+        // Fallback to English for any missing key
+        const fallbackLocale: Locale = locale === 'en' ? 'tr' : 'en';
+        let fallback: any = translations[fallbackLocale];
         for (const fKey of keys) {
             if (fallback[fKey] === undefined) return path;
             fallback = fallback[fKey];
         }
-        return fallback as unknown as string;
+        return fallback as string;
       }
       current = current[key];
     }
@@ -52,7 +54,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [locale]);
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={{ locale, language: locale, setLocale, t }}>
       {children}
     </LanguageContext.Provider>
   );

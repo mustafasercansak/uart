@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { RefreshCw, ArrowRight, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import type { Exchange } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface ExchangeMonitorProps {
   exchanges: Exchange[];
@@ -10,7 +11,8 @@ interface ExchangeMonitorProps {
 }
 
 const ExchangeMonitor = memo(({ exchanges, isLoopbackMode = true, selectedId, onSelect }: ExchangeMonitorProps) => {
-  
+  const { t } = useTranslation();
+
   const renderHexWithDiff = (txHex: string, rxHex: string) => {
     const txBytes = txHex.split(' ');
     const rxBytes = rxHex.split(' ');
@@ -36,16 +38,16 @@ const ExchangeMonitor = memo(({ exchanges, isLoopbackMode = true, selectedId, on
       <div className="p-3 border-b border-gray-800 bg-gray-900/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <RefreshCw size={14} className="text-blue-400 animate-spin-slow" />
-          <span className="text-xs font-mono uppercase tracking-widest text-gray-400">Gelişmiş Karşılaştırma Analizi</span>
+          <span className="text-xs font-mono uppercase tracking-widest text-gray-400">{t('exchangeMonitor.title')}</span>
         </div>
         <div className="flex gap-4">
             <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[10px] text-gray-500 font-mono uppercase">Eşleşti</span>
+                <span className="text-[10px] text-gray-500 font-mono uppercase">{t('exchangeMonitor.matched')}</span>
             </div>
             <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                <span className="text-[10px] text-gray-500 font-mono uppercase">Hata</span>
+                <span className="text-[10px] text-gray-500 font-mono uppercase">{t('exchangeMonitor.error')}</span>
             </div>
         </div>
       </div>
@@ -54,17 +56,17 @@ const ExchangeMonitor = memo(({ exchanges, isLoopbackMode = true, selectedId, on
         {exchanges.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full opacity-20 py-10">
             <RefreshCw size={48} className="mb-4" />
-            <p className="text-xs font-mono">Trafik bekleniyor...</p>
+            <p className="text-xs font-mono">{t('exchangeMonitor.waitingTraffic')}</p>
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-gray-900/90 backdrop-blur z-10">
               <tr className="border-b border-gray-800">
-                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase">Zaman</th>
-                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase">Giden (TX)</th>
-                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase text-center w-12">Durum</th>
-                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase">Gelen (RX)</th>
-                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase text-right">Gecikme</th>
+                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase">{t('exchangeMonitor.time')}</th>
+                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase">{t('exchangeMonitor.outgoing')}</th>
+                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase text-center w-12">{t('exchangeMonitor.status')}</th>
+                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase">{t('exchangeMonitor.incoming')}</th>
+                <th className="p-3 text-[10px] font-mono text-gray-500 uppercase text-right">{t('exchangeMonitor.latency')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900/50">
@@ -118,7 +120,7 @@ const ExchangeMonitor = memo(({ exchanges, isLoopbackMode = true, selectedId, on
                         </div>
                       ) : (
                         <div className={`text-[10px] italic ${isLoopbackMode ? 'text-gray-600' : 'text-gray-700 animate-pulse'}`}>
-                          {isLoopbackMode ? 'Veri aynalanıyor...' : 'Cihaz bekleniyor...'}
+                          {isLoopbackMode ? t('exchangeMonitor.mirroringData') : t('exchangeMonitor.waitingDevice')}
                         </div>
                       )}
                     </td>

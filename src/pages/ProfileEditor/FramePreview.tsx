@@ -1,4 +1,5 @@
 import type { Field } from '../../types';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface Props {
   fields: Field[];
@@ -15,12 +16,13 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function FramePreview({ fields }: Props) {
+  const { t } = useTranslation();
   const totalBytes = fields.reduce((s, f) => s + f.byteWidth, 0);
 
   return (
     <div className="p-3 bg-gray-950">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-gray-500 text-xs font-mono">FRAME ÖNİZLEME</span>
+        <span className="text-gray-500 text-xs font-mono">{t('profileEditor.framePreview')}</span>
         <span className="text-gray-600 text-xs font-mono">{totalBytes} byte</span>
       </div>
       <div className="flex flex-wrap gap-1">
@@ -49,7 +51,7 @@ export function FramePreview({ fields }: Props) {
           </div>
         ))}
         {fields.length === 0 && (
-          <div className="text-gray-700 text-xs font-mono">Alan yok — alan ekleyerek başlayın</div>
+          <div className="text-gray-700 text-xs font-mono">{t('profileEditor.noFieldsYet')}</div>
         )}
       </div>
     </div>

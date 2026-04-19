@@ -8,7 +8,7 @@ export interface PeripheralState {
   protocol: ProtocolType;
   address?: number;
   isEnabled: boolean;
-  internalState: Record<string, any>;
+  internalState: Record<string, unknown>;
 }
 
 export type Parity = 'None' | 'Even' | 'Odd' | 'Mark' | 'Space';

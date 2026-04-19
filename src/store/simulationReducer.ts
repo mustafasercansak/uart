@@ -10,7 +10,11 @@ import type {
   Trigger,
   SignalIntegrity,
   DashboardWidget,
-  WidgetType
+  WidgetType,
+  ConversationEntry,
+  Exchange,
+  ValidationSession,
+  ValidationEvent
 } from '../types';
 
 const MAX_RECENT_FRAMES = 50;
@@ -94,13 +98,13 @@ export type SimAction =
   | { type: 'SET_RECORDING'; recording: boolean }
   | { type: 'ADD_LOG'; entryType: 'info' | 'tx' | 'rx' | 'error'; text: string }
   | { type: 'BATCH_LOGS'; entries: Array<SimulationState['logEntries'][0]> }
-  | { type: 'ADD_CONVERSATION'; entry: any }
-  | { type: 'UPDATE_EXCHANGE'; exchange: any; lastRxFrame?: GeneratedFrame | null }
+  | { type: 'ADD_CONVERSATION'; entry: ConversationEntry }
+  | { type: 'UPDATE_EXCHANGE'; exchange: Exchange; lastRxFrame?: GeneratedFrame | null }
   | { type: 'SELECT_EXCHANGE'; exchangeId: string | null }
   | { type: 'SET_ANALYZER_MODE'; enabled: boolean }
   | { type: 'SET_DISPLAY_FILTER'; filter: string }
   | { type: 'TOGGLE_WATCHLIST'; fieldName: string }
-  | { type: 'SET_SIGNAL_INTEGRITY'; integrity: Partial<SimulationState['signalIntegrity']> }
+  | { type: 'SET_SIGNAL_INTEGRITY'; integrity: Partial<SignalIntegrity> }
   | { type: 'SET_TRIGGERS'; triggers: Trigger[] }
   | { type: 'SAVE_SNAPSHOT'; frame: GeneratedFrame }
   | { type: 'DELETE_SNAPSHOT'; frameNumber: number }
@@ -117,11 +121,11 @@ export type SimAction =
   | { type: 'UPDATE_LAYOUT'; widgets: DashboardWidget[] }
   | { type: 'MASTER_TICK'; updates: Partial<SimulationState>; points: Array<Record<string, number>>; logEntries: Array<SimulationState['logEntries'][0]>; elapsedMs: number }
   | { type: 'BATCH_UPDATE'; updates: Partial<SimulationState> }
-  | { type: 'START_VALIDATION'; session: any }
+  | { type: 'START_VALIDATION'; session: ValidationSession }
   | { type: 'STOP_VALIDATION'; endTime: number; score: number }
   | { type: 'CANCEL_VALIDATION' }
-  | { type: 'ADD_VALIDATION_EVENT'; event: any }
-  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: any };
+  | { type: 'ADD_VALIDATION_EVENT'; event: ValidationEvent }
+  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: { timestamp: number; fields: Record<string, number> } };
 
 export function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {

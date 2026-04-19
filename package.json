@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "server": "tsx src/server/index.ts",
     "test": "vitest",
-    "test:receiver": "node mock-receiver.js"
+    "test:coverage": "vitest run --coverage",
+    "test:receiver": "node mock-receiver.js",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -44,6 +46,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/serialport": "^8.0.5",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -52,7 +55,8 @@
     "serialport": "^13.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.2",
     "vite": "^8.0.1",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.4"
   }
 }

@@ -83,7 +83,7 @@ const clients = new Set<WebSocket>();
 
 console.log('\x1b[32m[SERVER]\x1b[0m UART Simulator Arka Plan Servisi ws://127.0.0.1:8080 adresinde başlatıldı.');
 
-let broadcastBuffer: any[] = [];
+let broadcastBuffer: unknown[] = [];
 
 // Flush backend websocket buffer to frontend clients at 60 FPS
 setInterval(() => {
@@ -103,18 +103,20 @@ setInterval(() => {
 }, 16);
 
 // Helper to broadcast to all connected clients
-const broadcast = (message: any) => {
+const broadcast = (message: unknown) => {
   broadcastBuffer.push(message);
 };
 
 // Send critical or large messages immediately
-const broadcastImmediate = (message: any) => {
+const broadcastImmediate = (message: unknown) => {
   const data = JSON.stringify(message);
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       try {
         client.send(data);
-      } catch (err) { }
+      } catch (_) {
+        // Silently fail for immediate broadcast
+      }
     }
   });
 };
@@ -178,7 +180,7 @@ wss.on('connection', (ws) => {
 
   const fullState = engine.getState();
   // Filter out UI-only or confusing flags for initial sync
-  const { networkConnected, ...cleanState } = fullState;
+  const { networkConnected: _networkConnected, ...cleanState } = fullState;
 
   ws.send(JSON.stringify({
     type: 'INITIAL_STATE',
@@ -221,10 +223,11 @@ wss.on('connection', (ws) => {
         case 'BEGIN_RECORD':
           engine.startRecording();
           break;
-        case 'END_RECORD':
+        case 'END_RECORD': {
           const recordedData = engine.stopRecording();
           ws.send(JSON.stringify({ type: 'RECORDING_FINISHED', data: recordedData }));
           break;
+        }
         case 'START_PLAYBACK':
           engine.startPlayback(data.data);
           broadcast({ type: 'STATUS_UPDATE', status: 'running' });
@@ -240,9 +243,10 @@ wss.on('connection', (ws) => {
         case 'SEEK_PLAYBACK':
           engine.seekToFrame(data.index);
           break;
-        case 'STEP_PLAYBACK':
+        case 'STEP_PLAYBACK': {
           engine.stepPlayback(data.delta);
           break;
+        }
         case 'LIST_RECORDINGS': {
           const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith('.json'));
           const recordings = files.map(f => {
@@ -367,17 +371,18 @@ wss.on('connection', (ws) => {
                   rxBuffer = [];
                   rxTimeout = null;
                 }, 50);
-              } catch (err: any) {
-                console.error('\x1b[31m[RX DATA ERR]\x1b[0m', err.message);
+              } catch (err: unknown) {
+                console.error('\x1b[31m[RX DATA ERR]\x1b[0m', err instanceof Error ? err.message : String(err));
               }
             });
+
 
             activePort.on('error', (err) => {
               console.error('\x1b[31m[SERIAL ERROR EVENT]\x1b[0m', err.message);
               broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
             });
-          } catch (err: any) {
-            console.error('\x1b[31m[CONNECT_SERIAL ERR]\x1b[0m', err.message);
+          } catch (err: unknown) {
+            console.error('\x1b[31m[CONNECT_SERIAL ERR]\x1b[0m', err instanceof Error ? err.message : String(err));
           }
           break;
         }
@@ -408,6 +413,6 @@ process.on('uncaughtException', (err) => {
   console.error('\x1b[31m[FATAL ERROR]\x1b[0m', err);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _) => {
   console.error('\x1b[31m[UNHANDLED REJECTION]\x1b[0m', reason);
 });
