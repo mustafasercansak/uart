@@ -6,7 +6,6 @@ import { useTranslation } from '../../../i18n/LanguageContext';
 interface StatBarProps {
   status: SimulationState['status'];
   frameCount: number;
-  framesPerSecond: number;
   errorCount: number;
   elapsedMs: number;
   profiles: FrameProfile[];
@@ -22,12 +21,9 @@ interface StatBarProps {
   onSetOutputMode: (mode: OutputMode) => void;
   onConnectSerial: (portName: string) => void;
   onDisconnectSerial: () => void;
-  onConnectNetwork: (url: string) => void;
-  onDisconnectNetwork: () => void;
   onToggleAnalyzerMode: () => void;
   onAddProfile: () => void;
   onEditProfile: (profile: FrameProfile) => void;
-  analyzerModeLabel?: string;
   onGetPorts: () => void;
   availablePorts: Array<{ path: string }>;
   onStart: () => void;
@@ -58,7 +54,6 @@ interface StatBarProps {
 const StatBar = memo(({
   status,
   frameCount,
-  framesPerSecond,
   errorCount,
   elapsedMs,
   profiles,
@@ -74,10 +69,7 @@ const StatBar = memo(({
   onSetOutputMode,
   onConnectSerial,
   onDisconnectSerial,
-  onConnectNetwork,
-  onDisconnectNetwork,
   onToggleAnalyzerMode,
-  analyzerModeLabel = 'Pro Mod',
   onGetPorts,
   availablePorts,
   onStart,
@@ -99,11 +91,7 @@ const StatBar = memo(({
 }: StatBarProps) => {
   const { t, locale, setLocale } = useTranslation();
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
-  const [wsUrl, setWsUrl] = React.useState('ws://localhost:8080');
   const [selectedPort, setSelectedPort] = React.useState('');
-  
-  // Backend connection status (networkConnected prop is used for this)
-  const backendConnected = networkConnected;
 
   React.useEffect(() => {
     if (availablePorts.length > 0 && !selectedPort) {

@@ -1,6 +1,6 @@
-import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { memo, useCallback, useMemo, useEffect } from 'react';
 import { Settings2, Save, X, GripVertical, Plus, LayoutDashboard, Wand2, Activity } from 'lucide-react';
-import type { GeneratedFrame, Field, GridPanel, DashboardWidget, FrameProfile } from '../../../../types';
+import type { GeneratedFrame, Field, GridPanel, FrameProfile } from '../../../../types';
 import { useSimulation } from '../../../../hooks/useSimulation';
 import { SENSOR_TEMPLATES } from '../../../../data/templates';
 import DashboardGrid from '../DashboardGrid';
@@ -71,17 +71,6 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
   const handleRemove = useCallback((id: string) => {
     removeWidget(id);
   }, [removeWidget]);
-
-  const handleLayoutChange = useCallback((layoutItems: any[]) => {
-    const updated = (dashboardLayout?.widgets || []).map(w => {
-      const l = layoutItems.find(li => li.i === w.id);
-      if (l) {
-        return { ...w, x: l.x, y: l.y, w: l.w, h: l.h };
-      }
-      return w;
-    });
-    updateLayout(updated);
-  }, [dashboardLayout, updateLayout]);
 
   const handleUpdatePanel = useCallback((id: string, updates: Partial<GridPanel>) => {
     const updated = (dashboardLayout?.widgets || []).map(w => {

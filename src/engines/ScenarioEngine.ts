@@ -36,15 +36,6 @@ function findFieldId(profile: FrameProfile, name: string): string | null {
   return field ? field.id : null;
 }
 
-function findFieldCurrentValue(state: SimulationState, fieldId: string): number {
-  const lastFrame = state.lastFrame;
-  if (!lastFrame) return 0;
-  const parsedField = lastFrame.fields.find((f) => {
-    // We need to reverse-engineer fieldId from name; use override value as fallback
-    return false;
-  });
-  return state.fieldOverrides[fieldId] ?? 0;
-}
 
 export function processScenarioStep(
   step: ScenarioStep,

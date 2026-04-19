@@ -15,8 +15,14 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
   const diagScopeRef = useRef<HTMLCanvasElement>(null);
 
   const [isBooting, setIsBooting] = useState(true);
-  const [isAlarm, setIsAlarm] = useState(false);
-  
+  const [hudData, setHudData] = useState({ frameId: 0, bpm: 0, spo2: 0, resp: 0, temp: 0 });
+  const isAlarm = (hudData.bpm > 0 && (hudData.bpm < 45 || hudData.bpm > 140)) || (hudData.spo2 > 0 && hudData.spo2 < 90);
+  const isAlarmRef = useRef(isAlarm);
+
+  useEffect(() => {
+    isAlarmRef.current = isAlarm;
+  }, [isAlarm]);
+
   const dataRef = useRef({
     bpm: 0, spo2: 0, resp: 0, temp: 0, frameId: 0, pulsePhase: 0,
     history: {
@@ -38,6 +44,8 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
 
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    // ... scene setup ...
 
     // --- Scene Setup ---
     const scene = new THREE.Scene();
@@ -232,7 +240,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
         monitorGroup.rotation.y = Math.sin(time * 0.1) * 0.02;
 
         screenLight.intensity = 2 + beat * 1.5;
-        if(isAlarm) screenLight.color.setHex(0xef4444); else screenLight.color.setHex(0x06b6d4);
+        if(isAlarmRef.current) screenLight.color.setHex(0xef4444); else screenLight.color.setHex(0x06b6d4);
 
         renderer.render(scene, camera);
         sceneRef.current.frameId = frameId;
@@ -278,7 +286,14 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
     dataRef.current.history.spo2.push(pleth);
     if(dataRef.current.history.spo2.length > 200) dataRef.current.history.spo2.shift();
 
-    setIsAlarm((bpmVal > 0 && (bpmVal < 45 || bpmVal > 140)) || (spo2Val > 0 && spo2Val < 90));
+    setHudData(prev => {
+      if (prev.frameId === lastFrame.frameNumber && 
+          prev.bpm === bpmVal && 
+          prev.spo2 === spo2Val &&
+          prev.resp === respVal &&
+          prev.temp === tempVal) return prev;
+      return { frameId: lastFrame.frameNumber, bpm: bpmVal, spo2: spo2Val, resp: respVal, temp: tempVal };
+    });
   }, [lastFrame]);
 
   return (
@@ -339,7 +354,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                     <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[11px] font-mono">
                         <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-gray-500 uppercase">Packet ID:</span>
-                            <span className="text-white font-black">#{dataRef.current.frameId}</span>
+                            <span className="text-white font-black">#{hudData.frameId}</span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-gray-500 uppercase">Consistency:</span>
@@ -360,13 +375,13 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                 <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right duration-1000">
                     
                     {/* HR Card v7 */}
-                    <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && dataRef.current.bpm > 0 ? 'border-rose-600 bg-rose-950/40' : 'border-emerald-500'}`}>
+                    <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && hudData.bpm > 0 ? 'border-rose-600 bg-rose-950/40' : 'border-emerald-500'}`}>
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <div>
                                 <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">Heart Rate</div>
                                 <div className="flex items-baseline gap-2">
-                                    <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.bpm > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {dataRef.current.bpm || '--'}
+                                    <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && hudData.bpm > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        {hudData.bpm || '--'}
                                     </span>
                                     <span className="text-xs font-black text-gray-600 uppercase">BPM</span>
                                 </div>
@@ -377,20 +392,20 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                             </div>
                         </div>
                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden relative z-10">
-                            <div className={`h-full transition-all duration-500 ${isAlarm ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (dataRef.current.bpm / 200) * 100)}%` }} />
+                            <div className={`h-full transition-all duration-500 ${isAlarm ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (hudData.bpm / 200) * 100)}%` }} />
                         </div>
                         {/* Shimmer Effect */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
                     </div>
 
-                    {/* SpO2 Card v7 */}
-                    <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && dataRef.current.spo2 < 90 ? 'border-rose-600 bg-rose-950/40' : 'border-cyan-500'}`}>
+                  {/* SpO2 Card v7 */}
+                    <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && hudData.spo2 < 90 ? 'border-rose-600 bg-rose-950/40' : 'border-cyan-500'}`}>
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <div>
                                 <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">O2 Saturation</div>
                                 <div className="flex items-baseline gap-2">
-                                    <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.spo2 < 90 ? 'text-rose-500' : 'text-cyan-400'}`}>
-                                        {dataRef.current.spo2 || '--'}
+                                    <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && hudData.spo2 < 90 ? 'text-rose-500' : 'text-cyan-400'}`}>
+                                        {hudData.spo2 || '--'}
                                     </span>
                                     <span className="text-xs font-black text-gray-600 uppercase">%</span>
                                 </div>
@@ -400,7 +415,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                             </div>
                         </div>
                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden relative z-10">
-                            <div className={`h-full transition-all duration-500 ${isAlarm ? 'bg-rose-500' : 'bg-cyan-500'}`} style={{ width: `${dataRef.current.spo2}%` }} />
+                            <div className={`h-full transition-all duration-500 ${isAlarm ? 'bg-rose-500' : 'bg-cyan-500'}`} style={{ width: `${hudData.spo2}%` }} />
                         </div>
                     </div>
 
@@ -408,11 +423,11 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                     <div className="flex gap-6">
                         <div className="p-6 bg-black/60 border-r-[6px] border-yellow-500 flex-1 text-center shadow-xl">
                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">RR</span>
-                            <span className="text-3xl font-black text-yellow-500">{dataRef.current.resp || '--'}</span>
+                            <span className="text-3xl font-black text-yellow-500">{hudData.resp || '--'}</span>
                         </div>
                         <div className="p-6 bg-black/60 border-r-[6px] border-purple-600 flex-1 text-center shadow-xl">
                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">Temp</span>
-                            <span className="text-3xl font-black text-purple-400">{dataRef.current.temp ? (dataRef.current.temp/10).toFixed(1) : '--'}°</span>
+                            <span className="text-3xl font-black text-purple-400">{hudData.temp ? (hudData.temp/10).toFixed(1) : '--'}°</span>
                         </div>
                     </div>
                 </div>

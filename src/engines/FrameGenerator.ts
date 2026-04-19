@@ -151,7 +151,7 @@ function getFieldValue(
         `);
         const result = fn(elapsedMs, state.frameCount, namedValues);
         return clampValue(Number(result) || 0, byteWidth);
-      } catch (e) {
+      } catch (_e) {
         return 0;
       }
     }
@@ -226,8 +226,8 @@ export function generateFrame(
     const decimalValue = bytes.length === 1
       ? bytes[0]
       : field.endianness === 'little'
-        ? bytes.reduce((acc, b, i) => acc | (b << (i * 8)), 0)
-        : bytes.reduce((acc, b, i) => (acc << 8) | b, 0);
+        ? bytes.reduce((acc, b, _i) => acc | (b << (_i * 8)), 0)
+        : bytes.reduce((acc, b) => (acc << 8) | b, 0);
 
     const hexStr = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
@@ -339,7 +339,7 @@ function calculateParity(byte: number, mode: Parity): number {
 /**
  * Level 1: Protocol Framing Wrappers
  */
-function applyFraming(bytes: number[], config: any): number[] {
+function applyFraming(bytes: number[], config: { mode?: string; header?: number[]; footer?: number[]; delimiter?: number }): number[] {
   if (!config || !config.mode || config.mode === 'fixed') {
     const header = config?.header || [];
     const footer = config?.footer || [];
@@ -353,9 +353,10 @@ function applyFraming(bytes: number[], config: any): number[] {
       return encodeCOBS(bytes);
     case 'modbus':
       return encodeModbus(bytes);
-    case 'delimiter':
+    case 'delimiter': {
       const delim = config.delimiter !== undefined ? config.delimiter : 0x0A;
       return [...bytes, delim];
+    }
     default:
       return bytes;
   }

@@ -59,7 +59,7 @@ function runTest(
   tc: TestCase,
   frames: GeneratedFrame[],
   profile: FrameProfile | null,
-  t: (key: string, data?: any) => string
+  t: (key: string, data?: Record<string, unknown>) => string
 ): TestResult {
   const base: TestResult = {
     caseId: tc.id,

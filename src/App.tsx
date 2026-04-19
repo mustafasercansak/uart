@@ -7,7 +7,8 @@ import ProfileEditor from './pages/ProfileEditor';
 import ScenarioEditor from './pages/ScenarioEditor';
 import TemplateBrowser from './pages/TemplateBrowser';
 import HelpPage from './pages/Help';
-import OnboardingFlow, { useOnboarding } from './components/Onboarding/OnboardingFlow';
+import OnboardingFlow from './components/Onboarding/OnboardingFlow';
+import { useOnboarding } from './hooks/useOnboarding';
 
 function AppRoutes() {
   const { show, dismiss } = useOnboarding();

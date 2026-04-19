@@ -13,7 +13,10 @@ interface ValidationControlsProps {
 export default function ValidationControls({ profile, onStart, onClose }: ValidationControlsProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(t('validation.defaultTestName'));
-  const [deviceId, setDeviceId] = useState(`MN-${Math.floor(Math.random() * 10000)}`);
+  
+  // Fix purity: move random ID generation to useMemo
+  const initialDeviceId = React.useMemo(() => `MN-${Math.floor(Math.random() * 10000)}`, []);
+  const [deviceId, setDeviceId] = useState(initialDeviceId);
   const [operator, setOperator] = useState('Mustafa Sercan Sak');
   
   const [targets, setTargets] = useState<ValidationTarget[]>(() => {
@@ -23,8 +26,8 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
       .map(f => ({
         id: uuidv4(),
         fieldName: f.name,
-        expectedMin: f.type === 'range' ? (f.typeConfig as any).min : 0,
-        expectedMax: f.type === 'range' ? (f.typeConfig as any).max : 4095,
+        expectedMin: f.type === 'range' ? (f.typeConfig as import('../../../types').RangeConfig).min : 0,
+        expectedMax: f.type === 'range' ? (f.typeConfig as import('../../../types').RangeConfig).max : 4095,
         unit: (f as any).widgetConfig?.unit || ''
       }));
   });

@@ -54,7 +54,6 @@ export function decodeSPI(bytes: number[]): SignalLine[] {
   const miso: number[] = [];
   const cs: number[] = [];
   
-  const annotationsSCK: BitAnnotation[] = [];
   const annotationsMOSI: BitAnnotation[] = [];
   
   // CS starts High
@@ -63,7 +62,7 @@ export function decodeSPI(bytes: number[]): SignalLine[] {
   mosi.push(0, 0);
   miso.push(0, 0);
 
-  bytes.forEach((byte, byteIdx) => {
+  bytes.forEach((byte, _byteIdx) => {
     // CS goes Low
     cs.push(0);
     sck.push(0);

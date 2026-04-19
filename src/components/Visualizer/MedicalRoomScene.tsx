@@ -140,7 +140,8 @@ function drawWave(ctx: CanvasRenderingContext2D, data: number[], color: string, 
   data.forEach((v, i) => {
     const x = (i / (data.length - 1)) * 512;
     const y = yBase - (v / max) * scale;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   });
   ctx.stroke();
   ctx.restore();
@@ -567,26 +568,28 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
   }, []);
 
   // A device is "active" when its bound profile is the running simulation, or unbound
-  const isDeviceActive = (deviceId: string) => {
+  const isDeviceActive = useCallback((deviceId: string) => {
     const boundId = bindings[deviceId];
     if (!boundId || !activeProfileId) return true; // no binding = always show
     return boundId === activeProfileId;
-  };
-
-  // Keep selectedRef in sync
-  selectedRef.current = selected;
+  }, [bindings, activeProfileId]);
 
   // Track active devices in a ref so the render loop can read it without stale closure
   const activeDevicesRef = useRef<Set<string>>(new Set(DEVICES.map(d => d.id)));
+  
+  // Keep selectedRef and activeDevicesRef in sync via useEffect
   useEffect(() => {
+    selectedRef.current = selected;
     const active = new Set(DEVICES.map(d => d.id).filter(id => isDeviceActive(id)));
     activeDevicesRef.current = active;
-  }, [bindings, activeProfileId]);
+  }, [selected, bindings, activeProfileId]);
 
   // ── Three.js setup ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
+    
+    // ... remaining of larger useEffect ...
 
     // Scene
     const scene = new THREE.Scene();
@@ -889,7 +892,10 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     // Scenario step — drives ring animations on device twins
     const step = lastFrame.activeScenarioStep ?? null;
     scenarioStepRef.current = step;
-    if (step !== activeScenarioStep) setActiveScenarioStep(step);
+    if (step !== activeScenarioStep) {
+      // Use setTimeout to avoid synchronous setState in effect body
+      setTimeout(() => setActiveScenarioStep(step), 0);
+    }
 
     // ECG waveform
     const ecg = get('leadi', 'ecg', 'ecgwave') || 2048;
@@ -907,7 +913,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     if (d.plethHistory.length > 100) d.plethHistory.shift();
 
     setDisplayData({ ...d });
-  }, [lastFrame]);
+  }, [lastFrame, activeScenarioStep, isDeviceActive]);
 
   const selectedCfg = DEVICES.find(d => d.id === selected);
 
@@ -1037,7 +1043,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
               {Object.entries(selectedCfg.fieldMap).map(([label, keys]) => {
                 const val = keys.reduce((acc: number, k) => {
                   if (acc !== 0) return acc;
-                  return (displayData as any)[k] || 0;
+                  return (displayData as unknown as Record<string, number>)[k] || 0;
                 }, 0);
                 const isAlarmVal = displayData.isAlarm && (label === 'HR' || label === 'SpO₂');
                 return (

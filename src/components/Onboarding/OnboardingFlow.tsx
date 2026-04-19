@@ -179,14 +179,3 @@ export default function OnboardingFlow({ onDone }: Props) {
     </div>
   );
 }
-
-export function useOnboarding() {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const done = localStorage.getItem(STORAGE_KEY);
-    if (!done) setShow(true);
-  }, []);
-
-  return { show, dismiss: () => setShow(false) };
-}
