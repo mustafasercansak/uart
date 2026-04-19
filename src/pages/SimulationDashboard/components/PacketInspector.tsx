@@ -11,7 +11,7 @@ interface PacketInspectorProps {
 }
 
 const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorProps) => {
-  const { state, addWidget, saveSnapshot } = useSimulation();
+  const { addWidget, saveSnapshot } = useSimulation();
   
   if (!exchange) return null;
 
@@ -25,7 +25,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
     } else if (type === 'hex') {
       text = frame.rawHex;
     } else if (type === 'cstruct') {
-      text = `struct UART_Packet {\n${frame.fields.map((f: any) => `  uint${f.byteWidth * 8}_t ${f.name.replace(/\s+/g, '_')}; // ${f.hex}`).join('\n')}\n};`;
+      text = `struct UART_Packet {\n${frame.fields.map((f) => `  uint${f.byteWidth * 8}_t ${f.name.replace(/\s+/g, '_')}; // ${f.hex}`).join('\n')}\n};`;
     }
 
     navigator.clipboard.writeText(text);
@@ -44,7 +44,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
       fields: profile ? parseFrame(profile, exchange.rx.rawHex.split(' ').map(h => parseInt(h, 16))) || [] : []
   } : null;
 
-  const renderFieldTable = (frame: any, label: string, colorClass: string) => (
+  const renderFieldTable = (frame: { fields: import('../../../types').ParsedField[]; rawHex: string }, label: string, colorClass: string) => (
     <div className="flex-1 flex flex-col min-h-0 border border-gray-800 rounded-lg overflow-hidden bg-gray-900/20 shadow-inner">
       <div className={`px-3 py-2 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between`}>
         <span className={`text-[10px] font-bold uppercase tracking-widest ${colorClass}`}>{label}</span>
@@ -61,7 +61,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
              </tr>
            </thead>
            <tbody className="divide-y divide-gray-800/50">
-             {frame.fields.map((f: any) => {
+             {frame.fields.map((f) => {
                return (
                  <tr key={f.name} className="hover:bg-white/5 transition-colors group">
                    <td className="p-2 text-gray-500 font-bold">{f.name}</td>
@@ -149,7 +149,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
            <button 
             onClick={() => {
                 const primaryFrame = txFrame || rxFrame;
-                if (primaryFrame) saveSnapshot(primaryFrame as any);
+                if (primaryFrame) saveSnapshot(primaryFrame as unknown as import('../../../types').GeneratedFrame);
             }}
             className="p-1.5 text-gray-400 hover:text-white transition-all bg-white/5 border border-white/10 rounded-lg shadow-xl"
             title="Snapshot"

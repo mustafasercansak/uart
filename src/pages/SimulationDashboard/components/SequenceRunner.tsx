@@ -11,7 +11,7 @@ interface SequenceStep {
 }
 
 const SequenceRunner: React.FC = () => {
-  const { state, start, injectError, overrideField } = useSimulation();
+  const { state } = useSimulation();
   const [steps, setSteps] = useState<SequenceStep[]>([
     { id: '1', type: 'send', payload: '55 AA 01 02 03', status: 'idle' },
     { id: '2', type: 'wait', payload: '500', status: 'idle' },
@@ -74,8 +74,9 @@ const SequenceRunner: React.FC = () => {
         }
         
         setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success' } : s));
-      } catch (err: any) {
-        setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'fail', result: err.message } : s));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'fail', result: message } : s));
         setIsRunning(false);
         return;
       }

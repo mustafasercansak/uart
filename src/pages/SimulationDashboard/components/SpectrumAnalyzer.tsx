@@ -20,7 +20,7 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
     if (now - lastCalcTime.current < 50) return; // ~20 FPS throttle
     
     if (!dataKey || waveformHistory.length < 256) {
-      if (cachedData !== null) setCachedData(null);
+      setCachedData(null);
       return;
     }
     
@@ -37,7 +37,7 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
     
     setCachedData(mag);
     lastCalcTime.current = now;
-  }, [waveformHistory, dataKey, windowType, cachedData]);
+  }, [waveformHistory, dataKey, windowType]);
 
   const fftData = cachedData;
 

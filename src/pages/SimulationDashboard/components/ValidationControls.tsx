@@ -14,9 +14,8 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
   const { t } = useTranslation();
   const [name, setName] = useState(t('validation.defaultTestName'));
   
-  // Fix purity: move random ID generation to useMemo
-  const initialDeviceId = React.useMemo(() => `MN-${Math.floor(Math.random() * 10000)}`, []);
-  const [deviceId, setDeviceId] = useState(initialDeviceId);
+  // Fix purity: move random ID generation to useState initializer
+  const [deviceId, setDeviceId] = useState(() => `MN-${Math.floor(Math.random() * 10000)}`);
   const [operator, setOperator] = useState('Mustafa Sercan Sak');
   
   const [targets, setTargets] = useState<ValidationTarget[]>(() => {
@@ -28,7 +27,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
         fieldName: f.name,
         expectedMin: f.type === 'range' ? (f.typeConfig as import('../../../types').RangeConfig).min : 0,
         expectedMax: f.type === 'range' ? (f.typeConfig as import('../../../types').RangeConfig).max : 4095,
-        unit: (f as any).widgetConfig?.unit || ''
+        unit: f.widgetConfig?.unit || ''
       }));
   });
 

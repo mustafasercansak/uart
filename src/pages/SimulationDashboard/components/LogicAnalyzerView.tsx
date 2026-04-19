@@ -30,7 +30,7 @@ export const LogicAnalyzerView: React.FC = () => {
   const [isDraggingB, setIsDraggingB] = useState(false);
 
   // Auto-scroll logic: if near the end, keep scrolling
-  const autoScroll = useRef(true);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   const signal = state.logicHistory.find((s: LogicSignal) => s.id === 'tx-main') || { id: 'tx-main', transitions: [] };
 
@@ -234,7 +234,7 @@ export const LogicAnalyzerView: React.FC = () => {
     } else {
       // Scroll
       setScrollX(prev => Math.max(0, prev + e.deltaY / zoom));
-      autoScroll.current = false;
+      setAutoScroll(false);
     }
   };
 
@@ -264,10 +264,10 @@ export const LogicAnalyzerView: React.FC = () => {
              Reset Cursors
            </button>
            <button 
-             onClick={() => { autoScroll.current = true; if (signal.transitions.length > 0) setScrollX(signal.transitions[signal.transitions.length-1].t - (canvasSize.width / 2 / zoom)); }}
-             className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors ${autoScroll.current ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400'}`}
+             onClick={() => { setAutoScroll(true); if (signal.transitions.length > 0) setScrollX(signal.transitions[signal.transitions.length-1].t - (canvasSize.width / 2 / zoom)); }}
+             className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors ${autoScroll ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400'}`}
            >
-             {autoScroll.current ? 'Live Sync' : 'Static View'}
+             {autoScroll ? 'Live Sync' : 'Static View'}
            </button>
         </div>
       </div>

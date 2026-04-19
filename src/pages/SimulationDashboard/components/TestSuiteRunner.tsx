@@ -446,30 +446,24 @@ function makeId() {
 
 export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProps) {
   const { t } = useTranslation();
-  const [tests, setTests] = useState<TestCase[]>([]);
+  const [tests, setTests] = useState<TestCase[]>(() => [
+    {
+        id: makeId(),
+        name: t('testSuite.assertions.no_errors'),
+        assertion: 'no_errors',
+        enabled: true,
+    },
+    {
+        id: makeId(),
+        name: t('testSuite.assertions.checksum_valid'),
+        assertion: 'checksum_valid',
+        enabled: true,
+    },
+  ]);
   const [results, setResults] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);
   const runId = useRef(0);
 
-  // Initialize default tests with translations
-  React.useEffect(() => {
-    if (tests.length === 0) {
-      setTests([
-        {
-            id: makeId(),
-            name: t('testSuite.assertions.no_errors'),
-            assertion: 'no_errors',
-            enabled: true,
-        },
-        {
-            id: makeId(),
-            name: t('testSuite.assertions.checksum_valid'),
-            assertion: 'checksum_valid',
-            enabled: true,
-        },
-      ]);
-    }
-  }, [t, tests.length]);
 
   const addTest = useCallback(() => {
     setTests((prev) => [

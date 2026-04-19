@@ -67,7 +67,7 @@ function FrameDecodeCard({
       if (profile) {
         const parsed = parseFrame(profile, frame.rawBytes);
         if (parsed) {
-          return {
+          const res: import('../../../engines/HighLevelDecoders').DecodedResult = {
             valid: true,
             fields: parsed.map(f => ({
               name: f.name,
@@ -76,6 +76,7 @@ function FrameDecodeCard({
               highlight: 'ok' as const
             }))
           };
+          return res;
         }
       }
     } catch (err) {
@@ -87,9 +88,9 @@ function FrameDecodeCard({
   const isValid = decoded?.valid ?? false;
   const isCRCOk =
     decoded && 'crcValid' in decoded
-      ? (decoded as any).crcValid
+      ? (decoded as { crcValid: boolean }).crcValid
       : decoded && 'checksumValid' in decoded
-      ? (decoded as any).checksumValid
+      ? (decoded as { checksumValid: boolean }).checksumValid
       : null;
 
   const protocolLabel =
@@ -147,7 +148,7 @@ function FrameDecodeCard({
             </p>
           ) : (
             <div>
-              {(decoded as any).fields?.map((field: DecodedField, i: number) => (
+              {decoded.fields?.map((field: DecodedField, i: number) => (
                 <FieldRow key={i} field={field} />
               ))}
             </div>
