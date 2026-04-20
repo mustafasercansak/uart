@@ -1,6 +1,4 @@
-
-
-import React, { useRef, useCallback, useReducer } from 'react';
+import React, { useRef, useCallback, useReducer, useLayoutEffect } from 'react';
 import { SimulationContext } from './context';
 import type {
   FrameProfile,
@@ -14,7 +12,9 @@ import type {
   DashboardWidget,
   WidgetType,
   ValidationTarget,
-  Field
+  Field,
+  ConversationEntry,
+  Exchange
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -26,9 +26,9 @@ import type { SimulationState } from '../types';
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const stateRef = useRef(state);
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     stateRef.current = state;
-  }, [state]);
+  });
 
   const msgBufferRef = useRef<string[]>([]);
   const profilesRef = useRef<FrameProfile[]>([]);

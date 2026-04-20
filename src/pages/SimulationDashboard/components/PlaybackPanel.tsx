@@ -5,7 +5,7 @@ import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface PlaybackPanelProps {
   recordings: RecordingMetadata[];
-  onPlay: (data: import('../../../types').GeneratedFrame[]) => void;
+  onPlay: (data: Array<{ time: number; frame: import('../../../types').GeneratedFrame }>) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
   status: SimulationStatus;

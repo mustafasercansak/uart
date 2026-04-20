@@ -82,7 +82,13 @@ export function CommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
+        setIsOpen(prev => {
+          if (!prev) {
+            setQuery('');
+            setSelectedIndex(0);
+          }
+          return !prev;
+        });
       }
       if (e.key === 'Escape') setIsOpen(false);
     };
@@ -90,14 +96,6 @@ export function CommandPalette() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Condition prevents redundant updates
-      setQuery(q => q === '' ? q : '');
-      setSelectedIndex(0);
-    }
-  }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {

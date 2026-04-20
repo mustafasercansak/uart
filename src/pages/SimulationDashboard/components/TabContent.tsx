@@ -29,7 +29,7 @@ interface TabContentProps {
   waveformHistory: Array<Record<string, number>>;
   exchanges: import('../../../types').Exchange[];
   hooks: {
-    startPlayback: (data: import('../../../types').RecordingMetadata) => void;
+    startPlayback: (data: Array<{ time: number; frame: import('../../../types').GeneratedFrame }>) => void;
     deleteRecording: (id: string) => void;
     refreshRecordings: () => void;
     pausePlayback: () => void;

@@ -20,11 +20,11 @@ export default function TemplateBrowser() {
   const { setProfile, updateLayout, setScenario } = useSimulation();
   const [applying, setApplying] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>(t('templateBrowser.all'));
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const categories = [t('templateBrowser.all'), ...Array.from(new Set(SENSOR_TEMPLATES.map((tmpl) => tmpl.category)))];
+  const categories = ['all', ...Array.from(new Set(SENSOR_TEMPLATES.map((tmpl) => tmpl.category)))];
 
-  const filteredTemplates = selectedCategory === t('templateBrowser.all')
+  const filteredTemplates = selectedCategory === 'all'
     ? SENSOR_TEMPLATES
     : SENSOR_TEMPLATES.filter((tmpl) => tmpl.category === selectedCategory);
 
@@ -99,7 +99,7 @@ export default function TemplateBrowser() {
                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
               }`}
             >
-              {cat}
+              {cat === 'all' ? t('templateBrowser.all') : cat}
             </button>
           ))}
         </div>

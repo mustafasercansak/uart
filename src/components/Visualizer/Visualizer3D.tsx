@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { GeneratedFrame } from '../../types';
 
@@ -15,7 +15,18 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
   const diagScopeRef = useRef<HTMLCanvasElement>(null);
 
   const [isBooting, setIsBooting] = useState(true);
-  const [hudData, setHudData] = useState({ frameId: 0, bpm: 0, spo2: 0, resp: 0, temp: 0 });
+
+  const hudData = useMemo(() => {
+    if (!lastFrame) return { frameId: 0, bpm: 0, spo2: 0, resp: 0, temp: 0 };
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const findF = (key: string) => lastFrame.fields.find(f => norm(f.name) === norm(key));
+    const bpmVal = findF('bpm')?.decimal ?? findF('hr')?.decimal ?? findF('heartrate')?.decimal ?? 0;
+    const spo2Val = findF('spo2')?.decimal ?? findF('oxygen')?.decimal ?? 0;
+    const respVal = findF('rr')?.decimal ?? findF('resp')?.decimal ?? 0;
+    const tempVal = findF('temp')?.decimal ?? findF('temperature')?.decimal ?? 0;
+    return { frameId: lastFrame.frameNumber, bpm: bpmVal, spo2: spo2Val, resp: respVal, temp: tempVal };
+  }, [lastFrame]);
+
   const isAlarm = (hudData.bpm > 0 && (hudData.bpm < 45 || hudData.bpm > 140)) || (hudData.spo2 > 0 && hudData.spo2 < 90);
   const isAlarmRef = useRef(isAlarm);
 
@@ -264,19 +275,14 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
     const findF = (key: string) => lastFrame.fields.find(f => norm(f.name) === norm(key));
 
-    const bpmVal = findF('bpm')?.decimal ?? findF('hr')?.decimal ?? findF('heartrate')?.decimal ?? 0;
-    const spo2Val = findF('spo2')?.decimal ?? findF('oxygen')?.decimal ?? 0;
-    const respVal = findF('rr')?.decimal ?? findF('resp')?.decimal ?? 0;
-    const tempVal = findF('temp')?.decimal ?? findF('temperature')?.decimal ?? 0;
-
     // Waveform Sync Fix (NORMALIZED MATCHING)
     const ecg = findF('leadi')?.decimal ?? findF('ecg')?.decimal ?? findF('ecgwave')?.decimal ?? 2048;
     const pleth = findF('spo2wave')?.decimal ?? findF('pleth')?.decimal ?? findF('ppg')?.decimal ?? 128;
 
-    dataRef.current.bpm = bpmVal;
-    dataRef.current.spo2 = spo2Val;
-    dataRef.current.resp = respVal;
-    dataRef.current.temp = tempVal;
+    dataRef.current.bpm = hudData.bpm;
+    dataRef.current.spo2 = hudData.spo2;
+    dataRef.current.resp = hudData.resp;
+    dataRef.current.temp = hudData.temp;
     dataRef.current.frameId = lastFrame.frameNumber;
     
     // Waveform Continuity logic
@@ -285,16 +291,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
     
     dataRef.current.history.spo2.push(pleth);
     if(dataRef.current.history.spo2.length > 200) dataRef.current.history.spo2.shift();
-
-    setHudData(prev => {
-      if (prev.frameId === lastFrame.frameNumber && 
-          prev.bpm === bpmVal && 
-          prev.spo2 === spo2Val &&
-          prev.resp === respVal &&
-          prev.temp === tempVal) return prev;
-      return { frameId: lastFrame.frameNumber, bpm: bpmVal, spo2: spo2Val, resp: respVal, temp: tempVal };
-    });
-  }, [lastFrame]);
+  }, [lastFrame, hudData]);
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-gray-950 font-mono">
