@@ -4,14 +4,15 @@ import type { SimulationState } from '../types';
 import type { FrameProfile } from '../types';
 import { parseFrame } from '../engines/FrameParser';
 import type { SimAction } from './simulationReducer';
+import type { ConversationEntry, Exchange, GeneratedFrame } from '../types';
 
 interface UIUpdateLoopDeps {
   stateRef: React.MutableRefObject<SimulationState>;
   msgBufferRef: React.MutableRefObject<string[]>;
   profilesRef: React.MutableRefObject<FrameProfile[]>;
   uiVisibleRef: React.MutableRefObject<boolean>;
-  conversationBufferRef: React.MutableRefObject<any[]>;
-  exchangeBufferRef: React.MutableRefObject<any[]>;
+  conversationBufferRef: React.MutableRefObject<ConversationEntry[]>;
+  exchangeBufferRef: React.MutableRefObject<Exchange[]>;
   dispatch: React.Dispatch<SimAction>;
 }
 
@@ -26,7 +27,7 @@ export function useUIUpdateLoop({
 }: UIUpdateLoopDeps): void {
   const frameCounterRef = useRef(0);
 
-  const assignUid = (frame: any) => ({
+  const assignUid = (frame: Omit<GeneratedFrame, 'uId'>) => ({
     ...frame,
     uId: `${frame.frameNumber}-${frame.timestampMs || Date.now()}-${frameCounterRef.current++}`
   });
@@ -39,8 +40,8 @@ export function useUIUpdateLoop({
       msgBufferRef.current = [];
 
       const masterBatch: Partial<SimulationState> = {};
-      const newPoints: any[] = [];
-      const newLogs: any[] = [];
+      const newPoints: Array<Record<string, number>> = [];
+      const newLogs: SimulationState['logEntries'] = [];
       let latestElapsed = stateRef.current.elapsedMs;
 
       for (const raw of rawMsgs) {
@@ -63,7 +64,7 @@ export function useUIUpdateLoop({
                 latestElapsed = msg.elapsedMs;
 
                 const point: Record<string, number> = { t: msg.frame.timestampMs };
-                msg.frame.fields.forEach((f: any) => point[f.name] = f.decimal);
+                msg.frame.fields.forEach((f: { name: string; decimal: number }) => point[f.name] = f.decimal);
                 newPoints.push(point);
 
                 const txDate = msg.frame.timestampMs ? new Date(msg.frame.timestampMs) : new Date();
@@ -116,7 +117,9 @@ export function useUIUpdateLoop({
                 break;
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error('[UI UPDATE] JSON parse hatası veya işleme hatası:', e);
+        }
       }
 
       if (conversationBufferRef.current.length > 0) {
@@ -166,5 +169,5 @@ export function useUIUpdateLoop({
     }, 66);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [conversationBufferRef, dispatch, exchangeBufferRef, msgBufferRef, profilesRef, stateRef, uiVisibleRef]);
 }

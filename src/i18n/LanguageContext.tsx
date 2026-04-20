@@ -7,11 +7,12 @@ type Translations = typeof tr;
 
 interface LanguageContextType {
   locale: Locale;
+  language: Locale; // alias for locale, used by some components
   setLocale: (locale: Locale) => void;
   t: (path: string) => string;
 }
 
-const translations: Record<Locale, any> = { tr, en };
+const translations: Record<Locale, Translations> = { tr, en };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
@@ -33,26 +34,27 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback((path: string): string => {
     const keys = path.split('.');
-    let current = translations[locale];
+    let current: unknown = translations[locale];
     
     for (const key of keys) {
-      if (current[key] === undefined) {
-        // Fallback to Turkish if key is missing in English
-        let fallback = translations['tr'];
+      if (typeof current !== 'object' || current === null || !(key in current) || (current as Record<string, unknown>)[key] === undefined) {
+        // Fallback to English for any missing key
+        const fallbackLocale: Locale = locale === 'en' ? 'tr' : 'en';
+        let fallback: unknown = translations[fallbackLocale];
         for (const fKey of keys) {
-            if (fallback[fKey] === undefined) return path;
-            fallback = fallback[fKey];
+            if (typeof fallback !== 'object' || fallback === null || (fallback as Record<string, unknown>)[fKey] === undefined) return path;
+            fallback = (fallback as Record<string, unknown>)[fKey];
         }
-        return fallback as unknown as string;
+        return fallback as string;
       }
-      current = current[key];
+      current = (current as Record<string, unknown>)[key];
     }
     
-    return current as unknown as string;
+    return current as string;
   }, [locale]);
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={{ locale, language: locale, setLocale, t }}>
       {children}
     </LanguageContext.Provider>
   );

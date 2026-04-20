@@ -374,7 +374,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
         bytes: b,
         hex,
         timestamp: Date.now(),
-        note: '(tekrar)',
+        note: t('builder.resendNote'),
       };
       setSentFrames((prev) => [frame, ...prev].slice(0, 50));
       onSendFrame(b);

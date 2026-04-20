@@ -13,7 +13,9 @@ interface ValidationControlsProps {
 export default function ValidationControls({ profile, onStart, onClose }: ValidationControlsProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(t('validation.defaultTestName'));
-  const [deviceId, setDeviceId] = useState(`MN-${Math.floor(Math.random() * 10000)}`);
+  
+  // Fix purity: move random ID generation to useState initializer
+  const [deviceId, setDeviceId] = useState(() => `MN-${Math.floor(Math.random() * 10000)}`);
   const [operator, setOperator] = useState('Mustafa Sercan Sak');
   
   const [targets, setTargets] = useState<ValidationTarget[]>(() => {
@@ -23,9 +25,9 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
       .map(f => ({
         id: uuidv4(),
         fieldName: f.name,
-        expectedMin: f.type === 'range' ? (f.typeConfig as any).min : 0,
-        expectedMax: f.type === 'range' ? (f.typeConfig as any).max : 4095,
-        unit: (f as any).widgetConfig?.unit || ''
+        expectedMin: f.type === 'range' ? (f.typeConfig as import('../../../types').RangeConfig).min : 0,
+        expectedMax: f.type === 'range' ? (f.typeConfig as import('../../../types').RangeConfig).max : 4095,
+        unit: f.widgetConfig?.unit || ''
       }));
   });
 
@@ -79,7 +81,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
               <input 
                 value={name} onChange={e => setName(e.target.value)}
                 className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-mono text-white focus:border-emerald-500/50 outline-none transition-all"
-                placeholder="Örn: EKG Kararlılık Testi"
+                placeholder={t('validation.testNamePlaceholder')}
               />
             </div>
             <div className="space-y-4">
@@ -89,7 +91,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
               <input 
                 value={deviceId} onChange={e => setDeviceId(e.target.value)}
                 className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-mono text-white focus:border-emerald-500/50 outline-none transition-all"
-                placeholder="Örn: MN-9920"
+                placeholder={t('validation.deviceIdPlaceholder')}
               />
             </div>
             <div className="space-y-4 col-span-2">
@@ -127,7 +129,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
                       onChange={e => updateTarget(target.id, { fieldName: e.target.value })}
                       className="w-full bg-gray-800 border border-white/5 rounded-lg px-3 py-2 text-xs text-white outline-none"
                     >
-                      <option value="">Seçiniz...</option>
+                      <option value="">{t('validation.selectField')}</option>
                       {profile?.fields.map(f => (
                         <option key={f.id} value={f.name}>{f.name}</option>
                       ))}

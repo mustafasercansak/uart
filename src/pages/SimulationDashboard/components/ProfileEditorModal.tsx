@@ -229,11 +229,14 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                             <select 
                               value={field.type}
                               onChange={e => {
+                                const type = e.target.value as import('../../../types').FieldType;
                                 const newFields = [...edited.fields];
-                                newFields[idx].type = e.target.value as any;
+                                newFields[idx].type = type;
                                 // Initialize default config if type changes
-                                if (e.target.value === 'waveform') {
+                                if (type === 'waveform') {
                                   newFields[idx].typeConfig = { shape: 'sine', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 0, phase: 0 };
+                                } else if (type === 'fixed') {
+                                  newFields[idx].typeConfig = { value: 0 };
                                 }
                                 setEdited({...edited, fields: newFields});
                               }}
@@ -268,10 +271,11 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                               <div>
                                 <label className="text-[9px] text-gray-400 uppercase block mb-1">{t('profileEditor.shape')}</label>
                                 <select 
-                                  value={(field.typeConfig as any).shape}
+                                  value={(field.typeConfig as import('../../../types').WaveformConfig).shape}
                                   onChange={e => {
                                     const newFields = [...edited.fields];
-                                    (newFields[idx].typeConfig as any).shape = e.target.value;
+                                    const cfg = newFields[idx].typeConfig as import('../../../types').WaveformConfig;
+                                    cfg.shape = e.target.value as import('../../../types').WaveformShape;
                                     setEdited({...edited, fields: newFields});
                                   }}
                                   className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"
@@ -286,10 +290,11 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                                 <label className="text-[9px] text-gray-400 uppercase block mb-1">{t('profileEditor.frequency')}</label>
                                 <input 
                                   type="number" step="0.1"
-                                  value={(field.typeConfig as any).frequency}
+                                  value={(field.typeConfig as import('../../../types').WaveformConfig).frequency}
                                   onChange={e => {
                                     const newFields = [...edited.fields];
-                                    (newFields[idx].typeConfig as any).frequency = parseFloat(e.target.value);
+                                    const cfg = newFields[idx].typeConfig as import('../../../types').WaveformConfig;
+                                    cfg.frequency = parseFloat(e.target.value);
                                     setEdited({...edited, fields: newFields});
                                   }}
                                   className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"
@@ -299,24 +304,26 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                                 <label className="text-[9px] text-emerald-500 uppercase block mb-1 font-bold">{t('profileEditor.phase')} (0-1)</label>
                                 <input 
                                   type="range" min="0" max="1" step="0.01"
-                                  value={(field.typeConfig as any).phase || 0}
+                                  value={(field.typeConfig as import('../../../types').WaveformConfig).phase || 0}
                                   onChange={e => {
                                     const newFields = [...edited.fields];
-                                    (newFields[idx].typeConfig as any).phase = parseFloat(e.target.value);
+                                    const cfg = newFields[idx].typeConfig as import('../../../types').WaveformConfig;
+                                    cfg.phase = parseFloat(e.target.value);
                                     setEdited({...edited, fields: newFields});
                                   }}
                                   className="w-full accent-emerald-500 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
                                 />
-                                <div className="text-[8px] text-emerald-600 mt-1 text-right font-mono">{( (field.typeConfig as any).phase || 0).toFixed(2)} φ</div>
+                                <div className="text-[8px] text-emerald-600 mt-1 text-right font-mono">{( (field.typeConfig as import('../../../types').WaveformConfig).phase || 0).toFixed(2)} φ</div>
                               </div>
                               <div>
                                 <label className="text-[9px] text-gray-400 uppercase block mb-1">{t('profileEditor.amplitude')}</label>
                                 <input 
                                   type="number"
-                                  value={(field.typeConfig as any).amplitude}
+                                  value={(field.typeConfig as import('../../../types').WaveformConfig).amplitude}
                                   onChange={e => {
                                     const newFields = [...edited.fields];
-                                    (newFields[idx].typeConfig as any).amplitude = parseInt(e.target.value);
+                                    const cfg = newFields[idx].typeConfig as import('../../../types').WaveformConfig;
+                                    cfg.amplitude = parseInt(e.target.value);
                                     setEdited({...edited, fields: newFields});
                                   }}
                                   className="w-full bg-gray-900 border border-gray-800 text-[10px] p-1.5 rounded outline-none text-gray-300"

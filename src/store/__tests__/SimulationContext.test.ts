@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reducer, INITIAL_STATE, SimAction } from '../SimulationContext';
+import { reducer, INITIAL_STATE, SimAction } from '../simulationReducer';
 
 describe('SimulationContext Reducer', () => {
     it('handles START action', () => {
@@ -41,7 +41,7 @@ describe('SimulationContext Reducer', () => {
         const action: SimAction = {
             type: 'MASTER_TICK',
             elapsedMs: 500,
-            updates: { frameCount: 1, lastFrame: { frameNumber: 1, rawHex: 'AA', fields: [] } as any },
+            updates: { frameCount: 1, lastFrame: { uId: '1', frameNumber: 1, timestampMs: 500, rawHex: 'AA', rawBytes: [], fields: [], errors: [] } },
             points: [{ t: 500, BPM: 80 }],
             logEntries: [{ time: '12:00', text: 'Test Log', type: 'info' }]
         };

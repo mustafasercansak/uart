@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import TemplateBrowser from '../index';
 import { BrowserRouter } from 'react-router-dom';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 
 // Mock the hooks
 const mockSetProfile = vi.fn();
@@ -18,9 +19,9 @@ vi.mock('../../../hooks/useSimulation', () => ({
 }));
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+  const actual = await vi.importActual('react-router-dom') as Record<string, unknown>;
   return {
-    ...actual as any,
+    ...actual,
     useNavigate: () => mockNavigate
   };
 });
@@ -28,9 +29,11 @@ vi.mock('react-router-dom', async () => {
 describe('TemplateBrowser Component', () => {
   it('should render template cards correctly', () => {
     render(
-      <BrowserRouter>
-        <TemplateBrowser />
-      </BrowserRouter>
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
     );
     
     expect(screen.getByText('Şablon Kütüphanesi')).toBeInTheDocument();
@@ -40,9 +43,11 @@ describe('TemplateBrowser Component', () => {
   it('should call simulation actions and navigate when template is applied', async () => {
     vi.useFakeTimers();
     render(
-      <BrowserRouter>
-        <TemplateBrowser />
-      </BrowserRouter>
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
     );
     
     // Find the 'Bu Şablonu Kullan' button for the Ventilator

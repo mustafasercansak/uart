@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useTranslation } from '../../i18n/LanguageContext';
 import type {
   FrameProfile,
   Field,
@@ -55,6 +56,7 @@ function newProfile(): FrameProfile {
 }
 
 export default function ProfileEditor() {
+  const { t } = useTranslation();
   const [profiles, setProfiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [profile, setProfile] = useState<FrameProfile | null>(null);
@@ -138,7 +140,7 @@ export default function ProfileEditor() {
       setProfiles(loadProfiles());
       openProfile(p);
     } catch {
-      alert('Geçersiz profil dosyası');
+      alert(t('profileEditor.invalidFile'));
     }
     e.target.value = '';
   };
@@ -151,18 +153,18 @@ export default function ProfileEditor() {
       {/* Profile List */}
       <div className="w-56 bg-gray-950 border-r border-gray-800 flex flex-col">
         <div className="p-3 border-b border-gray-800 flex items-center justify-between">
-          <span className="text-gray-400 text-xs font-mono uppercase tracking-wider">Profiller</span>
+          <span className="text-gray-400 text-xs font-mono uppercase tracking-wider">{t('profileEditor.profiles')}</span>
           <div className="flex gap-1">
-            <label className="cursor-pointer text-gray-500 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded hover:bg-gray-800 transition-colors" title="İçe Aktar">
+            <label className="cursor-pointer text-gray-500 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded hover:bg-gray-800 transition-colors" title={t('profileEditor.import')}>
               ↑
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
-            <button onClick={createNew} className="text-green-400 hover:text-green-300 text-xs px-1.5 py-0.5 rounded hover:bg-green-900/20 transition-colors" title="Yeni Profil">+</button>
+            <button onClick={createNew} className="text-green-400 hover:text-green-300 text-xs px-1.5 py-0.5 rounded hover:bg-green-900/20 transition-colors" title={t('profileEditor.newProfile')}>+</button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {profiles.length === 0 && (
-            <div className="text-gray-600 text-xs font-mono p-2 text-center">Henüz profil yok</div>
+            <div className="text-gray-600 text-xs font-mono p-2 text-center">{t('profileEditor.noProfileYet')}</div>
           )}
           {profiles.map((p) => (
             <div
@@ -174,7 +176,7 @@ export default function ProfileEditor() {
             >
               <div className="truncate flex-1">
                 <div className="truncate">{p.name}</div>
-                <div className="text-gray-600 text-[10px]">{p.baudRate} bps · {p.fields.length} alan</div>
+                <div className="text-gray-600 text-[10px]">{p.baudRate} bps · {p.fields.length} {t('profileEditor.fields')}</div>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); remove(p.id); }}
@@ -190,9 +192,9 @@ export default function ProfileEditor() {
         <div className="flex-1 flex items-center justify-center text-gray-600">
           <div className="text-center">
             <div className="text-4xl mb-3 opacity-40">⊞</div>
-            <div className="font-mono text-sm">Profil seçin veya yeni oluşturun</div>
+            <div className="font-mono text-sm">{t('profileEditor.selectOrCreate')}</div>
             <button onClick={createNew} className="mt-4 px-4 py-2 bg-green-900/30 border border-green-800/50 text-green-400 rounded font-mono text-xs hover:bg-green-900/50 transition-colors">
-              + Yeni Profil
+              {t('profileEditor.newProfileTitle')}
             </button>
           </div>
         </div>
@@ -207,17 +209,17 @@ export default function ProfileEditor() {
                 value={profile.name}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
               />
-              <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">Kopyala</button>
-              <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">↓ Dışa Aktar</button>
+              <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
+              <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
               <button onClick={save} className={`text-xs font-mono px-4 py-1.5 rounded border transition-colors ${saved ? 'bg-green-900/50 border-green-600 text-green-300' : 'bg-green-900/30 border-green-800/50 text-green-400 hover:bg-green-900/50'}`}>
-                {saved ? '✓ Kaydedildi' : 'Kaydet'}
+                {saved ? t('profileEditor.saved') : t('common.save')}
               </button>
             </div>
 
             {/* UART Settings */}
             <div className="px-4 py-3 border-b border-gray-800 flex gap-4">
               <div>
-                <label className="text-gray-500 text-xs font-mono block mb-1">Baud Rate</label>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.baudRate')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
                   value={profile.baudRate} onChange={(e) => setProfile({ ...profile, baudRate: Number(e.target.value) })}>
                   {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map((r) => (
@@ -226,26 +228,26 @@ export default function ProfileEditor() {
                 </select>
               </div>
               <div>
-                <label className="text-gray-500 text-xs font-mono block mb-1">Parite</label>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.parity')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
                   value={profile.parity} onChange={(e) => setProfile({ ...profile, parity: e.target.value as FrameProfile['parity'] })}>
                   {['None', 'Even', 'Odd', 'Mark', 'Space'].map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-gray-500 text-xs font-mono block mb-1">Stop Bit</label>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.stopBit')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
                   value={profile.stopBits} onChange={(e) => setProfile({ ...profile, stopBits: Number(e.target.value) as FrameProfile['stopBits'] })}>
                   {[1, 1.5, 2].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-gray-500 text-xs font-mono block mb-1">Gönderim Aralığı (ms)</label>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.sendInterval')}</label>
                 <input type="number" min={1} className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-24"
                   value={profile.sendIntervalMs} onChange={(e) => setProfile({ ...profile, sendIntervalMs: Number(e.target.value) })} />
               </div>
               <div>
-                <label className="text-gray-500 text-xs font-mono block mb-1">Açıklama</label>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.description')}</label>
                 <input className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-48"
                   value={profile.description} onChange={(e) => setProfile({ ...profile, description: e.target.value })} />
               </div>
@@ -255,18 +257,18 @@ export default function ProfileEditor() {
             <div className="flex-1 overflow-y-auto">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-400 text-xs font-mono uppercase tracking-wider">Alanlar ({sortedFields.length} alan · {sortedFields.reduce((s, f) => s + f.byteWidth, 0)} byte)</span>
-                  <button onClick={addField} className="text-xs font-mono px-3 py-1 bg-green-900/30 border border-green-800/50 text-green-400 rounded hover:bg-green-900/50 transition-colors">+ Alan Ekle</button>
+                  <span className="text-gray-400 text-xs font-mono uppercase tracking-wider">{t('profileEditor.fields')} ({sortedFields.length} · {sortedFields.reduce((s, f) => s + f.byteWidth, 0)} byte)</span>
+                  <button onClick={addField} className="text-xs font-mono px-3 py-1 bg-green-900/30 border border-green-800/50 text-green-400 rounded hover:bg-green-900/50 transition-colors">{t('profileEditor.addField')}</button>
                 </div>
 
                 {/* Header */}
                 <div className="grid grid-cols-12 gap-2 text-[10px] font-mono text-gray-600 uppercase mb-2 px-2">
-                  <div className="col-span-1">Sıra</div>
-                  <div className="col-span-3">İsim</div>
-                  <div className="col-span-2">Tür</div>
-                  <div className="col-span-1 text-center">Byte</div>
-                  <div className="col-span-2">Bayt Sırası</div>
-                  <div className="col-span-3">İşlemler</div>
+                  <div className="col-span-1">{t('profileEditor.order')}</div>
+                  <div className="col-span-3">{t('profileEditor.fieldName')}</div>
+                  <div className="col-span-2">{t('profileEditor.fieldTypCol')}</div>
+                  <div className="col-span-1 text-center">{t('profileEditor.byteWidth')}</div>
+                  <div className="col-span-2">{t('profileEditor.byteOrder')}</div>
+                  <div className="col-span-3">{t('profileEditor.actions')}</div>
                 </div>
 
                 <div className="space-y-1">

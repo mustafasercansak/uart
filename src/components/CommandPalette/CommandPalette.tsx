@@ -52,7 +52,7 @@ export function CommandPalette() {
         const stored = localStorage.getItem('uart_profiles');
         let profiles = [];
         if (stored) { try { profiles = JSON.parse(stored); } catch(e) {} }
-        const profile = profiles.find((p: any) => p.id === state.profileId) || profiles[0];
+        const profile = profiles.find((p: { id: string }) => p.id === state.profileId) || profiles[0];
         if (profile) start(profile, null, state.outputMode);
     }, shortcut: 'S' },
     { id: 'act-pause', name: 'Pause Simulation', description: 'Freeze all data streams', category: 'Simulation', icon: <Pause size={16} className="text-amber-400" />, action: () => pause(), shortcut: 'P' },
@@ -60,7 +60,7 @@ export function CommandPalette() {
         const stored = localStorage.getItem('uart_profiles');
         let profiles = [];
         if (stored) { try { profiles = JSON.parse(stored); } catch(e) {} }
-        const profile = profiles.find((p: any) => p.id === state.profileId);
+        const profile = profiles.find((p: { id: string }) => p.id === state.profileId);
         if (profile) resume(profile, null);
     } },
     { id: 'act-stop', name: 'Stop Simulation', description: 'Cease all transmission', category: 'Simulation', icon: <Square size={16} className="text-rose-400" />, action: () => stop(), shortcut: 'Esc' },
@@ -82,7 +82,13 @@ export function CommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
+        setIsOpen(prev => {
+          if (!prev) {
+            setQuery('');
+            setSelectedIndex(0);
+          }
+          return !prev;
+        });
       }
       if (e.key === 'Escape') setIsOpen(false);
     };
@@ -90,13 +96,6 @@ export function CommandPalette() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setSelectedIndex(0);
-    }
-  }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {

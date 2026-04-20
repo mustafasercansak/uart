@@ -15,11 +15,18 @@ const Gauge = memo(({ value, min, max, unit, label, color: baseColor = '#10b981'
   const [sessionMax, setSessionMax] = useState(value);
   const [trend, setTrend] = useState<'up' | 'down' | 'stable'>('stable');
   const prevValueRef = useRef(value);
+  const sessionMinRef = useRef(value);
+  const sessionMaxRef = useRef(value);
 
   useEffect(() => {
-    // Session Min/Max
-    setSessionMin(m => Math.min(m, value));
-    setSessionMax(m => Math.max(m, value));
+    if (value < sessionMinRef.current) {
+      sessionMinRef.current = value;
+      setSessionMin(value);
+    }
+    if (value > sessionMaxRef.current) {
+      sessionMaxRef.current = value;
+      setSessionMax(value);
+    }
 
     // Trend calculation
     if (value > prevValueRef.current) setTrend('up');

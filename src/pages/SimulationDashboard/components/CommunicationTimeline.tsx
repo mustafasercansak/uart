@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { ArrowRight, ArrowLeft, Clock, WifiOff } from 'lucide-react';
 import type { GeneratedFrame } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface TimelineProps {
   exchanges: any[];
@@ -9,6 +10,7 @@ interface TimelineProps {
 }
 
 const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: TimelineProps) => {
+  const { t } = useTranslation();
   const displayExchanges = exchanges.slice(-50);
 
   return (
@@ -31,7 +33,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
           {!hasRealDevice && (
             <div className="flex items-center gap-1.5 text-[9px] font-mono text-yellow-600/80 bg-yellow-950/30 border border-yellow-900/30 px-2 py-1 rounded">
               <WifiOff size={10} />
-              Gerçek cihaz yok — sadece TX
+              {t('timeline.noRealDevice')}
             </div>
           )}
           <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest bg-gray-950 px-2 py-1 rounded">
@@ -134,7 +136,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
         {displayExchanges.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-gray-600 gap-4 opacity-30">
             <div className="w-16 h-16 border-4 border-dashed border-gray-800 rounded-full animate-spin-slow" />
-            <span className="text-[10px] font-mono uppercase tracking-[0.3em]">İletişim bekleniyor</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.3em]">{t('timeline.waitingComm')}</span>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reducer, INITIAL_STATE, SimAction } from '../SimulationContext';
+import { reducer, INITIAL_STATE, SimAction } from '../simulationReducer';
 
 describe('Simulation State Stress Testing', () => {
     it('handles 1000 consecutive ticks without state corruption', () => {
@@ -10,7 +10,7 @@ describe('Simulation State Stress Testing', () => {
             const action: SimAction = {
                 type: 'MASTER_TICK',
                 elapsedMs: i * 1, // 1ms intervals
-                updates: { frameCount: i, lastFrame: { frameNumber: i, rawHex: 'FF', fields: [] } as any },
+                updates: { frameCount: i, lastFrame: { uId: `f-${i}`, frameNumber: i, timestampMs: i, rawHex: 'FF', rawBytes: [], fields: [], errors: [] } },
                 points: [{ t: i, val: Math.random() }],
                 logEntries: [{ time: '00:00', text: `Log ${i}`, type: 'tx' }]
             };

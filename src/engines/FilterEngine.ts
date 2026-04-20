@@ -41,7 +41,7 @@ export class FilterEngine {
       }
 
       return { isValid: true };
-    } catch (e) {
+    } catch (_e) {
       return { isValid: false };
     }
   }
@@ -126,15 +126,16 @@ export class FilterEngine {
         case '<': return Number(val) < Number(targetNum);
         case '>=': return Number(val) >= Number(targetNum);
         case '<=': return Number(val) <= Number(targetNum);
-        case 'contains': 
+        case 'contains': {
             const sVal = String(val).toLowerCase().replace(/\s+/g, '');
             const sTarget = String(right).toLowerCase().replace(/[ "']+/g, '').replace(/\s+/g, '');
             return sVal.includes(sTarget);
+        }
         default: return false;
     }
   }
 
-  private static getFieldValue(exchange: Exchange, fieldName: string, profile?: FrameProfile): any {
+  private static getFieldValue(exchange: Exchange, fieldName: string, profile?: FrameProfile): string | number | boolean | undefined {
     const entry = exchange.tx || exchange.rx;
     if (!entry) return undefined;
 

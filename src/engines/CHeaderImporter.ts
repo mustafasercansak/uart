@@ -28,7 +28,7 @@ export function parseCHeader(header: string): Field[] {
     const name = match[2].trim();
     const arraySize = match[3] ? parseInt(match[3], 10) : 1;
 
-    let byteWidth = typeMap[cType] || 1;
+    const byteWidth = typeMap[cType] || 1;
     
     // If it's an array, we handle it as multiple iterations or one wide field
     // For now, let's create a single field but multiply width for simplicity 

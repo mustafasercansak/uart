@@ -1,0 +1,655 @@
+
+> uart@0.0.0 lint
+> eslint .
+
+
+C:\projects\uart\bridge.js
+  12:19  error  'require' is not defined  no-undef
+  13:13  error  'require' is not defined  no-undef
+  14:15  error  'require' is not defined  no-undef
+  16:14  error  'process' is not defined  no-undef
+  27:3   error  'process' is not defined  no-undef
+
+C:\projects\uart\mock-receiver.js
+  12:13  error  'require' is not defined  no-undef
+  13:15  error  'require' is not defined  no-undef
+  15:14  error  'process' is not defined  no-undef
+  38:26  error  'Buffer' is not defined   no-undef
+  62:26  error  'Buffer' is not defined   no-undef
+
+C:\projects\uart\src\components\CommandPalette\CommandPalette.tsx
+  35:9   error  'dropdownRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  40:35  error  'setProfile' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  54:68  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  54:71  error  Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    no-empty
+  55:43  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  62:68  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  62:71  error  Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    no-empty
+  63:43  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  96:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\projects\uart\src\components\CommandPalette\CommandPalette.tsx:96:7
+  94 |   useEffect(() => {
+  95 |     if (isOpen) {
+> 96 |       setQuery('');
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  97 |       setSelectedIndex(0);
+  98 |     }
+  99 |   }, [isOpen]);  react-hooks/set-state-in-effect
+
+C:\projects\uart\src\components\Onboarding\OnboardingFlow.tsx
+  183:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-refresh/only-export-components
+  188:16  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\projects\uart\src\components\Onboarding\OnboardingFlow.tsx:188:16
+  186 |   useEffect(() => {
+  187 |     const done = localStorage.getItem(STORAGE_KEY);
+> 188 |     if (!done) setShow(true);
+      |                ^^^^^^^ Avoid calling setState() directly within an effect
+  189 |   }, []);
+  190 |
+  191 |   return { show, dismiss: () => setShow(false) };  react-hooks/set-state-in-effect
+
+C:\projects\uart\src\components\Visualizer\MedicalRoomScene.tsx
+   143:5   error    Expected an assignment or function call and instead saw an expression                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-expressions
+   577:3   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\MedicalRoomScene.tsx:577:3
+  575 |
+  576 |   // Keep selectedRef in sync
+> 577 |   selectedRef.current = selected;
+      |   ^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  578 |
+  579 |   // Track active devices in a ref so the render loop can read it without stale closure
+  580 |   const activeDevicesRef = useRef<Set<string>>(new Set(DEVICES.map(d => d.id)));  react-hooks/refs
+   584:6   warning  React Hook useEffect has a missing dependency: 'isDeviceActive'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  react-hooks/exhaustive-deps
+   910:6   warning  React Hook useEffect has a missing dependency: 'activeScenarioStep'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+  1040:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx
+  249:6    warning  React Hook useEffect has a missing dependency: 'isAlarm'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  342:71   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:342:71
+  340 |                         <div className="flex justify-between border-b border-white/5 pb-1">
+  341 |                             <span className="text-gray-500 uppercase">Packet ID:</span>
+> 342 |                             <span className="text-white font-black">#{dataRef.current.frameId}</span>
+      |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  343 |                         </div>
+  344 |                         <div className="flex justify-between border-b border-white/5 pb-1">
+  345 |                             <span className="text-gray-500 uppercase">Consistency:</span>                                                                                                                                                                                           react-hooks/refs
+  363:170  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:363:170
+  361 |                     
+  362 |                     {/* HR Card v7 */}
+> 363 |                     <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && dataRef.current.bpm > 0 ? 'border-rose-600 bg-rose-950/40' : 'border-emerald-500'}`}>
+      |                                                                                                                                                                          ^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  364 |                         <div className="flex justify-between items-start mb-4 relative z-10">
+  365 |                             <div>
+  366 |                                 <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">Heart Rate</div>         react-hooks/refs
+  368:118  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:368:118
+  366 |                                 <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">Heart Rate</div>
+  367 |                                 <div className="flex items-baseline gap-2">
+> 368 |                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.bpm > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+      |                                                                                                                      ^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  369 |                                         {dataRef.current.bpm || '--'}
+  370 |                                     </span>
+  371 |                                     <span className="text-xs font-black text-gray-600 uppercase">BPM</span>                      react-hooks/refs
+  369:42   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:369:42
+  367 |                                 <div className="flex items-baseline gap-2">
+  368 |                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.bpm > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+> 369 |                                         {dataRef.current.bpm || '--'}
+      |                                          ^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  370 |                                     </span>
+  371 |                                     <span className="text-xs font-black text-gray-600 uppercase">BPM</span>
+  372 |                                 </div>                                                                                                                                                                                                  react-hooks/refs
+  369:42   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:369:42
+  367 |                                 <div className="flex items-baseline gap-2">
+  368 |                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.bpm > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+> 369 |                                         {dataRef.current.bpm || '--'}
+      |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  370 |                                     </span>
+  371 |                                     <span className="text-xs font-black text-gray-600 uppercase">BPM</span>
+  372 |                                 </div>                                                                                                                                                                                          react-hooks/refs
+  380:163  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:380:163
+  378 |                         </div>
+  379 |                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden relative z-10">
+> 380 |                             <div className={`h-full transition-all duration-500 ${isAlarm ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (dataRef.current.bpm / 200) * 100)}%` }} />
+      |                                                                                                                                                                   ^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  381 |                         </div>
+  382 |                         {/* Shimmer Effect */}
+  383 |                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />  react-hooks/refs
+  387:170  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:387:170
+  385 |
+  386 |                     {/* SpO2 Card v7 */}
+> 387 |                     <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && dataRef.current.spo2 < 90 ? 'border-rose-600 bg-rose-950/40' : 'border-cyan-500'}`}>
+      |                                                                                                                                                                          ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  388 |                         <div className="flex justify-between items-start mb-4 relative z-10">
+  389 |                             <div>
+  390 |                                 <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">O2 Saturation</div>                         react-hooks/refs
+  392:118  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:392:118
+  390 |                                 <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">O2 Saturation</div>
+  391 |                                 <div className="flex items-baseline gap-2">
+> 392 |                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.spo2 < 90 ? 'text-rose-500' : 'text-cyan-400'}`}>
+      |                                                                                                                      ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  393 |                                         {dataRef.current.spo2 || '--'}
+  394 |                                     </span>
+  395 |                                     <span className="text-xs font-black text-gray-600 uppercase">%</span>                    react-hooks/refs
+  393:42   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:393:42
+  391 |                                 <div className="flex items-baseline gap-2">
+  392 |                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.spo2 < 90 ? 'text-rose-500' : 'text-cyan-400'}`}>
+> 393 |                                         {dataRef.current.spo2 || '--'}
+      |                                          ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  394 |                                     </span>
+  395 |                                     <span className="text-xs font-black text-gray-600 uppercase">%</span>
+  396 |                                 </div>                                                                                                                                                                                                   react-hooks/refs
+  393:42   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:393:42
+  391 |                                 <div className="flex items-baseline gap-2">
+  392 |                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && dataRef.current.spo2 < 90 ? 'text-rose-500' : 'text-cyan-400'}`}>
+> 393 |                                         {dataRef.current.spo2 || '--'}
+      |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  394 |                                     </span>
+  395 |                                     <span className="text-xs font-black text-gray-600 uppercase">%</span>
+  396 |                                 </div>                                                                                                                                                                                           react-hooks/refs
+  403:145  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:403:145
+  401 |                         </div>
+  402 |                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden relative z-10">
+> 403 |                             <div className={`h-full transition-all duration-500 ${isAlarm ? 'bg-rose-500' : 'bg-cyan-500'}`} style={{ width: `${dataRef.current.spo2}%` }} />
+      |                                                                                                                                                 ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  404 |                         </div>
+  405 |                     </div>
+  406 |                                                                                                                                                                                                                                                react-hooks/refs
+  411:84   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:411:84
+  409 |                         <div className="p-6 bg-black/60 border-r-[6px] border-yellow-500 flex-1 text-center shadow-xl">
+  410 |                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">RR</span>
+> 411 |                             <span className="text-3xl font-black text-yellow-500">{dataRef.current.resp || '--'}</span>
+      |                                                                                    ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  412 |                         </div>
+  413 |                         <div className="p-6 bg-black/60 border-r-[6px] border-purple-600 flex-1 text-center shadow-xl">
+  414 |                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">Temp</span>                                                   react-hooks/refs
+  411:84   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:411:84
+  409 |                         <div className="p-6 bg-black/60 border-r-[6px] border-yellow-500 flex-1 text-center shadow-xl">
+  410 |                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">RR</span>
+> 411 |                             <span className="text-3xl font-black text-yellow-500">{dataRef.current.resp || '--'}</span>
+      |                                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  412 |                         </div>
+  413 |                         <div className="p-6 bg-black/60 border-r-[6px] border-purple-600 flex-1 text-center shadow-xl">
+  414 |                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">Temp</span>                                           react-hooks/refs
+  415:84   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:415:84
+  413 |                         <div className="p-6 bg-black/60 border-r-[6px] border-purple-600 flex-1 text-center shadow-xl">
+  414 |                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">Temp</span>
+> 415 |                             <span className="text-3xl font-black text-purple-400">{dataRef.current.temp ? (dataRef.current.temp/10).toFixed(1) : '--'}°</span>
+      |                                                                                    ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  416 |                         </div>
+  417 |                     </div>
+  418 |                 </div>                                                                                                                                                                                                    react-hooks/refs
+  415:108  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\components\Visualizer\Visualizer3D.tsx:415:108
+  413 |                         <div className="p-6 bg-black/60 border-r-[6px] border-purple-600 flex-1 text-center shadow-xl">
+  414 |                             <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">Temp</span>
+> 415 |                             <span className="text-3xl font-black text-purple-400">{dataRef.current.temp ? (dataRef.current.temp/10).toFixed(1) : '--'}°</span>
+      |                                                                                                            ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  416 |                         </div>
+  417 |                     </div>
+  418 |                 </div>                                                                                                                                                                           react-hooks/refs
+
+C:\projects\uart\src\engines\FilterEngine.ts
+   44:14  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  130:13  error  Unexpected lexical declaration in case block                                  no-case-declarations
+  131:13  error  Unexpected lexical declaration in case block                                  no-case-declarations
+  137:96  error  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\engines\FrameGenerator.ts
+  154:16  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  230:33  error  'i' is defined but never used. Allowed unused args must match /^_/u           @typescript-eslint/no-unused-vars
+  342:48  error  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+  357:7   error  Unexpected lexical declaration in case block                                  no-case-declarations
+
+C:\projects\uart\src\engines\ProtocolDecoders.ts
+  57:9   error  'annotationsSCK' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+  66:24  error  'byteIdx' is defined but never used. Allowed unused args must match /^_/u                       @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\engines\ScenarioEngine.ts
+  39:10  error  'findFieldCurrentValue' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+  42:9   error  'parsedField' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u   @typescript-eslint/no-unused-vars
+  42:46  error  'f' is defined but never used. Allowed unused args must match /^_/u                           @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\engines\VirtualPeripheralEngine.ts
+  13:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\engines\__tests__\ExportEngine.test.ts
+  12:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\engines\__tests__\FilterEngine.test.ts
+  11:10  error  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  13:11  error  'mockProfile' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+  18:10  error  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\engines\__tests__\FrameGenerator.test.ts
+  30:8  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:8  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\hooks\__tests__\useAudioAlerts.test.ts
+   1:24  error  'expect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  40:13  error  'captured' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  40:23  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  42:13  error  Error: Cannot reassign variables declared outside of the component/hook
+
+Variable `captured` is declared outside of the component/hook. Reassigning this value during render is a form of side effect, which can cause unpredictable behavior depending on when the component happens to re-render. If this variable is used in rendering, use useState instead. Otherwise, consider updating it in an effect. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#side-effects-must-run-outside-of-render).
+
+C:\projects\uart\src\hooks\__tests__\useAudioAlerts.test.ts:42:13
+  40 |         let captured: any = null;
+  41 |         function TestComponent() {
+> 42 |             captured = useAudioAlerts();
+     |             ^^^^^^^^ `captured` cannot be reassigned
+  43 |             return null;
+  44 |         }
+  45 |  react-hooks/globals
+  47:15  error  'container' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  52:15  error  'mockRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\i18n\LanguageContext.tsx
+  15:36  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  43:23  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  63:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\projects\uart\src\pages\Help\index.tsx
+   28:16  error    'err' is defined but never used. Allowed unused caught errors must match /^_/u                                     @typescript-eslint/no-unused-vars
+   37:6   warning  React Hook useEffect has missing dependencies: 'docs' and 't'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  123:30  error    'node' is defined but never used. Allowed unused args must match /^_/u                                             @typescript-eslint/no-unused-vars
+  124:32  error    'node' is defined but never used. Allowed unused args must match /^_/u                                             @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\pages\ProfileEditor\FieldEditor.tsx
+  17:16  error  'uuidv4' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\pages\ScenarioEditor\index.tsx
+   30:95   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   31:96   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   41:95   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   42:136  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   43:140  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   53:97   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   54:100  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   55:102  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   56:96   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   66:135  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+   96:5    error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\projects\uart\src\pages\ScenarioEditor\index.tsx:96:5
+  94 |   // Load Initial Data
+  95 |   useEffect(() => {
+> 96 |     setScenarios(loadScenarios());
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  97 |     setProfiles(loadProfiles());
+  98 |   }, []);
+  99 |  react-hooks/set-state-in-effect
+  133:16   error  'err' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  191:38   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  222:37   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  300:129  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  459:29   error  'profile' is defined but never used. Allowed unused args must match /^_/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  459:81   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  465:45   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  494:57   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  504:42   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\CommunicationTimeline.tsx
+    7:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   82:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\ControlPanel.tsx
+   8:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\DashboardGrid.tsx
+   25:10  error  'buildLayout' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+  172:53  error  Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\Diagnostics.tsx
+  12:14  error  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+  17:42  error  'exchanges' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\pages\SimulationDashboard\components\FrameBuilder.tsx
+  371:5  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `t`, but the source dependencies were [onSendFrame]. Inferred different dependency than source.
+
+C:\projects\uart\src\pages\SimulationDashboard\components\FrameBuilder.tsx:371:5
+  369 |
+  370 |   const resend = useCallback(
+> 371 |     (b: number[]) => {
+      |     ^^^^^^^^^^^^^^^^^^
+> 372 |       const hex = b.map((v) => v.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 373 |       const frame: BuiltFrame = {
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 380 |       onSendFrame(b);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 381 |     },
+      | ^^^^^^ Could not preserve existing manual memoization
+  382 |     [onSendFrame]
+  383 |   );
+  384 |  react-hooks/preserve-manual-memoization
+  382:5  warning  React Hook useCallback has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+
+C:\projects\uart\src\pages\SimulationDashboard\components\HardwareLayout.tsx
+  12:40  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\HardwareLayout.tsx:12:40
+  10 |
+  11 | const HardwareLayout: React.FC<HardwareLayoutProps> = ({ lastTxFrame, lastRxFrame, protocol }) => {
+> 12 |   const isTxActive = !!lastTxFrame && (Date.now() - lastTxFrame.timestampMs < 500);
+     |                                        ^^^^^^^^^^ Cannot call impure function
+  13 |   const isRxActive = !!lastRxFrame && (Date.now() - lastRxFrame.timestampMs < 500);
+  14 |
+  15 |   const pins = useMemo(() => [                                                                   react-hooks/purity
+  13:40  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\HardwareLayout.tsx:13:40
+  11 | const HardwareLayout: React.FC<HardwareLayoutProps> = ({ lastTxFrame, lastRxFrame, protocol }) => {
+  12 |   const isTxActive = !!lastTxFrame && (Date.now() - lastTxFrame.timestampMs < 500);
+> 13 |   const isRxActive = !!lastRxFrame && (Date.now() - lastRxFrame.timestampMs < 500);
+     |                                        ^^^^^^^^^^ Cannot call impure function
+  14 |
+  15 |   const pins = useMemo(() => [
+  16 |     { id: 1, label: '3V3', type: 'power', color: 'bg-red-500' },  react-hooks/purity
+
+C:\projects\uart\src\pages\SimulationDashboard\components\HelpModal.tsx
+   34:16  error    'err' is defined but never used. Allowed unused caught errors must match /^_/u                                     @typescript-eslint/no-unused-vars
+   42:6   warning  React Hook useEffect has missing dependencies: 'docs' and 't'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  120:30  error    'node' is defined but never used. Allowed unused args must match /^_/u                                             @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LiveDashboard.tsx
+  50:23  error  'fieldName' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LogicAnalyzer.tsx
+   58:6    warning  React Hook useEffect has a missing dependency: 'signal.transitions'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  196:6    warning  React Hook useEffect has a missing dependency: 'draw'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  262:105  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LogicAnalyzer.tsx:262:105
+  260 |            <button 
+  261 |              onClick={() => autoScroll.current = !autoScroll.current}
+> 262 |              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors font-bold ${autoScroll.current ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-800 text-gray-500'}`}
+      |                                                                                                         ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  263 |            >
+  264 |              {autoScroll.current ? t('logic.running') : t('logic.paused')}
+  265 |            </button>  react-hooks/refs
+  264:15   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LogicAnalyzer.tsx:264:15
+  262 |              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors font-bold ${autoScroll.current ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-800 text-gray-500'}`}
+  263 |            >
+> 264 |              {autoScroll.current ? t('logic.running') : t('logic.paused')}
+      |               ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  265 |            </button>
+  266 |         </div>
+  267 |       </div>                                                                                                                                                           react-hooks/refs
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LogicAnalyzerView.tsx
+    1:46  error    'useMemo' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   59:6   warning  React Hook useEffect has a missing dependency: 'scrollX'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+   78:11  error    'margin' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  194:6   warning  React Hook useEffect has a missing dependency: 'draw'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+  268:95  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LogicAnalyzerView.tsx:268:95
+  266 |            <button 
+  267 |              onClick={() => { autoScroll.current = true; if (signal.transitions.length > 0) setScrollX(signal.transitions[signal.transitions.length-1].t - (canvasSize.width / 2 / zoom)); }}
+> 268 |              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors ${autoScroll.current ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400'}`}
+      |                                                                                               ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  269 |            >
+  270 |              {autoScroll.current ? 'Live Sync' : 'Static View'}
+  271 |            </button>  react-hooks/refs
+  270:15  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\LogicAnalyzerView.tsx:270:15
+  268 |              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors ${autoScroll.current ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400'}`}
+  269 |            >
+> 270 |              {autoScroll.current ? 'Live Sync' : 'Static View'}
+      |               ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  271 |            </button>
+  272 |         </div>
+  273 |       </div>                                                                                                                                                                                                                                                                        react-hooks/refs
+
+C:\projects\uart\src\pages\SimulationDashboard\components\PacketInspector.tsx
+   14:11  error  'state' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+   28:60  error  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+   47:36  error  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+   64:36  error  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+  152:64  error  Unexpected any. Specify a different type                                               @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\PlaybackPanel.tsx
+   8:18  error    Unexpected any. Specify a different type                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+  39:6   warning  React Hook useEffect has a missing dependency: 'onRefresh'. Either include it or remove the dependency array. If 'onRefresh' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+C:\projects\uart\src\pages\SimulationDashboard\components\ProfileEditorModal.tsx
+  233:73   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  271:63   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  274:67   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  289:63   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  292:67   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  302:63   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  305:67   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  310:128  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  316:63   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  319:67   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\ProtocolDecoderPanel.tsx
+   90:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\RxMonitor.tsx
+  26:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\RxMonitor.tsx:26:5
+  24 |     if (lastRxFrame.uId === prevRxUid.current) return;
+  25 |     prevRxUid.current = lastRxFrame.uId;
+> 26 |     setRxHistory((prev) => [lastRxFrame, ...prev].slice(0, MAX_RX_HISTORY));
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |   }, [lastRxFrame]);
+  28 |
+  29 |   const clearHistory = () => {  react-hooks/set-state-in-effect
+
+C:\projects\uart\src\pages\SimulationDashboard\components\SequenceRunner.tsx
+   1:27  error  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u             @typescript-eslint/no-unused-vars
+   1:40  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u               @typescript-eslint/no-unused-vars
+  14:18  error  'start' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u          @typescript-eslint/no-unused-vars
+  14:25  error  'injectError' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    @typescript-eslint/no-unused-vars
+  14:38  error  'overrideField' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+  77:21  error  Unexpected any. Specify a different type                                                       @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\SpectrumAnalyzer.tsx
+   1:46  error    'useMemo' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  13:10  error    'isLogScale' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  13:22  error    'setIsLogScale' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  24:23  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\SpectrumAnalyzer.tsx:24:23
+  22 |     
+  23 |     if (!dataKey || waveformHistory.length < 256) {
+> 24 |       if (cachedData) setCachedData(null);
+     |                       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  25 |       return;
+  26 |     }
+  27 |       react-hooks/set-state-in-effect
+  41:6   warning  React Hook useEffect has a missing dependency: 'cachedData'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+
+C:\projects\uart\src\pages\SimulationDashboard\components\StatBar.tsx
+   61:3   error  'framesPerSecond' is defined but never used. Allowed unused args must match /^_/u                 @typescript-eslint/no-unused-vars
+   77:3   error  'onConnectNetwork' is defined but never used. Allowed unused args must match /^_/u                @typescript-eslint/no-unused-vars
+   78:3   error  'onDisconnectNetwork' is defined but never used. Allowed unused args must match /^_/u             @typescript-eslint/no-unused-vars
+   80:3   error  'analyzerModeLabel' is assigned a value but never used. Allowed unused args must match /^_/u      @typescript-eslint/no-unused-vars
+  102:10  error  'wsUrl' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u             @typescript-eslint/no-unused-vars
+  102:17  error  'setWsUrl' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u          @typescript-eslint/no-unused-vars
+  106:9   error  'backendConnected' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+
+C:\projects\uart\src\pages\SimulationDashboard\components\TabContent.tsx
+  29:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  37:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\Telemetry\Gauge.tsx
+  21:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\Telemetry\Gauge.tsx:21:5
+  19 |   useEffect(() => {
+  20 |     // Session Min/Max
+> 21 |     setSessionMin(m => Math.min(m, value));
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  22 |     setSessionMax(m => Math.max(m, value));
+  23 |
+  24 |     // Trend calculation  react-hooks/set-state-in-effect
+
+C:\projects\uart\src\pages\SimulationDashboard\components\Telemetry\TelemetryPanel.tsx
+   1:23  error  'useState' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                     @typescript-eslint/no-unused-vars
+  75:9   error  'handleLayoutChange' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  @typescript-eslint/no-unused-vars
+  75:56  error  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\TestSuiteRunner.tsx
+  62:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\projects\uart\src\pages\SimulationDashboard\components\ValidationControls.tsx
+  16:61  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\projects\uart\src\pages\SimulationDashboard\components\ValidationControls.tsx:16:61
+  14 |   const { t } = useTranslation();
+  15 |   const [name, setName] = useState(t('validation.defaultTestName'));
+> 16 |   const [deviceId, setDeviceId] = useState(`MN-${Math.floor(Math.random() * 10000)}`);
+     |                                                             ^^^^^^^^^^^^^ Cannot call impure function
+  17 |   const [operator, setOperator] = useState('Mustafa Sercan Sak');
+  18 |   
+  19 |   const [targets, setTargets] = useState<ValidationTarget[]>(() => {  react-hooks/purity
+  26:60  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  27:60  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  28:21  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+
+✖ 190 problems (178 errors, 12 warnings)
+

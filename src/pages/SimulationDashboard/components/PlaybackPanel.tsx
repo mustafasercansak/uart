@@ -5,7 +5,7 @@ import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface PlaybackPanelProps {
   recordings: RecordingMetadata[];
-  onPlay: (data: any[]) => void;
+  onPlay: (data: Array<{ time: number; frame: import('../../../types').GeneratedFrame }>) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
   status: SimulationStatus;
@@ -36,7 +36,7 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
 
   useEffect(() => {
     onRefresh();
-  }, []);
+  }, [onRefresh]);
 
   const handleRefresh = async () => {
     setLoading(true);

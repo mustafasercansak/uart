@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Settings, BarChart3, Maximize2, Zap } from 'lucide-react';
 import { DSPEngine, type WindowType } from '../../../engines/DSPEngine';
 
@@ -10,7 +10,6 @@ interface SpectrumAnalyzerProps {
 const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, dataKey }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [windowType, setWindowType] = useState<WindowType>('Hanning');
-  const [isLogScale, setIsLogScale] = useState(true);
 
   const lastCalcTime = useRef(0);
   const [cachedData, setCachedData] = useState<Float32Array | null>(null);
@@ -21,7 +20,7 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
     if (now - lastCalcTime.current < 50) return; // ~20 FPS throttle
     
     if (!dataKey || waveformHistory.length < 256) {
-      if (cachedData) setCachedData(null);
+      setCachedData(null);
       return;
     }
     

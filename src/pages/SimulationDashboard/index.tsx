@@ -23,11 +23,11 @@ import {
   ClipboardList,
   FileDown,
   Hammer,
+  GraduationCap,
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios, saveProfile as persistProfile } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
-import { parseFrame } from '../../engines/FrameParser';
 import ProfileEditorModal from './components/ProfileEditorModal';
 import TriggerManager from './components/TriggerManager';
 import ValidationControls from './components/ValidationControls';
@@ -53,13 +53,19 @@ const ERROR_TYPES: Array<{ type: ErrorType; key: string; color: string }> = [
   { type: 'delay_frame', key: 'errors.delay', color: 'text-blue-400 border-blue-800/50 bg-blue-900/20 hover:bg-blue-900/40' },
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string; color: string }>;
+  label?: string | number;
+}
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!active || !payload || !payload.length) return null;
   return (
     <div className="bg-gray-950 border border-gray-800 p-2 font-mono text-[10px] shadow-xl">
       <div className="text-gray-500 mb-1">{label}ms</div>
       <div className="space-y-1">
-        {payload.map((entry: any) => (
+        {payload.map((entry) => (
           <div key={entry.name} className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
             <span className="text-gray-300">{entry.name}:</span>
@@ -117,7 +123,7 @@ export default function SimulationDashboard() {
     setDiffFrame, setResponderRules,
     deleteRecording, refreshRecordings,
     setSignalIntegrity, setTriggers,
-    startValidation, stopValidation, cancelValidation, deleteValidationSession
+    startValidation, stopValidation
   } = useSimulation();
 
   const { 
@@ -138,20 +144,13 @@ export default function SimulationDashboard() {
     pendingErrors,
     exchanges,
     timingStats,
-    watchlist,
     analyzerMode,
     serialConnected,
     networkConnected,
     isRecording,
-    conversationLogs,
     availablePorts,
     selectedExchangeId,
     displayFilter,
-    diffFrames,
-    responderRules,
-    recordings,
-    playbackIndex,
-    playbackTotal
   } = state;
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -160,7 +159,7 @@ export default function SimulationDashboard() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
 
-  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder';
+  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn';
   const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>('waveforms');
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -191,7 +190,7 @@ export default function SimulationDashboard() {
     }
   };
 
-  const tabs: Array<{ id: CenterTabType; icon: any; label: string; color: string; shadow: string }> = [
+  const tabs: Array<{ id: CenterTabType; icon: import('lucide-react').LucideIcon; label: string; color: string; shadow: string }> = [
     { id: 'waveforms', icon: LineChart, label: 'dashboard.waveforms', color: 'bg-blue-600', shadow: 'shadow-blue-900/20' },
     { id: 'logic', icon: Zap, label: 'dashboard.logic', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
     { id: 'telemetry', icon: GaugeIcon, label: 'dashboard.telemetry', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/20' },
@@ -208,6 +207,7 @@ export default function SimulationDashboard() {
     { id: 'testsuite', icon: ClipboardList, label: 'dashboard.testsuite', color: 'bg-purple-600', shadow: 'shadow-purple-900/40' },
     { id: 'report', icon: FileDown, label: 'dashboard.report', color: 'bg-rose-600', shadow: 'shadow-rose-900/40' },
     { id: 'builder', icon: Hammer, label: 'dashboard.builder', color: 'bg-amber-600', shadow: 'shadow-amber-900/40' },
+    { id: 'learn', icon: GraduationCap, label: 'dashboard.learn', color: 'bg-pink-600', shadow: 'shadow-pink-900/40' },
   ];
 
   const handleSaveProfile = (profile: FrameProfile) => {
@@ -279,30 +279,6 @@ export default function SimulationDashboard() {
     exchanges.find(ex => ex.id === selectedExchangeId) || null, 
     [exchanges, selectedExchangeId]
   );
-
-  const analyzerFrame = useMemo(() => {
-    if (selectedSnapshotFrame) return selectedSnapshotFrame;
-
-    if (selectedExchange && selectedProfile) {
-        const entry = selectedExchange.tx || selectedExchange.rx;
-        if (entry) {
-            const bytesFromHex = entry.rawHex.split(' ').map(h => parseInt(h, 16));
-            const parsedFields = parseFrame(selectedProfile, bytesFromHex);
-            
-            return {
-                uId: `snap-${entry.timestamp}-${Math.random()}`,
-                frameNumber: 0,
-                timestampMs: entry.timestamp,
-                rawHex: entry.rawHex,
-                rawBytes: bytesFromHex,
-                fields: parsedFields || [],
-                errors: []
-            } as GeneratedFrame;
-        }
-    }
-    if (selectedFrame) return selectedFrame;
-    return lastFrame;
-  }, [exchanges, selectedExchangeId, selectedFrame, selectedSnapshotFrame, lastFrame, selectedProfile]);
 
   return (
     <div className="h-full flex flex-col bg-gray-950 overflow-hidden text-gray-200 font-sans">

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Cpu, AlertTriangle, CheckCircle, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { GeneratedFrame, FrameProfile } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 import {
   decodeModbusRTU,
   decodeNMEA,
@@ -46,6 +47,7 @@ function FrameDecodeCard({
   index: number;
   profile: FrameProfile | null;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(index === 0);
 
   const detected = useMemo(() => {
@@ -65,7 +67,7 @@ function FrameDecodeCard({
       if (profile) {
         const parsed = parseFrame(profile, frame.rawBytes);
         if (parsed) {
-          return {
+          const res: import('../../../engines/HighLevelDecoders').DecodedResult = {
             valid: true,
             fields: parsed.map(f => ({
               name: f.name,
@@ -74,6 +76,7 @@ function FrameDecodeCard({
               highlight: 'ok' as const
             }))
           };
+          return res;
         }
       }
     } catch (err) {
@@ -85,9 +88,9 @@ function FrameDecodeCard({
   const isValid = decoded?.valid ?? false;
   const isCRCOk =
     decoded && 'crcValid' in decoded
-      ? (decoded as any).crcValid
+      ? (decoded as { crcValid: boolean }).crcValid
       : decoded && 'checksumValid' in decoded
-      ? (decoded as any).checksumValid
+      ? (decoded as { checksumValid: boolean }).checksumValid
       : null;
 
   const protocolLabel =
@@ -95,7 +98,7 @@ function FrameDecodeCard({
       ? 'Modbus RTU'
       : detected === 'nmea'
       ? 'NMEA 0183'
-      : profile ? profile.name : 'Bilinmeyen';
+      : profile ? profile.name : t('protocolDecoder.unknown');
 
   return (
     <div className="border border-gray-800/60 rounded-lg overflow-hidden mb-2">
@@ -130,7 +133,7 @@ function FrameDecodeCard({
           )}
           {!isValid && (
             <span className="flex items-center gap-1 text-[10px] text-yellow-400">
-              <HelpCircle size={11} /> Decode Hatası
+              <HelpCircle size={11} /> {t('protocolDecoder.decodeError')}
             </span>
           )}
         </span>
@@ -141,11 +144,11 @@ function FrameDecodeCard({
         <div className="px-2 py-1 bg-gray-950/60">
           {!decoded || !isValid ? (
             <p className="text-gray-500 text-[11px] font-mono py-2 text-center">
-              Bu frame {protocolLabel} protokolüne uymuyor
+              {t('protocolDecoder.noMatch').replace('{protocol}', protocolLabel)}
             </p>
           ) : (
             <div>
-              {(decoded as any).fields?.map((field: DecodedField, i: number) => (
+              {decoded.fields?.map((field: DecodedField, i: number) => (
                 <FieldRow key={i} field={field} />
               ))}
             </div>
@@ -157,6 +160,7 @@ function FrameDecodeCard({
 }
 
 export default function ProtocolDecoderPanel({ frames, profile: _profile }: Props) {
+  const { t } = useTranslation();
   const [protocol, setProtocol] = useState<Protocol>('auto');
   const [maxFrames, setMaxFrames] = useState(20);
 
@@ -178,7 +182,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 bg-gray-900/40">
         <Cpu size={14} className="text-indigo-400" />
         <span className="text-[11px] font-black uppercase tracking-widest text-gray-300">
-          Protokol Çözücü
+          {t('protocolDecoder.title')}
         </span>
 
         {/* Protocol selector */}
@@ -194,7 +198,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
               }`}
             >
               {p === 'auto'
-                ? `Otomatik${autoDetected !== 'unknown' ? ` (${autoDetected === 'nmea' ? 'NMEA' : 'Modbus RTU'})` : ''}`
+                ? `${t('protocolDecoder.auto')}${autoDetected !== 'unknown' ? ` (${autoDetected === 'nmea' ? 'NMEA' : 'Modbus RTU'})` : ''}`
                 : p === 'modbus_rtu'
                 ? 'Modbus RTU'
                 : 'NMEA 0183'}
@@ -203,7 +207,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
         </div>
 
         <div className="ml-auto flex items-center gap-2 text-gray-500">
-          <span className="text-[10px]">Son</span>
+          <span className="text-[10px]">{t('protocolDecoder.last')}</span>
           <select
             value={maxFrames}
             onChange={(e) => setMaxFrames(Number(e.target.value))}
@@ -223,7 +227,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
         {visibleFrames.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2">
             <Cpu size={32} className="opacity-30" />
-            <p className="text-[11px]">Henüz frame yok — simülasyonu başlatın</p>
+            <p className="text-[11px]">{t('protocolDecoder.noFrames')}</p>
           </div>
         ) : (
           visibleFrames.map((f, i) => (

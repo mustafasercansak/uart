@@ -1,5 +1,6 @@
 import React, { useState, memo, useMemo } from 'react';
 import type { GeneratedFrame, FrameProfile, FlagsConfig } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface VisualProtocolAnalyzerProps {
   frame: GeneratedFrame | null;
@@ -7,13 +8,13 @@ interface VisualProtocolAnalyzerProps {
 }
 
 const VisualProtocolAnalyzer = memo(({ frame, profile }: VisualProtocolAnalyzerProps) => {
+  const { t } = useTranslation();
   const [selectedByteIndex, setSelectedByteIndex] = useState<number | null>(null);
 
   // Calculate field mapping for each byte index
   const byteMap = useMemo(() => {
     if (!profile) return [];
-    const map: Array<{ field: any; byteInField: number }> = [];
-    let currentByte = 0;
+    const map: Array<{ field: import('../../../types').Field; byteInField: number }> = [];
     for (const field of profile.fields) {
       for (let i = 0; i < field.byteWidth; i++) {
         map.push({ field, byteInField: i });
@@ -25,7 +26,7 @@ const VisualProtocolAnalyzer = memo(({ frame, profile }: VisualProtocolAnalyzerP
   if (!frame || !profile) {
     return (
       <div className="h-24 flex items-center justify-center bg-gray-950/20 border-t border-gray-800 text-gray-700 font-mono text-[10px] uppercase tracking-[0.3em]">
-        Analizör için veri bekleniyor...
+        {t('visualAnalyzer.waitingData')}
       </div>
     );
   }
@@ -39,7 +40,7 @@ const VisualProtocolAnalyzer = memo(({ frame, profile }: VisualProtocolAnalyzerP
       <div className="px-4 py-1.5 flex items-center justify-between border-b border-gray-800 bg-gray-950/40">
         <div className="text-gray-500 text-[10px] font-mono uppercase tracking-widest flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-          Görsel Protokol Analizörü (Bit-Level)
+          {t('visualAnalyzer.title')}
         </div>
         <div className="flex gap-4">
            {['fixed', 'range', 'waveform', 'flags', 'checksum'].map(type => (
@@ -93,7 +94,7 @@ const VisualProtocolAnalyzer = memo(({ frame, profile }: VisualProtocolAnalyzerP
               <div className="flex items-center justify-between border-b border-gray-800/50 pb-2">
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                    Byte {selectedByteIndex} ({selectedByteInfo?.field.name}) Detayı:
+                    {t('visualAnalyzer.byteDetail').replace('{index}', String(selectedByteIndex)).replace('{name}', selectedByteInfo?.field.name || '')}
                   </span>
                   <span className="text-sm font-mono font-bold text-gray-200">
                     0b{selectedByteValue.toString(2).padStart(8, '0')}

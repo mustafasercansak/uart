@@ -11,7 +11,8 @@ import HardwareLayout from './HardwareLayout';
 import SequenceRunner from './SequenceRunner';
 import SpectrumAnalyzer from './SpectrumAnalyzer';
 import TriggerManager from './TriggerManager';
-import Visualizer3D from '../../../components/Visualizer/Visualizer3D';
+import MedicalRoomScene from '../../../components/Visualizer/MedicalRoomScene';
+import LearningMode from '../../../components/LearningMode/LearningMode';
 import ProtocolDecoderPanel from './ProtocolDecoderPanel';
 import TestSuiteRunner from './TestSuiteRunner';
 import ErrorReportPanel from './ErrorReportPanel';
@@ -25,19 +26,19 @@ interface TabContentProps {
   lastFrame: GeneratedFrame | null;
   lastRxFrame: GeneratedFrame | null;
   selectedProfile: FrameProfile | null;
-  waveformHistory: any[];
-  exchanges: any[];
+  waveformHistory: Array<Record<string, number>>;
+  exchanges: import('../../../types').Exchange[];
   hooks: {
-    startPlayback: any;
-    deleteRecording: any;
-    refreshRecordings: any;
-    pausePlayback: any;
-    resumePlayback: any;
-    seekPlayback: any;
-    stepPlayback: any;
-    setDiffFrame: any;
-    setResponderRules: any;
-    setTriggers: any;
+    startPlayback: (data: Array<{ time: number; frame: import('../../../types').GeneratedFrame }>) => void;
+    deleteRecording: (id: string) => void;
+    refreshRecordings: () => void;
+    pausePlayback: () => void;
+    resumePlayback: () => void;
+    seekPlayback: (index: number) => void;
+    stepPlayback: (delta: number) => void;
+    setDiffFrame: (index: number, frame: GeneratedFrame | null) => void;
+    setResponderRules: (rules: import('../../../types').ResponderRule[]) => void;
+    setTriggers: (triggers: import('../../../types').Trigger[]) => void;
     onSendFrame?: (bytes: number[]) => void;
   };
   elapsedMs?: number;
@@ -171,7 +172,7 @@ export default function TabContent({
         />
       );
     case 'visualizer':
-      return <Visualizer3D lastFrame={lastFrame} />;
+      return <MedicalRoomScene lastFrame={lastFrame} activeProfileId={selectedProfile?.id ?? null} profiles={profiles} />;
     case 'decoder':
       return (
         <ProtocolDecoderPanel
@@ -201,6 +202,13 @@ export default function TabContent({
         <FrameBuilder
           profile={selectedProfile}
           onSendFrame={hooks.onSendFrame ?? (() => {})}
+        />
+      );
+    case 'learn':
+      return (
+        <LearningMode
+          lastFrame={lastFrame}
+          activeProfile={selectedProfile}
         />
       );
     default:

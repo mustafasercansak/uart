@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { GitCompare, Radio, Trash2, LayoutDashboard } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface RxMonitorProps {
   lastRxFrame: GeneratedFrame | null;
@@ -13,6 +14,7 @@ const MAX_RX_HISTORY = 50;
 
 const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonitorProps) => {
   const { setDiffFrame, addWidget } = useSimulation();
+  const { t } = useTranslation();
   const [rxHistory, setRxHistory] = useState<GeneratedFrame[]>([]);
   const prevRxUid = useRef<string | null>(null);
 
@@ -36,7 +38,7 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
         <div className="flex items-center gap-2">
           <Radio size={12} className={rxHistory.length > 0 ? 'text-blue-400 animate-pulse' : 'text-gray-600'} />
           <span className="text-blue-400 text-[10px] font-mono uppercase tracking-wider">
-            Gelen RX Frames
+            {t('rxMonitor.title')}
           </span>
           {rxHistory.length > 0 && (
             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-900/40 text-blue-300 border border-blue-800/40">
@@ -50,14 +52,14 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
               <button
                 onClick={() => setDiffFrame(0, lastRxFrame)}
                 className="p-1 hover:bg-blue-500/20 text-blue-500 rounded transition-colors"
-                title="A Slotuna Gönder"
+                title={t('rxMonitor.slotA')}
               >
                 <GitCompare size={11} />
               </button>
               <button
                 onClick={() => setDiffFrame(1, lastRxFrame)}
                 className="p-1 hover:bg-purple-500/20 text-purple-500 rounded transition-colors"
-                title="B Slotuna Gönder"
+                title={t('rxMonitor.slotB')}
               >
                 <GitCompare size={11} />
               </button>
@@ -67,7 +69,7 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
             <button
               onClick={clearHistory}
               className="p-1 hover:bg-red-900/30 text-gray-600 hover:text-red-400 rounded transition-colors"
-              title="Geçmişi Temizle"
+              title={t('rxMonitor.clearHistory')}
             >
               <Trash2 size={11} />
             </button>
@@ -79,7 +81,7 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
       <div className="max-h-52 overflow-y-auto custom-scrollbar">
         {rxHistory.length === 0 ? (
           <div className="px-4 py-3 text-gray-700 font-mono text-[10px] italic">
-            Dış cihazdan veri bekleniyor...
+            {t('rxMonitor.waitingData')}
           </div>
         ) : (
           <div className="divide-y divide-gray-800/30">
@@ -117,7 +119,7 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
 
                     {isLatest && (
                       <span className="text-[8px] font-mono text-blue-400 animate-pulse ml-auto shrink-0">
-                        ● YENİ
+                        {t('rxMonitor.new')}
                       </span>
                     )}
 

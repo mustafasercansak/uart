@@ -64,7 +64,7 @@ export function useBackendConnection(
         if (currentSocket.readyState === WebSocket.OPEN) currentSocket.close();
       }
     };
-  }, []);
+  }, [dispatch, msgBufferRef]);
 
   return { backendWsRef };
 }

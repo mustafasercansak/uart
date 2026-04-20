@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSimulation } from '../../hooks/useSimulation';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { Scenario, ScenarioStep, ActionType, ActionConfig, FrameProfile } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { loadScenarios, saveScenario as persistScenario, deleteScenario as persistDelete, loadProfiles } from '../../store/storage';
@@ -16,14 +17,7 @@ const SCENARIO_CATEGORY_COLORS: Record<string, string> = {
   combined: '#06b6d4',
 };
 
-const SCENARIO_CATEGORY_LABELS: Record<string, string> = {
-  custom: 'Özel',
-  physiological: 'Fizyolojik',
-  error: 'Hata',
-  stress: 'Stres',
-  protocol: 'Protokol',
-  combined: 'Karma',
-};
+// SCENARIO_CATEGORY_LABELS now built inside component using t()
 
 const PRESET_SCENARIOS: Partial<Scenario>[] = [
   {
@@ -75,7 +69,17 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
 ];
 
 export default function ScenarioEditor() {
+  const { t } = useTranslation();
   const { state } = useSimulation();
+
+  const SCENARIO_CATEGORY_LABELS: Record<string, string> = {
+    custom: t('scenarioEditor.categoryLabel.custom'),
+    physiological: t('scenarioEditor.categoryLabel.physiological'),
+    error: t('scenarioEditor.categoryLabel.error'),
+    stress: t('scenarioEditor.categoryLabel.stress'),
+    protocol: t('scenarioEditor.categoryLabel.protocol'),
+    combined: t('scenarioEditor.categoryLabel.combined'),
+  };
   
   // Data State
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
@@ -127,7 +131,7 @@ export default function ScenarioEditor() {
         persistScenario(newScenario);
         setSelectedId(newScenario.id);
       } catch (err) {
-        alert('Geçersiz senaryo dosyası!');
+        alert(t('scenarioEditor.invalidFile'));
       }
     };
     reader.readAsText(file);
@@ -169,7 +173,7 @@ export default function ScenarioEditor() {
   };
 
   const remove = (id: string) => {
-    if (confirm('Bu senaryoyu silmek istediğinize emin misiniz?')) {
+    if (confirm(t('scenarioEditor.confirmDelete'))) {
       const newScenarios = scenarios.filter(s => s.id !== id);
       setScenarios(newScenarios);
       persistDelete(id);
@@ -234,21 +238,21 @@ export default function ScenarioEditor() {
       {/* Sidebar List (Fixed) */}
       <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col shrink-0 overflow-hidden">
         <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/40 whitespace-nowrap">
-          <span className="text-gray-400 text-xs font-mono uppercase tracking-widest font-bold">Senaryolar</span>
+          <span className="text-gray-400 text-xs font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.scenarios')}</span>
           <div className="flex gap-1 items-center">
             <button
                onClick={() => setShowHelp(!showHelp)}
                className={`p-1.5 rounded-lg transition-all font-bold ${showHelp ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-800'}`}
-               title="Yardım Rehberi"
+               title={t('scenarioEditor.helpGuide')}
             >
               ❓
             </button>
-            <label className="text-gray-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-gray-800 transition-all cursor-pointer font-bold" title="Dosyadan Yükle">
+            <label className="text-gray-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-gray-800 transition-all cursor-pointer font-bold" title={t('scenarioEditor.loadFromFile')}>
               📂
               <input type="file" className="hidden" accept=".json" onChange={importScenario} />
             </label>
-            <button onClick={() => setShowPresets(true)} className="text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-800 transition-all font-bold" title="Şablonlar">★</button>
-            <button onClick={createNew} className="text-green-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-green-900/20 transition-all text-lg" title="Yeni Senaryo">+</button>
+            <button onClick={() => setShowPresets(true)} className="text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-800 transition-all font-bold" title={t('scenarioEditor.templates')}>★</button>
+            <button onClick={createNew} className="text-green-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-green-900/20 transition-all text-lg" title={t('scenarioEditor.newScenario')}>+</button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -260,13 +264,13 @@ export default function ScenarioEditor() {
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: SCENARIO_CATEGORY_COLORS[s.category ?? 'custom'] }} />
                   <span className="truncate font-mono text-xs">{s.name}</span>
                 </div>
-                <div className="text-[10px] opacity-40 mt-1 ml-3.5 italic">{s.steps.length} adım</div>
+                <div className="text-[10px] opacity-40 mt-1 ml-3.5 italic">{t('scenarioEditor.stepCount').replace('{count}', String(s.steps.length))}</div>
               </div>
               {selectedId === s.id && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); exportScenario(s); }}
                   className="p-2 text-gray-600 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
-                  title="Senaryoyu İndir"
+                  title={t('scenarioEditor.downloadScenario')}
                 >
                   📥
                 </button>
@@ -281,7 +285,7 @@ export default function ScenarioEditor() {
         {!scenario ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-700 space-y-4">
             <div className="text-7xl opacity-5">⏱</div>
-            <div className="font-mono text-xs uppercase tracking-[0.4em] opacity-40">Senaryo Seçimi Bekleniyor</div>
+            <div className="font-mono text-xs uppercase tracking-[0.4em] opacity-40">{t('scenarioEditor.waitingForSelection')}</div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
@@ -289,17 +293,17 @@ export default function ScenarioEditor() {
             <div className="p-5 border-b border-gray-800 bg-gray-950/20 flex items-center justify-between">
               <div className="flex-1 max-w-xl">
                 <input value={scenario.name} onChange={(e) => updateScenario({ name: e.target.value })}
-                  className="bg-transparent text-gray-100 text-lg font-mono font-bold focus:outline-none w-full border-b border-transparent hover:border-gray-800 focus:border-green-800 transition-all" placeholder="Senaryo Başlığı..." />
+                  className="bg-transparent text-gray-100 text-lg font-mono font-bold focus:outline-none w-full border-b border-transparent hover:border-gray-800 focus:border-green-800 transition-all" placeholder={t('scenarioEditor.scenarioTitle')} />
                 <div className="flex items-center gap-4 mt-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] text-gray-600 font-mono uppercase font-bold">Kategori</span>
+                    <span className="text-[10px] text-gray-600 font-mono uppercase font-bold">{t('scenarioEditor.category')}</span>
                     <select value={scenario.category || 'custom'} onChange={(e) => updateScenario({ category: e.target.value as any })}
                       className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-[10px] font-mono text-gray-400 outline-none hover:border-gray-700 transition-colors">
                       {Object.entries(SCENARIO_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] text-gray-600 font-mono uppercase font-bold">Max Süre</span>
+                    <span className="text-[10px] text-gray-600 font-mono uppercase font-bold">{t('scenarioEditor.maxDuration')}</span>
                     <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1">
                       <input type="number" step={100} value={scenario.durationMs || 10000} onChange={(e) => updateScenario({ durationMs: Number(e.target.value) })}
                         className="bg-transparent text-[10px] font-mono text-green-500 w-16 outline-none text-right" />
@@ -309,8 +313,8 @@ export default function ScenarioEditor() {
                 </div>
               </div>
               <div className="flex gap-2.5">
-                <button onClick={() => remove(scenario.id)} className="px-3.5 py-2 bg-red-900/10 text-red-500/70 hover:text-red-400 rounded-xl text-[10px] font-mono uppercase border border-red-900/20 transition-all">Senaryoyu Sil</button>
-                <div className="px-6 py-2 bg-green-900/30 text-green-400 rounded-xl text-[11px] font-mono uppercase font-bold border border-green-800/40">Kayıtlı</div>
+                <button onClick={() => remove(scenario.id)} className="px-3.5 py-2 bg-red-900/10 text-red-500/70 hover:text-red-400 rounded-xl text-[10px] font-mono uppercase border border-red-900/20 transition-all">{t('scenarioEditor.deleteScenario')}</button>
+                <div className="px-6 py-2 bg-green-900/30 text-green-400 rounded-xl text-[11px] font-mono uppercase font-bold border border-green-800/40">{t('scenarioEditor.saved')}</div>
               </div>
             </div>
 
@@ -319,14 +323,14 @@ export default function ScenarioEditor() {
               {/* Step List */}
               <div className="flex-1 flex flex-col min-h-0 border-r border-gray-800/40">
                 <div className="px-6 py-4 border-b border-gray-800/50 flex items-center justify-between bg-gray-950/30">
-                  <span className="text-gray-500 text-[10px] font-mono uppercase tracking-widest font-bold">Olay Akışı ({sortedSteps.length})</span>
-                  <button onClick={addStep} className="text-green-400 hover:text-green-300 text-[10px] font-mono font-bold tracking-widest bg-green-900/20 px-3 py-1 rounded-full border border-green-800/30 transition-all hover:scale-105active:scale-95">+ ADIM EKLE</button>
+                  <span className="text-gray-500 text-[10px] font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.eventFlow')} ({sortedSteps.length})</span>
+                  <button onClick={addStep} className="text-green-400 hover:text-green-300 text-[10px] font-mono font-bold tracking-widest bg-green-900/20 px-3 py-1 rounded-full border border-green-800/30 transition-all hover:scale-105active:scale-95">{t('scenarioEditor.addStep')}</button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-3">
                   {sortedSteps.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-30 text-gray-500 font-mono text-center">
                       <div className="text-4xl mb-4">⊙</div>
-                      <div className="text-xs italic">İlk adımı sağ üstten ekleyerek başlayın.</div>
+                      <div className="text-xs italic">{t('scenarioEditor.firstStep')}</div>
                     </div>
                   ) : (
                     sortedSteps.map((step) => (
@@ -349,7 +353,7 @@ export default function ScenarioEditor() {
               {selectedStepId && (
                 <div className="w-96 bg-gray-950 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
                   <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/60">
-                    <h3 className="text-[11px] font-mono font-bold text-gray-400 uppercase tracking-widest">Parametreler</h3>
+                    <h3 className="text-[11px] font-mono font-bold text-gray-400 uppercase tracking-widest">{t('scenarioEditor.parameters')}</h3>
                     <button onClick={() => setSelectedStepId(null)} className="text-gray-500 hover:text-white text-xl p-1">×</button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-6">
@@ -360,7 +364,7 @@ export default function ScenarioEditor() {
                         profile={profiles.find(f => f.id === scenario.profileId) || null} 
                       />
                     ) : (
-                      <div className="h-full flex items-center justify-center text-gray-700 text-[10px] italic font-mono uppercase">Veri Bekleniyor</div>
+                      <div className="h-full flex items-center justify-center text-gray-700 text-[10px] italic font-mono uppercase">{t('scenarioEditor.waitingData')}</div>
                     )}
                   </div>
                 </div>
@@ -374,33 +378,33 @@ export default function ScenarioEditor() {
       {showHelp && (
         <div className="absolute top-0 right-0 bottom-0 w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-[150] animate-in slide-in-from-right duration-300 flex flex-col">
           <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-950/40">
-            <h3 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-widest">Senaryo Rehberi</h3>
+            <h3 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-widest">{t('scenarioEditor.helpGuide')}</h3>
             <button onClick={() => setShowHelp(false)} className="text-gray-500 hover:text-white text-xl p-1">×</button>
           </div>
           <div className="flex-1 overflow-y-auto p-5 custom-scrollbar space-y-6">
              <div className="space-y-4">
                <div>
-                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⏱ Zamanlama (atMs)</h4>
-                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">Simülasyon başladıktan kaç milisaniye sonra bu adımın tetikleneceğini belirler. Adımlar otomatik olarak zamana göre sıralanır.</p>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⏱ {t('scenarioEditor.timingHelp')}</h4>
+                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">{t('scenarioEditor.timingDesc')}</p>
                </div>
                <div>
-                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">🎯 Hedef (Target)</h4>
-                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">`field:İsim` formatında profilinizdeki bir alanı hedefleyebilirsiniz. Örn: `field:BPM`</p>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">🎯 {t('scenarioEditor.targetHelp')}</h4>
+                  <p className="text-[10px] leading-relaxed text-gray-500 font-mono">{t('scenarioEditor.targetDesc')}</p>
                </div>
                <div>
-                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⚡ İşlem Türleri</h4>
+                  <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase mb-2">⚡ {t('scenarioEditor.actionTypes')}</h4>
                   <ul className="space-y-2">
-                    <li className="text-[10px] font-mono text-gray-500"><span className="text-emerald-500">SET:</span> Değeri aniden değiştirir.</li>
-                    <li className="text-[10px] font-mono text-gray-500"><span className="text-blue-500">RAMP:</span> Değeri yumuşak bir geçişle değiştirir (Örn: nabız düşüşü).</li>
-                    <li className="text-[10px] font-mono text-gray-500"><span className="text-rose-500">INJECT_ERROR:</span> Protokol seviyesinde hata üretir (CRC/Sync).</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-emerald-500">SET:</span> {t('scenarioEditor.actionSet')}</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-blue-500">RAMP:</span> {t('scenarioEditor.actionRamp')}</li>
+                    <li className="text-[10px] font-mono text-gray-500"><span className="text-rose-500">INJECT_ERROR:</span> {t('scenarioEditor.actionInjectError')}</li>
                   </ul>
                </div>
              </div>
              <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl">
-               <p className="text-[10px] font-mono text-blue-400 italic">"Bu aracı sensörünüz olmadığında donanımınızı stres testine sokmak için kullanabilirsiniz."</p>
+               <p className="text-[10px] font-mono text-blue-400 italic">{t('scenarioEditor.quote')}</p>
              </div>
              <div className="pt-4">
-                <a href="/docs/automation.md" target="_blank" className="text-[10px] font-mono text-blue-400 underline hover:text-blue-300">DETAYLI REHBERİ AÇ (YENİ SEKME)</a>
+                <a href="/docs/automation.md" target="_blank" className="text-[10px] font-mono text-blue-400 underline hover:text-blue-300">{t('scenarioEditor.openDocs')}</a>
              </div>
           </div>
         </div>
@@ -411,7 +415,7 @@ export default function ScenarioEditor() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] backdrop-blur-md" onClick={() => setShowPresets(false)}>
           <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-green-400 font-mono font-bold text-base tracking-widest uppercase">Kütüphane Şablonları</h2>
+              <h2 className="text-green-400 font-mono font-bold text-base tracking-widest uppercase">{t('scenarioEditor.libraryTemplates')}</h2>
               <button onClick={() => setShowPresets(false)} className="text-gray-500 hover:text-white text-2xl">×</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -429,14 +433,16 @@ export default function ScenarioEditor() {
   );
 }
 
-const ACTION_CONFIGS: Record<ActionType, { label: string; fields: Array<{ key: string; label: string; type: string }> }> = {
-  set: { label: 'Değer Ata', fields: [{ key: 'value', label: 'Değer', type: 'number' }] },
-  range: { label: 'Aralık Değiştir', fields: [{ key: 'min', label: 'Min', type: 'number' }, { key: 'max', label: 'Max', type: 'number' }] },
-  ramp: { label: 'Ramp Geçişi', fields: [{ key: 'from', label: 'Başlangıç', type: 'number' }, { key: 'to', label: 'Bitiş', type: 'number' }, { key: 'durationMs', label: 'Süre (ms)', type: 'number' }] },
-  toggle: { label: 'Bit Çevir', fields: [] },
-  pulse: { label: 'Geçici Değer', fields: [{ key: 'value', label: 'Değer', type: 'number' }, { key: 'durationMs', label: 'Süre (ms)', type: 'number' }] },
-  inject_error: { label: 'Hata Enjekte Et', fields: [{ key: 'count', label: 'Sayı', type: 'number' }] },
-};
+function buildActionConfigs(t: (key: string) => string): Record<ActionType, { label: string; fields: Array<{ key: string; label: string; type: string }> }> {
+  return {
+    set: { label: t('scenarioEditor.actionLabel.set'), fields: [{ key: 'value', label: t('scenarioEditor.actionField.value'), type: 'number' }] },
+    range: { label: t('scenarioEditor.actionLabel.range'), fields: [{ key: 'min', label: t('scenarioEditor.actionField.min'), type: 'number' }, { key: 'max', label: t('scenarioEditor.actionField.max'), type: 'number' }] },
+    ramp: { label: t('scenarioEditor.actionLabel.ramp'), fields: [{ key: 'from', label: t('scenarioEditor.actionField.from'), type: 'number' }, { key: 'to', label: t('scenarioEditor.actionField.to'), type: 'number' }, { key: 'durationMs', label: t('scenarioEditor.actionField.durationMs'), type: 'number' }] },
+    toggle: { label: t('scenarioEditor.actionLabel.toggle'), fields: [] },
+    pulse: { label: t('scenarioEditor.actionLabel.pulse'), fields: [{ key: 'value', label: t('scenarioEditor.actionField.value'), type: 'number' }, { key: 'durationMs', label: t('scenarioEditor.actionField.durationMs'), type: 'number' }] },
+    inject_error: { label: t('scenarioEditor.actionLabel.inject_error'), fields: [{ key: 'count', label: t('scenarioEditor.actionField.count'), type: 'number' }] },
+  };
+}
 
 function getActionColor(action: ActionType): string {
   const colors: Record<ActionType, string> = {
@@ -451,29 +457,31 @@ function getActionColor(action: ActionType): string {
 }
 
 function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: any | null; onChange: (s: ScenarioStep) => void }) {
+  const { t } = useTranslation();
   if (!step) return null;
 
+  const ACTION_CONFIGS = buildActionConfigs(t);
   const update = (patch: Partial<ScenarioStep>) => onChange({ ...step, ...patch });
   const updateConfig = (key: string, value: any) =>
     onChange({ ...step, actionConfig: { ...(step.actionConfig as Record<string, unknown>), [key]: value === '' ? 0 : (isNaN(Number(value)) ? value : Number(value)) } as ActionConfig });
 
-  const actionCfg = ACTION_CONFIGS[step.action] || { label: 'Bilinmeyen', fields: [] };
+  const actionCfg = ACTION_CONFIGS[step.action] || { label: t('scenarioEditor.actionLabel.unknown'), fields: [] };
   const inputCls = 'bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs font-mono text-gray-300 outline-none focus:border-green-600/40 w-full transition-all hover:border-gray-700';
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">Zaman (ms)</label>
+        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.time')}</label>
         <input type="number" min={0} className={inputCls} value={step.atMs} onChange={(e) => update({ atMs: Number(e.target.value) })} />
       </div>
 
       <div className="space-y-2">
-        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">Hedef (Field/Bit)</label>
+        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.target')}</label>
         <input className={inputCls} value={step.target} onChange={(e) => update({ target: e.target.value })} placeholder="örn: field:SpO2" />
       </div>
 
       <div className="space-y-2">
-        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">İşlem</label>
+        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.action')}</label>
         <select className={inputCls} value={step.action} onChange={(e) => update({ action: e.target.value as ActionType, actionConfig: {} })}>
           {Object.entries(ACTION_CONFIGS).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
         </select>
@@ -491,20 +499,20 @@ function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: 
 
       {step.action === 'inject_error' && (
         <div className="space-y-2">
-          <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">Hata Tipi</label>
+          <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.errorType')}</label>
           <select className={inputCls}
             value={(step.actionConfig as any).errorType ?? 'corrupt_checksum'}
             onChange={(e) => onChange({ ...step, actionConfig: { ...(step.actionConfig as Record<string, unknown>), errorType: e.target.value } as ActionConfig })}>
-            <option value="corrupt_checksum">Checksum Hatası</option>
-            <option value="skip_bytes">Sinyal Kaybı</option>
-            <option value="wrong_sync">Sync Hatası</option>
+            <option value="corrupt_checksum">{t('scenarioEditor.checksumError')}</option>
+            <option value="skip_bytes">{t('scenarioEditor.signalLoss')}</option>
+            <option value="wrong_sync">{t('scenarioEditor.syncError')}</option>
           </select>
         </div>
       )}
 
       <div className="space-y-2 pt-6 border-t border-gray-800/60">
-        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">Açıklama</label>
-        <textarea className={`${inputCls} min-h-[100px] text-gray-500 italic`} value={step.description ?? ''} onChange={(e) => update({ description: e.target.value })} placeholder="Notlar..." />
+        <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.notes')}</label>
+        <textarea className={`${inputCls} min-h-[100px] text-gray-500 italic`} value={step.description ?? ''} onChange={(e) => update({ description: e.target.value })} placeholder={t('scenarioEditor.notesPlaceholder')} />
       </div>
 
     </div>

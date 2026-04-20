@@ -1,9 +1,10 @@
-import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { memo, useCallback, useMemo, useEffect } from 'react';
 import { Settings2, Save, X, GripVertical, Plus, LayoutDashboard, Wand2, Activity } from 'lucide-react';
-import type { GeneratedFrame, Field, GridPanel, DashboardWidget, FrameProfile } from '../../../../types';
+import type { GeneratedFrame, Field, GridPanel, FrameProfile } from '../../../../types';
 import { useSimulation } from '../../../../hooks/useSimulation';
 import { SENSOR_TEMPLATES } from '../../../../data/templates';
 import DashboardGrid from '../DashboardGrid';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface TelemetryPanelProps {
   lastFrame: GeneratedFrame | null;
@@ -13,6 +14,7 @@ interface TelemetryPanelProps {
 }
 
 const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: TelemetryPanelProps) => {
+  const { t } = useTranslation();
   const { state, updateLayout, removeWidget } = useSimulation();
   const { dashboardLayout, profileId } = state;
   const currentProfile = useMemo(() => profiles?.find((p: FrameProfile) => p.id === profileId), [profiles, profileId]);
@@ -70,17 +72,6 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
     removeWidget(id);
   }, [removeWidget]);
 
-  const handleLayoutChange = useCallback((layoutItems: any[]) => {
-    const updated = (dashboardLayout?.widgets || []).map(w => {
-      const l = layoutItems.find(li => li.i === w.id);
-      if (l) {
-        return { ...w, x: l.x, y: l.y, w: l.w, h: l.h };
-      }
-      return w;
-    });
-    updateLayout(updated);
-  }, [dashboardLayout, updateLayout]);
-
   const handleUpdatePanel = useCallback((id: string, updates: Partial<GridPanel>) => {
     const updated = (dashboardLayout?.widgets || []).map(w => {
       if (w.id === id) {
@@ -107,8 +98,8 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
       <div className="flex-1 flex flex-col items-center justify-center p-8 m-4 border-2 border-dashed border-gray-900/50 rounded-2xl bg-gray-950/20">
         <Activity size={32} className="text-gray-800 mb-4 animate-pulse" />
         <div className="text-gray-700 font-mono text-xs uppercase tracking-widest text-center">
-            Veri akışı bekleniyor... <br/>
-            <span className="text-[10px] text-gray-800 mt-2 block opacity-50">Simülasyonu başlatın veya harici cihazı bağlayın</span>
+            {t('telemetryPanel.waitingData')} <br/>
+            <span className="text-[10px] text-gray-800 mt-2 block opacity-50">{t('telemetryPanel.startSimulation')}</span>
         </div>
       </div>
     );
@@ -120,7 +111,7 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
       <div className="shrink-0 px-6 py-2 flex justify-between items-center bg-gray-950/50 border-b border-gray-800/50">
         <div className="flex items-center gap-2">
           <Settings2 size={12} className="text-gray-500" />
-          <span className="text-[10px] font-mono font-black uppercase tracking-widest text-gray-400">Designer Mode</span>
+          <span className="text-[10px] font-mono font-black uppercase tracking-widest text-gray-400">{t('telemetryPanel.designerMode')}</span>
         </div>
         <div className="flex items-center gap-3">
             <span className="text-[9px] font-mono text-gray-600">PIN FIELDS FROM SIDEBAR OR DISSECTOR</span>
@@ -145,10 +136,10 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
                     <Plus size={10} className="text-white" />
                 </div>
              </div>
-             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 font-mono">Dashboard Hazır</h3>
+             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 font-mono">{t('telemetryPanel.dashboardReady')}</h3>
              <p className="text-[10px] text-gray-600 font-mono max-w-xs leading-relaxed mb-8">
-                Henüz bir gösterge eklenmemiş. <br/> 
-                Sol taraftaki <span className="text-blue-500">Sidebar (Frame Monitor)</span> veya <span className="text-emerald-500">Çözücü</span> panelindeki iğne ikonlarını kullanarak alanları buraya ekleyebilirsiniz.
+                {t('telemetryPanel.noWidgets')} <br/>
+                {t('telemetryPanel.pinFromSidebar')}
              </p>
 
              {matchingTemplate?.defaultLayout && (
@@ -158,8 +149,8 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
                 >
                     <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
                     <div className="flex flex-col items-start">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Şablon Düzenini Uygula</span>
-                        <span className="text-[8px] opacity-70 font-mono italic">{matchingTemplate.name} varsayılan widget'larını yükle</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">{t('telemetryPanel.applyTemplate')}</span>
+                        <span className="text-[8px] opacity-70 font-mono italic">{t('telemetryPanel.loadWidgets').replace('{name}', matchingTemplate.name)}</span>
                     </div>
                 </button>
              )}

@@ -27,7 +27,8 @@ describe('FrameParser', () => {
         endianness: 'little',
       },
     ],
-  } as any;
+    baudRate: 9600,
+  } as unknown as FrameProfile;
 
   it('correctly parses bytes into fields', () => {
     const bytes = [0xAA, 0xAA, 0x34, 0x12];

@@ -1,5 +1,6 @@
 import React, { useState, memo } from 'react';
 import { Play, Save, Info, AlertTriangle, Code } from 'lucide-react';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface ScriptEditorProps {
   initialCode?: string;
@@ -7,6 +8,7 @@ interface ScriptEditorProps {
 }
 
 const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
+  const { t } = useTranslation();
   const [code, setCode] = useState(initialCode || `// UART Script Engine v1.0\n// Gelen paket: bytes[] (number dizisi)\n// Sistem durumu: state{}\n\nif (bytes[0] === 0x55) {\n  // Örnek: Checksum hesaplayıp yanıtla\n  return {\n    sendHex: "AA BB CC",\n    setFields: { "Nabız": 120 }\n  };\n}\n\nreturn null;`);
 
   return (
@@ -15,7 +17,7 @@ const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
         <div className="flex items-center gap-3">
           <Code className="text-yellow-500" size={20} />
           <div>
-            <h2 className="text-gray-200 text-xs font-black uppercase tracking-widest">Gelişmiş Mantık Editörü</h2>
+            <h2 className="text-gray-200 text-xs font-black uppercase tracking-widest">{t('scriptEditor.title')}</h2>
             <p className="text-[10px] text-gray-500 font-mono italic">Real-time Responder Script (JavaScript)</p>
           </div>
         </div>
@@ -24,7 +26,7 @@ const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
           className="flex items-center gap-2 px-4 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-black text-[10px] font-black rounded-lg transition-all shadow-lg shadow-yellow-900/20"
         >
           <Save size={14} />
-          SCRIPI KAYDET
+          {t('scriptEditor.saveScript')}
         </button>
       </div>
 
@@ -44,28 +46,28 @@ const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
         <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl">
            <div className="flex items-center gap-2 mb-2">
              <Info size={14} className="text-blue-400" />
-             <span className="text-[10px] font-mono font-black text-blue-400 uppercase">Input Değişkenleri</span>
+             <span className="text-[10px] font-mono font-black text-blue-400 uppercase">{t('scriptEditor.inputVars')}</span>
            </div>
            <ul className="text-[9px] font-mono text-gray-500 space-y-1">
-             <li>• <span className="text-gray-300">bytes:</span> Gelen ham byte dizisi (number[])</li>
-             <li>• <span className="text-gray-300">state:</span> Mevcut simülasyon durumu (readonly)</li>
+             <li>• <span className="text-gray-300">bytes:</span> {t('scriptEditor.bytesVar')}</li>
+             <li>• <span className="text-gray-300">state:</span> {t('scriptEditor.stateVar')}</li>
            </ul>
         </div>
 
         <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-xl">
            <div className="flex items-center gap-2 mb-2">
              <AlertTriangle size={14} className="text-orange-400" />
-             <span className="text-[10px] font-mono font-black text-orange-400 uppercase">Dönüş Formatı</span>
+             <span className="text-[10px] font-mono font-black text-orange-400 uppercase">{t('scriptEditor.returnFormat')}</span>
            </div>
            <ul className="text-[9px] font-mono text-gray-500 space-y-1">
-             <li>• <span className="text-gray-300">sendHex:</span> Yanıt olarak gönderilecek Hex (string)</li>
-             <li>• <span className="text-gray-300">setFields:</span> Override edilecek alanlar (Object)</li>
+             <li>• <span className="text-gray-300">sendHex:</span> {t('scriptEditor.sendHexVar')}</li>
+             <li>• <span className="text-gray-300">setFields:</span> {t('scriptEditor.setFieldsVar')}</li>
            </ul>
         </div>
       </div>
       
       <div className="text-[9px] text-gray-600 font-mono italic text-center">
-        Dikkat: Scriptler kural eşleştiğinde real-time yürütülür. Karmaşık döngülerden kaçının.
+        {t('scriptEditor.warning')}
       </div>
     </div>
   );
