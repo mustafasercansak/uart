@@ -12,7 +12,7 @@ interface LanguageContextType {
   t: (path: string) => string;
 }
 
-const translations: Record<Locale, Translations> = { tr, en: en as unknown as Translations };
+const translations: Record<Locale, Translations> = { tr, en };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 

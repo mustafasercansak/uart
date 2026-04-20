@@ -28,7 +28,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const stateRef = useRef(state);
   useLayoutEffect(() => {
     stateRef.current = state;
-  });
+  }, [state]);
 
   const msgBufferRef = useRef<string[]>([]);
   const profilesRef = useRef<FrameProfile[]>([]);

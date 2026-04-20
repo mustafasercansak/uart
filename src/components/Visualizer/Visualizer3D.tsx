@@ -279,10 +279,10 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
     const ecg = findF('leadi')?.decimal ?? findF('ecg')?.decimal ?? findF('ecgwave')?.decimal ?? 2048;
     const pleth = findF('spo2wave')?.decimal ?? findF('pleth')?.decimal ?? findF('ppg')?.decimal ?? 128;
 
-    dataRef.current.bpm = hudData.bpm;
-    dataRef.current.spo2 = hudData.spo2;
-    dataRef.current.resp = hudData.resp;
-    dataRef.current.temp = hudData.temp;
+    dataRef.current.bpm = findF('bpm')?.decimal ?? findF('hr')?.decimal ?? findF('heartrate')?.decimal ?? 0;
+    dataRef.current.spo2 = findF('spo2')?.decimal ?? findF('oxygen')?.decimal ?? 0;
+    dataRef.current.resp = findF('rr')?.decimal ?? findF('resp')?.decimal ?? 0;
+    dataRef.current.temp = findF('temp')?.decimal ?? findF('temperature')?.decimal ?? 0;
     dataRef.current.frameId = lastFrame.frameNumber;
     
     // Waveform Continuity logic
@@ -291,7 +291,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
     
     dataRef.current.history.spo2.push(pleth);
     if(dataRef.current.history.spo2.length > 200) dataRef.current.history.spo2.shift();
-  }, [lastFrame, hudData]);
+  }, [lastFrame]);
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-gray-950 font-mono">
