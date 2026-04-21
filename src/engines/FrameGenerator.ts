@@ -231,7 +231,7 @@ export function generateFrame(
 
     const hexStr = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
-    const parsed: ParsedField = { name: field.name, hex: hexStr, decimal: decimalValue };
+    const parsed: ParsedField = { name: field.name, hex: hexStr, decimal: decimalValue, byteWidth: field.byteWidth };
 
     if (field.type === 'flags') {
       const cfg = field.typeConfig as FlagsConfig;

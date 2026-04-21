@@ -11,7 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import type { FrameProfile } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 // ─────────────────────────────────────────────
 // TİPLER
@@ -379,7 +379,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
       setSentFrames((prev) => [frame, ...prev].slice(0, 50));
       onSendFrame(b);
     },
-    [onSendFrame]
+    [onSendFrame, t]
   );
 
   return (

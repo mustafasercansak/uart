@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { BitTransition, LogicSignal } from '../../../types';
 
@@ -50,15 +50,12 @@ export const LogicAnalyzerView: React.FC = () => {
 
   // Update zoom based on baud rate initially
   useEffect(() => {
-    if (state.profileId && !scrollX) {
-      // Find a reasonable zoom for the current baud rate
-      // At 9600, 1 bit is ~0.1ms. We want maybe 20px per bit.
-      // 20px / 0.1ms = 200 zoom level.
-      setZoom(200);
+    if (state.profileId && !scrollX && zoom === 1) {
+      setTimeout(() => setZoom(200), 0);
     }
-  }, [state.profileId]);
+  }, [state.profileId, zoom, scrollX]);
 
-  const draw = () => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -75,7 +72,6 @@ export const LogicAnalyzerView: React.FC = () => {
       return;
     }
 
-    const margin = 40;
     const plotHeight = height - 80;
     const centerY = height / 2;
     const highY = centerY - plotHeight / 3;
@@ -115,7 +111,7 @@ export const LogicAnalyzerView: React.FC = () => {
     const visibleTransitions = signal.transitions.filter((tr: BitTransition) => tr.t >= startTime - (1000/zoom) && tr.t <= endTime + (1000/zoom));
     
     if (visibleTransitions.length > 0) {
-      let lastX = (visibleTransitions[0].t - startTime) * zoom;
+      const lastX = (visibleTransitions[0].t - startTime) * zoom;
       let lastV = visibleTransitions[0].v;
       ctx.moveTo(lastX, lastV === 1 ? highY : lowY);
 
@@ -128,7 +124,7 @@ export const LogicAnalyzerView: React.FC = () => {
         // Vertical transition
         ctx.lineTo(x, tr.v === 1 ? highY : lowY);
         
-        lastX = x;
+        
         lastV = tr.v;
 
         // Draw Labels
@@ -187,11 +183,11 @@ export const LogicAnalyzerView: React.FC = () => {
       ctx.fillText(`Freq: ${freq.toFixed(2)} Hz`, 20, 55);
     }
     // Static draw session
-  };
+  }, [canvasSize, cursorA, cursorB, scrollX, signal.transitions, zoom]);
 
   useEffect(() => {
     draw();
-  }, [canvasSize, zoom, scrollX, signal.transitions.length, cursorA, cursorB]);
+  }, [canvasSize, zoom, scrollX, signal.transitions.length, cursorA, cursorB, draw]);
 
   // Handle Dragging
   const handleMouseDown = (e: React.MouseEvent) => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Play, Pause, Trash2, Calendar, Database, Clock, RefreshCw, Layers, ChevronLeft, ChevronRight, FastForward } from 'lucide-react';
 import type { RecordingMetadata, SimulationStatus } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface PlaybackPanelProps {
   recordings: RecordingMetadata[];

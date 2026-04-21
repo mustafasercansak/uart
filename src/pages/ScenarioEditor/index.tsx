@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useSimulation } from '../../hooks/useSimulation';
-import { useTranslation } from '../../i18n/LanguageContext';
-import { Scenario, ScenarioStep, ActionType, ActionConfig, FrameProfile } from '../../types';
+import { useTranslation } from '../../i18n/context';
+import { Scenario, ScenarioStep, ActionType, ActionConfig, FrameProfile, ScenarioCategory } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { loadScenarios, saveScenario as persistScenario, deleteScenario as persistDelete, loadProfiles } from '../../store/storage';
 
@@ -27,8 +27,8 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     durationMs: 10000,
     loop: false,
     steps: [
-      { id: '1', atMs: 0, target: 'field:SpO2', action: 'set', actionConfig: { value: 98 } as any },
-      { id: '2', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 75 } as any },
+      { id: '1', atMs: 0, target: 'field:SpO2', action: 'set', actionConfig: { value: 98 } },
+      { id: '2', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 75 } },
     ],
   },
   {
@@ -38,9 +38,9 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     durationMs: 30000,
     loop: false,
     steps: [
-      { id: 'b1', atMs: 0, target: 'field:BPM', action: 'set', actionConfig: { value: 80 } as any },
-      { id: 'b2', atMs: 2000, target: 'field:BPM', action: 'ramp', actionConfig: { to: 35, durationMs: 5000, curve: 'ease-in-out' } as any },
-      { id: 'b3', atMs: 10000, target: 'field:Pulse', action: 'inject_error', actionConfig: { errorType: 'corrupt_checksum', count: 5 } as any },
+      { id: 'b1', atMs: 0, target: 'field:BPM', action: 'set', actionConfig: { value: 80 } },
+      { id: 'b2', atMs: 2000, target: 'field:BPM', action: 'ramp', actionConfig: { to: 35, durationMs: 5000, curve: 'ease-in-out' } },
+      { id: 'b3', atMs: 10000, target: 'field:Pulse', action: 'inject_error', actionConfig: { errorType: 'corrupt_checksum', count: 5 } },
     ],
   },
   {
@@ -50,10 +50,10 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     durationMs: 20000,
     loop: false,
     steps: [
-      { id: 'd1', atMs: 0, target: 'field:Lead-I', action: 'set', actionConfig: { value: 0 } as any },
-      { id: 'd2', atMs: 100, target: 'field:Lead-II', action: 'set', actionConfig: { value: 0 } as any },
-      { id: 'd3', atMs: 200, target: 'field:SPO2-Wave', action: 'set', actionConfig: { value: 0 } as any },
-      { id: 'd4', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 0 } as any },
+      { id: 'd1', atMs: 0, target: 'field:Lead-I', action: 'set', actionConfig: { value: 0 } },
+      { id: 'd2', atMs: 100, target: 'field:Lead-II', action: 'set', actionConfig: { value: 0 } },
+      { id: 'd3', atMs: 200, target: 'field:SPO2-Wave', action: 'set', actionConfig: { value: 0 } },
+      { id: 'd4', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 0 } },
     ],
   },
   {
@@ -63,7 +63,7 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     durationMs: 60000,
     loop: true,
     steps: [
-      { id: 's1', atMs: 1000, target: 'system', action: 'inject_error', actionConfig: { errorType: 'corrupt_checksum', count: 10 } as any },
+      { id: 's1', atMs: 1000, target: 'system', action: 'inject_error', actionConfig: { errorType: 'corrupt_checksum', count: 10 } as ActionConfig },
     ],
   },
 ];
@@ -82,20 +82,14 @@ export default function ScenarioEditor() {
   };
   
   // Data State
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [profiles, setProfiles] = useState<FrameProfile[]>([]);
+  const [scenarios, setScenarios] = useState<Scenario[]>(() => loadScenarios());
+  const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   
   // UI State
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const [showPresets, setShowPresets] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-
-  // Load Initial Data
-  useEffect(() => {
-    setScenarios(loadScenarios());
-    setProfiles(loadProfiles());
-  }, []);
+  const [showPresets, setShowPresets] = useState(false);
 
   const scenario = useMemo(() => scenarios.find((s) => s.id === selectedId) || null, [scenarios, selectedId]);
   
@@ -130,7 +124,7 @@ export default function ScenarioEditor() {
         setScenarios(newScenarios);
         persistScenario(newScenario);
         setSelectedId(newScenario.id);
-      } catch (err) {
+      } catch (_err) {
         alert(t('scenarioEditor.invalidFile'));
       }
     };
@@ -188,7 +182,7 @@ export default function ScenarioEditor() {
       atMs: sortedSteps.length > 0 ? sortedSteps[sortedSteps.length - 1].atMs + 500 : 0,
       target: 'field:SpO2',
       action: 'set',
-      actionConfig: { value: 95 } as any,
+      actionConfig: { value: 95 } as ActionConfig,
     };
     updateScenario({ steps: [...scenario.steps, newStep] });
     setSelectedStepId(newStep.id);
@@ -219,7 +213,7 @@ export default function ScenarioEditor() {
       profileId: state.profileId || '',
       loop: preset.loop || false,
       description: preset.description || '',
-      category: (preset.category as any) || 'custom',
+      category: (preset.category as string) || 'custom',
       steps: (preset.steps || []).map(s => ({ ...s, id: uuidv4() })),
       createdAt: now,
       updatedAt: now,
@@ -297,7 +291,7 @@ export default function ScenarioEditor() {
                 <div className="flex items-center gap-4 mt-3">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[10px] text-gray-600 font-mono uppercase font-bold">{t('scenarioEditor.category')}</span>
-                    <select value={scenario.category || 'custom'} onChange={(e) => updateScenario({ category: e.target.value as any })}
+                    <select value={scenario.category || 'custom'} onChange={(e) => updateScenario({ category: e.target.value as ScenarioCategory })}
                       className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-[10px] font-mono text-gray-400 outline-none hover:border-gray-700 transition-colors">
                       {Object.entries(SCENARIO_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
@@ -361,7 +355,7 @@ export default function ScenarioEditor() {
                       <StepEditor 
                         step={activeStep} 
                         onChange={updateStep} 
-                        profile={profiles.find(f => f.id === scenario.profileId) || null} 
+                        _profile={profiles.find(f => f.id === scenario.profileId) || null} 
                       />
                     ) : (
                       <div className="h-full flex items-center justify-center text-gray-700 text-[10px] italic font-mono uppercase">{t('scenarioEditor.waitingData')}</div>
@@ -456,14 +450,14 @@ function getActionColor(action: ActionType): string {
   return colors[action] ?? '#6b7280';
 }
 
-function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: any | null; onChange: (s: ScenarioStep) => void }) {
+function StepEditor({ step, _profile, onChange }: { step: ScenarioStep; _profile: unknown; onChange: (s: ScenarioStep) => void }) {
   const { t } = useTranslation();
   if (!step) return null;
 
   const ACTION_CONFIGS = buildActionConfigs(t);
   const update = (patch: Partial<ScenarioStep>) => onChange({ ...step, ...patch });
-  const updateConfig = (key: string, value: any) =>
-    onChange({ ...step, actionConfig: { ...(step.actionConfig as Record<string, unknown>), [key]: value === '' ? 0 : (isNaN(Number(value)) ? value : Number(value)) } as ActionConfig });
+  const updateConfig = (key: string, value: unknown) =>
+    onChange({ ...step, actionConfig: { ...(step.actionConfig as Record<string, unknown>), [key]: value === '' ? 0 : (isNaN(Number(value)) ? (value as string) : Number(value)) } as ActionConfig });
 
   const actionCfg = ACTION_CONFIGS[step.action] || { label: t('scenarioEditor.actionLabel.unknown'), fields: [] };
   const inputCls = 'bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs font-mono text-gray-300 outline-none focus:border-green-600/40 w-full transition-all hover:border-gray-700';
@@ -491,7 +485,7 @@ function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: 
         <div key={f.key} className="space-y-2">
           <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{f.label}</label>
           <input type={f.type} className={inputCls}
-            value={(step.actionConfig as Record<string, any>)[f.key] ?? ''}
+            value={(step.actionConfig as Record<string, string | number>)[f.key] ?? ''}
             onChange={(e) => updateConfig(f.key, e.target.value)}
           />
         </div>
@@ -501,7 +495,7 @@ function StepEditor({ step, profile, onChange }: { step: ScenarioStep; profile: 
         <div className="space-y-2">
           <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.errorType')}</label>
           <select className={inputCls}
-            value={(step.actionConfig as any).errorType ?? 'corrupt_checksum'}
+            value={(step.actionConfig as Record<string, string>).errorType ?? 'corrupt_checksum'}
             onChange={(e) => onChange({ ...step, actionConfig: { ...(step.actionConfig as Record<string, unknown>), errorType: e.target.value } as ActionConfig })}>
             <option value="corrupt_checksum">{t('scenarioEditor.checksumError')}</option>
             <option value="skip_bytes">{t('scenarioEditor.signalLoss')}</option>

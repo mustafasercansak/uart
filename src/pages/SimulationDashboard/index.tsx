@@ -32,7 +32,7 @@ import ProfileEditorModal from './components/ProfileEditorModal';
 import TriggerManager from './components/TriggerManager';
 import ValidationControls from './components/ValidationControls';
 import ValidationReport from './components/ValidationReport';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { useTranslation } from '../../i18n/context';
 
 // Sub-components
 import StatBar from './components/StatBar';

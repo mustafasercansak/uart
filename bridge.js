@@ -9,9 +9,9 @@
  * TCP/UDP devices on your network.
  */
 
-const WebSocket = require('ws');
-const net = require('net');
-const dgram = require('dgram');
+import WebSocket from 'ws';
+import net from 'net';
+import dgram from 'dgram';
 
 const args = process.argv.slice(2);
 const help = args.includes('--help') || args.includes('-h');

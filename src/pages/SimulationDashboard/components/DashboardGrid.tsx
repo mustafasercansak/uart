@@ -21,20 +21,6 @@ interface DashboardGridProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Generates a clean tiled layout for the given panels */
-function buildLayout(panels: GridPanel[], cols = 12): readonly LayoutItem[] {
-  // 3 columns of width=4 each
-  const perRow = Math.max(1, Math.floor(cols / 4));
-  return panels.map((p, i) => ({
-    i:    p.id,
-    x:    (i % perRow) * 4,
-    y:    Math.floor(i / perRow) * 5,
-    w:    4,
-    h:    5,
-    minW: 2,
-    minH: 3,
-  }));
-}
 
 function loadPerPanelPositions(): Record<string, { x: number; y: number; w: number; h: number }> {
   try {
@@ -169,7 +155,7 @@ export default function DashboardGrid({ panels, history, onRemovePanel, onUpdate
         onLayoutChange={handleLayoutChange}
         margin={[8, 8]}
         containerPadding={[8, 8]}
-        {...({ draggableHandle: ".drag-handle" } as any)}
+        {...({ draggableHandle: ".drag-handle" } as object)}
       >
         {panels.map(panel => {
           const currentVal = lastPoint[panel.fieldName] ?? 0;

@@ -1,5 +1,5 @@
 import type { Field } from '../../types';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { useTranslation } from '../../i18n/context';
 
 interface Props {
   fields: Field[];

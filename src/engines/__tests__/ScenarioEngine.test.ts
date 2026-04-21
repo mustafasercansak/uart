@@ -113,5 +113,82 @@ describe('ScenarioEngine', () => {
           const result = tickScenarioEngine(scenario, mockProfile, mockState);
           expect(result.executedSteps.length).toBe(1);
       });
+
+      it('processes pulse expiration', () => {
+          const stateWithPulse: SimulationState = {
+              ...mockState,
+              elapsedMs: 5000,
+              activePulses: {
+                  'f1': { originalValue: 0, revertAtMs: 4000 }
+              }
+          } as unknown as SimulationState;
+          const result = tickScenarioEngine({ steps: [] } as unknown as Scenario, mockProfile, stateWithPulse);
+          expect(result.updates.fieldOverrides?.['f1']).toBe(0);
+          expect(result.updates.activePulses?.['f1']).toBeUndefined();
+      });
+
+      it('processes ramp completion', () => {
+          const stateWithRamp: SimulationState = {
+              ...mockState,
+              elapsedMs: 5000,
+              activeRamps: {
+                  'f1': { from: 0, to: 100, startMs: 0, durationMs: 4000, curve: 'linear' }
+              }
+          } as unknown as SimulationState;
+          const result = tickScenarioEngine({ steps: [] } as unknown as Scenario, mockProfile, stateWithRamp);
+          expect(result.updates.fieldOverrides?.['f1']).toBe(100);
+          expect(result.updates.activeRamps?.['f1']).toBeUndefined();
+      });
+
+      it('handles bit level "toggle" action', () => {
+          const step: ScenarioStep = {
+              id: 'sb1', atMs: 0, target: 'bit:BPM.READY', action: 'toggle',
+              actionConfig: {}
+          };
+          const result = processScenarioStep(step, mockProfile, { ...mockState, bitOverrides: { 'f1.READY': 0 } } as unknown as SimulationState);
+          expect(result.newState.bitOverrides?.['f1.READY']).toBe(1);
+      });
+
+      it('handles bit level "pulse" action and expiration', () => {
+        const step: ScenarioStep = {
+            id: 'sb2', atMs: 1000, target: 'bit:BPM.READY', action: 'pulse',
+            actionConfig: { value: 1, durationMs: 1000 }
+        };
+        const result = processScenarioStep(step, mockProfile, mockState);
+        expect(result.newState.bitOverrides?.['f1.READY']).toBe(1);
+        expect(result.newState.activePulses?.['bit:f1.READY']).toBeDefined();
+
+        const stateWithBitPulse: SimulationState = {
+            ...mockState,
+            elapsedMs: 2500,
+            activePulses: {
+                'bit:f1.READY': { originalValue: 0, revertAtMs: 2000 }
+            }
+        } as unknown as SimulationState;
+        const tickResult = tickScenarioEngine({ steps: [] } as unknown as Scenario, mockProfile, stateWithBitPulse);
+        expect(tickResult.updates.bitOverrides?.['f1.READY']).toBe(0);
+    });
+
+    it('evaluates elapsed_time condition', () => {
+        const scenario: Scenario = {
+            steps: [{ 
+                id: 't1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'elapsed_time', operator: '>', value: 500 } 
+            }]
+        } as unknown as Scenario;
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(result.executedSteps.length).toBe(1);
+    });
+
+    it('evaluates random condition', () => {
+        const scenario: Scenario = {
+            steps: [{ 
+                id: 'r1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'random', value: 1.0 } // Always true
+            }]
+        } as unknown as Scenario;
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(result.executedSteps.length).toBe(1);
+    });
     });
 });

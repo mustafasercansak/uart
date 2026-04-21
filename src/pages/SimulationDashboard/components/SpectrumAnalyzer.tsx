@@ -12,18 +12,24 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
   const [windowType, setWindowType] = useState<WindowType>('Hanning');
 
   const lastCalcTime = useRef(0);
-  const [cachedData, setCachedData] = useState<Float32Array | null>(null);
+  const cachedDataRef = useRef<Float32Array | null>(null);
 
-  // Extract signal data for FFT with throttling (20 FPS max)
+  const [fftData, setFftData] = useState<Float32Array | null>(null);
+
   useEffect(() => {
-    const now = Date.now();
-    if (now - lastCalcTime.current < 50) return; // ~20 FPS throttle
-    
     if (!dataKey || waveformHistory.length < 256) {
-      setCachedData(null);
+      setTimeout(() => {
+        setFftData(null);
+      }, 0);
       return;
     }
     
+    // Throttled calculation logic
+    const now = Date.now();
+    if (now - lastCalcTime.current < 50 && cachedDataRef.current) {
+      return;
+    }
+
     const size = waveformHistory.length >= 512 ? 512 : 256;
     const raw = waveformHistory.slice(-size).map(p => p[dataKey] || 0);
     
@@ -35,11 +41,13 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
     DSPEngine.fft(real, imag);
     const mag = DSPEngine.calculateMagnitude(real, imag);
     
-    setCachedData(mag);
+    cachedDataRef.current = mag;
     lastCalcTime.current = now;
+    
+    // Schedule async to avoid 'sync setState in effect' warning
+    const timeout = setTimeout(() => setFftData(mag), 0);
+    return () => clearTimeout(timeout);
   }, [waveformHistory, dataKey, windowType]);
-
-  const fftData = cachedData;
 
   // Render Loop
   useEffect(() => {

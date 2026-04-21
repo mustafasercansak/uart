@@ -3,7 +3,7 @@ import { X, Save, Code, Plus, Trash2, Settings2 } from 'lucide-react';
 import type { FrameProfile, Field, FramingConfig, FramingMode } from '../../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseCHeader } from '../../../engines/CHeaderImporter';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface ProfileEditorModalProps {
   profile: FrameProfile | null;

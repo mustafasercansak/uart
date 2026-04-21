@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { GitCompare, LayoutDashboard } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface FrameMonitorProps {
   lastFrame: GeneratedFrame | null;

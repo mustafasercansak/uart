@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Zap, AlertTriangle, ShieldCheck } from 'lucide-react';
 import type { Trigger, TriggerAction } from '../../../types';
 import { v4 as uuidv4 } from 'uuid';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface TriggerManagerProps {
   triggers: Trigger[];

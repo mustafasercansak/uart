@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Target, User, Cpu, Play, X, Plus, Trash2 } from 'lucide-react';
 import type { FrameProfile, ValidationTarget } from '../../../types';
 import { v4 as uuidv4 } from 'uuid';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface ValidationControlsProps {
   profile: FrameProfile | null;

@@ -75,4 +75,38 @@ describe('WaveformGenerator', () => {
     expect(generateWaveformSample(config, 500)).toBe(10);
     expect(generateWaveformSample(config, 1000)).toBe(0);
   });
+
+  it('generates triangle and sawtooth waves', () => {
+    const triCfg: WaveformConfig = { shape: 'triangle', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 0 };
+    expect(generateWaveformSample(triCfg, 0)).toBe(-100);
+    expect(generateWaveformSample(triCfg, 500)).toBe(100);
+    expect(generateWaveformSample(triCfg, 1000)).toBe(-100);
+
+    const sawCfg: WaveformConfig = { shape: 'sawtooth', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 0 };
+    expect(generateWaveformSample(sawCfg, 0)).toBe(0);
+    expect(generateWaveformSample(sawCfg, 250)).toBe(50);
+    expect(generateWaveformSample(sawCfg, 500)).toBe(-100);
+    expect(generateWaveformSample(sawCfg, 750)).toBe(-50);
+  });
+
+  it('generates respiratory waves (pressure/flow)', () => {
+    const respPCfg: WaveformConfig = { shape: 'resp_pressure', frequency: 0.2, amplitude: 20, offset: 5, noiseLevel: 0 };
+    const sampleP = generateWaveformSample(respPCfg, 1000);
+    expect(sampleP).toBeGreaterThan(0);
+
+    const respFCfg: WaveformConfig = { shape: 'resp_flow', frequency: 0.2, amplitude: 30, offset: 0, noiseLevel: 0 };
+    const sampleF = generateWaveformSample(respFCfg, 1000);
+    expect(sampleF).toBeDefined();
+  });
+
+  it('handles "ease-in-out" curve', () => {
+    expect(ease(0.5, 'ease-in-out')).toBe(0.5);
+    expect(ease(0.2, 'ease-in-out')).toBeLessThan(0.2);
+  });
+
+  it('handles gaussian noise', () => {
+     const config: WaveformConfig = { shape: 'sine', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 10 };
+     const sample = generateWaveformSample(config, 0); // At t=0, sine is 0, so result is noise
+     expect(sample).toBeDefined();
+  });
 });

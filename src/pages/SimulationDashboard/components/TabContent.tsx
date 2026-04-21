@@ -36,7 +36,7 @@ interface TabContentProps {
     resumePlayback: () => void;
     seekPlayback: (index: number) => void;
     stepPlayback: (delta: number) => void;
-    setDiffFrame: (index: number, frame: GeneratedFrame | null) => void;
+    setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => void;
     setResponderRules: (rules: import('../../../types').ResponderRule[]) => void;
     setTriggers: (triggers: import('../../../types').Trigger[]) => void;
     onSendFrame?: (bytes: number[]) => void;
@@ -70,7 +70,6 @@ export default function TabContent({
         <WaveformCharts 
           waveformHistory={waveformHistory}
           selectedProfile={selectedProfile}
-          chartColors={['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316']}
         />
       );
     case 'logic':
@@ -142,7 +141,6 @@ export default function TabContent({
       return (
         <Diagnostics 
           timingStats={timingStats}
-          exchanges={exchanges}
           errorCount={errorCount}
           frameCount={frameCount}
         />

@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import TemplateBrowser from '../index';
 import { BrowserRouter } from 'react-router-dom';
-import { LanguageProvider } from '../../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageProvider';
 
 // Mock the hooks
 const mockSetProfile = vi.fn();

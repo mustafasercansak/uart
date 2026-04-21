@@ -23,7 +23,7 @@ import {
 } from 'recharts';
 import type { GeneratedFrame, FrameProfile } from '../../../types';
 import { computeErrorStats, exportToCSV, exportToPCAP, exportToJSON } from '../../../engines/ExportEngine';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface Props {
   frames: GeneratedFrame[];

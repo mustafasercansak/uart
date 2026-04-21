@@ -1,11 +1,12 @@
 import React, { memo } from 'react';
 import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3, ShieldCheck, FileText, ClipboardCheck, Globe } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface StatBarProps {
   status: SimulationState['status'];
   frameCount: number;
+  framesPerSecond: number;
   errorCount: number;
   elapsedMs: number;
   profiles: FrameProfile[];
@@ -21,6 +22,8 @@ interface StatBarProps {
   onSetOutputMode: (mode: OutputMode) => void;
   onConnectSerial: (portName: string) => void;
   onDisconnectSerial: () => void;
+  onConnectNetwork: (url: string) => void;
+  onDisconnectNetwork: () => void;
   onToggleAnalyzerMode: () => void;
   onAddProfile: () => void;
   onEditProfile: (profile: FrameProfile) => void;
@@ -69,6 +72,8 @@ const StatBar = memo(({
   onSetOutputMode,
   onConnectSerial,
   onDisconnectSerial,
+  onConnectNetwork,
+  onDisconnectNetwork,
   onToggleAnalyzerMode,
   onGetPorts,
   availablePorts,
@@ -133,9 +138,11 @@ const StatBar = memo(({
       {/* Backend Status */}
       <div className="flex items-center gap-2 pr-4 border-r border-white/5">
         <div className={`w-2.5 h-2.5 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
-        <span className={`text-[10px] font-mono font-black uppercase tracking-tight ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
+        <button 
+          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('ws://localhost:5000')}
+          className={`text-[10px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
           {t('common.engine')}: {networkConnected ? t('common.online') : t('common.offline')}
-        </span>
+        </button>
       </div>
 
       <div className="flex items-center gap-2">

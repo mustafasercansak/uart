@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, memo } from 'react';
+import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 import { useSimulation } from '../../../hooks/useSimulation';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 const COLORS = {
   bg: '#0a0c10',
@@ -55,9 +55,9 @@ const LogicAnalyzer = memo(() => {
       const visibleMs = canvasSize.width / zoom;
       setScrollX(Math.max(0, lastT - visibleMs * 0.8));
     }
-  }, [signal.transitions.length, zoom, canvasSize.width]);
+  }, [signal.transitions, zoom, canvasSize.width]);
 
-  const draw = () => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -113,7 +113,7 @@ const LogicAnalyzer = memo(() => {
     
     if (visibleTransitions.length > 0) {
       let lastV = visibleTransitions[0].v;
-      let lastX = (visibleTransitions[0].t - startTime) * zoom;
+      const lastX = (visibleTransitions[0].t - startTime) * zoom;
       ctx.moveTo(lastX, lastV === 1 ? highY : lowY);
 
       for (let i = 1; i < visibleTransitions.length; i++) {
@@ -135,7 +135,7 @@ const LogicAnalyzer = memo(() => {
            ctx.restore();
         }
 
-        lastX = x;
+        
         lastV = tr.v;
       }
       ctx.lineTo(width, lastV === 1 ? highY : lowY);
@@ -184,16 +184,15 @@ const LogicAnalyzer = memo(() => {
       ctx.fillText(`Freq: ${freq.toFixed(1)} Hz`, width - 150, 42);
     }
 
-    // No recursive requestAnimationFrame here anymore. 
     // This function now just performs a single static draw of the current state.
-  };
+  }, [canvasSize, cursorA, cursorB, scrollX, signal.transitions, t, zoom]);
 
   useEffect(() => {
     // Only trigger a draw when something meaningful changes.
     // We don't need a continuous loop because the component already re-renders 
     // and this effect runs when transitions or zoom changes.
     draw();
-  }, [canvasSize, zoom, scrollX, signal.transitions.length, cursorA, cursorB]);
+  }, [draw]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();

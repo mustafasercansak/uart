@@ -5,16 +5,15 @@ import {
 } from 'recharts';
 import { Activity, Zap, AlertCircle, CheckCircle2, Timer } from 'lucide-react';
 import type { TimingStats } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface DiagnosticsProps {
   timingStats: TimingStats;
-  exchanges: any[];
   errorCount: number;
   frameCount: number;
 }
 
-const Diagnostics = memo(({ timingStats, exchanges, errorCount, frameCount }: DiagnosticsProps) => {
+const Diagnostics = memo(({ timingStats, errorCount, frameCount }: DiagnosticsProps) => {
   const { t, language } = useTranslation();
   const locale = language === 'tr' ? 'tr-TR' : 'en-US';
 

@@ -4,7 +4,7 @@ import type { GeneratedFrame, Field, GridPanel, FrameProfile } from '../../../..
 import { useSimulation } from '../../../../hooks/useSimulation';
 import { SENSOR_TEMPLATES } from '../../../../data/templates';
 import DashboardGrid from '../DashboardGrid';
-import { useTranslation } from '../../../../i18n/LanguageContext';
+import { useTranslation } from '../../../../i18n/context';
 
 interface TelemetryPanelProps {
   lastFrame: GeneratedFrame | null;
@@ -55,7 +55,7 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
         id: w.id,
         fieldName: field?.name || w.fieldId,
         fieldType: 'number',
-        color: w.config?.color || '#3b82f6',
+        color: (w.config?.color as string) || '#3b82f6',
         widgetType: w.type,
         config: w.config
       };

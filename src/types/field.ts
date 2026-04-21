@@ -12,6 +12,7 @@ export interface ParsedField {
   name: string;
   hex: string;
   decimal: number;
+  byteWidth: number;
   flags?: Record<string, number>;
 }
 

@@ -1,18 +1,18 @@
-import type { ProtocolType, PeripheralState } from '../types';
+import type { ProtocolType } from '../types';
 
 export interface PeripheralResponse {
   bytes: number[];
   log: string;
 }
 
-export abstract class PeripheralDriver {
+export abstract class PeripheralDriver<T extends Record<string, unknown> = Record<string, unknown>> {
   abstract id: string;
   abstract name: string;
   abstract protocol: ProtocolType;
   
-  protected state: any = {};
+  protected state: T;
   
-  constructor(initialState: any = {}) {
+  constructor(initialState: T = {} as T) {
     this.state = initialState;
   }
 
@@ -46,7 +46,7 @@ export class LM75Driver extends PeripheralDriver {
 
     if (isRead) {
       // Return 2 bytes of temperature data (9-bit resolution)
-      const t = this.state.temp;
+      const t = this.state.temp as number;
       const raw = Math.floor(t / 0.5) << 7; 
       return {
         bytes: [(raw >> 8) & 0xFF, raw & 0xFF],

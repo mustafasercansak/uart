@@ -55,15 +55,9 @@ export class FilterEngine {
     try {
       const normalizedFilter = filter.toLowerCase().trim();
 
-      // Quick shortcuts for common non-expression filters
-      if (normalizedFilter === 'error' || normalizedFilter === 'err') {
-          return (exchange.tx?.status === 'fail' || exchange.rx?.status === 'fail') && !exchange.isLoopbackMatch;
-      }
-      if (normalizedFilter === 'tx') return !!exchange.tx;
-      if (normalizedFilter === 'rx') return !!exchange.rx;
-      
-      // If it's a simple hex search without expressions
-      if (!/[=><!&|]/.test(normalizedFilter) && !normalizedFilter.includes('contains')) {
+      // Quick shortcut for exact hex search without operators
+      const keywords = ['error', 'err', 'tx', 'rx'];
+      if (!/[=><!&|]/.test(normalizedFilter) && !normalizedFilter.includes('contains') && !keywords.includes(normalizedFilter)) {
           const searchHex = normalizedFilter.replace(/\s+/g, '');
           const txHex = exchange.tx?.rawHex.replace(/\s+/g, '').toLowerCase() || '';
           const rxHex = exchange.rx?.rawHex.replace(/\s+/g, '').toLowerCase() || '';
@@ -106,6 +100,14 @@ export class FilterEngine {
         if (condition.startsWith('!')) {
             return !this.evaluateCondition(exchange, condition.substring(1).trim(), profile);
         }
+        
+        // Special Keywords
+        if (condition === 'error' || condition === 'err') {
+            return (exchange.tx?.status === 'fail' || exchange.rx?.status === 'fail') && !exchange.isLoopbackMatch;
+        }
+        if (condition === 'tx') return !!exchange.tx;
+        if (condition === 'rx') return !!exchange.rx;
+
         // Simple field existence or value search
         return !!exchange.tx?.rawHex.toLowerCase().includes(condition) || 
                !!exchange.rx?.rawHex.toLowerCase().includes(condition);

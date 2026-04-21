@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { computeErrorStats } from '../ExportEngine';
-import type { GeneratedFrame } from '../../types';
+import { describe, it, expect, vi } from 'vitest';
+import { computeErrorStats, exportToCSV, exportToJSON, exportToPCAP } from '../ExportEngine';
+import type { GeneratedFrame, FrameProfile } from '../../types';
 
 describe('ExportEngine', () => {
     describe('computeErrorStats', () => {
@@ -9,11 +9,11 @@ describe('ExportEngine', () => {
                 { 
                     frameNumber: 1, timestampMs: 1000, rawBytes: [0, 0, 0], 
                     errors: [], fields: [] 
-                } as any,
+                } as unknown as GeneratedFrame,
                 { 
                     frameNumber: 2, timestampMs: 2000, rawBytes: [0, 0, 0, 0, 0], 
                     errors: ['CHECKSUM HATASI'], fields: [] 
-                } as any,
+                } as unknown as GeneratedFrame,
             ];
 
             const stats = computeErrorStats(frames);
@@ -37,13 +37,76 @@ describe('ExportEngine', () => {
 
         it('correctly counts different error types', () => {
              const frames: GeneratedFrame[] = [
-                { errors: ['ERROR_A'], timestampMs: 0, rawBytes: [0] } as any,
-                { errors: ['ERROR_A'], timestampMs: 10, rawBytes: [0] } as any,
-                { errors: ['ERROR_B'], timestampMs: 20, rawBytes: [0] } as any,
+                { errors: ['ERROR_A'], timestampMs: 0, rawBytes: [0] } as unknown as GeneratedFrame,
+                { errors: ['ERROR_A'], timestampMs: 10, rawBytes: [0] } as unknown as GeneratedFrame,
+                { errors: ['ERROR_B'], timestampMs: 20, rawBytes: [0] } as unknown as GeneratedFrame,
             ];
             const stats = computeErrorStats(frames);
             expect(stats.errorTypeCounts['ERROR_A']).toBe(2);
             expect(stats.errorTypeCounts['ERROR_B']).toBe(1);
+        });
+    });
+
+    describe('Export Functions', () => {
+        const mockFrames: GeneratedFrame[] = [
+            { 
+                frameNumber: 1, timestampMs: 1000, rawBytes: [0xAA, 0xBB], 
+                rawHex: 'AA BB', errors: [], 
+                fields: [{ name: 'VAL', decimal: 170, hex: 'AA' }] 
+            } as unknown as GeneratedFrame
+        ];
+        const mockProfile = {
+            fields: [{ name: 'VAL' }]
+        } as unknown as FrameProfile;
+
+        it('calls download logic in exportToCSV', () => {
+            const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+            vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+            vi.spyOn(document.body, 'appendChild').mockImplementation(() => document.createElement('div') as unknown as Node);
+            vi.spyOn(document.body, 'removeChild').mockImplementation(() => document.createElement('div') as unknown as Node);
+            
+            const mockAnchor = document.createElement('a');
+            mockAnchor.click = vi.fn();
+            vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement);
+
+            exportToCSV(mockFrames, mockProfile, 'test_export');
+
+            expect(createObjectURLSpy).toHaveBeenCalled();
+            expect(mockAnchor.click).toHaveBeenCalled();
+            
+            vi.restoreAllMocks();
+        });
+
+        it('calls download logic in exportToJSON', () => {
+            const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+            const mockAnchor = document.createElement('a');
+            mockAnchor.click = vi.fn();
+            vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
+            vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor);
+            vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor);
+
+            exportToJSON(mockFrames, mockProfile, 'test_export');
+
+            expect(createObjectURLSpy).toHaveBeenCalled();
+            expect(mockAnchor.click).toHaveBeenCalled();
+            
+            vi.restoreAllMocks();
+        });
+
+        it('calls download logic in exportToPCAP', () => {
+            const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+            const mockAnchor = document.createElement('a');
+            mockAnchor.click = vi.fn();
+            vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
+            vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor);
+            vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor);
+
+            exportToPCAP(mockFrames, 'test_export');
+
+            expect(createObjectURLSpy).toHaveBeenCalled();
+            expect(mockAnchor.click).toHaveBeenCalled();
+            
+            vi.restoreAllMocks();
         });
     });
 });

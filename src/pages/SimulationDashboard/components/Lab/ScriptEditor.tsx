@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import { Play, Save, Info, AlertTriangle, Code } from 'lucide-react';
-import { useTranslation } from '../../../../i18n/LanguageContext';
+import { useTranslation } from '../../../../i18n/context';
 
 interface ScriptEditorProps {
   initialCode?: string;

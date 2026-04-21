@@ -14,8 +14,7 @@ import type {
   ChecksumAlgorithm,
   WaveformShape,
 } from '../../types';
-import { v4 as uuidv4 } from 'uuid';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { useTranslation } from '../../i18n/context';
 
 interface Props {
   field: Field;

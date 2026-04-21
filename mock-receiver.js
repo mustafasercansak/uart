@@ -9,8 +9,8 @@
  *   node mock-receiver.js --udp 5000
  */
 
-const net = require('net');
-const dgram = require('dgram');
+import net from 'net';
+import dgram from 'dgram';
 
 const args = process.argv.slice(2);
 const port = parseInt(args.find((a, i) => i > 0 && args[i-1] === '--port' ) || args.find(a => !a.startsWith('--')) || 5000);

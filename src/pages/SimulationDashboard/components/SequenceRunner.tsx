@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Play, Square, Plus, Trash2, CheckCircle2, XCircle, Clock, Send, Eye } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 

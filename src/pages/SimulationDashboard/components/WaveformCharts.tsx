@@ -1,6 +1,6 @@
 import { memo, useState, useCallback } from 'react';
 import { LayoutGrid, List, GripHorizontal, MousePointer2, Activity, Ruler } from 'lucide-react';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 import type { FrameProfile, GridPanel } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
 import DashboardGrid from './DashboardGrid';
