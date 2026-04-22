@@ -133,7 +133,8 @@ export type SimAction =
   | { type: 'SET_ACTIVE_SEQUENCE'; id: string | null }
   | { type: 'SAVE_SEQUENCE'; sequence: AutomationSequence }
   | { type: 'DELETE_SEQUENCE'; id: string }
-  | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] };
+  | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
+  | { type: 'CLEAR_EXCHANGES' };
 
 export function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -369,6 +370,8 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
       };
     case 'SET_SEQUENCES':
       return { ...state, sequences: action.sequences };
+    case 'CLEAR_EXCHANGES':
+      return { ...state, exchanges: [], selectedExchangeId: null };
     default:
       return state;
   }

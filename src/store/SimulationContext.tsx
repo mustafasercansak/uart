@@ -15,7 +15,9 @@ import type {
   Exchange,
   ValidationSession,
   AutomationSequence,
-  AutomationStep
+  AutomationStep,
+  Field,
+  ValidationTarget
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -23,10 +25,10 @@ import { reducer, INITIAL_STATE } from './simulationReducer';
 import { useBackendConnection } from './useBackendConnection';
 import { useUIUpdateLoop } from './useUIUpdateLoop';
 import type { SimulationState } from '../types';
-import { 
-  loadSequences, 
-  saveSequence, 
-  deleteSequence 
+import {
+  loadSequences,
+  saveSequence,
+  deleteSequence
 } from './storage';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
@@ -178,6 +180,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     backendWsRef.current?.send(JSON.stringify({ type: 'RESET_OVERRIDES' }));
     dispatch({ type: 'RESET_OVERRIDES' });
   }, [backendWsRef, dispatch]);
+
+  const clearExchanges = useCallback(() => {
+    exchangeBufferRef.current = [];
+    dispatch({ type: 'CLEAR_EXCHANGES' });
+  }, [dispatch]);
 
   // ── SERIAL / NETWORK ─────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
@@ -392,6 +399,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setProfile: (profileId) => dispatch({ type: 'SET_PROFILE', profileId }),
         setScenario: (scenarioId) => dispatch({ type: 'SET_SCENARIO', scenarioId }),
         setOutputMode: (outputMode) => dispatch({ type: 'SET_OUTPUT_MODE', outputMode }),
+        clearExchanges,
         setUiVisible: (visible) => { uiVisibleRef.current = visible; },
         exportLogs,
         setProfiles: (profiles) => { profilesRef.current = profiles; },
@@ -436,7 +444,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           }
         },
         automation: {
-          saveSequence: (seq: any) => {
+          saveSequence: (seq: AutomationSequence) => {
             saveSequence(seq);
             dispatch({ type: 'SAVE_SEQUENCE', sequence: seq });
           },

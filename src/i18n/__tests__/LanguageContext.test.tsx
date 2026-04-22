@@ -4,8 +4,8 @@ import React from 'react';
 
 // Mock the translations to test fallback logic
 vi.mock('../locales/tr.json', async (importOriginal) => {
-  const actual = await importOriginal<any>();
-  const data = actual.default || actual;
+  const actual = await importOriginal<Record<string, unknown>>();
+  const data = (actual.default || actual) as Record<string, unknown>;
   return {
     ...actual,
     default: {
@@ -18,8 +18,8 @@ vi.mock('../locales/tr.json', async (importOriginal) => {
 });
 
 vi.mock('../locales/en.json', async (importOriginal) => {
-  const actual = await importOriginal<any>();
-  const data = actual.default || actual;
+  const actual = await importOriginal<Record<string, unknown>>();
+  const data = (actual.default || actual) as Record<string, unknown>;
   return {
     ...actual,
     default: {
@@ -30,7 +30,6 @@ vi.mock('../locales/en.json', async (importOriginal) => {
     }
   };
 });
-
 import { LanguageProvider } from '../LanguageProvider';
 import { useTranslation } from '../context';
 

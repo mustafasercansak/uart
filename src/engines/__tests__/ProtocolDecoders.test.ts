@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decodeUART, decodeSPI, decodeI2C, decodeCAN, getDecodedLines } from '../ProtocolDecoders';
+import type { ProtocolType } from '../../types';
 
 describe('ProtocolDecoders', () => {
     it('decodes UART bytes into bitstream with annotations', () => {
@@ -47,7 +48,7 @@ describe('ProtocolDecoders', () => {
             expect(getDecodedLines('SPI', bytes)[0].label).toBe('CS');
             expect(getDecodedLines('I2C', bytes)[0].label).toBe('SCL');
             expect(getDecodedLines('CAN', bytes)[0].label).toBe('CAN');
-            expect(getDecodedLines('Unknown' as any, bytes)[0].label).toBe('UART');
+            expect(getDecodedLines('Unknown' as unknown as ProtocolType, bytes)[0].label).toBe('UART');
         });
     });
 });

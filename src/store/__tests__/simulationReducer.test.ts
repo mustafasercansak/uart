@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { reducer, INITIAL_STATE } from '../simulationReducer';
-import type { SimulationState, ErrorType, GeneratedFrame } from '../../types';
+import type { SimulationState, ErrorType, GeneratedFrame, Exchange, ValidationSession, ValidationEvent } from '../../types';
 
 describe('simulationReducer', () => {
   it('handles START action', () => {
@@ -295,24 +295,24 @@ describe('simulationReducer', () => {
   describe('Expanded Branch Coverage', () => {
     it('MASTER_TICK: handles nullish fallbacks for updates and timing', () => {
       // 1. updates.lastFrame is missing -> updatedRecent = state.recentFrames
-      const state1 = { ...INITIAL_STATE, recentFrames: [{ frameNumber: 1 } as any] };
-      const action1 = { type: 'MASTER_TICK' as const, updates: {}, points: [], logEntries: [], elapsedMs: undefined as any };
+      const state1 = { ...INITIAL_STATE, recentFrames: [{ frameNumber: 1 } as unknown as GeneratedFrame] };
+      const action1 = { type: 'MASTER_TICK' as const, updates: {}, points: [], logEntries: [], elapsedMs: undefined as unknown as number };
       const res1 = reducer(state1, action1);
       expect(res1.recentFrames.length).toBe(1);
       expect(res1.elapsedMs).toBe(INITIAL_STATE.elapsedMs);
 
       // 2. logicHistory mapping for non-matching IDs
-      const state2: SimulationState = { 
-        ...INITIAL_STATE, 
+      const state2: SimulationState = {
+        ...INITIAL_STATE,
         logicHistory: [
           { id: 'tx-main', name: 'M', transitions: [] },
           { id: 'other', name: 'O', transitions: [] }
-        ] 
+        ]
       };
-      const action2 = { 
-        type: 'MASTER_TICK' as const, 
-        updates: { lastFrame: { bitStream: [{ t: 0, v: 0 }] } as any }, 
-        points: [], logEntries: [], elapsedMs: 50 
+      const action2 = {
+        type: 'MASTER_TICK' as const,
+        updates: { lastFrame: { bitStream: [{ t: 0, v: 0 }] } as unknown as GeneratedFrame },
+        points: [], logEntries: [], elapsedMs: 50
       };
       const res2 = reducer(state2, action2);
       expect(res2.logicHistory.find(s => s.id === 'other')?.transitions.length).toBe(0);
@@ -320,32 +320,33 @@ describe('simulationReducer', () => {
     });
 
     it('UPDATE_EXCHANGE: handles existing exchange and missing rx frame', () => {
-      const exchange = { id: 'ex1', status: 'pending' } as any;
+      const exchange = { id: 'ex1', status: 'pending' } as unknown as Exchange;
       const state = { ...INITIAL_STATE, exchanges: [exchange] };
-      const updated = { id: 'ex1', status: 'done' } as any;
-      
+      const updated = { id: 'ex1', status: 'done' } as unknown as Exchange;
+
       const res = reducer(state, { type: 'UPDATE_EXCHANGE', exchange: updated });
+      expect(res.exchanges.length).toBeGreaterThan(0);
       expect(res.exchanges[0].status).toBe('done');
       expect(res.lastRxFrame).toBe(INITIAL_STATE.lastRxFrame);
     });
 
     it('SAVE_SNAPSHOT: prevents duplicates', () => {
-      const frame = { frameNumber: 5 } as any;
+      const frame = { frameNumber: 5 } as unknown as GeneratedFrame;
       const state = { ...INITIAL_STATE, snapshots: [frame] };
       const res = reducer(state, { type: 'SAVE_SNAPSHOT', frame });
       expect(res).toBe(state); // Strict equality because of early return
     });
 
     it('INIT_STATE: handles diverse undefined fields', () => {
-      const res = reducer(INITIAL_STATE, { 
-        type: 'INIT_STATE', 
-        newState: { 
+      const res = reducer(INITIAL_STATE, {
+        type: 'INIT_STATE',
+        newState: {
           // missing serialConnected, diffFrames, etc.
           telemetryLayouts: undefined,
           dashboardLayout: undefined,
           watchlist: undefined,
           snapshots: undefined
-        } 
+        }
       });
       expect(res.serialConnected).toBe(INITIAL_STATE.serialConnected);
       expect(res.telemetryLayouts).toEqual({});
@@ -354,17 +355,17 @@ describe('simulationReducer', () => {
 
     it('Validation: early returns when no session active', () => {
       expect(reducer(INITIAL_STATE, { type: 'STOP_VALIDATION', endTime: 0, score: 0 })).toBe(INITIAL_STATE);
-      expect(reducer(INITIAL_STATE, { type: 'ADD_VALIDATION_EVENT', event: {} as any })).toBe(INITIAL_STATE);
-      expect(reducer(INITIAL_STATE, { type: 'UPDATE_VALIDATION_HISTORY', entry: {} as any })).toBe(INITIAL_STATE);
+      expect(reducer(INITIAL_STATE, { type: 'ADD_VALIDATION_EVENT', event: {} as unknown as ValidationEvent })).toBe(INITIAL_STATE);
+      expect(reducer(INITIAL_STATE, { type: 'UPDATE_VALIDATION_HISTORY', entry: { timestamp: 0, fields: {} } })).toBe(INITIAL_STATE);
     });
 
     it('Dashboard: handles missing widgets gracefully', () => {
-      const state = { ...INITIAL_STATE, dashboardLayout: undefined as any };
-      const resAdd = reducer(state, { type: 'ADD_WIDGET', widget: { id: 'w1' } as any });
-      expect(resAdd.dashboardLayout.widgets.length).toBe(1);
+      const state = { ...INITIAL_STATE, dashboardLayout: undefined as unknown as SimulationState['dashboardLayout'] };
+      const resAdd = reducer(state, { type: 'ADD_WIDGET', widget: { id: 'w1' } as unknown as import('../../types').DashboardWidget });
+      expect(resAdd.dashboardLayout?.widgets.length).toBe(1);
 
       const resRem = reducer(state, { type: 'REMOVE_WIDGET', id: 'w1' });
-      expect(resRem.dashboardLayout.widgets.length).toBe(0);
+      expect(resRem.dashboardLayout?.widgets.length).toBe(0);
     });
 
     it('ADD_LOG: respects max log entries', () => {
@@ -377,13 +378,13 @@ describe('simulationReducer', () => {
     });
 
     it('MASTER_TICK: handles missing bitStream and watchlist updates', () => {
-      const action = { 
-        type: 'MASTER_TICK' as const, 
-        updates: { 
-          lastFrame: { frameNumber: 1, bitStream: undefined } as any,
-          watchlist: undefined 
-        }, 
-        points: [], logEntries: [], elapsedMs: 100 
+      const action = {
+        type: 'MASTER_TICK' as const,
+        updates: {
+          lastFrame: { frameNumber: 1, bitStream: undefined } as unknown as GeneratedFrame,
+          watchlist: undefined
+        },
+        points: [], logEntries: [], elapsedMs: 100
       };
       const res = reducer(INITIAL_STATE, action);
       expect(res.logicHistory[0].transitions.length).toBe(0);
@@ -391,10 +392,10 @@ describe('simulationReducer', () => {
     });
 
     it('MASTER_TICK: handles defined selectedExchangeId update', () => {
-      const action = { 
-        type: 'MASTER_TICK' as const, 
-        updates: { selectedExchangeId: 'new-ex' }, 
-        points: [], logEntries: [], elapsedMs: 100 
+      const action = {
+        type: 'MASTER_TICK' as const,
+        updates: { selectedExchangeId: 'new-ex' },
+        points: [], logEntries: [], elapsedMs: 100
       };
       const res = reducer(INITIAL_STATE, action);
       expect(res.selectedExchangeId).toBe('new-ex');
@@ -402,9 +403,9 @@ describe('simulationReducer', () => {
 
     it('INIT_STATE: handles partial overrides specifically for coverage', () => {
       // Branch action.newState.watchlist is present
-      const res1 = reducer(INITIAL_STATE, { 
-        type: 'INIT_STATE', 
-        newState: { watchlist: ['f1'] } 
+      const res1 = reducer(INITIAL_STATE, {
+        type: 'INIT_STATE',
+        newState: { watchlist: ['f1'] }
       });
       expect(res1.watchlist).toEqual(['f1']);
 

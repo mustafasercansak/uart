@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateFrame } from '../FrameGenerator';
-import type { FrameProfile, SimulationState, ErrorType } from '../../types';
+import type { FrameProfile, SimulationState, ErrorType, FieldType, Parity } from '../../types';
 
 describe('FrameGenerator', () => {
   const mockProfile: FrameProfile = {
@@ -51,9 +51,9 @@ describe('FrameGenerator', () => {
     scenarioId: null,
     serialConnected: false,
     signalIntegrity: {
-        bitFlipsEnabled: false,
-        noiseLevel: 0,
-        jitterMs: 0
+      bitFlipsEnabled: false,
+      noiseLevel: 0,
+      jitterMs: 0
     }
   } as unknown as SimulationState;
 
@@ -66,8 +66,8 @@ describe('FrameGenerator', () => {
   it('respects endianness', () => {
     const leProfile = { ...mockProfile };
     leProfile.fields = [
-        { ...mockProfile.fields[0], endianness: 'little' },
-        mockProfile.fields[1]
+      { ...mockProfile.fields[0], endianness: 'little' },
+      mockProfile.fields[1]
     ];
     const frame = generateFrame(leProfile, mockState, 1);
     expect(frame.rawBytes).toEqual([0xCD, 0xAB, 0x55]);
@@ -133,10 +133,10 @@ describe('FrameGenerator', () => {
         },
       ],
     } as unknown as FrameProfile;
-    
-    const stateWithOverride = { 
-        ...mockState, 
-        bitOverrides: { 'status.ERR': 1 } 
+
+    const stateWithOverride = {
+      ...mockState,
+      bitOverrides: { 'status.ERR': 1 }
     };
     const frame = generateFrame(flagsProfile, stateWithOverride, 1);
     // Bit 0 = 1 (override), Bit 1 = 1 (default) -> 0x03
@@ -150,9 +150,9 @@ describe('FrameGenerator', () => {
       ...mockProfile,
       fields: [
         { id: 'f1', name: 'F1', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 10 }, endianness: 'big' },
-        { 
-          id: 'f2', name: 'F2', byteWidth: 1, order: 1, type: 'computed', 
-          typeConfig: { expression: "fields['F1'] * 2", clampMin: 0, clampMax: 255 }, endianness: 'big' 
+        {
+          id: 'f2', name: 'F2', byteWidth: 1, order: 1, type: 'computed',
+          typeConfig: { expression: "fields['F1'] * 2", clampMin: 0, clampMax: 255 }, endianness: 'big'
         },
       ],
     } as unknown as FrameProfile;
@@ -164,16 +164,16 @@ describe('FrameGenerator', () => {
     const scriptProfile: FrameProfile = {
       ...mockProfile,
       fields: [
-        { 
-          id: 's1', name: 'S1', byteWidth: 1, order: 0, type: 'script', 
-          typeConfig: { code: 'return t > 100 ? 50 : 20;' }, endianness: 'big' 
+        {
+          id: 's1', name: 'S1', byteWidth: 1, order: 0, type: 'script',
+          typeConfig: { code: 'return t > 100 ? 50 : 20;' }, endianness: 'big'
         },
       ],
     } as unknown as FrameProfile;
-    
+
     const frame1 = generateFrame(scriptProfile, { ...mockState, elapsedMs: 50 }, 1);
     expect(frame1.rawBytes[0]).toBe(20);
-    
+
     const frame2 = generateFrame(scriptProfile, { ...mockState, elapsedMs: 150 }, 2);
     expect(frame2.rawBytes[0]).toBe(50);
   });
@@ -201,13 +201,13 @@ describe('FrameGenerator', () => {
       ...mockProfile,
       fields: [
         { id: 'd1', name: 'D1', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 0x55 }, endianness: 'big' },
-        { 
-          id: 'cs', name: 'CS', byteWidth: 1, order: 1, type: 'checksum', 
-          typeConfig: { 
-            algorithm: 'sum_mod256', 
-            scope: { startFieldId: 'd1', endFieldId: 'd1' } 
-          }, 
-          endianness: 'big' 
+        {
+          id: 'cs', name: 'CS', byteWidth: 1, order: 1, type: 'checksum',
+          typeConfig: {
+            algorithm: 'sum_mod256',
+            scope: { startFieldId: 'd1', endFieldId: 'd1' }
+          },
+          endianness: 'big'
         },
       ],
     } as unknown as FrameProfile;
@@ -225,7 +225,7 @@ describe('FrameGenerator', () => {
       };
       const frame = generateFrame(mockProfile, errorState, 1);
       expect(frame.errors.length).toBeGreaterThan(0);
-      
+
       if (errType === 'skip_bytes') {
         expect(frame.rawBytes.length).toBeLessThan(3);
       } else if (errType === 'extra_bytes') {
@@ -235,20 +235,20 @@ describe('FrameGenerator', () => {
   });
 
   it('generates UART bitstream with mark parity', () => {
-    const parityProfile = { 
-        ...mockProfile, 
-        parity: 'Mark',
-        dataBits: 8,
-        stopBits: 1
+    const parityProfile = {
+      ...mockProfile,
+      parity: 'Mark',
+      dataBits: 8,
+      stopBits: 1
     } as unknown as FrameProfile;
     const frame = generateFrame(parityProfile, mockState, 1);
     expect(frame.bitStream?.some(t => t.label === 'PARITY')).toBe(true);
   });
 
   it('applies SLIP framing', () => {
-    const slipProfile = { 
-        ...mockProfile, 
-        framing: { mode: 'slip' } 
+    const slipProfile = {
+      ...mockProfile,
+      framing: { mode: 'slip' }
     } as unknown as FrameProfile;
     const frame = generateFrame(slipProfile, mockState, 1);
     expect(frame.rawBytes[0]).toBe(0xC0);
@@ -256,27 +256,27 @@ describe('FrameGenerator', () => {
   });
 
   it('applies COBS framing', () => {
-    const cobsProfile = { 
-        ...mockProfile, 
-        framing: { mode: 'cobs' } 
+    const cobsProfile = {
+      ...mockProfile,
+      framing: { mode: 'cobs' }
     } as unknown as FrameProfile;
     const frame = generateFrame(cobsProfile, mockState, 1);
     expect(frame.rawBytes[frame.rawBytes.length - 1]).toBe(0x00);
   });
 
   it('applies Modbus RTU framing', () => {
-    const modbusProfile = { 
-        ...mockProfile, 
-        framing: { mode: 'modbus' } 
+    const modbusProfile = {
+      ...mockProfile,
+      framing: { mode: 'modbus' }
     } as unknown as FrameProfile;
     const frame = generateFrame(modbusProfile, mockState, 1);
     expect(frame.rawBytes.length).toBe(3 + 2); // 3 data + 2 crc
   });
 
   it('applies delimiter framing', () => {
-    const delimProfile = { 
-        ...mockProfile, 
-        framing: { mode: 'delimiter', delimiter: 0x0A } 
+    const delimProfile = {
+      ...mockProfile,
+      framing: { mode: 'delimiter', delimiter: 0x0A }
     } as unknown as FrameProfile;
     const frame = generateFrame(delimProfile, mockState, 1);
     expect(frame.rawBytes[frame.rawBytes.length - 1]).toBe(0x0A);
@@ -287,18 +287,18 @@ describe('FrameGenerator', () => {
       ...mockProfile,
       fields: [
         { id: 'bpm', name: 'BPM', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 60 }, endianness: 'big' },
-        { 
-          id: 'ecg', name: 'ECG', byteWidth: 1, order: 1, type: 'waveform', 
-          typeConfig: { shape: 'ecg', frequency: 0.1, amplitude: 100, offset: 128 }, endianness: 'big' 
+        {
+          id: 'ecg', name: 'ECG', byteWidth: 1, order: 1, type: 'waveform',
+          typeConfig: { shape: 'ecg', frequency: 0.1, amplitude: 100, offset: 128 }, endianness: 'big'
         },
         { id: 'rr', name: 'RR', byteWidth: 1, order: 2, type: 'fixed', typeConfig: { value: 20 }, endianness: 'big' },
-        { 
-          id: 'resp', name: 'RESP', byteWidth: 1, order: 3, type: 'waveform', 
-          typeConfig: { shape: 'resp_pressure', frequency: 0.1, amplitude: 100, offset: 128 }, endianness: 'big' 
+        {
+          id: 'resp', name: 'RESP', byteWidth: 1, order: 3, type: 'waveform',
+          typeConfig: { shape: 'resp_pressure', frequency: 0.1, amplitude: 100, offset: 128 }, endianness: 'big'
         },
       ],
     } as unknown as FrameProfile;
-    
+
     const frame = generateFrame(medicalProfile, mockState, 1);
     expect(frame.rawBytes.length).toBeGreaterThan(0);
   });
@@ -330,13 +330,13 @@ describe('FrameGenerator', () => {
 
   it('handles ramps and field overrides', () => {
     const rampState = {
-        ...mockState,
-        activeRamps: {
-            'data': { from: 0, to: 100, startMs: 0, durationMs: 1000, curve: 'linear' }
-        },
-        fieldOverrides: {
-            'sync': 0x1234
-        }
+      ...mockState,
+      activeRamps: {
+        'data': { from: 0, to: 100, startMs: 0, durationMs: 1000, curve: 'linear' as const }
+      },
+      fieldOverrides: {
+        'sync': 0x1234
+      }
     };
     const frame = generateFrame(mockProfile, { ...rampState, elapsedMs: 500 }, 1);
     expect(frame.rawBytes).toEqual([0x12, 0x34, 50]);
@@ -353,24 +353,24 @@ describe('FrameGenerator', () => {
 
   it('handles SLIP and COBS edge cases', () => {
     // SLIP Escape encoding
-    const escapeProfile = { 
-        ...mockProfile, 
-        fields: [{ id: 'd', name: 'D', byteWidth: 2, order: 2, type: 'fixed', typeConfig: { value: 0xC0DB }, endianness: 'big' }],
-        framing: { mode: 'slip' } 
+    const escapeProfile = {
+      ...mockProfile,
+      fields: [{ id: 'd', name: 'D', byteWidth: 2, order: 2, type: 'fixed', typeConfig: { value: 0xC0DB }, endianness: 'big' }],
+      framing: { mode: 'slip' }
     } as unknown as FrameProfile;
     const frameSlip = generateFrame(escapeProfile, mockState, 1);
     expect(frameSlip.rawBytes).toContain(0xDB);
-    
+
     // COBS zero byte AND block limit
     const complexProfile = {
-        ...mockProfile,
-        fields: [
-            { id: 'z', name: 'Z', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 0 }, endianness: 'big' },
-            ...Array(300).fill(0).map((_, i) => ({
-                id: `f${i}`, name: `F${i}`, byteWidth: 1, order: i + 1, type: 'fixed', typeConfig: { value: 0x55 }, endianness: 'big'
-            }))
-        ],
-        framing: { mode: 'cobs' }
+      ...mockProfile,
+      fields: [
+        { id: 'z', name: 'Z', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 0 }, endianness: 'big' },
+        ...Array(300).fill(0).map((_, i) => ({
+          id: `f${i}`, name: `F${i}`, byteWidth: 1, order: i + 1, type: 'fixed', typeConfig: { value: 0x55 }, endianness: 'big'
+        }))
+      ],
+      framing: { mode: 'cobs' }
     } as unknown as FrameProfile;
     const frameCobs = generateFrame(complexProfile, mockState, 1);
     expect(frameCobs.rawBytes[frameCobs.rawBytes.length - 1]).toBe(0x00);
@@ -382,13 +382,13 @@ describe('FrameGenerator', () => {
   });
 
   it('handles more error types and script failures', () => {
-    const errorState = { ...mockState, pendingErrors: ['wrong_sync', 'unknown' as any] };
+    const errorState = { ...mockState, pendingErrors: ['wrong_sync' as ErrorType, 'unknown' as unknown as ErrorType] };
     const frame = generateFrame(mockProfile, errorState, 1);
     expect(frame.rawBytes[0]).not.toBe(0xAB);
-    
+
     const badScript: FrameProfile = {
-        ...mockProfile,
-        fields: [{ id: 's', name: 'S', byteWidth: 1, order: 2, type: 'script', typeConfig: { code: 'throw new Error();' }, endianness: 'big' }]
+      ...mockProfile,
+      fields: [{ id: 's', name: 'S', byteWidth: 1, order: 2, type: 'script', typeConfig: { code: 'throw new Error();' }, endianness: 'big' }]
     } as unknown as FrameProfile;
     const frameScript = generateFrame(badScript, mockState, 1);
     expect(frameScript.rawBytes[frameScript.rawBytes.length - 1]).toBe(0);
@@ -398,10 +398,10 @@ describe('FrameGenerator', () => {
     it('handles ASCII numeric fields', () => {
       const asciiProfile = {
         ...mockProfile,
-        fields: [{ 
-          id: 'a1', name: 'ASC', byteWidth: 3, order: 0, 
-          type: 'fixed', typeConfig: { value: 123 }, 
-          endianness: 'big', isAscii: true 
+        fields: [{
+          id: 'a1', name: 'ASC', byteWidth: 3, order: 0,
+          type: 'fixed', typeConfig: { value: 123 },
+          endianness: 'big', isAscii: true
         }]
       } as unknown as FrameProfile;
       const frame = generateFrame(asciiProfile, mockState, 1);
@@ -412,10 +412,10 @@ describe('FrameGenerator', () => {
     it('handles script syntax errors', () => {
       const syntaxErrorProfile = {
         ...mockProfile,
-        fields: [{ 
-          id: 's', name: 'S', byteWidth: 1, order: 0, 
+        fields: [{
+          id: 's', name: 'S', byteWidth: 1, order: 0,
           type: 'script', typeConfig: { code: 'if (true) { return 10 ' }, // Missing closing brace
-          endianness: 'big' 
+          endianness: 'big'
         }]
       } as unknown as FrameProfile;
       const frame = generateFrame(syntaxErrorProfile, mockState, 1);
@@ -426,10 +426,10 @@ describe('FrameGenerator', () => {
       const gaussProfile = {
         ...mockProfile,
         fields: [
-          { 
-            id: 'g', name: 'G', byteWidth: 1, order: 0, 
-            type: 'range', typeConfig: { min: 0, max: 10, distribution: 'gaussian' }, 
-            endianness: 'big' 
+          {
+            id: 'g', name: 'G', byteWidth: 1, order: 0,
+            type: 'range', typeConfig: { min: 0, max: 10, distribution: 'gaussian' },
+            endianness: 'big'
           },
           {
             id: 'r', name: 'R', byteWidth: 1, order: 1,
@@ -445,20 +445,20 @@ describe('FrameGenerator', () => {
 
     it('covers switch defaults and edge cases', () => {
       const unknownTypeProfile = {
-             ...mockProfile,
-             fields: [{ id: 'u', name: 'U', byteWidth: 1, order: 0, type: 'UNKNOWN' as any, typeConfig: {}, endianness: 'big' }]
+        ...mockProfile,
+        fields: [{ id: 'u', name: 'U', byteWidth: 1, order: 0, type: 'UNKNOWN' as unknown as FieldType, typeConfig: {}, endianness: 'big' }]
       } as unknown as FrameProfile;
       const frameType = generateFrame(unknownTypeProfile, mockState, 1);
       expect(frameType.rawBytes[0]).toBe(0);
 
-      const unknownErrorState = { ...mockState, pendingErrors: ['UNKNOWN' as any] };
+      const unknownErrorState = { ...mockState, pendingErrors: ['UNKNOWN' as unknown as ErrorType] };
       const frameErr = generateFrame(mockProfile, unknownErrorState, 1);
       expect(frameErr.errors.length).toBe(0);
 
       // Parity default
       // We can't hit parity default easily from generateFrame without adding 'UNKNOWN' to Parity type
       // But we can test it if we cast
-      const parityProfile = { ...mockProfile, parity: 'UNKNOWN' as any } as unknown as FrameProfile;
+      const parityProfile = { ...mockProfile, parity: 'UNKNOWN' as unknown as Parity } as unknown as FrameProfile;
       const frameParity = generateFrame(parityProfile, mockState, 1);
       expect(frameParity.bitStream?.some(t => t.label === 'PARITY')).toBe(true); // Still adds parity bit but it defaults to 0
     });

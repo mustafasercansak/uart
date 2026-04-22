@@ -229,7 +229,7 @@ describe('ScenarioEngine', () => {
         // range action
         const stepRange: ScenarioStep = {
             id: 'sr1', atMs: 0, target: 'field:BPM', action: 'range',
-            actionConfig: { min: 40, max: 200 } as any
+            actionConfig: { min: 40, max: 200 } as unknown as ScenarioStep['actionConfig']
         };
         const resRange = processScenarioStep(stepRange, mockProfile, mockState);
         expect(resRange.newState.fieldOverrides?.['f1__range']).toBe(40);
@@ -237,7 +237,7 @@ describe('ScenarioEngine', () => {
         // pulse field
         const stepPulse: ScenarioStep = {
             id: 'sp1', atMs: 0, target: 'field:BPM', action: 'pulse',
-            actionConfig: { value: 150, durationMs: 1000 } as any
+            actionConfig: { value: 150, durationMs: 1000 } as unknown as ScenarioStep['actionConfig']
         };
         const resPulse = processScenarioStep(stepPulse, mockProfile, mockState);
         expect(resPulse.newState.fieldOverrides?.['f1']).toBe(150);
@@ -245,13 +245,13 @@ describe('ScenarioEngine', () => {
         // bit set
         const stepBitSet: ScenarioStep = {
             id: 'sb3', atMs: 0, target: 'bit:BPM.READY', action: 'set',
-            actionConfig: { value: 1 } as any
+            actionConfig: { value: 1 } as unknown as ScenarioStep['actionConfig']
         };
         const resBitSet = processScenarioStep(stepBitSet, mockProfile, mockState);
         expect(resBitSet.newState.bitOverrides?.['f1.READY']).toBe(1);
 
         // default actions
-        expect(processScenarioStep({ target: 'field:BPM', action: 'unknown' } as any, mockProfile, mockState).newState).toEqual({});
-        expect(processScenarioStep({ target: 'bit:BPM.READY', action: 'unknown' } as any, mockProfile, mockState).newState).toEqual({});
+        expect(processScenarioStep({ target: 'field:BPM', action: 'unknown' } as unknown as ScenarioStep, mockProfile, mockState).newState).toEqual({});
+        expect(processScenarioStep({ target: 'bit:BPM.READY', action: 'unknown' } as unknown as ScenarioStep, mockProfile, mockState).newState).toEqual({});
     });
 });

@@ -3,6 +3,7 @@ import type { ErrorType } from './scenario';
 import type { Trigger } from './trigger';
 import type { ResponderRule, ConversationEntry, Exchange } from './responder';
 import type { ValidationSession } from './validation';
+import { AutomationSequence } from './automation';
 
 export type SimulationStatus = 'stopped' | 'running' | 'paused';
 export type OutputMode = 'serial' | 'tcp' | 'log';

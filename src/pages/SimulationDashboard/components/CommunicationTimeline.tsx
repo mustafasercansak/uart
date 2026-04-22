@@ -1,15 +1,16 @@
 import React, { memo } from 'react';
-import { ArrowRight, ArrowLeft, Clock, WifiOff } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Clock, WifiOff, Trash2 } from 'lucide-react';
 import type { GeneratedFrame, Exchange } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 interface TimelineProps {
   exchanges: Exchange[];
   onSelectFrame: (frame: GeneratedFrame) => void;
+  onClear?: () => void;
   hasRealDevice?: boolean; // serial veya network bağlı mı?
 }
 
-const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: TimelineProps) => {
+const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = false }: TimelineProps) => {
   const { t } = useTranslation();
   const displayExchanges = exchanges.slice(-50);
 
@@ -39,6 +40,16 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
           <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest bg-gray-950 px-2 py-1 rounded">
             Son {displayExchanges.length} frame
           </div>
+          {onClear && (
+            <button
+              onClick={onClear}
+              className="p-1 text-gray-500 hover:text-rose-500 transition-colors flex items-center gap-1.5 bg-gray-950 px-1.5 py-1 rounded group/clear"
+              title={t('timeline.clear')}
+            >
+              <Trash2 size={10} className="group-hover/clear:scale-110 transition-transform" />
+              <span className="text-[9px] font-mono font-black uppercase tracking-widest">{t('timeline.clear')}</span>
+            </button>
+          )}
         </div>
       </div>
 

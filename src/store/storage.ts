@@ -1,4 +1,4 @@
-import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, ChecksumConfig, FlagsConfig } from '../types';
+import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, ChecksumConfig, FlagsConfig, AutomationSequence } from '../types';
 
 // ─────────────────────────────────────────────
 // LOCALSTORAGE TABANLI DEPOLAMA
@@ -28,11 +28,15 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'm6', name: 'Lead-I', type: 'waveform', byteWidth: 2, endianness: 'big', order: 5, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 800, offset: 2048, noiseLevel: 3, phase: 0 } as WaveformConfig },
       { id: 'm6_2', name: 'Lead-II', type: 'waveform', byteWidth: 2, endianness: 'big', order: 6, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 1200, offset: 2048, noiseLevel: 3, phase: 0.04 } as WaveformConfig },
       { id: 'm7', name: 'SpO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 7, typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 30, offset: 128, noiseLevel: 1 } as WaveformConfig },
-      { id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 8, typeConfig: { bits: [
-        { index: 0, name: 'Lead-Off', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 1, name: 'Low-SPO2', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 2, name: 'Battery-Low', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
-      ]} as FlagsConfig },
+      {
+        id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 8, typeConfig: {
+          bits: [
+            { index: 0, name: 'Lead-Off', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 1, name: 'Low-SPO2', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 2, name: 'Battery-Low', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
+          ]
+        } as FlagsConfig
+      },
       { id: 'm9', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 8, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'm1', endFieldId: 'm8' } } as ChecksumConfig }
     ],
     framing: {
@@ -78,12 +82,16 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'p1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xFB } as FixedConfig },
       { id: 'p2', name: 'Flow Rate', type: 'range', byteWidth: 2, endianness: 'big', order: 1, typeConfig: { min: 50, max: 250, distribution: 'uniform' } as RangeConfig },
       { id: 'p3', name: 'Volume', type: 'range', byteWidth: 4, endianness: 'big', order: 2, typeConfig: { min: 0, max: 10000, distribution: 'uniform' } as RangeConfig },
-      { id: 'p4', name: 'Status', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { bits: [
-        { index: 0, name: 'Running', defaultValue: 1, behavior: 'manual', behaviorConfig: {} },
-        { index: 1, name: 'Air-In-Line', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 2, name: 'Occlusion', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 3, name: 'Bolus', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
-      ]} as FlagsConfig },
+      {
+        id: 'p4', name: 'Status', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: {
+          bits: [
+            { index: 0, name: 'Running', defaultValue: 1, behavior: 'manual', behaviorConfig: {} },
+            { index: 1, name: 'Air-In-Line', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 2, name: 'Occlusion', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 3, name: 'Bolus', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
+          ]
+        } as FlagsConfig
+      },
       { id: 'p5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'p2', endFieldId: 'p4' } } as ChecksumConfig }
     ],
     framing: {
@@ -106,11 +114,15 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'c1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xFE } as FixedConfig },
       { id: 'c2', name: 'Position', type: 'range', byteWidth: 1, endianness: 'big', order: 1, typeConfig: { min: 0, max: 100, distribution: 'uniform' } as RangeConfig },
       { id: 'c3', name: 'Pressure', type: 'range', byteWidth: 2, endianness: 'big', order: 2, typeConfig: { min: 0, max: 400, distribution: 'gaussian' } as RangeConfig },
-      { id: 'c4', name: 'Flags', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { bits: [
-        { index: 0, name: 'Moving', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 1, name: 'Error', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 2, name: 'Calibrated', defaultValue: 1, behavior: 'manual', behaviorConfig: {} }
-      ]} as FlagsConfig },
+      {
+        id: 'c4', name: 'Flags', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: {
+          bits: [
+            { index: 0, name: 'Moving', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 1, name: 'Error', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 2, name: 'Calibrated', defaultValue: 1, behavior: 'manual', behaviorConfig: {} }
+          ]
+        } as FlagsConfig
+      },
       { id: 'c5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'xor', scope: { startFieldId: 'c2', endFieldId: 'c4' } } as ChecksumConfig }
     ],
     framing: {

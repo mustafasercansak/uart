@@ -155,7 +155,7 @@ describe('HighLevelDecoders', () => {
 
         it('hits diverse detectProtocol branches', () => {
             expect(detectProtocol([])).toBe('unknown');
-            expect(detectProtocol(null as any)).toBe('unknown');
+            expect(detectProtocol(null as unknown as number[])).toBe('unknown');
             // Modbus out of range
             expect(detectProtocol([250, 3, 0, 0])).toBe('unknown');
             expect(detectProtocol([1, 0x18, 0, 0])).toBe('unknown');

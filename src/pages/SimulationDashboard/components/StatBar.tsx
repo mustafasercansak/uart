@@ -127,27 +127,27 @@ const StatBar = memo(({
   };
 
   return (
-    <div className="px-5 py-3 glass-panel border-b-0 m-2 rounded-2xl flex flex-wrap items-center gap-x-6 gap-y-3 shrink-0 relative z-50 overflow-visible">
-      <div className="flex items-center gap-3 pr-4 border-r border-white/5">
-        <div className={`w-3 h-3 rounded-full ${status === 'running' ? 'bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,0.4)]' : status === 'paused' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.3)]' : 'bg-gray-600'}`} />
-        <span className={`text-[11px] font-mono uppercase font-black tracking-widest ${status === 'running' ? 'text-emerald-400' : status === 'paused' ? 'text-amber-400' : 'text-gray-500'}`}>
+    <div className="px-4 py-1.5 glass-panel border-b-0 m-2 rounded-xl flex flex-wrap items-center gap-x-3 gap-y-1.5 shrink-0 relative z-50 overflow-visible transition-all duration-300">
+      <div className="flex items-center gap-2 pr-3 border-r border-white/5 h-6">
+        <div className={`w-2 h-2 rounded-full ${status === 'running' ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.4)]' : status === 'paused' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'bg-gray-600'}`} />
+        <span className={`text-[10px] font-mono uppercase font-black tracking-widest ${status === 'running' ? 'text-emerald-400' : status === 'paused' ? 'text-amber-400' : 'text-gray-500'}`}>
           {status === 'running' ? t('common.live') : status === 'paused' ? t('common.paused') : t('common.idle')}
         </span>
       </div>
 
       {/* Backend Status */}
-      <div className="flex items-center gap-2 pr-4 border-r border-white/5">
-        <div className={`w-2.5 h-2.5 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+      <div className="flex items-center gap-2 pr-3 border-r border-white/5 h-6">
+        <div className={`w-2 h-2 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
         <button 
           onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('ws://localhost:5000')}
-          className={`text-[10px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
+          className={`text-[9px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
           {t('common.engine')}: {networkConnected ? t('common.online') : t('common.offline')}
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 p-1 bg-gray-900/50 rounded-lg border border-gray-800">
         <select 
-          className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700 w-32"
+          className="bg-gray-950 border border-transparent hover:border-gray-700 rounded px-1.5 py-0.5 text-[9px] font-mono text-gray-200 outline-none focus:border-green-700 w-28 transition-all"
           value={selectedProfileId ?? ''} 
           onChange={(e) => onSetProfile(e.target.value)} 
           disabled={status !== 'stopped'}
@@ -155,24 +155,26 @@ const StatBar = memo(({
           <option value="">— {t('dashboard.profile')} —</option>
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button 
-          onClick={onAddProfile}
-          className="p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-500 rounded transition-colors"
-          title={t('dashboard.profile')}
-        >
-          <Plus size={14} />
-        </button>
-        {selectedProfile && (
+        <div className="flex items-center gap-1">
           <button 
-            onClick={() => onEditProfile(selectedProfile)}
-            className="p-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-blue-400 rounded transition-colors"
+            onClick={onAddProfile}
+            className="p-1 hover:bg-gray-800 text-emerald-500 rounded transition-colors"
+            title={t('dashboard.profile')}
           >
-            <Edit3 size={14} />
+            <Plus size={12} />
           </button>
-        )}
-
+          {selectedProfile && (
+            <button 
+              onClick={() => onEditProfile(selectedProfile)}
+              className="p-1 hover:bg-gray-800 text-blue-400 rounded transition-colors"
+            >
+              <Edit3 size={12} />
+            </button>
+          )}
+        </div>
+        <div className="w-px h-3 bg-gray-800 mx-0.5" />
         <select 
-          className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700 w-32"
+          className="bg-gray-950 border border-transparent hover:border-gray-700 rounded px-1.5 py-0.5 text-[9px] font-mono text-gray-200 outline-none focus:border-green-700 w-28 transition-all"
           value={selectedScenarioId ?? ''} 
           onChange={(e) => onSetScenario(e.target.value)} 
           disabled={status !== 'stopped'}
@@ -184,9 +186,9 @@ const StatBar = memo(({
         </select>
       </div>
 
-      <div className="flex items-center gap-2 border-l border-gray-800 pl-3">
+      <div className="flex items-center gap-1.5 border-l border-gray-800/50 pl-3">
         <select 
-          className="bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-[10px] font-mono text-gray-200 outline-none focus:border-green-700"
+          className="bg-gray-800/50 border border-gray-700 rounded px-1.5 py-0.5 text-[9px] font-mono text-gray-200 outline-none focus:border-green-700"
           value={outputMode} 
           onChange={(e) => onSetOutputMode(e.target.value as OutputMode)} 
           disabled={status !== 'stopped'}
@@ -197,18 +199,18 @@ const StatBar = memo(({
         </select>
         
         {selectedProfile && (
-          <div className="text-[9px] font-mono text-gray-500 border border-gray-800 px-1.5 py-0.5 rounded bg-gray-900/50">
+          <div className="text-[8px] font-mono text-gray-500 border border-gray-800 px-1 py-0.5 rounded bg-gray-950">
             {selectedProfile.baudRate}
           </div>
         )}
       </div>
 
       {outputMode === 'serial' && (
-        <div className="flex items-center border-l border-gray-700 pl-3 gap-2">
+        <div className="flex items-center gap-1.5 border-l border-gray-800/50 pl-3">
           {!serialConnected ? (
-            <div className="flex items-center gap-1">
+            <>
               <select 
-                className="bg-gray-800 border border-gray-700 rounded px-1 py-1 text-[9px] font-mono text-gray-200 outline-none w-28 focus:border-blue-500"
+                className="bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[9px] font-mono text-gray-200 outline-none w-24 focus:border-blue-500"
                 value={selectedPort}
                 onChange={(e) => setSelectedPort(e.target.value)}
                 onFocus={onGetPorts}
@@ -223,16 +225,16 @@ const StatBar = memo(({
               <button 
                 onClick={() => onConnectSerial(selectedPort)} 
                 disabled={!selectedProfileId || status !== 'stopped' || !selectedPort || !networkConnected}
-                className="px-2 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-mono rounded font-bold transition-all"
+                className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 text-white text-[9px] font-mono rounded font-bold transition-all"
               >
                 {t('dashboard.connect')}
               </button>
-            </div>
+            </>
           ) : (
             <button 
               onClick={onDisconnectSerial} 
               disabled={status !== 'stopped'}
-              className="px-2 py-1 bg-red-700 hover:bg-red-600 text-white text-[10px] font-mono rounded font-bold"
+              className="px-2 py-0.5 bg-rose-700 hover:bg-rose-600 text-white text-[9px] font-mono rounded font-bold"
             >
               {t('dashboard.disconnect')}
             </button>
@@ -240,21 +242,21 @@ const StatBar = memo(({
         </div>
       )}
 
-      <div className="flex gap-1.5 ml-auto">
+      <div className="flex items-center gap-1 ml-auto">
         <button 
           onClick={onToggleAnalyzerMode}
-          className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
-            analyzerMode ? 'bg-emerald-900/20 border-emerald-800/50 text-emerald-400' : 'bg-blue-900/20 border-blue-800/50 text-blue-400'
+          className={`px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border ${
+            analyzerMode ? 'bg-emerald-900/20 border-emerald-800/40 text-emerald-400' : 'bg-blue-900/20 border-blue-800/40 text-blue-400'
           }`}
         >
-          <Activity size={14} className={analyzerMode ? 'animate-pulse' : ''} />
+          <Activity size={12} className={analyzerMode ? 'animate-pulse' : ''} />
           {analyzerMode ? t('dashboard.standardMode') : t('dashboard.analyzerMode')}
         </button>
         <button 
           onClick={handleExport}
-          className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+          className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border bg-gray-900/40 border-gray-800 text-gray-500 hover:text-white hover:border-gray-600"
         >
-          <FileDown size={14} />
+          <FileDown size={12} />
           {t('dashboard.report')}
         </button>
 
@@ -262,25 +264,25 @@ const StatBar = memo(({
         {!validationSession ? (
           <button 
             onClick={onStartValidation}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+            className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500 hover:bg-emerald-400/10"
           >
-            <ShieldCheck size={14} />
+            <ShieldCheck size={12} />
             {t('dashboard.compliance')}
           </button>
         ) : validationSession.status === 'running' ? (
           <button 
             onClick={onStopValidation}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-rose-500 bg-rose-500/10 text-rose-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+            className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border border-rose-500/50 bg-rose-500/10 text-rose-500 animate-pulse"
           >
-            <ClipboardCheck size={14} />
-            STOP TEST
+            <ClipboardCheck size={12} />
+            STOP
           </button>
         ) : (
           <button 
             onClick={onViewReport}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-blue-500/50 bg-blue-500/10 text-blue-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 shadow-lg shadow-blue-500/10"
+            className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border border-blue-500/40 bg-blue-500/10 text-blue-400 hover:text-white"
           >
-            <FileText size={14} />
+            <FileText size={12} />
             {t('dashboard.viewReport')}
           </button>
         )}
@@ -288,90 +290,106 @@ const StatBar = memo(({
         <button 
           onClick={isRecording ? onStopRecording : onStartRecording}
           disabled={status !== 'running'}
-          className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border ${
+          className={`px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border ${
             isRecording 
-              ? 'bg-red-900/20 border-red-500/50 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
-              : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white hover:border-gray-500'
+              ? 'bg-rose-900/20 border-rose-500/40 text-rose-500' 
+              : 'bg-gray-900/40 border-gray-800 text-gray-500 hover:text-white hover:border-gray-600'
           } disabled:opacity-30`}
         >
           {isRecording ? (
             <>
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
               {t('dashboard.recording')}
-              <Square size={10} className="fill-current" />
+              <Square size={8} className="fill-current" />
             </>
           ) : (
             <>
-              <Circle size={10} className="text-gray-600 fill-current group-hover:text-red-500" />
+              <Circle size={8} className="text-gray-600 fill-current" />
               {t('dashboard.rec')}
             </>
           )}
         </button>
 
-        <div className="flex gap-1 border-l border-gray-800 pl-3">
+        <div className="flex gap-1 border-l border-gray-800/50 pl-2">
           {/* Language Switcher */}
           <button 
             onClick={() => setLocale(locale === 'tr' ? 'en' : 'tr')}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-emerald-500"
+            className="p-1.5 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-all border border-transparent hover:border-gray-700"
+            title={locale.toUpperCase()}
           >
             <Globe size={14} className={locale === 'en' ? 'text-blue-400' : 'text-emerald-400'} />
-            {locale.toUpperCase()}
           </button>
 
           <button 
             onClick={() => window.open('/help', '_blank')}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
+            className="p-1.5 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-all border border-transparent hover:border-gray-700"
           >
             <HelpCircle size={14} />
           </button>
+          
+          <div className="w-px h-4 bg-gray-800 mx-1 self-center" />
+
           {status === 'stopped' ? (
             <button 
               onClick={onStart} 
               disabled={!selectedProfileId || (outputMode === 'serial' && !serialConnected) || (outputMode === 'tcp' && !networkConnected)}
-              className="px-3 py-1 bg-green-700 hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-mono rounded font-bold transition-all shadow-lg shadow-green-900/10"
+              className="px-3 py-0.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-30 text-white text-[10px] font-mono rounded font-bold transition-all shadow-sm"
             >
-              ▶ {t('common.start')}
+              {t('common.start').toUpperCase()}
             </button>
           ) : status === 'running' ? (
-            <>
-              <button onClick={onPause} className="px-3 py-1 bg-yellow-700 hover:bg-yellow-600 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">⏸</button>
-              <button onClick={onStop} className="px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">■</button>
-            </>
+            <div className="flex gap-1">
+              <button onClick={onPause} className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-mono rounded font-bold shadow-sm">PAUSE</button>
+              <button onClick={onStop} className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-mono rounded font-bold shadow-sm">STOP</button>
+            </div>
           ) : (
-            <>
-              <button onClick={onResume} className="px-3 py-1 bg-green-700 hover:bg-green-600 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">▶</button>
-              <button onClick={onStop} className="px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-[10px] font-mono rounded font-bold transition-all shadow-md">■</button>
-            </>
+            <div className="flex gap-1">
+              <button onClick={onResume} className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-mono rounded font-bold shadow-sm">RESUME</button>
+              <button onClick={onStop} className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-mono rounded font-bold shadow-sm">STOP</button>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-3 text-[9px] font-mono border-l border-gray-800 pl-3">
-        <div className="hidden lg:flex items-center gap-1.5 border-r border-gray-900 pr-3">
-             <span className="text-gray-600 uppercase">Signal:</span>
-             <div className="flex items-center gap-2">
-                 <div className="flex flex-col">
-                     <span className="text-[7px] text-gray-500 leading-none">{t('stats.noise')}</span>
-                     <span className={signalIntegrity.noiseLevel > 0.5 ? 'text-amber-500' : 'text-emerald-500'}>
-                         {(signalIntegrity.noiseLevel * 100).toFixed(0)}%
-                     </span>
-                 </div>
-                 <div className="flex flex-col">
-                     <span className="text-[7px] text-gray-500 leading-none">{t('stats.jitter')}</span>
-                     <span className="text-blue-400">{signalIntegrity.jitterMs}ms</span>
-                 </div>
+      {/* Stats - Telemetry Strip */}
+      <div className="flex items-center gap-3 text-[8px] font-mono border-l border-white/5 pl-3 h-6">
+        <div className="hidden min-[1300px]:flex items-center gap-2 border-r border-white/5 pr-3 h-4">
+             <div className="flex items-baseline gap-1">
+                 <span className="text-gray-600 uppercase font-black text-[7px]">{t('stats.noise')}:</span>
+                 <span className={`font-bold ${signalIntegrity.noiseLevel > 0.5 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                     {(signalIntegrity.noiseLevel * 100).toFixed(0)}%
+                 </span>
+             </div>
+             <div className="w-px h-2 bg-white/5" />
+             <div className="flex items-baseline gap-1">
+                 <span className="text-gray-600 uppercase font-black text-[7px]">{t('stats.jitter')}:</span>
+                 <span className="text-blue-400 font-bold">{signalIntegrity.jitterMs}ms</span>
              </div>
         </div>
-        <div className="hidden sm:block"><span className="text-gray-600 font-black">{t('stats.frames')}:</span> <span className="text-gray-300">{frameCount}</span></div>
-        <div>
-           <span className="text-gray-600 font-black">{t('stats.latency')}:</span> 
-           <span className={`ml-1 font-bold ${timingStats.averageLatencyMs > 100 ? 'text-red-400' : 'text-emerald-400'}`}>
-             {timingStats.averageLatencyMs.toFixed(1)}ms
-           </span>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-600 font-black">{t('stats.frames')}:</span> 
+            <span className="text-gray-300 font-bold">{frameCount}</span>
+          </div>
+
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-600 font-black">{t('stats.latency')}:</span> 
+            <span className={`font-bold ${timingStats.averageLatencyMs > 100 ? 'text-red-400' : 'text-emerald-400'}`}>
+              {timingStats.averageLatencyMs.toFixed(1)}ms
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-600 font-black">{t('stats.error')}:</span> 
+            <span className={`font-bold ${errorCount > 0 ? 'text-rose-500' : 'text-emerald-500/50'}`}>{errorCount}</span>
+          </div>
+
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-600 font-black">{t('stats.time')}:</span> 
+            <span className="text-gray-300 font-bold">{formatMs(elapsedMs)}</span>
+          </div>
         </div>
-        <div><span className="text-gray-600 font-black">{t('stats.error')}:</span> <span className={errorCount > 0 ? 'text-red-400' : 'text-gray-400'}>{errorCount}</span></div>
-        <div><span className="text-gray-600 font-black">{t('stats.time')}:</span> <span className="text-gray-300">{formatMs(elapsedMs)}</span></div>
       </div>
     </div>
   );

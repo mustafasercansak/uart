@@ -123,7 +123,8 @@ export default function SimulationDashboard() {
     setDiffFrame, setResponderRules,
     deleteRecording, refreshRecordings,
     setSignalIntegrity, setTriggers,
-    startValidation, stopValidation
+    startValidation, stopValidation,
+    clearExchanges
   } = useSimulation();
 
   const { 
@@ -475,6 +476,7 @@ export default function SimulationDashboard() {
                     setDiffFrame,
                     setResponderRules,
                     setTriggers,
+                    clearExchanges,
                     onSendFrame: (bytes: number[]) => {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);

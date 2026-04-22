@@ -30,7 +30,7 @@ describe('FilterEngine', () => {
 
         it('handles unexpected types in validate', () => {
             // Trigger catch in validate
-            expect(FilterEngine.validate({} as any).isValid).toBe(false);
+            expect(FilterEngine.validate({} as unknown as string).isValid).toBe(false);
         });
     });
 
@@ -114,8 +114,8 @@ describe('FilterEngine', () => {
             const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
             
             // Trigger catch in evaluate
-            expect(FilterEngine.evaluate(null as any, 'AA BB')).toBe(true);
-            expect(FilterEngine.evaluate(mockExchange, null as any)).toBe(true);
+            expect(FilterEngine.evaluate(null as unknown as Exchange, 'AA BB')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, null as unknown as string)).toBe(true);
             
             consoleSpy.mockRestore();
         });

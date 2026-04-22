@@ -39,6 +39,7 @@ interface TabContentProps {
     setDiffFrame: (index: 0 | 1, frame: GeneratedFrame | null) => void;
     setResponderRules: (rules: import('../../../types').ResponderRule[]) => void;
     setTriggers: (triggers: import('../../../types').Trigger[]) => void;
+    clearExchanges: () => void;
     onSendFrame?: (bytes: number[]) => void;
   };
   elapsedMs?: number;
@@ -134,6 +135,7 @@ export default function TabContent({
         <CommunicationTimeline
           exchanges={exchanges}
           onSelectFrame={() => {}}
+          onClear={hooks.clearExchanges}
           hasRealDevice={state.serialConnected || state.networkConnected}
         />
       );

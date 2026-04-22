@@ -74,16 +74,17 @@ export function useUIUpdateLoop({
               case 'EXCHANGE':
                 exchangeBufferRef.current.push(msg.exchange);
                 break;
-              case 'CONVERSATION':
+              case 'CONVERSATION': {
                 conversationBufferRef.current.push(msg.entry);
                 const cDate = msg.entry.timestamp ? new Date(msg.entry.timestamp) : new Date();
                 const cTimeStr = `${cDate.getHours().toString().padStart(2, '0')}:${cDate.getMinutes().toString().padStart(2, '0')}:${cDate.getSeconds().toString().padStart(2, '0')}.${cDate.getMilliseconds().toString().padStart(3, '0')}`;
-                newLogs.push({ 
-                  time: cTimeStr, 
-                  text: `${msg.entry.type.toUpperCase()}: ${msg.entry.rawHex}${msg.entry.details ? ` (${msg.entry.details})` : ''}`, 
-                  type: msg.entry.type 
+                newLogs.push({
+                  time: cTimeStr,
+                  text: `${msg.entry.type.toUpperCase()}: ${msg.entry.rawHex}${msg.entry.details ? ` (${msg.entry.details})` : ''}`,
+                  type: msg.entry.type
                 });
                 break;
+              }
               case 'RAW_RX_DATA': {
                 const profile = profilesRef.current.find(p => p.id === stateRef.current.profileId);
                 const now = new Date();

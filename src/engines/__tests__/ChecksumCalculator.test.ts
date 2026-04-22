@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateChecksum } from '../ChecksumCalculator';
+import type { ChecksumAlgorithm } from '../../types';
 
 describe('ChecksumCalculator', () => {
   const data = [0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39]; // "123456789"
@@ -53,6 +54,6 @@ describe('ChecksumCalculator', () => {
     expect(result).toEqual([0xBB, 0x3D]);
 
     // Unknown algorithm
-    expect(calculateChecksum(data, { algorithm: 'unknown' as any })).toEqual([0x00]);
+    expect(calculateChecksum(data, { algorithm: 'unknown' as unknown as ChecksumAlgorithm })).toEqual([0x00]);
   });
 });

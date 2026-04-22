@@ -6,6 +6,7 @@ import type { ErrorType } from './scenario';
 import type { Trigger } from './trigger';
 import type { ResponderRule } from './responder';
 import type { ValidationTarget } from './validation';
+import { AutomationSequence } from './automation';
 
 export interface SimulationContextType {
   state: SimulationState;
@@ -58,8 +59,9 @@ export interface SimulationContextType {
   deleteValidationSession: (id: string) => void;
   sendRawData: (hex: string) => void;
   automation: {
-    saveSequence: (sequence: any) => void;
+    saveSequence: (sequence: AutomationSequence) => void;
     deleteSequence: (id: string) => void;
     setActiveSequence: (id: string | null) => void;
   };
+  clearExchanges: () => void;
 }

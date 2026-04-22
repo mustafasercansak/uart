@@ -74,7 +74,9 @@ const INITIAL_STATE: SimulationState = {
   logicHistory: [
     { id: 'tx-main', name: 'UART TX', transitions: [] }
   ],
-  validationSession: null
+  validationSession: null,
+  sequences: [],
+  activeSequenceId: null
 };
 
 let activePort: SerialPort | null = null;
