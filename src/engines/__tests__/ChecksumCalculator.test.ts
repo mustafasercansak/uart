@@ -39,4 +39,20 @@ describe('ChecksumCalculator', () => {
     const result = calculateChecksum([], { algorithm: 'xor' });
     expect(result).toEqual([0x00]);
   });
+
+  it('handles custom CRC settings and unknown algorithms', () => {
+    // Custom algorithm (ARC model)
+    const result = calculateChecksum(data, { 
+        algorithm: 'custom', 
+        polynomial: 0x8005, 
+        initialValue: 0x0000, 
+        xorOut: 0x0000, 
+        reflectIn: true, 
+        reflectOut: true 
+    });
+    expect(result).toEqual([0xBB, 0x3D]);
+
+    // Unknown algorithm
+    expect(calculateChecksum(data, { algorithm: 'unknown' as any })).toEqual([0x00]);
+  });
 });

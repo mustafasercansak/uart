@@ -214,6 +214,11 @@ wss.on('connection', (ws) => {
         case 'OVERRIDE_FIELD':
           engine.updateOverrides({ fieldOverrides: { ...engine.getState().fieldOverrides, [data.fieldId]: data.value } });
           break;
+        case 'SEND_RAW_DATA': {
+          const bytes = data.payload as number[];
+          engine.injectRawTX(bytes);
+          break;
+        }
         case 'OVERRIDE_BIT':
           engine.updateOverrides({ bitOverrides: { ...engine.getState().bitOverrides, [data.bitKey]: data.value } });
           break;

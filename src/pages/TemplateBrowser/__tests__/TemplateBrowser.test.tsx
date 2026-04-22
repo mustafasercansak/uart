@@ -65,4 +65,41 @@ describe('TemplateBrowser Component', () => {
     
     vi.useRealTimers();
   });
+
+  it('should filter templates by category', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    // Click "Tıbbi" filter button
+    const medicalFilter = screen.getByRole('button', { name: 'Tıbbi' });
+    fireEvent.click(medicalFilter);
+
+    // Verify a medical template is still there
+    expect(screen.getByText('SpO2 Modülü')).toBeInTheDocument();
+    
+    // Switch to 'All'
+    const allFilter = screen.getByText(/Tümü/i);
+    fireEvent.click(allFilter);
+    expect(screen.getByText('Açık Kaynak Ventilatör')).toBeInTheDocument();
+  });
+
+  it('should navigate to profiles when arrow button is clicked', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    const profileButtons = screen.getAllByTitle('Profillere git');
+    fireEvent.click(profileButtons[0]);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/profiles');
+  });
 });

@@ -1,12 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAudioAlerts } from '../useAudioAlerts';
 
 describe('useAudioAlerts hook', () => {
-    let mockOscillator: any;
-    let mockGain: any;
-    let mockAudioContextInstance: any;
-    let AudioContextSpy: any;
+    let mockOscillator: {
+        connect: Mock;
+        start: Mock;
+        stop: Mock;
+        type: string;
+        frequency: {
+            setValueAtTime: Mock;
+        };
+    };
+    let mockGain: {
+        connect: Mock;
+        gain: {
+            setValueAtTime: Mock;
+            linearRampToValueAtTime: Mock;
+            exponentialRampToValueAtTime: Mock;
+        };
+    };
+    let mockAudioContextInstance: {
+        state: string;
+        currentTime: number;
+        destination: Record<string, unknown>;
+        createOscillator: Mock;
+        createGain: Mock;
+        resume: Mock;
+    };
+    let AudioContextSpy: Mock;
 
     beforeEach(() => {
         // Fresh mock objects for every test
@@ -15,7 +37,9 @@ describe('useAudioAlerts hook', () => {
             start: vi.fn(),
             stop: vi.fn(),
             type: 'sine',
-            frequency: { setValueAtTime: vi.fn() }
+            frequency: {
+                setValueAtTime: vi.fn(),
+            },
         };
 
         mockGain = {
@@ -23,8 +47,8 @@ describe('useAudioAlerts hook', () => {
             gain: {
                 setValueAtTime: vi.fn(),
                 linearRampToValueAtTime: vi.fn(),
-                exponentialRampToValueAtTime: vi.fn()
-            }
+                exponentialRampToValueAtTime: vi.fn(),
+            },
         };
 
         mockAudioContextInstance = {
@@ -36,8 +60,12 @@ describe('useAudioAlerts hook', () => {
             resume: vi.fn().mockResolvedValue(undefined),
         };
 
-        // Stub the global constructor with a fresh spy that returns our controlled instance
-        AudioContextSpy = vi.fn().mockImplementation(() => mockAudioContextInstance);
+        // Use a traditional function implementation to avoid Vitest 4 'vi.fn()' warnings
+        // and ensure 'new AudioContext()' correctly returns our mock instance.
+        AudioContextSpy = vi.fn().mockImplementation(function() {
+            return mockAudioContextInstance;
+        });
+        
         vi.stubGlobal('AudioContext', AudioContextSpy);
         
         vi.useFakeTimers();

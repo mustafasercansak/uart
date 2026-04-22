@@ -109,6 +109,7 @@ function getFieldValue(
       return clampValue(generateWaveformSample(cfg, elapsedMs), byteWidth);
     }
     case 'checksum':
+      // @ts-ignore - Unreachable: generateFrame handles checksums in Pass 3 directly.
       return 0; // Computed separately
     case 'flags': {
       const cfg = typeConfig as FlagsConfig;
@@ -177,7 +178,7 @@ export function generateFrame(
     if (field.type === 'checksum' || field.type === 'computed') continue;
     const value = getFieldValue(field, state, elapsedMs, namedValues);
     namedValues[field.name] = value;
-    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness);
+    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
   }
 
   // Pass 2: computed fields
@@ -185,7 +186,7 @@ export function generateFrame(
     if (field.type !== 'computed') continue;
     const value = getFieldValue(field, state, elapsedMs, namedValues);
     namedValues[field.name] = value;
-    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness);
+    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
   }
 
   // Pass 3: checksum fields

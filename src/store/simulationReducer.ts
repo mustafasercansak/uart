@@ -14,7 +14,9 @@ import type {
   ConversationEntry,
   Exchange,
   ValidationSession,
-  ValidationEvent
+  ValidationEvent,
+  AutomationSequence,
+  AutomationStep
 } from '../types';
 
 const MAX_RECENT_FRAMES = 50;
@@ -76,7 +78,9 @@ export const INITIAL_STATE: SimulationState = {
   logicHistory: [
     { id: 'tx-main', name: 'UART TX', transitions: [] }
   ],
-  validationSession: null
+  validationSession: null,
+  sequences: [],
+  activeSequenceId: null
 };
 
 export type SimAction =
@@ -125,7 +129,11 @@ export type SimAction =
   | { type: 'STOP_VALIDATION'; endTime: number; score: number }
   | { type: 'CANCEL_VALIDATION' }
   | { type: 'ADD_VALIDATION_EVENT'; event: ValidationEvent }
-  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: { timestamp: number; fields: Record<string, number> } };
+  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: { timestamp: number; fields: Record<string, number> } }
+  | { type: 'SET_ACTIVE_SEQUENCE'; id: string | null }
+  | { type: 'SAVE_SEQUENCE'; sequence: AutomationSequence }
+  | { type: 'DELETE_SEQUENCE'; id: string }
+  | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] };
 
 export function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -203,6 +211,11 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         logEntries: [...state.logEntries.slice(-(MAX_LOG_ENTRIES - 1)), { time: timeStr, text: action.text, type: action.entryType }]
       };
     }
+    case 'BATCH_LOGS':
+      return {
+        ...state,
+        logEntries: [...state.logEntries, ...action.entries].slice(-MAX_LOG_ENTRIES)
+      };
     case 'OVERRIDE_FIELD':
       return { ...state, fieldOverrides: { ...state.fieldOverrides, [action.fieldId]: action.value } };
     case 'OVERRIDE_BIT':
@@ -339,6 +352,23 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
           dataHistory: [...state.validationSession.dataHistory, action.entry].slice(-1000)
         }
       };
+    case 'SET_ACTIVE_SEQUENCE':
+      return { ...state, activeSequenceId: action.id };
+    case 'SAVE_SEQUENCE': {
+      const idx = state.sequences.findIndex(s => s.id === action.sequence.id);
+      const newSequences = idx !== -1
+        ? state.sequences.map((s, i) => i === idx ? action.sequence : s)
+        : [...state.sequences, action.sequence];
+      return { ...state, sequences: newSequences };
+    }
+    case 'DELETE_SEQUENCE':
+      return {
+        ...state,
+        sequences: state.sequences.filter(s => s.id !== action.id),
+        activeSequenceId: state.activeSequenceId === action.id ? null : state.activeSequenceId
+      };
+    case 'SET_SEQUENCES':
+      return { ...state, sequences: action.sequences };
     default:
       return state;
   }

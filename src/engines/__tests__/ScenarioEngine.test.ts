@@ -191,4 +191,67 @@ describe('ScenarioEngine', () => {
         expect(result.executedSteps.length).toBe(1);
     });
     });
+
+    it('covers missing branches in ScenarioEngine', () => {
+        // parseTarget without prefix
+        const step1: ScenarioStep = { id: 's1', atMs: 0, target: 'BPM', action: 'set', actionConfig: { value: 10 } };
+        expect(processScenarioStep(step1, mockProfile, mockState).newState.fieldOverrides?.['f1']).toBe(10);
+        
+        // findFieldId failure
+        const step2: ScenarioStep = { id: 's2', atMs: 0, target: 'field:UNKNOWN', action: 'set', actionConfig: { value: 10 } };
+        expect(processScenarioStep(step2, mockProfile, mockState).newState).toEqual({});
+        
+        // compareValues != and default
+        const scenario: Scenario = {
+            steps: [{ 
+                id: 'c1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'elapsed_time', operator: '!=', value: 0 } 
+            }, {
+                id: 'c2', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'elapsed_time', operator: 'UNKNOWN', value: 0 }
+            }]
+        } as unknown as Scenario;
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(result.executedSteps.find(s => s.id === 'c1')).toBeDefined();
+        expect(result.executedSteps.find(s => s.id === 'c2')).toBeUndefined();
+
+        // evaluateCondition missing field
+        const scenario2: Scenario = {
+            steps: [{ 
+                id: 'm1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'field_value', field: 'NONEXISTENT', operator: '==', value: 0 }
+            }]
+        } as unknown as Scenario;
+        expect(tickScenarioEngine(scenario2, mockProfile, mockState).executedSteps.length).toBe(0);
+    });
+
+    it('handles additional field and bit actions for coverage', () => {
+        // range action
+        const stepRange: ScenarioStep = {
+            id: 'sr1', atMs: 0, target: 'field:BPM', action: 'range',
+            actionConfig: { min: 40, max: 200 } as any
+        };
+        const resRange = processScenarioStep(stepRange, mockProfile, mockState);
+        expect(resRange.newState.fieldOverrides?.['f1__range']).toBe(40);
+
+        // pulse field
+        const stepPulse: ScenarioStep = {
+            id: 'sp1', atMs: 0, target: 'field:BPM', action: 'pulse',
+            actionConfig: { value: 150, durationMs: 1000 } as any
+        };
+        const resPulse = processScenarioStep(stepPulse, mockProfile, mockState);
+        expect(resPulse.newState.fieldOverrides?.['f1']).toBe(150);
+
+        // bit set
+        const stepBitSet: ScenarioStep = {
+            id: 'sb3', atMs: 0, target: 'bit:BPM.READY', action: 'set',
+            actionConfig: { value: 1 } as any
+        };
+        const resBitSet = processScenarioStep(stepBitSet, mockProfile, mockState);
+        expect(resBitSet.newState.bitOverrides?.['f1.READY']).toBe(1);
+
+        // default actions
+        expect(processScenarioStep({ target: 'field:BPM', action: 'unknown' } as any, mockProfile, mockState).newState).toEqual({});
+        expect(processScenarioStep({ target: 'bit:BPM.READY', action: 'unknown' } as any, mockProfile, mockState).newState).toEqual({});
+    });
 });

@@ -188,6 +188,31 @@ export function getScenario(id: string): Scenario | null {
   return loadScenarios().find((s) => s.id === id) ?? null;
 }
 
+// ── Automation Sequences ─────────────────────
+
+const SEQUENCES_KEY = 'uart_sequences';
+
+export function loadSequences(): AutomationSequence[] {
+  return load<AutomationSequence>(SEQUENCES_KEY);
+}
+
+export function saveSequences(sequences: AutomationSequence[]): void {
+  save(SEQUENCES_KEY, sequences);
+}
+
+export function saveSequence(sequence: AutomationSequence): void {
+  const sequences = loadSequences();
+  const idx = sequences.findIndex((s) => s.id === sequence.id);
+  if (idx >= 0) sequences[idx] = sequence;
+  else sequences.push(sequence);
+  saveSequences(sequences);
+}
+
+export function deleteSequence(id: string): void {
+  const sequences = loadSequences().filter((s) => s.id !== id);
+  saveSequences(sequences);
+}
+
 // ── Import / Export ───────────────────────────
 
 export function exportAsJson(data: unknown, filename: string): void {

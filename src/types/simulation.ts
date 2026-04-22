@@ -125,4 +125,6 @@ export interface SimulationState {
   playbackIndex?: number;
   playbackTotal?: number;
   validationSession: ValidationSession | null;
+  sequences: AutomationSequence[];
+  activeSequenceId: string | null;
 }

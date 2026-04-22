@@ -20,9 +20,9 @@ export class FilterEngine {
    * Validates if a filter string is syntactically correct.
    */
   static validate(filter: string): FilterResult {
-    if (!filter || filter.trim() === '') return { isValid: true };
-    
     try {
+      if (!filter || filter.trim() === '') return { isValid: true };
+      
       // Basic validation: check for balanced quotes and common operators
       // We don't need a full parser just for validation colors, 
       // but we can try a dry run or simplified regex.

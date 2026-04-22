@@ -134,7 +134,6 @@ export class VirtualConsoleDriver extends PeripheralDriver {
       };
     }
     return null;
-    return null;
   }
 }
 

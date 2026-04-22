@@ -11,11 +11,11 @@ import type {
   SignalIntegrity,
   DashboardWidget,
   WidgetType,
-  ValidationTarget,
-  Field,
   ConversationEntry,
   Exchange,
-  ValidationSession
+  ValidationSession,
+  AutomationSequence,
+  AutomationStep
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -23,6 +23,11 @@ import { reducer, INITIAL_STATE } from './simulationReducer';
 import { useBackendConnection } from './useBackendConnection';
 import { useUIUpdateLoop } from './useUIUpdateLoop';
 import type { SimulationState } from '../types';
+import { 
+  loadSequences, 
+  saveSequence, 
+  deleteSequence 
+} from './storage';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
@@ -69,7 +74,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           snapshots: parsed.snapshots || [],
           analyzerMode: parsed.analyzerMode ?? true,
           telemetryLayouts: layouts,
-          dashboardLayout: parsed.dashboardLayout || { widgets: [] }
+          dashboardLayout: parsed.dashboardLayout || { widgets: [] },
+          sequences: loadSequences()
         }
       });
       isInitializedRef.current = true;
@@ -423,6 +429,25 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         stopValidation,
         cancelValidation: () => dispatch({ type: 'CANCEL_VALIDATION' }),
         deleteValidationSession: () => dispatch({ type: 'CANCEL_VALIDATION' }),
+        sendRawData: (hex: string) => {
+          const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
+          if (bytes.length > 0) {
+            backendWsRef.current?.send(JSON.stringify({ type: 'SEND_RAW_DATA', payload: bytes }));
+          }
+        },
+        automation: {
+          saveSequence: (seq: any) => {
+            saveSequence(seq);
+            dispatch({ type: 'SAVE_SEQUENCE', sequence: seq });
+          },
+          deleteSequence: (id: string) => {
+            deleteSequence(id);
+            dispatch({ type: 'DELETE_SEQUENCE', id });
+          },
+          setActiveSequence: (id: string | null) => {
+            dispatch({ type: 'SET_ACTIVE_SEQUENCE', id });
+          }
+        }
       }}
     >
       {children}

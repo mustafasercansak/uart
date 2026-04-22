@@ -56,4 +56,10 @@ export interface SimulationContextType {
   stopValidation: () => void;
   cancelValidation: () => void;
   deleteValidationSession: (id: string) => void;
+  sendRawData: (hex: string) => void;
+  automation: {
+    saveSequence: (sequence: any) => void;
+    deleteSequence: (id: string) => void;
+    setActiveSequence: (id: string | null) => void;
+  };
 }

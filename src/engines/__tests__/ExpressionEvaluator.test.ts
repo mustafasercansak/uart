@@ -37,4 +37,16 @@ describe('ExpressionEvaluator', () => {
   it('returns clampMin on invalid expression', () => {
     expect(evaluateExpression('invalid + logic', {}, 10, 100)).toBe(10);
   });
+
+  it('covers missing branches (unknown fields, non-numeric, catch)', () => {
+    // Unknown field reference
+    expect(evaluateExpression("fields['UNKNOWN']", mockFields, 5, 100)).toBe(5);
+    
+    // Non-numeric/NaN results
+    expect(evaluateExpression("'not a number'", {}, 7, 100)).toBe(7);
+    expect(evaluateExpression("NaN", {}, 8, 100)).toBe(8);
+    
+    // Explicit throw in expression
+    expect(evaluateExpression("(function(){throw 'err'})()", {}, 9, 100)).toBe(9);
+  });
 });

@@ -148,4 +148,5 @@ export interface Field {
   type: FieldType;
   typeConfig: FieldTypeConfig;
   widgetConfig?: WidgetConfig;
+  isAscii?: boolean;
 }

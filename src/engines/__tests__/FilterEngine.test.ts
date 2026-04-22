@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { FilterEngine } from '../FilterEngine';
 import type { Exchange, FrameProfile } from '../../types';
 
@@ -27,6 +27,11 @@ describe('FilterEngine', () => {
         it('identifies invalid tokens', () => {
             expect(FilterEngine.validate('bpm @#$ 100').isValid).toBe(false);
         });
+
+        it('handles unexpected types in validate', () => {
+            // Trigger catch in validate
+            expect(FilterEngine.validate({} as any).isValid).toBe(false);
+        });
     });
 
     describe('evaluate', () => {
@@ -44,6 +49,10 @@ describe('FilterEngine', () => {
         it('evaluates comparison expressions', () => {
             expect(FilterEngine.evaluate(mockExchange, 'latency > 10')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'latency < 10')).toBe(false);
+            expect(FilterEngine.evaluate(mockExchange, 'latency >= 15')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency <= 15')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency != 10')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency != 15')).toBe(false);
             expect(FilterEngine.evaluate(mockExchange, 'size == 3')).toBe(true);
         });
 
@@ -53,6 +62,23 @@ describe('FilterEngine', () => {
 
         it('evaluates "contains" operator', () => {
             expect(FilterEngine.evaluate(mockExchange, 'data contains "AA BB"')).toBe(true);
+        });
+
+        it('filters by additional standard fields', () => {
+            expect(FilterEngine.evaluate(mockExchange, 'id == ex1')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'status == ok')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'hex contains "AA BB"')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'rx')).toBe(true);
+        });
+
+        it('handles unknown fields and fallback search', () => {
+             // Unknown field should return false
+             expect(FilterEngine.evaluate(mockExchange, 'unknown_field == 1')).toBe(false);
+             
+             // Fallback search via evaluateCondition (bypassing shortcut with logical op)
+             // mockExchange.tx.rawHex is 'AA BB CC'
+             expect(FilterEngine.evaluate(mockExchange, 'tx && AA BB')).toBe(true);
+             expect(FilterEngine.evaluate(mockExchange, 'tx && ZZ ZZ')).toBe(false);
         });
 
         it('handles logical AND (&&)', () => {
@@ -65,8 +91,6 @@ describe('FilterEngine', () => {
         });
 
         it('filters by profile fields', () => {
-            // mockExchange.tx.rawHex is 'AA BB CC'
-            // f1 is at order 0, value 0xAA (170)
             expect(FilterEngine.evaluate(mockExchange, 'CMD == 170', mockProfile)).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'CMD > 100', mockProfile)).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'CMD < 50', mockProfile)).toBe(false);
@@ -82,9 +106,18 @@ describe('FilterEngine', () => {
              const exchangeWithFlag: Exchange = {
                  tx: { rawHex: '01' }
              } as unknown as Exchange;
-             // bit 0 is set -> error is 1
              expect(FilterEngine.evaluate(exchangeWithFlag, 'error == 1', profileWithFlag)).toBe(true);
              expect(FilterEngine.evaluate(exchangeWithFlag, 'error == 0', profileWithFlag)).toBe(false);
+        });
+
+        it('handles errors gracefully in evaluate', () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            
+            // Trigger catch in evaluate
+            expect(FilterEngine.evaluate(null as any, 'AA BB')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, null as any)).toBe(true);
+            
+            consoleSpy.mockRestore();
         });
     });
 });

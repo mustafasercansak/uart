@@ -108,5 +108,33 @@ describe('ExportEngine', () => {
             
             vi.restoreAllMocks();
         });
+
+        it('handles CSV escaping and empty lists', () => {
+             const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+             // Empty list short-circuit
+             exportToCSV([], null);
+             expect(createObjectURLSpy).not.toHaveBeenCalled();
+
+             // CSV escaping triggers (commas, quotes, newlines)
+             const frames: GeneratedFrame[] = [{
+                 frameNumber: 1, timestampMs: 1000, 
+                 rawBytes: [0], rawHex: '00', 
+                 errors: ['Error, with comma', 'Error "with quotes"', 'Error\nwith newline'],
+                 fields: [{ name: 'F', decimal: 0, hex: '00' }]
+             } as unknown as GeneratedFrame];
+             const profile = { fields: [{ name: 'F' }] } as unknown as FrameProfile;
+             
+             exportToCSV(frames, profile);
+             expect(createObjectURLSpy).toHaveBeenCalled();
+             vi.restoreAllMocks();
+        });
+
+        it('handles null profile in JSON export', () => {
+            const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+            vi.spyOn(document, 'createElement').mockReturnValue(document.createElement('a'));
+            exportToJSON(mockFrames, null);
+            expect(createObjectURLSpy).toHaveBeenCalled();
+            vi.restoreAllMocks();
+        });
     });
 });

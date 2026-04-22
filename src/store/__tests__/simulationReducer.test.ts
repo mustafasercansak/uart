@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { reducer, INITIAL_STATE } from '../simulationReducer';
 import type { SimulationState, ErrorType, GeneratedFrame } from '../../types';
 
@@ -107,20 +107,20 @@ describe('simulationReducer', () => {
   });
 
   it('handles BATCH_UPDATE', () => {
-     const action = { type: 'BATCH_UPDATE' as const, updates: { frameCount: 500, errorCount: 12 } };
-     const newState = reducer(INITIAL_STATE, action);
-     expect(newState.frameCount).toBe(500);
-     expect(newState.errorCount).toBe(12);
+    const action = { type: 'BATCH_UPDATE' as const, updates: { frameCount: 500, errorCount: 12 } };
+    const newState = reducer(INITIAL_STATE, action);
+    expect(newState.frameCount).toBe(500);
+    expect(newState.errorCount).toBe(12);
   });
 
   it('handles MASTER_TICK with logic history updates', () => {
     const action = {
       type: 'MASTER_TICK' as const,
-      updates: { 
-        lastFrame: { 
-          frameNumber: 1, 
-          bitStream: [{ t: 0, v: 0 }, { t: 1, v: 1 }] 
-        } as unknown as GeneratedFrame 
+      updates: {
+        lastFrame: {
+          frameNumber: 1,
+          bitStream: [{ t: 0, v: 0 }, { t: 1, v: 1 }]
+        } as unknown as GeneratedFrame
       },
       points: [],
       logEntries: [],
@@ -178,10 +178,10 @@ describe('simulationReducer', () => {
     const widget = { id: 'w1', type: 'gauge', fieldId: 'v' } as unknown as import('../../types').DashboardWidget;
     let state = reducer(INITIAL_STATE, { type: 'ADD_WIDGET' as const, widget });
     expect(state.dashboardLayout?.widgets.length).toBe(1);
-    
+
     state = reducer(state, { type: 'UPDATE_LAYOUT' as const, widgets: [widget] });
     expect(state.dashboardLayout?.widgets.length).toBe(1);
-    
+
     state = reducer(state, { type: 'REMOVE_WIDGET' as const, id: 'w1' });
     expect(state.dashboardLayout?.widgets.length).toBe(0);
   });
@@ -201,10 +201,10 @@ describe('simulationReducer', () => {
   it('handles ADD_VALIDATION_EVENT and HISTORY', () => {
     const session = { name: 'V', events: [], dataHistory: [] } as unknown as import('../../types').ValidationSession;
     let state = reducer(INITIAL_STATE, { type: 'START_VALIDATION' as const, session });
-    
+
     state = reducer(state, { type: 'ADD_VALIDATION_EVENT' as const, event: { type: 'info' } as unknown as import('../../types').ValidationEvent });
     expect(state.validationSession?.events.length).toBe(1);
-    
+
     state = reducer(state, { type: 'UPDATE_VALIDATION_HISTORY' as const, entry: { timestamp: 1, fields: {} } });
     expect(state.validationSession?.dataHistory.length).toBe(1);
   });
@@ -227,8 +227,198 @@ describe('simulationReducer', () => {
     expect(newState.responderRules).toEqual(rules);
   });
 
+  it('handles SET_PROFILE, SET_SCENARIO, SET_OUTPUT_MODE, SET_RECORDING, SET_ANALYZER_MODE, SET_DISPLAY_FILTER, SET_TRIGGERS, SET_STATUS', () => {
+    let state = reducer(INITIAL_STATE, { type: 'SET_PROFILE', profileId: 'p1' });
+    expect(state.profileId).toBe('p1');
+    state = reducer(state, { type: 'SET_SCENARIO', scenarioId: 's1' });
+    expect(state.scenarioId).toBe('s1');
+    state = reducer(state, { type: 'SET_OUTPUT_MODE', outputMode: 'tcp' });
+    expect(state.outputMode).toBe('tcp');
+    state = reducer(state, { type: 'SET_RECORDING', recording: true });
+    expect(state.isRecording).toBe(true);
+    state = reducer(state, { type: 'SET_ANALYZER_MODE', enabled: false });
+    expect(state.analyzerMode).toBe(false);
+    state = reducer(state, { type: 'SET_DISPLAY_FILTER', filter: 'f1' });
+    expect(state.displayFilter).toBe('f1');
+    state = reducer(state, { type: 'SET_TRIGGERS', triggers: [] });
+    expect(state.triggers).toEqual([]);
+    state = reducer(state, { type: 'SET_STATUS', status: 'paused' });
+    expect(state.status).toBe('paused');
+  });
+
+  it('handles MASTER_TICK logicHistory initialization when tx-main is missing', () => {
+    const state: SimulationState = { ...INITIAL_STATE, logicHistory: [] };
+    const action = {
+      type: 'MASTER_TICK' as const,
+      updates: {
+        lastFrame: {
+          frameNumber: 1,
+          bitStream: [{ t: 0, v: 0 }]
+        } as unknown as GeneratedFrame
+      },
+      points: [],
+      logEntries: [],
+      elapsedMs: 100
+    };
+    const newState = reducer(state, action);
+    expect(newState.logicHistory.length).toBe(1);
+    expect(newState.logicHistory[0].id).toBe('tx-main');
+  });
+
+  it('handles ADD_CONVERSATION', () => {
+    const entry = { id: 'c1', role: 'system', text: 'hi' } as unknown as import('../../types').ConversationEntry;
+    const newState = reducer(INITIAL_STATE, { type: 'ADD_CONVERSATION', entry });
+    expect(newState.conversationLogs.length).toBe(1);
+    expect(newState.conversationLogs[0].id).toBe('c1');
+  });
+
+  it('handles persistence failure in SET_TELEMETRY_LAYOUT', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('Storage full');
+    });
+
+    const action = { type: 'SET_TELEMETRY_LAYOUT' as const, profileId: 'p1', layout: ['f1'] };
+    reducer(INITIAL_STATE, action);
+
+    expect(consoleSpy).toHaveBeenCalledWith('Layout persistence failed', expect.any(Error));
+
+    consoleSpy.mockRestore();
+    localStorageSpy.mockRestore();
+  });
+
   it('returns current state for unknown action type', () => {
     const newState = reducer(INITIAL_STATE, { type: 'UNKNOWN' as unknown as string } as unknown as Parameters<typeof reducer>[1]);
     expect(newState).toBe(INITIAL_STATE);
+  });
+
+  describe('Expanded Branch Coverage', () => {
+    it('MASTER_TICK: handles nullish fallbacks for updates and timing', () => {
+      // 1. updates.lastFrame is missing -> updatedRecent = state.recentFrames
+      const state1 = { ...INITIAL_STATE, recentFrames: [{ frameNumber: 1 } as any] };
+      const action1 = { type: 'MASTER_TICK' as const, updates: {}, points: [], logEntries: [], elapsedMs: undefined as any };
+      const res1 = reducer(state1, action1);
+      expect(res1.recentFrames.length).toBe(1);
+      expect(res1.elapsedMs).toBe(INITIAL_STATE.elapsedMs);
+
+      // 2. logicHistory mapping for non-matching IDs
+      const state2: SimulationState = { 
+        ...INITIAL_STATE, 
+        logicHistory: [
+          { id: 'tx-main', name: 'M', transitions: [] },
+          { id: 'other', name: 'O', transitions: [] }
+        ] 
+      };
+      const action2 = { 
+        type: 'MASTER_TICK' as const, 
+        updates: { lastFrame: { bitStream: [{ t: 0, v: 0 }] } as any }, 
+        points: [], logEntries: [], elapsedMs: 50 
+      };
+      const res2 = reducer(state2, action2);
+      expect(res2.logicHistory.find(s => s.id === 'other')?.transitions.length).toBe(0);
+      expect(res2.logicHistory.find(s => s.id === 'tx-main')?.transitions.length).toBe(1);
+    });
+
+    it('UPDATE_EXCHANGE: handles existing exchange and missing rx frame', () => {
+      const exchange = { id: 'ex1', status: 'pending' } as any;
+      const state = { ...INITIAL_STATE, exchanges: [exchange] };
+      const updated = { id: 'ex1', status: 'done' } as any;
+      
+      const res = reducer(state, { type: 'UPDATE_EXCHANGE', exchange: updated });
+      expect(res.exchanges[0].status).toBe('done');
+      expect(res.lastRxFrame).toBe(INITIAL_STATE.lastRxFrame);
+    });
+
+    it('SAVE_SNAPSHOT: prevents duplicates', () => {
+      const frame = { frameNumber: 5 } as any;
+      const state = { ...INITIAL_STATE, snapshots: [frame] };
+      const res = reducer(state, { type: 'SAVE_SNAPSHOT', frame });
+      expect(res).toBe(state); // Strict equality because of early return
+    });
+
+    it('INIT_STATE: handles diverse undefined fields', () => {
+      const res = reducer(INITIAL_STATE, { 
+        type: 'INIT_STATE', 
+        newState: { 
+          // missing serialConnected, diffFrames, etc.
+          telemetryLayouts: undefined,
+          dashboardLayout: undefined,
+          watchlist: undefined,
+          snapshots: undefined
+        } 
+      });
+      expect(res.serialConnected).toBe(INITIAL_STATE.serialConnected);
+      expect(res.telemetryLayouts).toEqual({});
+      expect(res.dashboardLayout).toEqual({ widgets: [] });
+    });
+
+    it('Validation: early returns when no session active', () => {
+      expect(reducer(INITIAL_STATE, { type: 'STOP_VALIDATION', endTime: 0, score: 0 })).toBe(INITIAL_STATE);
+      expect(reducer(INITIAL_STATE, { type: 'ADD_VALIDATION_EVENT', event: {} as any })).toBe(INITIAL_STATE);
+      expect(reducer(INITIAL_STATE, { type: 'UPDATE_VALIDATION_HISTORY', entry: {} as any })).toBe(INITIAL_STATE);
+    });
+
+    it('Dashboard: handles missing widgets gracefully', () => {
+      const state = { ...INITIAL_STATE, dashboardLayout: undefined as any };
+      const resAdd = reducer(state, { type: 'ADD_WIDGET', widget: { id: 'w1' } as any });
+      expect(resAdd.dashboardLayout.widgets.length).toBe(1);
+
+      const resRem = reducer(state, { type: 'REMOVE_WIDGET', id: 'w1' });
+      expect(resRem.dashboardLayout.widgets.length).toBe(0);
+    });
+
+    it('ADD_LOG: respects max log entries', () => {
+      let state = INITIAL_STATE;
+      for (let i = 0; i < 110; i++) {
+        state = reducer(state, { type: 'ADD_LOG', entryType: 'info', text: String(i) });
+      }
+      expect(state.logEntries.length).toBe(100);
+      expect(state.logEntries[99].text).toBe('109');
+    });
+
+    it('MASTER_TICK: handles missing bitStream and watchlist updates', () => {
+      const action = { 
+        type: 'MASTER_TICK' as const, 
+        updates: { 
+          lastFrame: { frameNumber: 1, bitStream: undefined } as any,
+          watchlist: undefined 
+        }, 
+        points: [], logEntries: [], elapsedMs: 100 
+      };
+      const res = reducer(INITIAL_STATE, action);
+      expect(res.logicHistory[0].transitions.length).toBe(0);
+      expect(res.watchlist).toBe(INITIAL_STATE.watchlist);
+    });
+
+    it('MASTER_TICK: handles defined selectedExchangeId update', () => {
+      const action = { 
+        type: 'MASTER_TICK' as const, 
+        updates: { selectedExchangeId: 'new-ex' }, 
+        points: [], logEntries: [], elapsedMs: 100 
+      };
+      const res = reducer(INITIAL_STATE, action);
+      expect(res.selectedExchangeId).toBe('new-ex');
+    });
+
+    it('INIT_STATE: handles partial overrides specifically for coverage', () => {
+      // Branch action.newState.watchlist is present
+      const res1 = reducer(INITIAL_STATE, { 
+        type: 'INIT_STATE', 
+        newState: { watchlist: ['f1'] } 
+      });
+      expect(res1.watchlist).toEqual(['f1']);
+
+      // Branch action.newState.watchlist is absent, but state.watchlist is present
+      const stateWithWatch = { ...INITIAL_STATE, watchlist: ['f2'] };
+      const res2 = reducer(stateWithWatch, { type: 'INIT_STATE', newState: {} });
+      expect(res2.watchlist).toEqual(['f2']);
+    });
+
+    it('BATCH_LOGS: handles max length overflow', () => {
+      let state = INITIAL_STATE;
+      const entries = Array(110).fill({ time: '1', text: 'x', type: 'info' });
+      state = reducer(state, { type: 'BATCH_LOGS', entries });
+      expect(state.logEntries.length).toBe(100);
+    });
   });
 });

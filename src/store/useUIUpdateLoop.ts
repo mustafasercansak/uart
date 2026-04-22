@@ -66,10 +66,6 @@ export function useUIUpdateLoop({
                 const point: Record<string, number> = { t: msg.frame.timestampMs };
                 msg.frame.fields.forEach((f: { name: string; decimal: number }) => point[f.name] = f.decimal);
                 newPoints.push(point);
-
-                const txDate = msg.frame.timestampMs ? new Date(msg.frame.timestampMs) : new Date();
-                const timeStr = `${txDate.getHours().toString().padStart(2, '0')}:${txDate.getMinutes().toString().padStart(2, '0')}:${txDate.getSeconds().toString().padStart(2, '0')}.${txDate.getMilliseconds().toString().padStart(3, '0')}`;
-                newLogs.push({ time: timeStr, text: `TX: ${msg.frame.rawHex}`, type: 'tx' });
                 break;
               }
               case 'LOG':
@@ -80,12 +76,28 @@ export function useUIUpdateLoop({
                 break;
               case 'CONVERSATION':
                 conversationBufferRef.current.push(msg.entry);
+                const cDate = msg.entry.timestamp ? new Date(msg.entry.timestamp) : new Date();
+                const cTimeStr = `${cDate.getHours().toString().padStart(2, '0')}:${cDate.getMinutes().toString().padStart(2, '0')}:${cDate.getSeconds().toString().padStart(2, '0')}.${cDate.getMilliseconds().toString().padStart(3, '0')}`;
+                newLogs.push({ 
+                  time: cTimeStr, 
+                  text: `${msg.entry.type.toUpperCase()}: ${msg.entry.rawHex}${msg.entry.details ? ` (${msg.entry.details})` : ''}`, 
+                  type: msg.entry.type 
+                });
                 break;
               case 'RAW_RX_DATA': {
                 const profile = profilesRef.current.find(p => p.id === stateRef.current.profileId);
                 const now = new Date();
                 const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
                 newLogs.push({ time: timeStr, text: `RX: ${msg.hex}`, type: 'rx' });
+
+                // Also add to conversation logs so Automation Lab can see low-level RX traffic
+                conversationBufferRef.current.push({
+                  id: `raw-${Date.now()}-${Math.random()}`,
+                  timestamp: Date.now(),
+                  type: 'rx',
+                  rawHex: msg.hex,
+                  details: 'Raw Data'
+                });
 
                 if (profile) {
                   const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));
