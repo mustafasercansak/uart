@@ -441,6 +441,52 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
           if (bytes.length > 0) {
             backendWsRef.current?.send(JSON.stringify({ type: 'SEND_RAW_DATA', payload: bytes }));
+
+            const now = Date.now();
+            const currentProfile = stateRef.current.profileId
+              ? profilesRef.current.find(p => p.id === stateRef.current.profileId)
+              : null;
+
+            // Restore immediate local log for Automation Lab reliability
+            const txEntry: ConversationEntry = {
+              id: `local-tx-${now}-${Math.random()}`,
+              timestamp: now,
+              type: 'tx',
+              rawHex: hex
+            };
+
+            const txExchange: Exchange = {
+              id: `local-ex-${now}-${Math.random()}`,
+              startTime: now,
+              tx: txEntry,
+              status: 'pending'
+            };
+
+            // Push to buffers immediately so SequenceRunner can see it
+            conversationBufferRef.current.push(txEntry);
+            exchangeBufferRef.current.push(txExchange);
+
+            if (currentProfile) {
+              const fields = parseFrame(currentProfile, bytes);
+              const frame: GeneratedFrame = {
+                uId: `raw-tx-${now}-${Math.random()}`,
+                frameNumber: 0,
+                timestampMs: now,
+                rawHex: hex,
+                rawBytes: bytes,
+                fields: fields || [],
+                errors: []
+              };
+
+              // Sync the Live Monitor (Top Left)
+              msgBufferRef.current.push(JSON.stringify({
+                type: 'TICK',
+                frame,
+                status: stateRef.current.status,
+                selectedProfileId: stateRef.current.profileId,
+                elapsedMs: stateRef.current.elapsedMs
+              }));
+            }
           }
         },
         automation: {

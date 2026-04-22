@@ -75,6 +75,15 @@ export function useUIUpdateLoop({
                 exchangeBufferRef.current.push(msg.exchange);
                 break;
               case 'CONVERSATION': {
+                // Deduplication: Ignore backend TX confirms if we already have a recent local one
+                const isDuplicate = msg.entry.type === 'tx' && stateRef.current.conversationLogs.slice(0, 5).some(prev =>
+                  prev.type === 'tx' &&
+                  Math.abs(prev.timestamp - msg.entry.timestamp) < 500 &&
+                  prev.rawHex === msg.entry.rawHex
+                );
+
+                if (isDuplicate) break;
+
                 conversationBufferRef.current.push(msg.entry);
                 const cDate = msg.entry.timestamp ? new Date(msg.entry.timestamp) : new Date();
                 const cTimeStr = `${cDate.getHours().toString().padStart(2, '0')}:${cDate.getMinutes().toString().padStart(2, '0')}:${cDate.getSeconds().toString().padStart(2, '0')}.${cDate.getMilliseconds().toString().padStart(3, '0')}`;
@@ -91,14 +100,37 @@ export function useUIUpdateLoop({
                 const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
                 newLogs.push({ time: timeStr, text: `RX: ${msg.hex}`, type: 'rx' });
 
-                // Also add to conversation logs so Automation Lab can see low-level RX traffic
-                conversationBufferRef.current.push({
-                  id: `raw-${Date.now()}-${Math.random()}`,
+                // Restore immediate RX pairing for Lab reliability
+                const rxEntry: ConversationEntry = {
+                  id: `local-rx-${Date.now()}-${Math.random()}`,
                   timestamp: Date.now(),
                   type: 'rx',
                   rawHex: msg.hex,
                   details: 'Raw Data'
-                });
+                };
+                conversationBufferRef.current.push(rxEntry);
+
+                // Pairing logic for Timeline
+                const recentExchanges = [...exchangeBufferRef.current, ...stateRef.current.exchanges];
+                const pendingTx = recentExchanges.find(e =>
+                  e.tx && !e.rx && (Date.now() - e.startTime < 2000)
+                );
+
+                if (pendingTx) {
+                  pendingTx.rx = rxEntry;
+                  pendingTx.latencyMs = rxEntry.timestamp - pendingTx.startTime;
+                  pendingTx.status = 'done';
+                  if (!exchangeBufferRef.current.includes(pendingTx)) {
+                    exchangeBufferRef.current.push(pendingTx);
+                  }
+                } else {
+                  exchangeBufferRef.current.push({
+                    id: `local-ex-rx-${Date.now()}-${Math.random()}`,
+                    startTime: rxEntry.timestamp,
+                    rx: rxEntry,
+                    status: 'done'
+                  });
+                }
 
                 if (profile) {
                   const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));

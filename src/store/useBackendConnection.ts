@@ -60,9 +60,15 @@ export function useBackendConnection(
         reconnectTimerRef.current = null;
       }
       if (currentSocket) {
+        currentSocket.onopen = null;
+        currentSocket.onmessage = null;
+        currentSocket.onerror = null;
         currentSocket.onclose = null;
-        if (currentSocket.readyState === WebSocket.OPEN) currentSocket.close();
+        if (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING) {
+          currentSocket.close();
+        }
       }
+      backendWsRef.current = null;
     };
   }, [dispatch, msgBufferRef]);
 
