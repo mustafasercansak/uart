@@ -224,9 +224,9 @@ const ControlPanel = memo(({
                    </span>
                 </div>
                 <div className={`mt-0.5 pl-2 border-l-2 ${
-                  isTx ? 'border-green-500/30 text-green-200/90' : 
-                  isRx ? 'border-blue-500/30 text-blue-100' : 
-                  isError ? 'border-red-500/30 text-red-300' : 'border-gray-800 text-gray-400'
+                  isTx ? 'border-green-500/50 text-green-600' : 
+                  isRx ? 'border-blue-500/50 text-blue-600' : 
+                  isError ? 'border-red-500/50 text-red-600' : 'border-gray-500 text-gray-500'
                 } font-mono break-all leading-relaxed`}>
                   {entry.text.replace(/^\[RAW RX\]: |^TX: /, '')}
                 </div>

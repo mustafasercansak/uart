@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from '../../i18n/context';
+import { useTheme } from 'next-themes';
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const NAV_ITEMS = [
     { path: '/', label: t('nav.dashboard'), icon: '▶' },
@@ -49,7 +56,17 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-4 py-3 border-t border-gray-800">
+      <div className="px-4 py-3 border-t border-gray-800 flex flex-col items-center gap-2">
+        {mounted && (
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className={`w-full flex items-center justify-center gap-2 text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800`}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <span className="text-sm">{theme === 'dark' ? '☀️' : '🌙'}</span>
+            {!collapsed && <span className="text-xs font-mono">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
+          </button>
+        )}
         <div className={`text-gray-700 font-mono transition-all ${collapsed ? 'text-[8px] text-center' : 'text-[10px]'}`}>
           {collapsed ? 'v1' : 'v1.0.0-STABLE'}
         </div>

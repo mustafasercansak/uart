@@ -1,23 +1,28 @@
-import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
+import React, { useRef, useEffect, useState, useCallback, memo, useMemo } from 'react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { useTranslation } from '../../../i18n/context';
+import { useTheme } from 'next-themes';
 
-const COLORS = {
-  bg: '#0a0c10',
-  grid: '#1e293b',
-  signal: '#10b981', // Emerald-500
-  signalShadow: 'rgba(16, 185, 129, 0.2)',
-  cursor: '#f59e0b', // Amber-500
-  label: '#64748b',
-  text: '#ffffff',
-  header: '#111827',
-};
+// COLORS will be defined inside the component based on theme
 
 const LogicAnalyzer = memo(() => {
   const { state } = useSimulation();
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const isLight = resolvedTheme === 'light';
+  const COLORS = useMemo(() => ({
+    bg: isLight ? '#f8fafc' : '#0a0c10',
+    grid: isLight ? '#e2e8f0' : '#1e293b',
+    signal: '#10b981', // Emerald-500
+    signalShadow: 'rgba(16, 185, 129, 0.2)',
+    cursor: '#f59e0b', // Amber-500
+    label: isLight ? '#94a3b8' : '#64748b',
+    text: isLight ? '#0f172a' : '#ffffff',
+    header: isLight ? '#f1f5f9' : '#111827',
+  }), [isLight]);
 
   const [zoom, setZoom] = useState(200); // px per ms
   const [scrollX, setScrollX] = useState(0); // in ms

@@ -12,7 +12,7 @@ const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
   const [code, setCode] = useState(initialCode || `// UART Script Engine v1.0\n// Gelen paket: bytes[] (number dizisi)\n// Sistem durumu: state{}\n\nif (bytes[0] === 0x55) {\n  // Örnek: Checksum hesaplayıp yanıtla\n  return {\n    sendHex: "AA BB CC",\n    setFields: { "Nabız": 120 }\n  };\n}\n\nreturn null;`);
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-4 h-full bg-[#0d0d12]">
+    <div className="flex-1 flex flex-col p-6 space-y-4 h-full bg-transparent">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Code className="text-yellow-500" size={20} />
@@ -35,7 +35,7 @@ const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           spellCheck={false}
-          className="w-full h-full bg-gray-950/80 border border-gray-800 p-4 font-mono text-xs text-yellow-100/80 outline-none focus:border-yellow-900/50 rounded-xl resize-none shadow-inner custom-scrollbar"
+          className="w-full h-full bg-gray-950/80 border border-gray-800 p-4 font-mono text-xs text-gray-200 outline-none focus:border-yellow-900/50 rounded-xl resize-none shadow-inner custom-scrollbar"
         />
         <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-100 transition-opacity pointer-events-none">
            <Code size={48} className="text-yellow-500" />

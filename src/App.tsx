@@ -28,14 +28,18 @@ function AppRoutes() {
   );
 }
 
+import { ThemeProvider } from 'next-themes';
+
 export default function App() {
   return (
-    <LanguageProvider>
-      <SimulationProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </SimulationProvider>
-    </LanguageProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <LanguageProvider>
+        <SimulationProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </SimulationProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type React from 'react';
 import type { SimAction } from './simulationReducer';
 
-const BACKEND_URL = 'ws://127.0.0.1:8080';
+const BACKEND_URL = `ws://${window.location.hostname}:8080`;
 
 export function useBackendConnection(
   dispatch: React.Dispatch<SimAction>,
