@@ -139,7 +139,7 @@ const StatBar = memo(({
       <div className="flex items-center gap-2 pr-3 border-r border-white/5 h-6">
         <div className={`w-2 h-2 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
         <button 
-          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('ws://localhost:5000')}
+          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('ws://localhost:8081')}
           className={`text-[9px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
           {t('common.engine')}: {networkConnected ? t('common.online') : t('common.offline')}
         </button>

@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "tsx src/server/index.ts",
+    "bridge": "node bridge.js --tcp localhost:5000 --ws-port 8081",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:receiver": "node mock-receiver.js",
