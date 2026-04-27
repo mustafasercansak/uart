@@ -100,6 +100,9 @@ export default function CanvasWaveform({
     return [x, y];
   }, [history, dataKey]);
 
+  // Stable memo key: only recompute when new data actually arrives
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const handleChartClick = (e: React.MouseEvent) => {
     if (!showCursors || !onCursorMove) return;
     const rect = containerRef.current?.getBoundingClientRect();

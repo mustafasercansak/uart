@@ -40,6 +40,8 @@ export function useUIUpdateLoop({
       msgBufferRef.current = [];
 
       const masterBatch: Partial<SimulationState> = {};
+      // Limit points per cycle to avoid large GC spikes at high frame rates
+      const MAX_POINTS_PER_CYCLE = 8;
       const newPoints: Array<Record<string, number>> = [];
       const newLogs: SimulationState['logEntries'] = [];
       let latestElapsed = stateRef.current.elapsedMs;
@@ -65,7 +67,7 @@ export function useUIUpdateLoop({
 
                 const point: Record<string, number> = { t: msg.frame.timestampMs };
                 msg.frame.fields.forEach((f: { name: string; decimal: number }) => point[f.name] = f.decimal);
-                newPoints.push(point);
+                if (newPoints.length < MAX_POINTS_PER_CYCLE) newPoints.push(point);
                 break;
               }
               case 'LOG':
@@ -202,16 +204,23 @@ export function useUIUpdateLoop({
         masterBatch.exchanges = currentExchanges.slice(0, 50);
       }
 
-      startTransition(() => {
-        dispatch({
-          type: 'MASTER_TICK',
-          updates: masterBatch,
-          points: newPoints,
-          logEntries: newLogs,
-          elapsedMs: latestElapsed
+      const hasUpdates =
+        Object.keys(masterBatch).length > 0 ||
+        newPoints.length > 0 ||
+        newLogs.length > 0;
+
+      if (hasUpdates) {
+        startTransition(() => {
+          dispatch({
+            type: 'MASTER_TICK',
+            updates: masterBatch,
+            points: newPoints,
+            logEntries: newLogs,
+            elapsedMs: latestElapsed
+          });
         });
-      });
-    }, 66);
+      }
+    }, 100);
 
     return () => clearInterval(timer);
   }, [conversationBufferRef, dispatch, exchangeBufferRef, msgBufferRef, profilesRef, stateRef, uiVisibleRef]);

@@ -269,4 +269,14 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChart
 });
 
 WaveformCharts.displayName = 'WaveformCharts';
-export default WaveformCharts;
+
+// Only re-render when the number of data points changes or the profile changes.
+// This prevents React reconciliation on every 100ms tick when the array reference
+// changes but no new points have arrived yet.
+const WaveformChartsMemo = memo(WaveformCharts, (prev, next) => {
+  if (prev.selectedProfile?.id !== next.selectedProfile?.id) return false;
+  if (prev.waveformHistory.length !== next.waveformHistory.length) return false;
+  return true;
+});
+WaveformChartsMemo.displayName = 'WaveformCharts';
+export default WaveformChartsMemo;

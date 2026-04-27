@@ -21,7 +21,8 @@ import type {
 
 const MAX_RECENT_FRAMES = 50;
 const MAX_LOG_ENTRIES = 100;
-const MAX_WAVEFORM_POINTS = 512;
+const MAX_WAVEFORM_POINTS = 200;
+const MAX_LOGIC_TRANSITIONS = 1500;
 
 export const INITIAL_STATE: SimulationState = {
   status: 'stopped',
@@ -180,15 +181,19 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         ? [...state.logEntries.slice(-(MAX_LOG_ENTRIES - logEntries.length)), ...logEntries]
         : state.logEntries;
 
-      let newLogicHistory = [...state.logicHistory];
-      if (updates.lastFrame && updates.lastFrame.bitStream) {
-        if (!newLogicHistory.find(s => s.id === 'tx-main')) {
-          newLogicHistory.push({ id: 'tx-main', name: 'UART TX', transitions: [] });
-        }
-        newLogicHistory = newLogicHistory.map(sig => {
+      let newLogicHistory = state.logicHistory;
+      if (updates.lastFrame?.bitStream?.length) {
+        const hasTxMain = state.logicHistory.some(s => s.id === 'tx-main');
+        const base = hasTxMain ? state.logicHistory : [...state.logicHistory, { id: 'tx-main', name: 'UART TX', transitions: [] }];
+        newLogicHistory = base.map(sig => {
           if (sig.id !== 'tx-main') return sig;
-          const updatedTransitions = [...sig.transitions, ...(updates.lastFrame!.bitStream || [])];
-          return { ...sig, transitions: updatedTransitions.slice(-4000) };
+          const incoming = updates.lastFrame!.bitStream!;
+          const current = sig.transitions;
+          // Avoid allocation when already at cap and adding would exceed it
+          const combined = current.length + incoming.length > MAX_LOGIC_TRANSITIONS
+            ? [...current, ...incoming].slice(-MAX_LOGIC_TRANSITIONS)
+            : [...current, ...incoming];
+          return { ...sig, transitions: combined };
         });
       }
 
