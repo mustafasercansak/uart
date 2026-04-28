@@ -49,11 +49,26 @@ try {
  * Coordinates between the Frontend (UI) and the Simulation Engine (Backend).
  */
 
+const distExists = fs.existsSync(DIST_DIR);
+if (!distExists) {
+  console.warn('\x1b[33m[SERVER]\x1b[0m dist/ klasörü bulunamadı. Önce "npm run build" çalıştırın.');
+}
+
 const httpServer = http.createServer((req, res) => {
+  if (!distExists) {
+    res.writeHead(503, { 'Content-Type': 'text/plain' });
+    res.end('Build bulunamadı. Lütfen önce "npm run build" çalıştırın.');
+    return;
+  }
+
   const url = (req.url || '/').split('?')[0];
   let filePath = path.join(DIST_DIR, url === '/' ? 'index.html' : url);
 
-  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+  try {
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      filePath = path.join(DIST_DIR, 'index.html');
+    }
+  } catch {
     filePath = path.join(DIST_DIR, 'index.html');
   }
 
