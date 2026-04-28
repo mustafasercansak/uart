@@ -89,6 +89,39 @@ export class SimulationEngine {
     console.log(`\x1b[34m[RESP]\x1b[0m ${rules.length} adet yanıt kuralı yüklendi.`);
   }
 
+  public injectRawTX(bytes: number[]) {
+    const hex = bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    
+    // Log as TX in conversation
+    const txEntry: ConversationEntry = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        type: 'tx',
+        rawHex: hex
+    };
+    this.addLog(txEntry);
+
+    // Start/Update Exchange
+    const txExchange: Exchange = {
+        id: uuidv4(),
+        startTime: txEntry.timestamp,
+        tx: txEntry
+    };
+    this.pendingExchanges.push(txExchange);
+    this.addExchange(txExchange);
+    
+    this.onRawResponse?.(bytes);
+
+    // Virtual Loopback: If not connected to hardware, feed it back to RX
+    if (!this.state.serialConnected) {
+        console.log(`\x1b[33m[LOOPBACK]\x1b[0m ${bytes.length} bytes looped back to RX.`);
+        // Small delay to simulate propagation
+        setTimeout(() => {
+            this.processIncomingData(bytes);
+        }, 10);
+    }
+  }
+
   public processIncomingData(bytes: number[]) {
     if (this.state.status !== 'running') return;
 

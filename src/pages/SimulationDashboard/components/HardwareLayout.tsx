@@ -9,8 +9,28 @@ interface HardwareLayoutProps {
 }
 
 const HardwareLayout: React.FC<HardwareLayoutProps> = ({ lastTxFrame, lastRxFrame, protocol }) => {
-  const isTxActive = !!lastTxFrame && (Date.now() - lastTxFrame.timestampMs < 500);
-  const isRxActive = !!lastRxFrame && (Date.now() - lastRxFrame.timestampMs < 500);
+  const [isTxActive, setIsTxActive] = React.useState(false);
+  const [isRxActive, setIsRxActive] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!lastTxFrame) return;
+    const pulse = setTimeout(() => setIsTxActive(true), 0);
+    const cleanup = setTimeout(() => setIsTxActive(false), 500);
+    return () => {
+      clearTimeout(pulse);
+      clearTimeout(cleanup);
+    };
+  }, [lastTxFrame]);
+
+  React.useEffect(() => {
+    if (!lastRxFrame) return;
+    const pulse = setTimeout(() => setIsRxActive(true), 0);
+    const cleanup = setTimeout(() => setIsRxActive(false), 500);
+    return () => {
+      clearTimeout(pulse);
+      clearTimeout(cleanup);
+    };
+  }, [lastRxFrame]);
 
   const pins = useMemo(() => [
     { id: 1, label: '3V3', type: 'power', color: 'bg-red-500' },

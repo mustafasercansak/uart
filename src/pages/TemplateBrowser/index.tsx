@@ -5,7 +5,7 @@ import type { FrameProfile, Scenario } from '../../types';
 import { SENSOR_TEMPLATES } from '../../data/templates';
 import { saveProfile, saveScenario } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { useTranslation } from '../../i18n/context';
 
 const CATEGORY_COLORS: Record<string, string> = {
   Tıbbi: 'text-red-400 bg-red-900/20 border-red-800/40',

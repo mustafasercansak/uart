@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { RefreshCw, ArrowRight, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import type { Exchange } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface ExchangeMonitorProps {
   exchanges: Exchange[];

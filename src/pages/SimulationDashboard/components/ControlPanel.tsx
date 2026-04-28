@@ -1,16 +1,16 @@
 import React, { memo, useRef, useEffect } from 'react';
 import { FileDown } from 'lucide-react';
-import type { FrameProfile, ErrorType, FlagsConfig, RangeConfig } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import type { FrameProfile, ErrorType, FlagsConfig, RangeConfig, Field, Exchange } from '../../../types';
+import { useTranslation } from '../../../i18n/context';
 
 interface ControlPanelProps {
   status: string;
-  flagsFields: any[];
-  allRangeFields: any[];
+  flagsFields: Field[];
+  allRangeFields: Field[];
   bitOverrides: Record<string, number>;
   fieldOverrides: Record<string, number>;
   pendingErrors: ErrorType[];
-  logEntries: any[];
+  logEntries: Array<{ type: string; time: string; text: string }>;
   errorTypes: Array<{ type: ErrorType; label: string; color: string }>;
   onOverrideField: (id: string, value: number) => void;
   onOverrideBit: (key: string, value: number) => void;
@@ -18,7 +18,7 @@ interface ControlPanelProps {
   onResetOverrides: () => void;
   onExportLogs: () => void;
   signalIntegrity: { noiseLevel: number; jitterMs: number; bitFlipsEnabled: boolean };
-  onSetSignalIntegrity: (integrity: any) => void;
+  onSetSignalIntegrity: (integrity: Partial<{ noiseLevel: number; jitterMs: number; bitFlipsEnabled: boolean }>) => void;
 }
 
 const ControlPanel = memo(({
@@ -224,9 +224,9 @@ const ControlPanel = memo(({
                    </span>
                 </div>
                 <div className={`mt-0.5 pl-2 border-l-2 ${
-                  isTx ? 'border-green-500/30 text-green-200/90' : 
-                  isRx ? 'border-blue-500/30 text-blue-100' : 
-                  isError ? 'border-red-500/30 text-red-300' : 'border-gray-800 text-gray-400'
+                  isTx ? 'border-green-500/50 text-green-600' : 
+                  isRx ? 'border-blue-500/50 text-blue-600' : 
+                  isError ? 'border-red-500/50 text-red-600' : 'border-gray-500 text-gray-500'
                 } font-mono break-all leading-relaxed`}>
                   {entry.text.replace(/^\[RAW RX\]: |^TX: /, '')}
                 </div>

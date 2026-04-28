@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { type MutableRefObject } from 'react';
 import { ResponsiveGridLayout } from 'react-grid-layout';
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
 import { X, GripHorizontal, RotateCcw, Activity, ChartLine, Gauge as GaugeIcon, Lightbulb, Settings, Check } from 'lucide-react';
@@ -14,27 +15,13 @@ const STORAGE_KEY = 'uart-dashboard-grid-v3';
 
 interface DashboardGridProps {
   panels:        GridPanel[];
-  history:       Array<Record<string, number>>;
+  waveformHistoryRef: MutableRefObject<Array<Record<string, number>>>;
   onRemovePanel: (id: string) => void;
   onUpdatePanel?: (id: string, updates: Partial<GridPanel>) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Generates a clean tiled layout for the given panels */
-function buildLayout(panels: GridPanel[], cols = 12): readonly LayoutItem[] {
-  // 3 columns of width=4 each
-  const perRow = Math.max(1, Math.floor(cols / 4));
-  return panels.map((p, i) => ({
-    i:    p.id,
-    x:    (i % perRow) * 4,
-    y:    Math.floor(i / perRow) * 5,
-    w:    4,
-    h:    5,
-    minW: 2,
-    minH: 3,
-  }));
-}
 
 function loadPerPanelPositions(): Record<string, { x: number; y: number; w: number; h: number }> {
   try {
@@ -59,7 +46,7 @@ function savePerPanelPositions(
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DashboardGrid({ panels, history, onRemovePanel, onUpdatePanel }: DashboardGridProps) {
+export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePanel, onUpdatePanel }: DashboardGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null);
@@ -117,7 +104,8 @@ export default function DashboardGrid({ panels, history, onRemovePanel, onUpdate
     setStoredPositions({});
   }, []);
 
-  const lastPoint = history[history.length - 1] ?? {};
+  const waveformHistory = waveformHistoryRef.current;
+  const lastPoint = waveformHistory[waveformHistory.length - 1] ?? {};
 
   const renderWidgetContent = (panel: GridPanel, value: number) => {
     switch (panel.widgetType) {
@@ -131,7 +119,7 @@ export default function DashboardGrid({ panels, history, onRemovePanel, onUpdate
       default:
         return (
           <div className="flex-1 min-h-0">
-            <CanvasWaveform dataKey={panel.fieldName} history={history} color={panel.color} />
+            <CanvasWaveform dataKey={panel.fieldName} waveformHistoryRef={waveformHistoryRef} color={panel.color} />
           </div>
         );
     }
@@ -169,7 +157,7 @@ export default function DashboardGrid({ panels, history, onRemovePanel, onUpdate
         onLayoutChange={handleLayoutChange}
         margin={[8, 8]}
         containerPadding={[8, 8]}
-        {...({ draggableHandle: ".drag-handle" } as any)}
+        {...({ draggableHandle: ".drag-handle" } as object)}
       >
         {panels.map(panel => {
           const currentVal = lastPoint[panel.fieldName] ?? 0;

@@ -32,7 +32,7 @@ import ProfileEditorModal from './components/ProfileEditorModal';
 import TriggerManager from './components/TriggerManager';
 import ValidationControls from './components/ValidationControls';
 import ValidationReport from './components/ValidationReport';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { useTranslation } from '../../i18n/context';
 
 // Sub-components
 import StatBar from './components/StatBar';
@@ -123,7 +123,8 @@ export default function SimulationDashboard() {
     setDiffFrame, setResponderRules,
     deleteRecording, refreshRecordings,
     setSignalIntegrity, setTriggers,
-    startValidation, stopValidation
+    startValidation, stopValidation,
+    clearExchanges
   } = useSimulation();
 
   const { 
@@ -360,7 +361,7 @@ export default function SimulationDashboard() {
             {isLeftPanelOpen ? <ChevronLeft size={16} /> : <Activity size={16} />}
           </button>
         )}
-        <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-[#030712] to-[#0a0a1a]">
+        <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-gray-950 to-gray-900">
           {analyzerMode ? (
             <div className="flex-1 min-h-0 p-6 flex gap-6 overflow-hidden relative">
                 <div className="flex-[3] min-h-0 flex flex-col gap-6">
@@ -475,6 +476,7 @@ export default function SimulationDashboard() {
                     setDiffFrame,
                     setResponderRules,
                     setTriggers,
+                    clearExchanges,
                     onSendFrame: (bytes: number[]) => {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);

@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { GitCompare, Radio, Trash2, LayoutDashboard } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface RxMonitorProps {
   lastRxFrame: GeneratedFrame | null;

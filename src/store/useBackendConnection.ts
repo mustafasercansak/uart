@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import type React from 'react';
 import type { SimAction } from './simulationReducer';
 
-const BACKEND_URL = 'ws://127.0.0.1:8080';
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const BACKEND_URL = `${protocol}//${window.location.host}/ws`;
 
 export function useBackendConnection(
   dispatch: React.Dispatch<SimAction>,
@@ -60,9 +61,15 @@ export function useBackendConnection(
         reconnectTimerRef.current = null;
       }
       if (currentSocket) {
+        currentSocket.onopen = null;
+        currentSocket.onmessage = null;
+        currentSocket.onerror = null;
         currentSocket.onclose = null;
-        if (currentSocket.readyState === WebSocket.OPEN) currentSocket.close();
+        if (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING) {
+          currentSocket.close();
+        }
       }
+      backendWsRef.current = null;
     };
   }, [dispatch, msgBufferRef]);
 

@@ -12,7 +12,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { GeneratedFrame, FrameProfile } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 // ─────────────────────────────────────────────
 // TİPLER

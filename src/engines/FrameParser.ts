@@ -35,7 +35,8 @@ export function parseFrame(profile: FrameProfile, bytes: number[]): ParsedField[
     const parsed: ParsedField = {
       name: field.name,
       hex: hexStr,
-      decimal: decimalValue
+      decimal: decimalValue,
+      byteWidth: field.byteWidth
     };
 
     // Parse flags if applicable

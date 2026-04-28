@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Columns, ArrowRight, Zap, Target } from 'lucide-react';
 import type { GeneratedFrame } from '../../../../types';
-import { useTranslation } from '../../../../i18n/LanguageContext';
+import { useTranslation } from '../../../../i18n/context';
 
 interface DiffLabProps {
   frameA: GeneratedFrame | null;

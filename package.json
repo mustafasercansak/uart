@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "tsx src/server/index.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "tsx src/server/index.ts",
+    "bridge": "node bridge.js --tcp localhost:5000 --ws-port 8081",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:receiver": "node mock-receiver.js",
@@ -23,6 +25,7 @@
     "autoprefixer": "^10.4.27",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
+    "next-themes": "^0.4.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-grid-layout": "^2.2.3",
@@ -34,7 +37,8 @@
     "uplot": "^1.6.32",
     "uplot-react": "^1.2.4",
     "uuid": "^13.0.0",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "serialport": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -44,7 +48,6 @@
     "@types/node": "^25.5.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@types/serialport": "^8.0.5",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^10.2.1",
@@ -52,7 +55,6 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "jsdom": "^27.0.1",
-    "serialport": "^13.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.58.2",

@@ -49,4 +49,12 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['bridge.js', 'mock-receiver.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
 ])

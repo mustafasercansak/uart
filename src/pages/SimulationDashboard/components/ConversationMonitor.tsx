@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { ArrowRight, Zap, Send, LogIn } from 'lucide-react';
 import type { ConversationEntry } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface ConversationMonitorProps {
   entries: ConversationEntry[];

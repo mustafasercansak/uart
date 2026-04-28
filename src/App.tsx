@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout/Layout';
 import { SimulationProvider } from './store/SimulationContext';
-import { LanguageProvider } from './i18n/LanguageContext';
+import { LanguageProvider } from './i18n/LanguageProvider';
 import SimulationDashboard from './pages/SimulationDashboard';
 import ProfileEditor from './pages/ProfileEditor';
 import ScenarioEditor from './pages/ScenarioEditor';
@@ -28,14 +28,18 @@ function AppRoutes() {
   );
 }
 
+import { ThemeProvider } from 'next-themes';
+
 export default function App() {
   return (
-    <LanguageProvider>
-      <SimulationProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </SimulationProvider>
-    </LanguageProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <LanguageProvider>
+        <SimulationProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </SimulationProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

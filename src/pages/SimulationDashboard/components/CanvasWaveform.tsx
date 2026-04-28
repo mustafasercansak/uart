@@ -1,11 +1,10 @@
-import { useMemo, useEffect, useRef, useState } from 'react';
-import UplotReact from 'uplot-react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 
 interface CanvasWaveformProps {
   dataKey: string;
-  history: Array<Record<string, number>>;
+  waveformHistoryRef: MutableRefObject<Array<Record<string, number>>>;
   color: string;
   height?: number;
   /** If true, the panel will flash briefly when the value spikes significantly */
@@ -19,143 +18,140 @@ interface CanvasWaveformProps {
 export default function CanvasWaveform({
   dataKey,
   color,
-  history = [],
+  waveformHistoryRef,
   height = 80,
-  enableGlow = true,
   showCursors = false,
   cursorA = null,
   cursorB = null,
-  onCursorMove
+  onCursorMove,
 }: CanvasWaveformProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const glowRef = useRef<HTMLDivElement>(null);
-  const prevValRef = useRef<number | null>(null);
-  const [width, setWidth] = useState(300);
-  const [currentHeight, setCurrentHeight] = useState(height);
+  const uplotRef = useRef<uPlot | null>(null);
+  const rafRef = useRef<number>(0);
+  const sizeRef = useRef({ width: 300, height });
 
-  // Respond to container resizes
+  // Keep latest prop values readable inside RAF closure without re-creating the effect
+  const dataKeyRef = useRef(dataKey);
+  dataKeyRef.current = dataKey;
+
+  // Respond to container resizes imperatively
   useEffect(() => {
     if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setWidth(Math.floor(entry.contentRect.width));
-        if (entry.contentRect.height > 0) {
-          setCurrentHeight(Math.floor(entry.contentRect.height));
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const w = Math.floor(e.contentRect.width) || sizeRef.current.width;
+        const h = Math.floor(e.contentRect.height) || sizeRef.current.height;
+        if (w !== sizeRef.current.width || h !== sizeRef.current.height) {
+          sizeRef.current = { width: w, height: h };
+          uplotRef.current?.setSize({ width: w, height: h });
         }
       }
     });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
   }, []);
 
-  // Spike / glow flash effect: fires when value changes by >10% of range
+  // Create uPlot once. RAF loop drives all chart updates — zero React renders.
   useEffect(() => {
-    if (!enableGlow || !glowRef.current || history.length < 2) return;
-    const last = history[history.length - 1]?.[dataKey] ?? 0;
-    const prev = prevValRef.current;
-    if (prev !== null) {
-      const delta = Math.abs(last - prev);
-      const range = Math.max(Math.abs(last), Math.abs(prev), 1);
-      if (delta / range > 0.12) {
-        // Flash glow overlay
-        const el = glowRef.current;
-        el.style.opacity = '1';
-        el.style.transition = 'none';
-        requestAnimationFrame(() => {
-          el.style.transition = 'opacity 500ms ease-out';
-          el.style.opacity = '0';
-        });
+    if (!containerRef.current) return;
+    const { width, height: h } = sizeRef.current;
+
+    const opts: uPlot.Options = {
+      width,
+      height: h,
+      cursor: { show: false },
+      legend: { show: false },
+      padding: [2, 0, 0, 0],
+      axes: [{ show: false }, { show: false }],
+      scales: { x: { time: false } },
+      series: [
+        {},
+        { stroke: color, width: 2, fill: `${color}22`, points: { show: false } },
+      ],
+    };
+
+    const plot = new uPlot(opts, [[], []], containerRef.current);
+    uplotRef.current = plot;
+
+    const tick = () => {
+      const u = uplotRef.current;
+      if (!u) return;
+
+      const history = waveformHistoryRef.current;
+      if (history.length > 0) {
+        const dk = dataKeyRef.current;
+        const maxPoints = Math.max(120, Math.floor(sizeRef.current.width * 0.75));
+        const step = history.length > maxPoints ? Math.ceil(history.length / maxPoints) : 1;
+        const x: number[] = [];
+        const y: number[] = [];
+
+        for (let i = 0; i < history.length; i += step) {
+          x.push(history[i].t ?? i);
+          y.push(history[i][dk] ?? 0);
+        }
+        // Always include last point so right edge stays current
+        const last = history[history.length - 1];
+        const lastX = last.t ?? history.length - 1;
+        if (x.length === 0 || x[x.length - 1] !== lastX) {
+          x.push(lastX);
+          y.push(last[dk] ?? 0);
+        }
+        u.setData([x, y]);
       }
-    }
-    prevValRef.current = last;
-  }, [history, dataKey, enableGlow]);
 
-  const options = useMemo<uPlot.Options>(() => ({
-    width,
-    height: currentHeight,
-    cursor: { show: false },
-    legend: { show: false },
-    padding: [2, 0, 0, 0],
-    axes: [{ show: false }, { show: false }],
-    scales: { x: { time: false } },
-    series: [
-      {},
-      {
-        stroke: color,
-        width: 2,
-        fill: `${color}22`,
-        points: { show: false },
-      },
-    ],
-  }), [width, currentHeight, color]);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
 
-  // Build aligned data [ [x...], [y...] ]
-  const chartData = useMemo<uPlot.AlignedData>(() => {
-    const x: number[] = [];
-    const y: number[] = [];
-    for (let i = 0; i < history.length; i++) {
-      x.push(history[i].t ?? i);
-      y.push(history[i][dataKey] ?? 0);
-    }
-    return [x, y];
-  }, [history, dataKey]);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      plot.destroy();
+      uplotRef.current = null;
+    };
+  // color change is rare; if needed, parent can key-mount a new instance
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waveformHistoryRef]);
 
   const handleChartClick = (e: React.MouseEvent) => {
     if (!showCursors || !onCursorMove) return;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    
-    const x = e.clientX - rect.left;
-    const pct = x / width;
-    const idx = Math.floor(pct * history.length);
-    const clampedIdx = Math.max(0, Math.min(idx, history.length - 1));
+    const pct = (e.clientX - rect.left) / sizeRef.current.width;
+    const histLen = waveformHistoryRef.current.length;
+    const idx = Math.max(0, Math.min(Math.floor(pct * histLen), histLen - 1));
 
-    // Simple A/B toggle logic: if A is null, set A. If A is set and B is null, set B. 
-    // If both are set, set the closest one.
     if (cursorA === null) {
-      onCursorMove('A', clampedIdx);
+      onCursorMove('A', idx);
     } else if (cursorB === null) {
-      onCursorMove('B', clampedIdx);
+      onCursorMove('B', idx);
     } else {
-      const distA = Math.abs(clampedIdx - cursorA);
-      const distB = Math.abs(clampedIdx - cursorB);
-      if (distA < distB) onCursorMove('A', clampedIdx);
-      else onCursorMove('B', clampedIdx);
+      const distA = Math.abs(idx - cursorA);
+      const distB = Math.abs(idx - cursorB);
+      onCursorMove(distA < distB ? 'A' : 'B', idx);
     }
   };
 
+  const histLen = waveformHistoryRef.current.length;
+
   return (
     <div ref={containerRef} className="w-full h-full relative uplot-dark">
-      {/* Spike glow overlay */}
-      {enableGlow && (
-        <div
-          ref={glowRef}
-          className="absolute inset-0 pointer-events-none rounded-sm opacity-0 z-10"
-          style={{
-            background: `radial-gradient(ellipse at center, ${color}35 0%, transparent 70%)`,
-          }}
-        />
-      )}
-      <UplotReact options={options} data={chartData} />
-      
-      {/* Interactive Cursors Layer */}
       {showCursors && (
-        <div 
-          className="absolute inset-0 z-20 cursor-crosshair" 
+        <div
+          className="absolute inset-0 z-20 cursor-crosshair"
           onClick={handleChartClick}
         >
-          {cursorA !== null && (
-            <div 
+          {cursorA !== null && histLen > 0 && (
+            <div
               className="absolute top-0 bottom-0 w-[1px] bg-emerald-500 shadow-[0_0_8px_#10b981]"
-              style={{ left: `${(cursorA / (history.length - 1)) * 100}%` }}
+              style={{ left: `${(cursorA / (histLen - 1)) * 100}%` }}
             >
               <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-emerald-500 text-[8px] font-black px-1 rounded-b text-black h-3 flex items-center">A</div>
             </div>
           )}
-          {cursorB !== null && (
-            <div 
+          {cursorB !== null && histLen > 0 && (
+            <div
               className="absolute top-0 bottom-0 w-[1px] bg-rose-500 shadow-[0_0_8px_#f43f5e]"
-              style={{ left: `${(cursorB / (history.length - 1)) * 100}%` }}
+              style={{ left: `${(cursorB / (histLen - 1)) * 100}%` }}
             >
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-rose-500 text-[8px] font-black px-1 rounded-t text-black h-3 flex items-center">B</div>
             </div>

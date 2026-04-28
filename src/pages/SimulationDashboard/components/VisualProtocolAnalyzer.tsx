@@ -1,6 +1,6 @@
 import React, { useState, memo, useMemo } from 'react';
 import type { GeneratedFrame, FrameProfile, FlagsConfig } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface VisualProtocolAnalyzerProps {
   frame: GeneratedFrame | null;

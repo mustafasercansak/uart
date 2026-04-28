@@ -47,8 +47,7 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
                 {widgets.map((widget) => {
                 const fieldData = lastFrame?.fields.find(f => f.name.toLowerCase() === widget.fieldId.toLowerCase());
                 const value = fieldData?.decimal ?? 0;
-                const fieldName = fieldData?.name || widget.fieldId;
-                const color = widget.config?.color || '#3b82f6';
+                const color = (widget.config?.color as string) || '#3b82f6';
                 
                 return (
                     <div key={widget.id} className="bg-gray-900/60 border border-gray-800/50 rounded-xl p-3 shadow-lg group relative overflow-hidden transition-all hover:border-gray-700/50">

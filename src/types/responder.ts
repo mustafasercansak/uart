@@ -34,4 +34,5 @@ export interface Exchange {
   match?: ConversationEntry;
   latencyMs?: number;
   isLoopbackMatch?: boolean;
+  status?: 'pending' | 'done';
 }

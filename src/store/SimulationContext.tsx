@@ -11,10 +11,13 @@ import type {
   SignalIntegrity,
   DashboardWidget,
   WidgetType,
-  ValidationTarget,
-  Field,
   ConversationEntry,
-  Exchange
+  Exchange,
+  ValidationSession,
+  AutomationSequence,
+  AutomationStep,
+  Field,
+  ValidationTarget
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -22,6 +25,11 @@ import { reducer, INITIAL_STATE } from './simulationReducer';
 import { useBackendConnection } from './useBackendConnection';
 import { useUIUpdateLoop } from './useUIUpdateLoop';
 import type { SimulationState } from '../types';
+import {
+  loadSequences,
+  saveSequence,
+  deleteSequence
+} from './storage';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
@@ -41,6 +49,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const wsRef = useRef<WebSocket | null>(null);
   const isInitializedRef = useRef(false);
 
+  /** Waveform samples stored outside React state — charts read this via RAF, not renders */
+  const waveformHistoryRef = useRef<Array<Record<string, number>>>([]);
+
   // ── BACKEND CONNECTION ───────────────────────
   const { backendWsRef } = useBackendConnection(dispatch, msgBufferRef);
 
@@ -52,6 +63,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     uiVisibleRef,
     conversationBufferRef,
     exchangeBufferRef,
+    waveformHistoryRef,
     dispatch,
   });
 
@@ -68,7 +80,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           snapshots: parsed.snapshots || [],
           analyzerMode: parsed.analyzerMode ?? true,
           telemetryLayouts: layouts,
-          dashboardLayout: parsed.dashboardLayout || { widgets: [] }
+          dashboardLayout: parsed.dashboardLayout || { widgets: [] },
+          sequences: loadSequences()
         }
       });
       isInitializedRef.current = true;
@@ -133,9 +146,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   // ── SIMULATION CONTROLS ──────────────────────
   const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
+    waveformHistoryRef.current = [];
     backendWsRef.current?.send(JSON.stringify({ type: 'START', profile, scenario, outputMode }));
     dispatch({ type: 'START', profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
-  }, [backendWsRef, dispatch]);
+  }, [backendWsRef, dispatch, waveformHistoryRef]);
 
   const stop = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'STOP' }));
@@ -147,8 +161,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'PAUSE' });
   }, [backendWsRef, dispatch]);
 
-  const resume = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME' }));
+  const resume = useCallback((profile: FrameProfile, scenario: Scenario | null) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME', profile, scenario }));
     dispatch({ type: 'RESUME' });
   }, [backendWsRef, dispatch]);
 
@@ -172,6 +186,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'RESET_OVERRIDES' });
   }, [backendWsRef, dispatch]);
 
+  const clearExchanges = useCallback(() => {
+    exchangeBufferRef.current = [];
+    dispatch({ type: 'CLEAR_EXCHANGES' });
+  }, [dispatch]);
+
   // ── SERIAL / NETWORK ─────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_SERIAL', config: { portName, baudRate } }));
@@ -182,6 +201,21 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [backendWsRef]);
 
   const connectNetwork = useCallback(async (url: string) => {
+    if (url.startsWith('tcp://')) {
+      const target = url.replace('tcp://', '');
+      const [hostPart, portPart] = target.split(':');
+      const host = hostPart || '127.0.0.1';
+      const port = Number.parseInt(portPart || '5000', 10);
+
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Geçersiz TCP portu: ${portPart ?? ''}` });
+        return;
+      }
+
+      backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_TCP', host, port }));
+      return;
+    }
+
     return new Promise<void>((resolve, reject) => {
       try {
         const ws = new WebSocket(url);
@@ -215,11 +249,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
               rxBufferRef.current = rxBufferRef.current.slice(totalWidth);
               const parseResult = parseFrame(currentProfile, frameBytes);
               if (parseResult) {
+                const frameHex = frameBytes.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
                 const rxFrame = {
                   uId: `net-rx-${Date.now()}-${Math.random()}`,
                   frameNumber: 0,
                   timestampMs: Date.now(),
-                  rawHex: hex,
+                  rawHex: frameHex,
                   rawBytes: frameBytes,
                   fields: parseResult,
                   errors: []
@@ -246,8 +281,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef]);
 
   const disconnectNetwork = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_TCP' }));
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-  }, [wsRef]);
+  }, [wsRef, backendWsRef]);
 
   // ── LOGGING ──────────────────────────────────
   const exportLogs = useCallback(() => {
@@ -372,6 +408,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     <SimulationContext.Provider
       value={{
         state,
+        waveformHistoryRef,
         start,
         stop,
         pause,
@@ -385,6 +422,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setProfile: (profileId) => dispatch({ type: 'SET_PROFILE', profileId }),
         setScenario: (scenarioId) => dispatch({ type: 'SET_SCENARIO', scenarioId }),
         setOutputMode: (outputMode) => dispatch({ type: 'SET_OUTPUT_MODE', outputMode }),
+        clearExchanges,
         setUiVisible: (visible) => { uiVisibleRef.current = visible; },
         exportLogs,
         setProfiles: (profiles) => { profilesRef.current = profiles; },
@@ -410,7 +448,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setDiffFrame: (index, frame) => dispatch({ type: 'SET_DIFF_FRAME', index, frame }),
         setTelemetryLayout: (profileId, layout) => dispatch({ type: 'SET_TELEMETRY_LAYOUT', profileId, layout }),
         setResponderRules: (rules: ResponderRule[]) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RULES', rules }));
+          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RESPONDER_RULES', rules }));
           dispatch({ type: 'SET_RESPONDER_RULES', rules });
         },
         setSignalIntegrity,
@@ -421,7 +459,72 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         startValidation,
         stopValidation,
         cancelValidation: () => dispatch({ type: 'CANCEL_VALIDATION' }),
-        deleteValidationSession: () => dispatch({ type: 'CANCEL_VALIDATION' }),
+        deleteValidationSession: (_id: string) => dispatch({ type: 'CANCEL_VALIDATION' }),
+        sendRawData: (hex: string) => {
+          const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
+          if (bytes.length > 0) {
+            backendWsRef.current?.send(JSON.stringify({ type: 'SEND_RAW_DATA', payload: bytes }));
+
+            const now = Date.now();
+            const currentProfile = stateRef.current.profileId
+              ? profilesRef.current.find(p => p.id === stateRef.current.profileId)
+              : null;
+
+            // Restore immediate local log for Automation Lab reliability
+            const txEntry: ConversationEntry = {
+              id: `local-tx-${now}-${Math.random()}`,
+              timestamp: now,
+              type: 'tx',
+              rawHex: hex
+            };
+
+            const txExchange: Exchange = {
+              id: `local-ex-${now}-${Math.random()}`,
+              startTime: now,
+              tx: txEntry,
+              status: 'pending'
+            };
+
+            // Push to buffers immediately so SequenceRunner can see it
+            conversationBufferRef.current.push(txEntry);
+            exchangeBufferRef.current.push(txExchange);
+
+            if (currentProfile) {
+              const fields = parseFrame(currentProfile, bytes);
+              const frame: GeneratedFrame = {
+                uId: `raw-tx-${now}-${Math.random()}`,
+                frameNumber: 0,
+                timestampMs: now,
+                rawHex: hex,
+                rawBytes: bytes,
+                fields: fields || [],
+                errors: []
+              };
+
+              // Sync the Live Monitor (Top Left)
+              msgBufferRef.current.push(JSON.stringify({
+                type: 'TICK',
+                frame,
+                status: stateRef.current.status,
+                selectedProfileId: stateRef.current.profileId,
+                elapsedMs: stateRef.current.elapsedMs
+              }));
+            }
+          }
+        },
+        automation: {
+          saveSequence: (seq: AutomationSequence) => {
+            saveSequence(seq);
+            dispatch({ type: 'SAVE_SEQUENCE', sequence: seq });
+          },
+          deleteSequence: (id: string) => {
+            deleteSequence(id);
+            dispatch({ type: 'DELETE_SEQUENCE', id });
+          },
+          setActiveSequence: (id: string | null) => {
+            dispatch({ type: 'SET_ACTIVE_SEQUENCE', id });
+          }
+        }
       }}
     >
       {children}

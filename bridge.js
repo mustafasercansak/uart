@@ -9,25 +9,32 @@
  * TCP/UDP devices on your network.
  */
 
-const WebSocket = require('ws');
-const net = require('net');
-const dgram = require('dgram');
+import WebSocket, { WebSocketServer } from 'ws';
+import net from 'net';
+import dgram from 'dgram';
 
 const args = process.argv.slice(2);
 const help = args.includes('--help') || args.includes('-h');
 const mode = args.includes('--udp') ? 'udp' : 'tcp';
 const targetStr = args.find(a => a.includes(':')) || 'localhost:5000';
 const [host, port] = targetStr.split(':');
-const wsPort = 8080;
+const wsPortArg = args.find((a, i) => i > 0 && args[i - 1] === '--ws-port');
+const wsPort = Number.parseInt(wsPortArg || '8081', 10);
 
 if (help) {
   console.log('UART Bridge Yardım:');
   console.log('  node bridge.js --tcp host:port  (Varsayılan)');
   console.log('  node bridge.js --udp host:port');
+  console.log('  node bridge.js --tcp host:port --ws-port 8081');
   process.exit(0);
 }
 
-const wss = new WebSocket.Server({ port: wsPort });
+if (!Number.isInteger(wsPort) || wsPort < 1 || wsPort > 65535) {
+  console.error('\x1b[31m[ERR]\x1b[0m Geçersiz --ws-port değeri. 1-65535 arası olmalı.');
+  process.exit(1);
+}
+
+const wss = new WebSocketServer({ port: wsPort });
 console.log(`\x1b[32m[BRIDGE]\x1b[0m WebSocket Sunucusu başlatıldı: ws://localhost:${wsPort}`);
 console.log(`\x1b[34m[TARGET]\x1b[0m Hedef: ${mode.toUpperCase()} ${host}:${port}`);
 

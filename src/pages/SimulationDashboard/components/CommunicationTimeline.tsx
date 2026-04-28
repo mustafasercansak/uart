@@ -1,15 +1,16 @@
 import React, { memo } from 'react';
-import { ArrowRight, ArrowLeft, Clock, WifiOff } from 'lucide-react';
-import type { GeneratedFrame } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { ArrowRight, ArrowLeft, Clock, WifiOff, Trash2 } from 'lucide-react';
+import type { GeneratedFrame, Exchange } from '../../../types';
+import { useTranslation } from '../../../i18n/context';
 
 interface TimelineProps {
-  exchanges: any[];
+  exchanges: Exchange[];
   onSelectFrame: (frame: GeneratedFrame) => void;
+  onClear?: () => void;
   hasRealDevice?: boolean; // serial veya network bağlı mı?
 }
 
-const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: TimelineProps) => {
+const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = false }: TimelineProps) => {
   const { t } = useTranslation();
   const displayExchanges = exchanges.slice(-50);
 
@@ -39,6 +40,16 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
           <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest bg-gray-950 px-2 py-1 rounded">
             Son {displayExchanges.length} frame
           </div>
+          {onClear && (
+            <button
+              onClick={onClear}
+              className="p-1 text-gray-500 hover:text-rose-500 transition-colors flex items-center gap-1.5 bg-gray-950 px-1.5 py-1 rounded group/clear"
+              title={t('timeline.clear')}
+            >
+              <Trash2 size={10} className="group-hover/clear:scale-110 transition-transform" />
+              <span className="text-[9px] font-mono font-black uppercase tracking-widest">{t('timeline.clear')}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -52,7 +63,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
 
         {displayExchanges.map((ex, idx) => {
           const prevEx = idx > 0 ? displayExchanges[idx - 1] : null;
-          const delta = prevEx ? (ex.startTime ?? ex.timestamp) - (prevEx.startTime ?? prevEx.timestamp) : 0;
+          const delta = prevEx ? (ex.startTime - prevEx.startTime) : 0;
 
           return (
             <div key={ex.id} className="relative py-1.5">
@@ -74,12 +85,12 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
                       onClick={() => onSelectFrame({
                         uId: ex.id,
                         frameNumber: 0,
-                        timestampMs: ex.startTime ?? ex.timestamp ?? 0,
-                        rawHex: ex.tx.rawHex,
-                        rawBytes: ex.tx.rawHex.split(' ').map((h: string) => parseInt(h, 16)),
+                        timestampMs: ex.startTime,
+                        rawHex: ex.tx?.rawHex || '',
+                        rawBytes: (ex.tx?.rawHex || '').split(' ').map((h: string) => parseInt(h, 16)),
                         fields: [],
                         errors: [],
-                      } as any)}
+                      } as unknown as GeneratedFrame)}
                       className="bg-blue-900/20 border border-blue-800/50 hover:border-blue-500/50 p-2.5 rounded-xl transition-all hover:bg-blue-900/40 text-left max-w-[280px] relative group/btn"
                     >
                       <div className="text-[8px] font-mono font-black text-blue-400 mb-1 uppercase tracking-tighter opacity-60">TX OUT</div>
@@ -106,12 +117,12 @@ const Timeline = memo(({ exchanges, onSelectFrame, hasRealDevice = false }: Time
                         onClick={() => onSelectFrame({
                           uId: ex.id + '-rx',
                           frameNumber: 0,
-                          timestampMs: ex.rx.timestamp ?? 0,
-                          rawHex: ex.rx.rawHex,
-                          rawBytes: ex.rx.rawHex.split(' ').map((h: string) => parseInt(h, 16)),
+                          timestampMs: ex.rx?.timestamp || ex.startTime || 0,
+                          rawHex: ex.rx?.rawHex || '',
+                          rawBytes: (ex.rx?.rawHex || '').split(' ').map((h: string) => parseInt(h, 16)),
                           fields: [],
                           errors: [],
-                        } as any)}
+                        } as unknown as GeneratedFrame)}
                         className="bg-emerald-900/20 border border-emerald-800/50 hover:border-emerald-500/50 p-2.5 rounded-xl transition-all hover:bg-emerald-900/40 text-left max-w-[280px] relative group/btn"
                       >
                         <div className="text-[8px] font-mono font-black text-emerald-400 mb-1 uppercase tracking-tighter opacity-60">

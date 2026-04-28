@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -32,12 +32,11 @@ export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { 
     state, 
     start, stop, pause, resume, 
-    injectError, setAnalyzerMode, setProfile 
+    injectError, setAnalyzerMode
   } = useSimulation();
 
   const commands: Command[] = [
@@ -51,7 +50,7 @@ export function CommandPalette() {
     { id: 'act-start', name: 'Start Simulation', description: 'Broadcast UART data', category: 'Simulation', icon: <Play size={16} className="text-emerald-400" />, action: () => {
         const stored = localStorage.getItem('uart_profiles');
         let profiles = [];
-        if (stored) { try { profiles = JSON.parse(stored); } catch(e) {} }
+        if (stored) { try { profiles = JSON.parse(stored); } catch(_e) { /* Ignore parse errors */ } }
         const profile = profiles.find((p: { id: string }) => p.id === state.profileId) || profiles[0];
         if (profile) start(profile, null, state.outputMode);
     }, shortcut: 'S' },
@@ -59,7 +58,7 @@ export function CommandPalette() {
     { id: 'act-resume', name: 'Resume Simulation', description: 'Continue transmission', category: 'Simulation', icon: <Play size={16} className="text-emerald-400" />, action: () => {
         const stored = localStorage.getItem('uart_profiles');
         let profiles = [];
-        if (stored) { try { profiles = JSON.parse(stored); } catch(e) {} }
+        if (stored) { try { profiles = JSON.parse(stored); } catch(_e) { /* Ignore parse errors */ } }
         const profile = profiles.find((p: { id: string }) => p.id === state.profileId);
         if (profile) resume(profile, null);
     } },

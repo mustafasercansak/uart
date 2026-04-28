@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Cpu, AlertTriangle, CheckCircle, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { GeneratedFrame, FrameProfile } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 import {
   decodeModbusRTU,
   decodeNMEA,
   detectProtocol,
   type DecodedField,
+  type DecodedResult,
 } from '../../../engines/HighLevelDecoders';
 import { parseFrame } from '../../../engines/FrameParser';
 
@@ -67,7 +68,7 @@ function FrameDecodeCard({
       if (profile) {
         const parsed = parseFrame(profile, frame.rawBytes);
         if (parsed) {
-          const res: import('../../../engines/HighLevelDecoders').DecodedResult = {
+          const res: DecodedResult = {
             valid: true,
             fields: parsed.map(f => ({
               name: f.name,

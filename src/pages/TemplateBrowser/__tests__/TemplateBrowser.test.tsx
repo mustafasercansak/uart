@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import TemplateBrowser from '../index';
 import { BrowserRouter } from 'react-router-dom';
-import { LanguageProvider } from '../../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageProvider';
 
 // Mock the hooks
 const mockSetProfile = vi.fn();
@@ -64,5 +64,42 @@ describe('TemplateBrowser Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/');
     
     vi.useRealTimers();
+  });
+
+  it('should filter templates by category', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    // Click "Tıbbi" filter button
+    const medicalFilter = screen.getByRole('button', { name: 'Tıbbi' });
+    fireEvent.click(medicalFilter);
+
+    // Verify a medical template is still there
+    expect(screen.getByText('SpO2 Modülü')).toBeInTheDocument();
+    
+    // Switch to 'All'
+    const allFilter = screen.getByText(/Tümü/i);
+    fireEvent.click(allFilter);
+    expect(screen.getByText('Açık Kaynak Ventilatör')).toBeInTheDocument();
+  });
+
+  it('should navigate to profiles when arrow button is clicked', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    const profileButtons = screen.getAllByTitle('Profillere git');
+    fireEvent.click(profileButtons[0]);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/profiles');
   });
 });

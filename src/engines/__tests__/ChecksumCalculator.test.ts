@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateChecksum } from '../ChecksumCalculator';
+import type { ChecksumAlgorithm } from '../../types';
 
 describe('ChecksumCalculator', () => {
   const data = [0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39]; // "123456789"
@@ -38,5 +39,21 @@ describe('ChecksumCalculator', () => {
   it('handles empty data', () => {
     const result = calculateChecksum([], { algorithm: 'xor' });
     expect(result).toEqual([0x00]);
+  });
+
+  it('handles custom CRC settings and unknown algorithms', () => {
+    // Custom algorithm (ARC model)
+    const result = calculateChecksum(data, { 
+        algorithm: 'custom', 
+        polynomial: 0x8005, 
+        initialValue: 0x0000, 
+        xorOut: 0x0000, 
+        reflectIn: true, 
+        reflectOut: true 
+    });
+    expect(result).toEqual([0xBB, 0x3D]);
+
+    // Unknown algorithm
+    expect(calculateChecksum(data, { algorithm: 'unknown' as unknown as ChecksumAlgorithm })).toEqual([0x00]);
   });
 });

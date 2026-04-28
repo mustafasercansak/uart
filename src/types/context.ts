@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { SimulationState, OutputMode, GeneratedFrame, SignalIntegrity, DashboardWidget } from './simulation';
 import type { WidgetType } from './field';
 import type { FrameProfile } from './protocol';
@@ -6,9 +7,12 @@ import type { ErrorType } from './scenario';
 import type { Trigger } from './trigger';
 import type { ResponderRule } from './responder';
 import type { ValidationTarget } from './validation';
+import { AutomationSequence } from './automation';
 
 export interface SimulationContextType {
   state: SimulationState;
+  /** Waveform data ref — updated outside React state for zero-render chart updates */
+  waveformHistoryRef: React.MutableRefObject<Array<Record<string, number>>>;
   start: (profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => void;
   stop: () => void;
   pause: () => void;
@@ -56,4 +60,11 @@ export interface SimulationContextType {
   stopValidation: () => void;
   cancelValidation: () => void;
   deleteValidationSession: (id: string) => void;
+  sendRawData: (hex: string) => void;
+  automation: {
+    saveSequence: (sequence: AutomationSequence) => void;
+    deleteSequence: (id: string) => void;
+    setActiveSequence: (id: string | null) => void;
+  };
+  clearExchanges: () => void;
 }

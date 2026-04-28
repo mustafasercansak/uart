@@ -3,7 +3,7 @@ import { X, Save, Code, Plus, Trash2, Settings2 } from 'lucide-react';
 import type { FrameProfile, Field, FramingConfig, FramingMode } from '../../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseCHeader } from '../../../engines/CHeaderImporter';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface ProfileEditorModalProps {
   profile: FrameProfile | null;
@@ -13,19 +13,28 @@ interface ProfileEditorModalProps {
 
 const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave, onClose }) => {
   const { t } = useTranslation();
-  const [edited, setEdited] = useState<FrameProfile>(profile || {
-    id: uuidv4(),
-    name: t('profileEditor.fixed'), // Default name
-    description: '',
-    baudRate: 9600,
-    dataBits: 8,
-    parity: 'None',
-    stopBits: 1,
-    sendIntervalMs: 100,
-    fields: [],
-    framing: { mode: 'fixed' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+  const [edited, setEdited] = useState<FrameProfile>(() => {
+    if (profile) {
+      return {
+        ...profile,
+        fields: profile.fields ?? [],
+        framing: profile.framing ?? { mode: 'fixed' },
+      };
+    }
+    return {
+      id: uuidv4(),
+      name: t('profileEditor.fixed'),
+      description: '',
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'None',
+      stopBits: 1,
+      sendIntervalMs: 100,
+      fields: [],
+      framing: { mode: 'fixed' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
   });
 
   const [importText, setImportText] = useState('');

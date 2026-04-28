@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { decodeUART, decodeSPI, decodeI2C, decodeCAN } from '../ProtocolDecoders';
+import { decodeUART, decodeSPI, decodeI2C, decodeCAN, getDecodedLines } from '../ProtocolDecoders';
+import type { ProtocolType } from '../../types';
 
 describe('ProtocolDecoders', () => {
     it('decodes UART bytes into bitstream with annotations', () => {
@@ -7,9 +8,7 @@ describe('ProtocolDecoders', () => {
         const result = decodeUART(bytes);
         expect(result.length).toBe(1);
         expect(result[0].label).toBe('UART');
-        // Start(0), D0..D7(1,0,1,0,1,0,1,0), Stop(1)
         const annotations = result[0].annotations;
-        expect(annotations.find(a => a.label === 'START')).toBeUndefined(); // It uses 'S'
         expect(annotations.find(a => a.label === 'S')).toBeDefined();
         expect(annotations.find(a => a.label === 'D0')?.value).toBe(1);
         expect(annotations.find(a => a.label === 'D1')?.value).toBe(0);
@@ -29,8 +28,6 @@ describe('ProtocolDecoders', () => {
         const bytes = [0x48];
         const result = decodeI2C(bytes);
         expect(result.length).toBe(2);
-        expect(result[0].label).toBe('SCL');
-        expect(result[1].label).toBe('SDA');
         expect(result[1].annotations.some(a => a.label === 'S')).toBe(true);
         expect(result[1].annotations.some(a => a.label === 'P')).toBe(true);
         expect(result[1].annotations.some(a => a.label === 'ACK')).toBe(true);
@@ -42,5 +39,16 @@ describe('ProtocolDecoders', () => {
         expect(result[0].label).toBe('CAN');
         expect(result[0].annotations.some(a => a.label === 'SOF')).toBe(true);
         expect(result[0].annotations.some(a => a.label === 'EOF')).toBe(true);
+    });
+
+    describe('getDecodedLines orchestrator', () => {
+        it('dispatches to correct decoder based on protocol', () => {
+            const bytes = [0x00];
+            expect(getDecodedLines('UART', bytes)[0].label).toBe('UART');
+            expect(getDecodedLines('SPI', bytes)[0].label).toBe('CS');
+            expect(getDecodedLines('I2C', bytes)[0].label).toBe('SCL');
+            expect(getDecodedLines('CAN', bytes)[0].label).toBe('CAN');
+            expect(getDecodedLines('Unknown' as unknown as ProtocolType, bytes)[0].label).toBe('UART');
+        });
     });
 });

@@ -4,7 +4,7 @@ import type { GeneratedFrame, Field, GridPanel, FrameProfile } from '../../../..
 import { useSimulation } from '../../../../hooks/useSimulation';
 import { SENSOR_TEMPLATES } from '../../../../data/templates';
 import DashboardGrid from '../DashboardGrid';
-import { useTranslation } from '../../../../i18n/LanguageContext';
+import { useTranslation } from '../../../../i18n/context';
 
 interface TelemetryPanelProps {
   lastFrame: GeneratedFrame | null;
@@ -15,7 +15,7 @@ interface TelemetryPanelProps {
 
 const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: TelemetryPanelProps) => {
   const { t } = useTranslation();
-  const { state, updateLayout, removeWidget } = useSimulation();
+  const { state, updateLayout, removeWidget, waveformHistoryRef } = useSimulation();
   const { dashboardLayout, profileId } = state;
   const currentProfile = useMemo(() => profiles?.find((p: FrameProfile) => p.id === profileId), [profiles, profileId]);
 
@@ -55,7 +55,7 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
         id: w.id,
         fieldName: field?.name || w.fieldId,
         fieldType: 'number',
-        color: w.config?.color || '#3b82f6',
+        color: (w.config?.color as string) || '#3b82f6',
         widgetType: w.type,
         config: w.config
       };
@@ -122,9 +122,9 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
         {panels.length > 0 ? (
-          <DashboardGrid 
-            panels={panels} 
-            history={waveformHistory} 
+          <DashboardGrid
+            panels={panels}
+            waveformHistoryRef={waveformHistoryRef}
             onRemovePanel={handleRemove}
             onUpdatePanel={handleUpdatePanel}
           />

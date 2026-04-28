@@ -1,0 +1,194 @@
+import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+
+function getFiles(dir: string, extension: string): string[] {
+    let results: string[] = [];
+    const list = fs.readdirSync(dir);
+    list.forEach(file => {
+        file = path.resolve(dir, file);
+        const stat = fs.statSync(file);
+        if (stat && stat.isDirectory()) {
+            if (!file.includes('node_modules') && !file.includes('__tests__') && !file.includes('dist')) {
+                results = results.concat(getFiles(file, extension));
+            }
+        } else {
+            if (file.endsWith(extension)) {
+                results.push(file);
+            }
+        }
+    });
+    return results;
+}
+
+const PROJECT_ROOT = path.resolve(process.cwd());
+const SRC_DIR = path.join(PROJECT_ROOT, 'src');
+
+// Common attributes that often contain user-visible text
+const VISIBLE_ATTRIBUTES = [
+    'label',
+    'placeholder',
+    'title',
+    'alt',
+    'message',
+    'helperText',
+    'caption',
+    'tooltip',
+    'description'
+];
+
+// Common MUI/Technical values to ignore
+const IGNORE_VALUES = new Set([
+    'outlined', 'contained', 'text', 'small', 'medium', 'large',
+    'primary', 'secondary', 'error', 'info', 'success', 'warning',
+    'inherit', 'div', 'span', 'row', 'column', 'flex', 'center',
+    'sticky', 'absolute', 'relative', 'fixed', 'hidden', 'visible',
+    'password', 'email', 'number', 'tel', 'url', 'search', 'date',
+    'top', 'bottom', 'left', 'right', 'start', 'end',
+    'monospace', 'sans-serif', 'serif', 'auto', 'none', 'initial',
+    'button', 'submit', 'reset', 'checkbox', 'radio', 'select'
+]);
+
+interface HardcodedString {
+    file: string;
+    line: number;
+    content: string;
+    type: 'JSX Text' | 'Attribute' | 'Code String';
+}
+
+function scanFile(filePath: string): HardcodedString[] {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const findings: HardcodedString[] = [];
+
+    // Process line by line for attributes and code strings to easily ignore commented lines
+    const lines = content.split('\n');
+    lines.forEach((lineText, index) => {
+        // 1. Scan for JSX Text: >Text Here<
+        const jsxTextRegex = />([^<{}\n\r]*[a-zA-ZğüşıöçĞÜŞİÖÇ][^<{}\n\r]*)</g;
+
+        const lineNumber = index + 1;
+        const trimmedLine = lineText.trim();
+
+        if (trimmedLine.startsWith('import ') ||
+            trimmedLine.startsWith('//') ||
+            trimmedLine.startsWith('/*') ||
+            trimmedLine.includes('console.') ||
+            trimmedLine.includes('logger.')) {
+            return;
+        }
+
+        // --- JSX TEXT ---
+        let match;
+        while ((match = jsxTextRegex.exec(lineText)) !== null) {
+            const text = match[1].trim();
+            if (text && !text.startsWith('{') && !text.endsWith('}') &&
+                !IGNORE_VALUES.has(text.toLowerCase()) &&
+                !/^[0-9\s.,:;/%-]+$/.test(text)) {
+                findings.push({ file: filePath, line: lineNumber, content: text, type: 'JSX Text' });
+            }
+        }
+
+        // 2. Scan for Attributes
+        const attrRegex = /\b([a-zA-Z0-9]+)=(?:{?\s*["']([^"']+)["']\s*}?|{([^}]+)})/g;
+        while ((match = attrRegex.exec(lineText)) !== null) {
+            const attrName = match[1];
+            const attrValue = match[2] || match[3];
+
+            // Ignore technical attributes
+            if (attrName === 'className' || attrName === 'sx' || attrName === 'style' ||
+                attrName === 'variant' || attrName === 'color' || attrName === 'size' ||
+                attrName === 'component' || attrName === 'key' || attrName === 'id' ||
+                attrName === 'src' || attrName === 'href' || attrName.startsWith('on')) {
+                continue;
+            }
+
+            if (attrValue && VISIBLE_ATTRIBUTES.includes(attrName)) {
+                const val = attrValue.trim();
+                if (!val.includes('(') && !val.includes('.') && !val.includes('?') &&
+                    !IGNORE_VALUES.has(val.toLowerCase()) &&
+                    !val.startsWith('t(') && !val.startsWith('i18n.t(')) {
+
+                    const isHardcodedInBraces = val.startsWith("'") || val.startsWith('"') || val.startsWith('`');
+                    const cleanVal = isHardcodedInBraces ? val.slice(1, -1) : val;
+
+                    if (isHardcodedInBraces || !/^[a-zA-Z0-9_]+$/.test(cleanVal)) {
+                        findings.push({ file: filePath, line: lineNumber, content: cleanVal, type: 'Attribute' });
+                    }
+                }
+            }
+        }
+
+        // 3. Scan for code strings
+        // Matches strings wrapped in single, double, or backticks
+        const phraseRegex = /(['"`])([^'"`]*[a-zA-ZğüşıöçĞÜŞİÖÇ][^'"`]*)\1/g;
+        while ((match = phraseRegex.exec(lineText)) !== null) {
+            const text = match[2].trim();
+
+            // Ignore if it's likely a technical string
+            const isLikelyTailwind = /^[a-z0-9\s\-\[\]\/\:\#\%\(\)]+$/.test(text) && !text.includes(' ') && !/[A-Z]/.test(text);
+            const hasUppercase = /[A-Z]/.test(text);
+            const hasTurkish = /[ğüşıöçĞÜŞİÖÇ]/.test(text);
+            const hasSpace = text.includes(' ');
+
+            if (text.length > 2 &&
+                !text.includes('/') &&
+                !text.includes('\\') &&
+                !text.includes('://') &&
+                !text.startsWith('http') &&
+                !lineText.includes('className=') &&
+                !lineText.includes('sx=') &&
+                !lineText.includes('t(') &&
+                !lineText.includes('i18n.t(') &&
+                !IGNORE_VALUES.has(text.toLowerCase()) &&
+                (hasUppercase || hasTurkish || hasSpace) &&
+                !isLikelyTailwind) {
+
+                if (!findings.some(f => f.line === lineNumber && f.content.includes(text))) {
+                    findings.push({ file: filePath, line: lineNumber, content: text, type: 'Code String' });
+                }
+            }
+        }
+    });
+
+    return findings;
+}
+
+describe('I18n Compliance', () => {
+    it('should not have hardcoded strings in components', () => {
+        const tsxFiles = getFiles(SRC_DIR, '.tsx');
+        const jsxFiles = getFiles(SRC_DIR, '.jsx');
+        const files = [...tsxFiles, ...jsxFiles];
+
+        const allFindings: HardcodedString[] = [];
+        files.forEach(file => {
+            const findings = scanFile(file);
+            allFindings.push(...findings);
+        });
+
+        if (allFindings.length > 0) {
+            const grouped = allFindings.reduce((acc, f) => {
+                const relPath = path.relative(SRC_DIR, f.file);
+                if (!acc[relPath]) acc[relPath] = [];
+                acc[relPath].push(f);
+                return acc;
+            }, {} as Record<string, HardcodedString[]>);
+
+            console.log('\n🔍 I18n Compliance Report: Found ' + allFindings.length + ' hardcoded strings\n');
+
+            console.log(allFindings);
+
+            Object.entries(grouped).forEach(([file, findings]) => {
+                console.log(`\n📂 ${file}:`);
+                findings.forEach(f => {
+                    console.log(`  L${f.line.toString().padEnd(4)} [${f.type.padEnd(11)}] "${f.content}"`);
+                });
+            });
+
+            console.log('\n');
+        }
+
+        // For now, let's just log them and not fail if it's the first run, 
+        // OR fail it to be strict. The user asked to "detect" them.
+        expect(allFindings.length, `Found ${allFindings.length} hardcoded strings that need translation.`).toBe(0);
+    });
+});

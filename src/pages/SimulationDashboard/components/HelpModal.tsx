@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { X, Book, HelpCircle, FileText, Globe, MoveLeft } from 'lucide-react';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -16,11 +16,11 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  const docs = {
+  const docs = useMemo(() => ({
     tr: { title: t('helpModal.userGuide'), file: '/docs/KULLANIM_KILAVUZU.md', icon: Book },
     en: { title: 'Quick Help', file: '/docs/HELP.md', icon: HelpCircle },
     readme: { title: 'README', file: '/docs/README.md', icon: FileText }
-  };
+  }), [t]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,7 +31,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         const response = await fetch(docs[activeTab].file);
         const text = await response.text();
         setContent(text);
-      } catch (err) {
+      } catch (_err) {
         setContent(t('helpModal.loadError'));
       } finally {
         setLoading(false);
@@ -39,7 +39,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     };
 
     fetchDoc();
-  }, [isOpen, activeTab]);
+  }, [isOpen, activeTab, docs, t]);
 
   if (!isOpen) return null;
 
@@ -117,7 +117,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 ">
                   <ReactMarkdown 
                     components={{
-                      img: ({node, ...props}) => (
+                      img: ({node: _node, ...props}) => (
                         <div className="relative group">
                           <img {...props} style={{maxWidth: '100%'}} className="transition-transform duration-500 group-hover:scale-[1.01]" />
                           <div className="absolute inset-x-0 -bottom-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">

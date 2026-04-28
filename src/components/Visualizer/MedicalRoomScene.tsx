@@ -582,7 +582,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     selectedRef.current = selected;
     const active = new Set(DEVICES.map(d => d.id).filter(id => isDeviceActive(id)));
     activeDevicesRef.current = active;
-  }, [selected, bindings, activeProfileId]);
+  }, [selected, bindings, activeProfileId, isDeviceActive]);
 
   // ── Three.js setup ───────────────────────────────────────────────────────
   useEffect(() => {

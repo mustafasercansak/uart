@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Book, HelpCircle, FileText, Globe, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { useTranslation } from '../../i18n/context';
 
 type DocType = 'tr' | 'en' | 'readme';
+
+const docs = {
+  tr: { title: 'Kullanım Kılavuzu', file: '/docs/KULLANIM_KILAVUZU.md', icon: Book, lang: 'Türkçe' },
+  en: { title: 'Quick Help', file: '/docs/HELP.md', icon: HelpCircle, lang: 'English' },
+  readme: { title: 'README', file: '/docs/README.md', icon: FileText, lang: 'General' }
+};
 
 const HelpPage: React.FC = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<DocType>('tr');
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
-
-  const docs = {
-    tr: { title: 'Kullanım Kılavuzu', file: '/docs/KULLANIM_KILAVUZU.md', icon: Book, lang: 'Türkçe' },
-    en: { title: 'Quick Help', file: '/docs/HELP.md', icon: HelpCircle, lang: 'English' },
-    readme: { title: 'README', file: '/docs/README.md', icon: FileText, lang: 'General' }
-  };
 
   useEffect(() => {
     const fetchDoc = async () => {
@@ -25,7 +25,7 @@ const HelpPage: React.FC = () => {
         const response = await fetch(docs[activeTab].file);
         const text = await response.text();
         setContent(text);
-      } catch (err) {
+      } catch (_err) {
         setContent(t('helpPage.loadError'));
       } finally {
         setLoading(false);
@@ -34,7 +34,7 @@ const HelpPage: React.FC = () => {
 
     fetchDoc();
     window.scrollTo(0, 0);
-  }, [activeTab]);
+  }, [activeTab, t]);
 
   return (
     <div className="h-screen bg-[#05070a] text-white flex flex-col font-sans overflow-hidden">
@@ -120,8 +120,8 @@ const HelpPage: React.FC = () => {
                     <ReactMarkdown 
                       components={{
                         // Hydration fix: Avoid div in p by mapping p to a div with a paragraph class
-                        p: ({node, ...props}) => <div className="paragraph" {...props} />,
-                        img: ({node, ...props}) => (
+                        p: ({ node: _node, ...props }) => <div className="paragraph" {...props} />,
+                        img: ({ node: _node, ...props }) => (
                           <span className="flex flex-col items-center my-20 group">
                              <img {...props} alt={props.alt || 'Görsel'} className="hover:scale-[1.01] transition-transform duration-1000 cursor-zoom-in" />
                              {props.alt && (

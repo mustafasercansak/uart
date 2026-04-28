@@ -12,7 +12,7 @@ import {
     X
 } from 'lucide-react';
 import type { ValidationSession } from '../../../types';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 
 interface ValidationReportProps {
   session: ValidationSession;

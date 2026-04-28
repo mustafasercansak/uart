@@ -90,7 +90,7 @@ function getFieldValue(
     }
     case 'waveform': {
       const cfg = { ...typeConfig as WaveformConfig };
-      
+
       // Medical Sync: If this is an ECG and there's a BPM field, sync them
       if (cfg.shape === 'ecg') {
         const bpm = namedValues['BPM'] || namedValues['HR'] || 0;
@@ -98,17 +98,18 @@ function getFieldValue(
           cfg.frequency = bpm / 60;
         }
       }
-      
+
       if (cfg.shape === 'resp_pressure' || cfg.shape === 'resp_flow') {
         const rr = namedValues['RR'] || namedValues['Respiration'] || 0;
         if (rr > 0) {
-           cfg.frequency = rr / 60;
+          cfg.frequency = rr / 60;
         }
       }
-      
+
       return clampValue(generateWaveformSample(cfg, elapsedMs), byteWidth);
     }
     case 'checksum':
+      // @@ts-expect-error - Unreachable: generateFrame handles checksums in Pass 3 directly.
       return 0; // Computed separately
     case 'flags': {
       const cfg = typeConfig as FlagsConfig;
@@ -177,7 +178,7 @@ export function generateFrame(
     if (field.type === 'checksum' || field.type === 'computed') continue;
     const value = getFieldValue(field, state, elapsedMs, namedValues);
     namedValues[field.name] = value;
-    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness);
+    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
   }
 
   // Pass 2: computed fields
@@ -185,7 +186,7 @@ export function generateFrame(
     if (field.type !== 'computed') continue;
     const value = getFieldValue(field, state, elapsedMs, namedValues);
     namedValues[field.name] = value;
-    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness);
+    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
   }
 
   // Pass 3: checksum fields
@@ -231,7 +232,7 @@ export function generateFrame(
 
     const hexStr = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
-    const parsed: ParsedField = { name: field.name, hex: hexStr, decimal: decimalValue };
+    const parsed: ParsedField = { name: field.name, hex: hexStr, decimal: decimalValue, byteWidth: field.byteWidth };
 
     if (field.type === 'flags') {
       const cfg = field.typeConfig as FlagsConfig;
@@ -246,7 +247,7 @@ export function generateFrame(
 
   // Apply signal integrity noise (random bit flips)
   let finalBytes = [...allBytes];
-  
+
   if (state.signalIntegrity?.bitFlipsEnabled && state.signalIntegrity?.noiseLevel > 0) {
     finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel);
   }
@@ -328,7 +329,7 @@ function calculateParity(byte: number, mode: Parity): number {
   for (let i = 0; i < 8; i++) {
     if ((byte >> i) & 1) ones++;
   }
-  
+
   if (mode === 'Even') return ones % 2 === 0 ? 0 : 1;
   if (mode === 'Odd') return ones % 2 === 0 ? 1 : 0;
   if (mode === 'Mark') return 1;
@@ -437,7 +438,7 @@ function calculateCRC16(bytes: number[]): number {
  */
 function applySignalNoise(bytes: number[], noiseLevel: number): number[] {
   if (noiseLevel <= 0) return bytes;
-  
+
   return bytes.map(byte => {
     let corruptedByte = byte;
     for (let bit = 0; bit < 8; bit++) {

@@ -1,12 +1,12 @@
 import { memo, useState, useCallback } from 'react';
 import { LayoutGrid, List, GripHorizontal, MousePointer2, Activity, Ruler } from 'lucide-react';
-import { useTranslation } from '../../../i18n/LanguageContext';
+import { useTranslation } from '../../../i18n/context';
 import type { FrameProfile, GridPanel } from '../../../types';
 import CanvasWaveform from './CanvasWaveform';
 import DashboardGrid from './DashboardGrid';
+import { useSimulation } from '../../../hooks/useSimulation';
 
 interface WaveformChartsProps {
-  waveformHistory: Array<Record<string, number>>;
   selectedProfile: FrameProfile | null;
 }
 
@@ -20,7 +20,9 @@ const CHART_COLORS_EXTENDED = [
   '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#3b82f6', '#ef4444',
 ];
 
-const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChartsProps) => {
+function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
+  const { waveformHistoryRef } = useSimulation();
+  const waveformHistory = waveformHistoryRef.current;
   const { t } = useTranslation();
   const [enabledCharts, setEnabledCharts] = useState<Record<string, boolean>>({});
   const [gridMode, setGridMode] = useState(false);
@@ -57,6 +59,10 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChart
       }
       return prev.filter(p => p.id !== panelId);
     });
+  }, []);
+
+  const updateGridPanel = useCallback((id: string, updates: Partial<GridPanel>) => {
+    setGridPanels(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   }, []);
 
   if (!selectedProfile || waveformHistory.length <= 1) return null;
@@ -101,7 +107,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChart
                   <div className="absolute inset-0 pt-6 px-0">
                     <CanvasWaveform 
                       dataKey={f.name} 
-                      history={waveformHistory} 
+                      waveformHistoryRef={waveformHistoryRef}
                       color={color} 
                       showCursors={showCursors}
                       cursorA={cursorA}
@@ -233,7 +239,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChart
                 <div className="absolute inset-0 pt-6 px-0">
                   <CanvasWaveform 
                     dataKey={f.name} 
-                    history={waveformHistory} 
+                    waveformHistoryRef={waveformHistoryRef}
                     color={color} 
                     showCursors={showCursors}
                     cursorA={cursorA}
@@ -252,8 +258,9 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChart
         <div className="flex-1 min-h-0 shrink-0" style={{ minHeight: 300 }}>
           <DashboardGrid
             panels={gridPanels}
-            history={waveformHistory}
+            waveformHistoryRef={waveformHistoryRef}
             onRemovePanel={removeGridPanel}
+            onUpdatePanel={updateGridPanel}
           />
         </div>
       )}
@@ -266,7 +273,7 @@ const WaveformCharts = memo(({ waveformHistory, selectedProfile }: WaveformChart
       )}
     </div>
   );
-});
+}
 
 WaveformCharts.displayName = 'WaveformCharts';
-export default WaveformCharts;
+export default memo(WaveformCharts);

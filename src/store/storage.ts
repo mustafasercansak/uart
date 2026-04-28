@@ -1,4 +1,17 @@
-import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, ChecksumConfig, FlagsConfig } from '../types';
+import type {
+  FrameProfile,
+  Scenario,
+  FixedConfig,
+  RangeConfig,
+  WaveformConfig,
+  ChecksumConfig,
+  FlagsConfig,
+  AutomationSequence,
+  Field,
+  FramingMode,
+  Parity,
+  StopBits,
+} from '../types';
 
 // ─────────────────────────────────────────────
 // LOCALSTORAGE TABANLI DEPOLAMA
@@ -6,6 +19,9 @@ import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, 
 
 const PROFILES_KEY = 'uart_profiles';
 const SCENARIOS_KEY = 'uart_scenarios';
+const PROFILE_SCHEMA_VERSION = 2;
+
+type PersistedProfile = Partial<FrameProfile> & { schemaVersion?: number };
 
 const INITIAL_PROFILES: FrameProfile[] = [
   {
@@ -28,11 +44,15 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'm6', name: 'Lead-I', type: 'waveform', byteWidth: 2, endianness: 'big', order: 5, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 800, offset: 2048, noiseLevel: 3, phase: 0 } as WaveformConfig },
       { id: 'm6_2', name: 'Lead-II', type: 'waveform', byteWidth: 2, endianness: 'big', order: 6, typeConfig: { shape: 'ecg', frequency: 1.2, amplitude: 1200, offset: 2048, noiseLevel: 3, phase: 0.04 } as WaveformConfig },
       { id: 'm7', name: 'SpO2-Wave', type: 'waveform', byteWidth: 1, endianness: 'big', order: 7, typeConfig: { shape: 'sine', frequency: 1.2, amplitude: 30, offset: 128, noiseLevel: 1 } as WaveformConfig },
-      { id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 8, typeConfig: { bits: [
-        { index: 0, name: 'Lead-Off', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 1, name: 'Low-SPO2', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 2, name: 'Battery-Low', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
-      ]} as FlagsConfig },
+      {
+        id: 'm8', name: 'Alarms', type: 'flags', byteWidth: 1, endianness: 'big', order: 8, typeConfig: {
+          bits: [
+            { index: 0, name: 'Lead-Off', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 1, name: 'Low-SPO2', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 2, name: 'Battery-Low', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
+          ]
+        } as FlagsConfig
+      },
       { id: 'm9', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 8, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'm1', endFieldId: 'm8' } } as ChecksumConfig }
     ],
     framing: {
@@ -78,12 +98,16 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'p1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xFB } as FixedConfig },
       { id: 'p2', name: 'Flow Rate', type: 'range', byteWidth: 2, endianness: 'big', order: 1, typeConfig: { min: 50, max: 250, distribution: 'uniform' } as RangeConfig },
       { id: 'p3', name: 'Volume', type: 'range', byteWidth: 4, endianness: 'big', order: 2, typeConfig: { min: 0, max: 10000, distribution: 'uniform' } as RangeConfig },
-      { id: 'p4', name: 'Status', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { bits: [
-        { index: 0, name: 'Running', defaultValue: 1, behavior: 'manual', behaviorConfig: {} },
-        { index: 1, name: 'Air-In-Line', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 2, name: 'Occlusion', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 3, name: 'Bolus', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
-      ]} as FlagsConfig },
+      {
+        id: 'p4', name: 'Status', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: {
+          bits: [
+            { index: 0, name: 'Running', defaultValue: 1, behavior: 'manual', behaviorConfig: {} },
+            { index: 1, name: 'Air-In-Line', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 2, name: 'Occlusion', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 3, name: 'Bolus', defaultValue: 0, behavior: 'manual', behaviorConfig: {} }
+          ]
+        } as FlagsConfig
+      },
       { id: 'p5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'p2', endFieldId: 'p4' } } as ChecksumConfig }
     ],
     framing: {
@@ -106,11 +130,15 @@ const INITIAL_PROFILES: FrameProfile[] = [
       { id: 'c1', name: 'Hdr', type: 'fixed', byteWidth: 1, endianness: 'big', order: 0, typeConfig: { value: 0xFE } as FixedConfig },
       { id: 'c2', name: 'Position', type: 'range', byteWidth: 1, endianness: 'big', order: 1, typeConfig: { min: 0, max: 100, distribution: 'uniform' } as RangeConfig },
       { id: 'c3', name: 'Pressure', type: 'range', byteWidth: 2, endianness: 'big', order: 2, typeConfig: { min: 0, max: 400, distribution: 'gaussian' } as RangeConfig },
-      { id: 'c4', name: 'Flags', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: { bits: [
-        { index: 0, name: 'Moving', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 1, name: 'Error', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
-        { index: 2, name: 'Calibrated', defaultValue: 1, behavior: 'manual', behaviorConfig: {} }
-      ]} as FlagsConfig },
+      {
+        id: 'c4', name: 'Flags', type: 'flags', byteWidth: 1, endianness: 'big', order: 3, typeConfig: {
+          bits: [
+            { index: 0, name: 'Moving', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 1, name: 'Error', defaultValue: 0, behavior: 'manual', behaviorConfig: {} },
+            { index: 2, name: 'Calibrated', defaultValue: 1, behavior: 'manual', behaviorConfig: {} }
+          ]
+        } as FlagsConfig
+      },
       { id: 'c5', name: 'CRC', type: 'checksum', byteWidth: 1, endianness: 'big', order: 4, typeConfig: { algorithm: 'xor', scope: { startFieldId: 'c2', endFieldId: 'c4' } } as ChecksumConfig }
     ],
     framing: {
@@ -119,6 +147,91 @@ const INITIAL_PROFILES: FrameProfile[] = [
     }
   }
 ];
+
+function isParity(value: unknown): value is Parity {
+  return value === 'None' || value === 'Even' || value === 'Odd' || value === 'Mark' || value === 'Space';
+}
+
+function isStopBits(value: unknown): value is StopBits {
+  return value === 1 || value === 1.5 || value === 2;
+}
+
+function isFramingMode(value: unknown): value is FramingMode {
+  return value === 'fixed' || value === 'delimiter' || value === 'slip' || value === 'cobs' || value === 'modbus';
+}
+
+function normalizeField(raw: unknown, index: number): Field | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const src = raw as Partial<Field>;
+  const byteWidth = Number.isFinite(src.byteWidth) && (src.byteWidth as number) > 0 ? Number(src.byteWidth) : 1;
+
+  return {
+    id: typeof src.id === 'string' && src.id.trim().length > 0 ? src.id : `field-${index}`,
+    name: typeof src.name === 'string' && src.name.trim().length > 0 ? src.name : `Field_${index + 1}`,
+    order: Number.isFinite(src.order) ? Number(src.order) : index,
+    byteWidth,
+    endianness: src.endianness === 'little' ? 'little' : 'big',
+    type: src.type ?? 'fixed',
+    typeConfig: src.typeConfig ?? { value: 0 },
+    widgetConfig: src.widgetConfig,
+  };
+}
+
+function migrateProfile(raw: PersistedProfile, index: number): { profile: FrameProfile; changed: boolean } | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const now = new Date().toISOString();
+  const fields = Array.isArray(raw.fields)
+    ? raw.fields.map((f, i) => normalizeField(f, i)).filter((f): f is Field => !!f)
+    : [];
+
+  const framingMode = raw.framing?.mode;
+  const profile: FrameProfile = {
+    id: typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id : `legacy-profile-${index}`,
+    name: typeof raw.name === 'string' && raw.name.trim().length > 0 ? raw.name : `Recovered Profile ${index + 1}`,
+    description: typeof raw.description === 'string' ? raw.description : '',
+    baudRate: Number.isFinite(raw.baudRate) ? Number(raw.baudRate) : 9600,
+    dataBits: Number.isFinite(raw.dataBits) ? Number(raw.dataBits) : 8,
+    parity: isParity(raw.parity) ? raw.parity : 'None',
+    stopBits: isStopBits(raw.stopBits) ? raw.stopBits : 1,
+    sendIntervalMs: Number.isFinite(raw.sendIntervalMs) ? Math.max(10, Number(raw.sendIntervalMs)) : 100,
+    fields,
+    framing: {
+      mode: isFramingMode(framingMode) ? framingMode : 'fixed',
+      delimiter: typeof raw.framing?.delimiter === 'number' ? raw.framing.delimiter : undefined,
+      header: Array.isArray(raw.framing?.header) ? raw.framing.header.filter((b): b is number => typeof b === 'number') : undefined,
+      footer: Array.isArray(raw.framing?.footer) ? raw.framing.footer.filter((b): b is number => typeof b === 'number') : undefined,
+    },
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : now,
+    updatedAt: now,
+  };
+
+  const changed =
+    raw.schemaVersion !== PROFILE_SCHEMA_VERSION ||
+    !raw.framing ||
+    !Array.isArray(raw.fields) ||
+    fields.length !== (raw.fields?.length ?? 0) ||
+    profile.updatedAt !== raw.updatedAt;
+
+  return { profile, changed };
+}
+
+function migrateProfiles(profiles: PersistedProfile[]): { profiles: FrameProfile[]; changed: boolean } {
+  let changed = false;
+  const migrated: FrameProfile[] = [];
+
+  profiles.forEach((raw, index) => {
+    const result = migrateProfile(raw, index);
+    if (!result) {
+      changed = true;
+      return;
+    }
+    if (result.changed) changed = true;
+    migrated.push(result.profile);
+  });
+
+  return { profiles: migrated, changed };
+}
 
 function load<T>(key: string): T[] {
   try {
@@ -137,11 +250,25 @@ function save<T>(key: string, data: T[]): void {
 // ── Profiles ─────────────────────────────────
 
 export function loadProfiles(): FrameProfile[] {
-  return load<FrameProfile>(PROFILES_KEY);
+  const loaded = load<PersistedProfile>(PROFILES_KEY);
+  const { profiles, changed } = migrateProfiles(loaded);
+
+  if (profiles.length === 0) {
+    // Recovery fallback if storage is corrupted/empty after parse.
+    return INITIAL_PROFILES;
+  }
+
+  if (changed) {
+    const withSchema = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+    save(PROFILES_KEY, withSchema);
+  }
+
+  return profiles;
 }
 
 export function saveProfiles(profiles: FrameProfile[]): void {
-  save(PROFILES_KEY, profiles);
+  const persisted = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+  save(PROFILES_KEY, persisted);
 }
 
 export function saveProfile(profile: FrameProfile): void {
@@ -186,6 +313,31 @@ export function deleteScenario(id: string): void {
 
 export function getScenario(id: string): Scenario | null {
   return loadScenarios().find((s) => s.id === id) ?? null;
+}
+
+// ── Automation Sequences ─────────────────────
+
+const SEQUENCES_KEY = 'uart_sequences';
+
+export function loadSequences(): AutomationSequence[] {
+  return load<AutomationSequence>(SEQUENCES_KEY);
+}
+
+export function saveSequences(sequences: AutomationSequence[]): void {
+  save(SEQUENCES_KEY, sequences);
+}
+
+export function saveSequence(sequence: AutomationSequence): void {
+  const sequences = loadSequences();
+  const idx = sequences.findIndex((s) => s.id === sequence.id);
+  if (idx >= 0) sequences[idx] = sequence;
+  else sequences.push(sequence);
+  saveSequences(sequences);
+}
+
+export function deleteSequence(id: string): void {
+  const sequences = loadSequences().filter((s) => s.id !== id);
+  saveSequences(sequences);
 }
 
 // ── Import / Export ───────────────────────────

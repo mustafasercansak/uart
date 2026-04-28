@@ -41,11 +41,16 @@ export interface LogEntry {
   data?: unknown;
 }
 
+export interface GridPanelConfig {
+  min?: number;
+  max?: number;
+}
+
 export interface GridPanel {
   id: string;
   fieldName: string;
   fieldType: string;
   color: string;
   widgetType: WidgetType;
-  config?: unknown;
+  config?: GridPanelConfig;
 }

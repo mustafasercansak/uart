@@ -12,6 +12,7 @@ export interface ParsedField {
   name: string;
   hex: string;
   decimal: number;
+  byteWidth: number;
   flags?: Record<string, number>;
 }
 
@@ -147,4 +148,5 @@ export interface Field {
   type: FieldType;
   typeConfig: FieldTypeConfig;
   widgetConfig?: WidgetConfig;
+  isAscii?: boolean;
 }

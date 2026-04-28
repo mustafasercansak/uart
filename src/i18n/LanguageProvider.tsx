@@ -1,20 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import tr from './locales/tr.json';
 import en from './locales/en.json';
-
-type Locale = 'tr' | 'en';
-type Translations = typeof tr;
-
-interface LanguageContextType {
-  locale: Locale;
-  language: Locale; // alias for locale, used by some components
-  setLocale: (locale: Locale) => void;
-  t: (path: string) => string;
-}
+import { LanguageContext, type Locale, type Translations } from './context';
 
 const translations: Record<Locale, Translations> = { tr, en };
-
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
@@ -58,12 +47,4 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       {children}
     </LanguageContext.Provider>
   );
-}
-
-export function useTranslation() {
-  const context = useContext(LanguageContext);
-  if (context === undefined) {
-    throw new Error('useTranslation must be used within a LanguageProvider');
-  }
-  return context;
 }

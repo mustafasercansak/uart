@@ -10,6 +10,11 @@ export interface DecodedField {
   highlight?: 'ok' | 'error' | 'warn';
 }
 
+export interface DecodedResult {
+  valid: boolean;
+  fields: DecodedField[];
+}
+
 // ─────────────────────────────────────────────
 // MODBUS RTU
 // ─────────────────────────────────────────────

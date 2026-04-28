@@ -451,7 +451,8 @@
     "rxDevice": "RX (Cihaz)",
     "noRealDevice": "Gerçek cihaz yok — sadece TX",
     "lastFrames": "Son {count} frame",
-    "waitingComm": "İletişim bekleniyor"
+    "waitingComm": "İletişim bekleniyor",
+    "clear": "TEMİZLE"
   },
   "conversationMonitor": {
     "title": "Canlı Karşılaşma Günlüğü",
@@ -602,5 +603,29 @@
     "applyTemplate": "Şablon Düzeni Uygula",
     "loadWidgets": "{name} varsayılan widget'larını yükle",
     "designerMode": "Tasarımcı Modu"
+  },
+  "automation": {
+    "lab": "Otomasyon Lab",
+    "runner": "Dizi Çalıştırıcı ve Protokol Doğrulama",
+    "runSequence": "DİZİYİ ÇALIŞTIR",
+    "stop": "DURDUR",
+    "selectScenario": "-- Senaryo Seç --",
+    "scenarioName": "Senaryo Adı...",
+    "newScenario": "Yeni Senaryo",
+    "saveScenario": "Senaryoyu Kaydet",
+    "deleteScenario": "Senaryoyu Sil",
+    "untitledTest": "İsimsiz Test",
+    "newSequence": "Yeni Dizi",
+    "timeoutError": "Desen beklerken zaman aşımı",
+    "placeholderWait": "ms",
+    "placeholderPattern": "Hex deseni...",
+    "addSend": "Gönderim Adımı Ekle",
+    "addWait": "Bekleme Adımı Ekle",
+    "addExpect": "Beklentim Adımı Ekle",
+    "status": "Durum:",
+    "executing": "YÜRÜTÜLÜYOR",
+    "ready": "HAZIR",
+    "pass": "PAS:",
+    "fail": "HATA:"
   }
 }

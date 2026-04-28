@@ -14,12 +14,15 @@ import type {
   ConversationEntry,
   Exchange,
   ValidationSession,
-  ValidationEvent
+  ValidationEvent,
+  AutomationSequence,
+  AutomationStep
 } from '../types';
 
 const MAX_RECENT_FRAMES = 50;
 const MAX_LOG_ENTRIES = 100;
-const MAX_WAVEFORM_POINTS = 512;
+const MAX_WAVEFORM_POINTS = 180;
+const MAX_LOGIC_TRANSITIONS = 1500;
 
 export const INITIAL_STATE: SimulationState = {
   status: 'stopped',
@@ -76,7 +79,9 @@ export const INITIAL_STATE: SimulationState = {
   logicHistory: [
     { id: 'tx-main', name: 'UART TX', transitions: [] }
   ],
-  validationSession: null
+  validationSession: null,
+  sequences: [],
+  activeSequenceId: null
 };
 
 export type SimAction =
@@ -125,7 +130,12 @@ export type SimAction =
   | { type: 'STOP_VALIDATION'; endTime: number; score: number }
   | { type: 'CANCEL_VALIDATION' }
   | { type: 'ADD_VALIDATION_EVENT'; event: ValidationEvent }
-  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: { timestamp: number; fields: Record<string, number> } };
+  | { type: 'UPDATE_VALIDATION_HISTORY'; entry: { timestamp: number; fields: Record<string, number> } }
+  | { type: 'SET_ACTIVE_SEQUENCE'; id: string | null }
+  | { type: 'SAVE_SEQUENCE'; sequence: AutomationSequence }
+  | { type: 'DELETE_SEQUENCE'; id: string }
+  | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
+  | { type: 'CLEAR_EXCHANGES' };
 
 export function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
@@ -171,15 +181,19 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         ? [...state.logEntries.slice(-(MAX_LOG_ENTRIES - logEntries.length)), ...logEntries]
         : state.logEntries;
 
-      let newLogicHistory = [...state.logicHistory];
-      if (updates.lastFrame && updates.lastFrame.bitStream) {
-        if (!newLogicHistory.find(s => s.id === 'tx-main')) {
-          newLogicHistory.push({ id: 'tx-main', name: 'UART TX', transitions: [] });
-        }
-        newLogicHistory = newLogicHistory.map(sig => {
+      let newLogicHistory = state.logicHistory;
+      if (updates.lastFrame?.bitStream?.length) {
+        const hasTxMain = state.logicHistory.some(s => s.id === 'tx-main');
+        const base = hasTxMain ? state.logicHistory : [...state.logicHistory, { id: 'tx-main', name: 'UART TX', transitions: [] }];
+        newLogicHistory = base.map(sig => {
           if (sig.id !== 'tx-main') return sig;
-          const updatedTransitions = [...sig.transitions, ...(updates.lastFrame!.bitStream || [])];
-          return { ...sig, transitions: updatedTransitions.slice(-4000) };
+          const incoming = updates.lastFrame!.bitStream!;
+          const current = sig.transitions;
+          // Avoid allocation when already at cap and adding would exceed it
+          const combined = current.length + incoming.length > MAX_LOGIC_TRANSITIONS
+            ? [...current, ...incoming].slice(-MAX_LOGIC_TRANSITIONS)
+            : [...current, ...incoming];
+          return { ...sig, transitions: combined };
         });
       }
 
@@ -203,6 +217,11 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         logEntries: [...state.logEntries.slice(-(MAX_LOG_ENTRIES - 1)), { time: timeStr, text: action.text, type: action.entryType }]
       };
     }
+    case 'BATCH_LOGS':
+      return {
+        ...state,
+        logEntries: [...state.logEntries, ...action.entries].slice(-MAX_LOG_ENTRIES)
+      };
     case 'OVERRIDE_FIELD':
       return { ...state, fieldOverrides: { ...state.fieldOverrides, [action.fieldId]: action.value } };
     case 'OVERRIDE_BIT':
@@ -264,7 +283,7 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         snapshots: action.newState.snapshots || state.snapshots || []
       };
     case 'SET_BACKEND_CONNECTED':
-      return { ...state, networkConnected: action.connected };
+      return state;
     case 'SET_STATUS':
       return { ...state, status: action.status };
     case 'UPDATE_TIMING_STATS':
@@ -339,6 +358,25 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
           dataHistory: [...state.validationSession.dataHistory, action.entry].slice(-1000)
         }
       };
+    case 'SET_ACTIVE_SEQUENCE':
+      return { ...state, activeSequenceId: action.id };
+    case 'SAVE_SEQUENCE': {
+      const idx = state.sequences.findIndex(s => s.id === action.sequence.id);
+      const newSequences = idx !== -1
+        ? state.sequences.map((s, i) => i === idx ? action.sequence : s)
+        : [...state.sequences, action.sequence];
+      return { ...state, sequences: newSequences };
+    }
+    case 'DELETE_SEQUENCE':
+      return {
+        ...state,
+        sequences: state.sequences.filter(s => s.id !== action.id),
+        activeSequenceId: state.activeSequenceId === action.id ? null : state.activeSequenceId
+      };
+    case 'SET_SEQUENCES':
+      return { ...state, sequences: action.sequences };
+    case 'CLEAR_EXCHANGES':
+      return { ...state, exchanges: [], selectedExchangeId: null };
     default:
       return state;
   }

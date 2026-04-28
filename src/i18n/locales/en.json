@@ -452,7 +452,8 @@
     "rxDevice": "RX (Device)",
     "noRealDevice": "No real device — TX only",
     "lastFrames": "Last {count} frames",
-    "waitingComm": "Waiting for communication"
+    "waitingComm": "Waiting for communication",
+    "clear": "CLEAR"
   },
   "conversationMonitor": {
     "title": "Live Encounter Log",
@@ -603,5 +604,29 @@
     "applyTemplate": "Apply Template Layout",
     "loadWidgets": "Load {name} default widgets",
     "designerMode": "Designer Mode"
+  },
+  "automation": {
+    "lab": "Automation Lab",
+    "runner": "Sequence Runner & Protocol Validation",
+    "runSequence": "RUN SEQUENCE",
+    "stop": "STOP",
+    "selectScenario": "-- Select Scenario --",
+    "scenarioName": "Scenario Name...",
+    "newScenario": "New Scenario",
+    "saveScenario": "Save Scenario",
+    "deleteScenario": "Delete Scenario",
+    "untitledTest": "Untitled Test",
+    "newSequence": "New Sequence",
+    "timeoutError": "Timeout waiting for pattern",
+    "placeholderWait": "ms",
+    "placeholderPattern": "Hex pattern...",
+    "addSend": "Add Send Step",
+    "addWait": "Add Wait Step",
+    "addExpect": "Add Expect Step",
+    "status": "Status:",
+    "executing": "EXECUTING",
+    "ready": "READY",
+    "pass": "PASS:",
+    "fail": "FAIL:"
   }
 }
