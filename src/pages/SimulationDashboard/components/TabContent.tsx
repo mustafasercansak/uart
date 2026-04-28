@@ -69,7 +69,6 @@ export default function TabContent({
     case 'waveforms':
       return (
         <WaveformCharts 
-          waveformHistory={waveformHistory}
           selectedProfile={selectedProfile}
         />
       );

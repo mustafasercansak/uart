@@ -134,17 +134,21 @@ const SequenceRunner: React.FC = () => {
           await new Promise(r => setTimeout(r, parseInt(step.payload) || 1000));
         } else if (step.type === 'expect') {
           let matched = false;
-          const searchPattern = step.payload.trim().toUpperCase();
+          const [patternPart, timeoutPart] = step.payload.split('|').map((p) => p.trim());
+          const searchPattern = (patternPart || '').replace(/\s+/g, '').toUpperCase();
+          const timeoutMs = Number.parseInt(timeoutPart || '2500', 10);
+          const deadline = Date.now() + (Number.isFinite(timeoutMs) ? Math.max(200, timeoutMs) : 2500);
 
-          for (let attempt = 0; attempt < 50; attempt++) {
+          while (Date.now() < deadline) {
             if (!isRunningRef.current) break;
 
             // Scan more entries to handle high traffic situations
-            const recentLogs = stateRef.current.conversationLogs.slice(0, 20);
-            if (recentLogs.some((log: ConversationEntry) =>
-              log.type === 'rx' &&
-              log.rawHex.toUpperCase().includes(searchPattern)
-            )) {
+            const recentLogs = stateRef.current.conversationLogs.slice(0, 40);
+            if (recentLogs.some((log: ConversationEntry) => {
+              if (log.type !== 'rx') return false;
+              const raw = log.rawHex.replace(/\s+/g, '').toUpperCase();
+              return raw.includes(searchPattern);
+            })) {
               matched = true;
               break;
             }

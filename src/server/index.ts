@@ -1,18 +1,47 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { SimulationEngine } from './engine';
 import type { SimulationState, SerialConfig, ResponderRule } from '../types';
-import { SerialPort } from 'serialport';
+import net from 'net';
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const RECORDINGS_DIR = path.join(__dirname, '..', '..', 'recordings');
+const DIST_DIR = path.join(__dirname, '..', '..', 'dist');
+const PORT = parseInt(process.env.PORT || '8080', 10);
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+};
 
 // Ensure recordings directory exists
 if (!fs.existsSync(RECORDINGS_DIR)) {
   fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
+}
+
+// Load SerialPort dynamically — not available on cloud servers
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let SerialPortLib: any = null;
+try {
+  const mod = await import('serialport');
+  SerialPortLib = mod.SerialPort;
+  console.log('\x1b[32m[SERVER]\x1b[0m SerialPort yüklendi.');
+} catch {
+  console.warn('\x1b[33m[SERVER]\x1b[0m SerialPort mevcut değil, serial port özellikleri devre dışı.');
 }
 
 /**
@@ -20,7 +49,28 @@ if (!fs.existsSync(RECORDINGS_DIR)) {
  * Coordinates between the Frontend (UI) and the Simulation Engine (Backend).
  */
 
-const wss = new WebSocketServer({ port: 8080 });
+const httpServer = http.createServer((req, res) => {
+  const url = (req.url || '/').split('?')[0];
+  let filePath = path.join(DIST_DIR, url === '/' ? 'index.html' : url);
+
+  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    filePath = path.join(DIST_DIR, 'index.html');
+  }
+
+  const ext = path.extname(filePath);
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+  try {
+    const content = fs.readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content);
+  } catch {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+});
+
+const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 const INITIAL_STATE: SimulationState = {
   status: 'stopped',
   profileId: null,
@@ -79,11 +129,26 @@ const INITIAL_STATE: SimulationState = {
   activeSequenceId: null
 };
 
-let activePort: SerialPort | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let activePort: any = null;
+let activeTcpSocket: net.Socket | null = null;
 const engine = new SimulationEngine(INITIAL_STATE);
 const clients = new Set<WebSocket>();
 
-console.log('\x1b[32m[SERVER]\x1b[0m UART Simulator Arka Plan Servisi ws://127.0.0.1:8080 adresinde başlatıldı.');
+const closeActiveTcpSocket = () => {
+  if (!activeTcpSocket) return;
+  try {
+    activeTcpSocket.removeAllListeners();
+    activeTcpSocket.destroy();
+  } catch {
+    // no-op
+  }
+  activeTcpSocket = null;
+};
+
+httpServer.listen(PORT, () => {
+  console.log(`\x1b[32m[SERVER]\x1b[0m UART Simulator ${PORT} portunda başlatıldı.`);
+});
 
 let broadcastBuffer: unknown[] = [];
 
@@ -154,10 +219,14 @@ engine.onFrame = (frame) => {
 
   // Send to Serial Port
   if (activePort && activePort.writable) {
-    activePort.write(Buffer.from(frame.rawBytes), (err) => {
+    activePort.write(Buffer.from(frame.rawBytes), (err: Error | null) => {
       if (err) console.error(`\x1b[31m[TX ERR]\x1b[0m`, err.message);
       else console.log(`\x1b[36m[TX]\x1b[0m ${frame.rawBytes.length} bytes sent    : ${frame.rawHex}`);
     });
+  }
+
+  if (activeTcpSocket && !activeTcpSocket.destroyed) {
+    activeTcpSocket.write(Buffer.from(frame.rawBytes));
   }
 };
 
@@ -165,6 +234,9 @@ engine.onRawResponse = (bytes) => {
   broadcast({ type: 'TX_RAW', payload: bytes });
   if (activePort && activePort.writable) {
     activePort.write(Buffer.from(bytes));
+  }
+  if (activeTcpSocket && !activeTcpSocket.destroyed) {
+    activeTcpSocket.write(Buffer.from(bytes));
   }
 };
 
@@ -304,11 +376,19 @@ wss.on('connection', (ws) => {
           engine.setSignalIntegrity(data.integrity);
           break;
         case 'GET_PORTS':
-          SerialPort.list().then(ports => {
+          if (!SerialPortLib) {
+            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PORTS_LIST', ports: [] }));
+            break;
+          }
+          SerialPortLib.list().then((ports: Array<{ path: string }>) => {
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PORTS_LIST', ports }));
           });
           break;
         case 'CONNECT_SERIAL': {
+          if (!SerialPortLib) {
+            ws.send(JSON.stringify({ type: 'SERIAL_STATUS', connected: false, error: 'Serial port bu ortamda kullanılamaz.' }));
+            break;
+          }
           try {
             const config = data.config as SerialConfig;
             if (!config || !config.portName) {
@@ -334,13 +414,13 @@ wss.on('connection', (ws) => {
             await closePort();
             console.log(`\x1b[34m[SERIAL]\x1b[0m Bağlanılıyor: ${config.portName} (${config.baudRate} baud)`);
 
-            activePort = new SerialPort({
+            activePort = new SerialPortLib({
               path: config.portName,
               baudRate: config.baudRate,
               autoOpen: false
             });
 
-            activePort.open((err) => {
+            activePort.open((err: Error | null) => {
               if (err) {
                 const msg = err.message.includes('Access denied')
                   ? 'Port kilitli (Başka bir program kullanıyor olabilir)'
@@ -384,7 +464,7 @@ wss.on('connection', (ws) => {
             });
 
 
-            activePort.on('error', (err) => {
+            activePort.on('error', (err: Error) => {
               console.error('\x1b[31m[SERIAL ERROR EVENT]\x1b[0m', err.message);
               broadcast({ type: 'SERIAL_STATUS', connected: false, error: err.message });
             });
@@ -403,6 +483,54 @@ wss.on('connection', (ws) => {
             });
           }
           break;
+        case 'CONNECT_TCP': {
+          const host = typeof data.host === 'string' && data.host.trim().length > 0 ? data.host.trim() : '127.0.0.1';
+          const port = Number(data.port);
+
+          if (!Number.isInteger(port) || port < 1 || port > 65535) {
+            ws.send(JSON.stringify({ type: 'NETWORK_STATUS', connected: false, error: 'Geçersiz TCP portu' }));
+            break;
+          }
+
+          closeActiveTcpSocket();
+
+          const socket = new net.Socket();
+          activeTcpSocket = socket;
+
+          socket.connect(port, host, () => {
+            console.log(`\x1b[32m[TCP]\x1b[0m Bağlandı: ${host}:${port}`);
+            engine.updateOverrides({ networkConnected: true });
+            broadcast({ type: 'NETWORK_STATUS', connected: true });
+          });
+
+          socket.on('data', (buffer: Buffer) => {
+            const bytes = Array.from(buffer);
+            const hex = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+            broadcast({ type: 'RAW_RX_DATA', hex });
+            engine.processIncomingData(bytes);
+          });
+
+          socket.on('error', (err) => {
+            console.error(`\x1b[31m[TCP ERR]\x1b[0m`, err.message);
+            engine.updateOverrides({ networkConnected: false });
+            broadcast({ type: 'NETWORK_STATUS', connected: false, error: err.message });
+          });
+
+          socket.on('close', () => {
+            if (activeTcpSocket === socket) {
+              activeTcpSocket = null;
+            }
+            engine.updateOverrides({ networkConnected: false });
+            broadcast({ type: 'NETWORK_STATUS', connected: false });
+          });
+          break;
+        }
+        case 'DISCONNECT_TCP': {
+          closeActiveTcpSocket();
+          engine.updateOverrides({ networkConnected: false });
+          broadcast({ type: 'NETWORK_STATUS', connected: false });
+          break;
+        }
       }
     } catch (err) {
       console.error('\x1b[31m[ERR]\x1b[0m', err);

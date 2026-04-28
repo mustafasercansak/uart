@@ -15,7 +15,7 @@ interface TelemetryPanelProps {
 
 const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: TelemetryPanelProps) => {
   const { t } = useTranslation();
-  const { state, updateLayout, removeWidget } = useSimulation();
+  const { state, updateLayout, removeWidget, waveformHistoryRef } = useSimulation();
   const { dashboardLayout, profileId } = state;
   const currentProfile = useMemo(() => profiles?.find((p: FrameProfile) => p.id === profileId), [profiles, profileId]);
 
@@ -122,9 +122,9 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
         {panels.length > 0 ? (
-          <DashboardGrid 
-            panels={panels} 
-            history={waveformHistory} 
+          <DashboardGrid
+            panels={panels}
+            waveformHistoryRef={waveformHistoryRef}
             onRemovePanel={handleRemove}
             onUpdatePanel={handleUpdatePanel}
           />

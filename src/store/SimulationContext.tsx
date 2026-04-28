@@ -49,6 +49,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const wsRef = useRef<WebSocket | null>(null);
   const isInitializedRef = useRef(false);
 
+  /** Waveform samples stored outside React state — charts read this via RAF, not renders */
+  const waveformHistoryRef = useRef<Array<Record<string, number>>>([]);
+
   // ── BACKEND CONNECTION ───────────────────────
   const { backendWsRef } = useBackendConnection(dispatch, msgBufferRef);
 
@@ -60,6 +63,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     uiVisibleRef,
     conversationBufferRef,
     exchangeBufferRef,
+    waveformHistoryRef,
     dispatch,
   });
 
@@ -142,9 +146,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   // ── SIMULATION CONTROLS ──────────────────────
   const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
+    waveformHistoryRef.current = [];
     backendWsRef.current?.send(JSON.stringify({ type: 'START', profile, scenario, outputMode }));
     dispatch({ type: 'START', profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
-  }, [backendWsRef, dispatch]);
+  }, [backendWsRef, dispatch, waveformHistoryRef]);
 
   const stop = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'STOP' }));
@@ -156,8 +161,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'PAUSE' });
   }, [backendWsRef, dispatch]);
 
-  const resume = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME' }));
+  const resume = useCallback((profile: FrameProfile, scenario: Scenario | null) => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME', profile, scenario }));
     dispatch({ type: 'RESUME' });
   }, [backendWsRef, dispatch]);
 
@@ -196,6 +201,21 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [backendWsRef]);
 
   const connectNetwork = useCallback(async (url: string) => {
+    if (url.startsWith('tcp://')) {
+      const target = url.replace('tcp://', '');
+      const [hostPart, portPart] = target.split(':');
+      const host = hostPart || '127.0.0.1';
+      const port = Number.parseInt(portPart || '5000', 10);
+
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Geçersiz TCP portu: ${portPart ?? ''}` });
+        return;
+      }
+
+      backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_TCP', host, port }));
+      return;
+    }
+
     return new Promise<void>((resolve, reject) => {
       try {
         const ws = new WebSocket(url);
@@ -229,11 +249,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
               rxBufferRef.current = rxBufferRef.current.slice(totalWidth);
               const parseResult = parseFrame(currentProfile, frameBytes);
               if (parseResult) {
+                const frameHex = frameBytes.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
                 const rxFrame = {
                   uId: `net-rx-${Date.now()}-${Math.random()}`,
                   frameNumber: 0,
                   timestampMs: Date.now(),
-                  rawHex: hex,
+                  rawHex: frameHex,
                   rawBytes: frameBytes,
                   fields: parseResult,
                   errors: []
@@ -260,8 +281,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef]);
 
   const disconnectNetwork = useCallback(() => {
+    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_TCP' }));
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-  }, [wsRef]);
+  }, [wsRef, backendWsRef]);
 
   // ── LOGGING ──────────────────────────────────
   const exportLogs = useCallback(() => {
@@ -386,6 +408,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     <SimulationContext.Provider
       value={{
         state,
+        waveformHistoryRef,
         start,
         stop,
         pause,
@@ -425,7 +448,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setDiffFrame: (index, frame) => dispatch({ type: 'SET_DIFF_FRAME', index, frame }),
         setTelemetryLayout: (profileId, layout) => dispatch({ type: 'SET_TELEMETRY_LAYOUT', profileId, layout }),
         setResponderRules: (rules: ResponderRule[]) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RULES', rules }));
+          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RESPONDER_RULES', rules }));
           dispatch({ type: 'SET_RESPONDER_RULES', rules });
         },
         setSignalIntegrity,
@@ -436,7 +459,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         startValidation,
         stopValidation,
         cancelValidation: () => dispatch({ type: 'CANCEL_VALIDATION' }),
-        deleteValidationSession: () => dispatch({ type: 'CANCEL_VALIDATION' }),
+        deleteValidationSession: (_id: string) => dispatch({ type: 'CANCEL_VALIDATION' }),
         sendRawData: (hex: string) => {
           const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
           if (bytes.length > 0) {

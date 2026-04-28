@@ -63,7 +63,28 @@ describe('storage.ts', () => {
     it('handles corrupted JSON in storage gracefully', () => {
         localStorage.setItem('uart_profiles', 'corrupted { json');
         const profiles = loadProfiles();
-        expect(profiles).toEqual([]);
+        expect(profiles.length).toBeGreaterThan(0);
+    });
+
+    it('migrates legacy profiles that are missing framing and fields', () => {
+        const legacy = [{
+            id: 'legacy-1',
+            name: 'Legacy Profile',
+            baudRate: 9600,
+            dataBits: 8,
+            parity: 'None',
+            stopBits: 1,
+            sendIntervalMs: 50,
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-01-01T00:00:00.000Z'
+        }];
+        localStorage.setItem('uart_profiles', JSON.stringify(legacy));
+
+        const profiles = loadProfiles();
+        expect(profiles).toHaveLength(1);
+        expect(profiles[0].id).toBe('legacy-1');
+        expect(profiles[0].framing).toEqual({ mode: 'fixed', delimiter: undefined, header: undefined, footer: undefined });
+        expect(Array.isArray(profiles[0].fields)).toBe(true);
     });
 
     it('saves, gets and deletes scenarios', () => {

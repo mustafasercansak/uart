@@ -21,7 +21,7 @@ import type {
 
 const MAX_RECENT_FRAMES = 50;
 const MAX_LOG_ENTRIES = 100;
-const MAX_WAVEFORM_POINTS = 200;
+const MAX_WAVEFORM_POINTS = 180;
 const MAX_LOGIC_TRANSITIONS = 1500;
 
 export const INITIAL_STATE: SimulationState = {
@@ -283,7 +283,7 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         snapshots: action.newState.snapshots || state.snapshots || []
       };
     case 'SET_BACKEND_CONNECTED':
-      return { ...state, networkConnected: action.connected };
+      return state;
     case 'SET_STATUS':
       return { ...state, status: action.status };
     case 'UPDATE_TIMING_STATS':

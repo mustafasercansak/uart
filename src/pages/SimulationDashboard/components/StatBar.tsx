@@ -139,7 +139,7 @@ const StatBar = memo(({
       <div className="flex items-center gap-2 pr-3 border-r border-white/5 h-6">
         <div className={`w-2 h-2 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
         <button 
-          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('ws://localhost:8081')}
+          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('tcp://127.0.0.1:5000')}
           className={`text-[9px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
           {t('common.engine')}: {networkConnected ? t('common.online') : t('common.offline')}
         </button>
@@ -214,17 +214,17 @@ const StatBar = memo(({
                 value={selectedPort}
                 onChange={(e) => setSelectedPort(e.target.value)}
                 onFocus={onGetPorts}
-                disabled={status !== 'stopped' || !networkConnected}
+                disabled={status !== 'stopped'}
               >
                 {availablePorts.length === 0 ? (
-                    <option value="">{networkConnected ? t('common.offline') : '...'}</option>
+                    <option value="">Port yok</option>
                 ) : (
                     availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)
                 )}
               </select>
               <button 
                 onClick={() => onConnectSerial(selectedPort)} 
-                disabled={!selectedProfileId || status !== 'stopped' || !selectedPort || !networkConnected}
+                disabled={!selectedProfileId || status !== 'stopped' || !selectedPort}
                 className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 text-white text-[9px] font-mono rounded font-bold transition-all"
               >
                 {t('dashboard.connect')}

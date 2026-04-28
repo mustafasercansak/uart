@@ -1,4 +1,17 @@
-import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, ChecksumConfig, FlagsConfig, AutomationSequence } from '../types';
+import type {
+  FrameProfile,
+  Scenario,
+  FixedConfig,
+  RangeConfig,
+  WaveformConfig,
+  ChecksumConfig,
+  FlagsConfig,
+  AutomationSequence,
+  Field,
+  FramingMode,
+  Parity,
+  StopBits,
+} from '../types';
 
 // ─────────────────────────────────────────────
 // LOCALSTORAGE TABANLI DEPOLAMA
@@ -6,6 +19,9 @@ import type { FrameProfile, Scenario, FixedConfig, RangeConfig, WaveformConfig, 
 
 const PROFILES_KEY = 'uart_profiles';
 const SCENARIOS_KEY = 'uart_scenarios';
+const PROFILE_SCHEMA_VERSION = 2;
+
+type PersistedProfile = Partial<FrameProfile> & { schemaVersion?: number };
 
 const INITIAL_PROFILES: FrameProfile[] = [
   {
@@ -132,6 +148,91 @@ const INITIAL_PROFILES: FrameProfile[] = [
   }
 ];
 
+function isParity(value: unknown): value is Parity {
+  return value === 'None' || value === 'Even' || value === 'Odd' || value === 'Mark' || value === 'Space';
+}
+
+function isStopBits(value: unknown): value is StopBits {
+  return value === 1 || value === 1.5 || value === 2;
+}
+
+function isFramingMode(value: unknown): value is FramingMode {
+  return value === 'fixed' || value === 'delimiter' || value === 'slip' || value === 'cobs' || value === 'modbus';
+}
+
+function normalizeField(raw: unknown, index: number): Field | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const src = raw as Partial<Field>;
+  const byteWidth = Number.isFinite(src.byteWidth) && (src.byteWidth as number) > 0 ? Number(src.byteWidth) : 1;
+
+  return {
+    id: typeof src.id === 'string' && src.id.trim().length > 0 ? src.id : `field-${index}`,
+    name: typeof src.name === 'string' && src.name.trim().length > 0 ? src.name : `Field_${index + 1}`,
+    order: Number.isFinite(src.order) ? Number(src.order) : index,
+    byteWidth,
+    endianness: src.endianness === 'little' ? 'little' : 'big',
+    type: src.type ?? 'fixed',
+    typeConfig: src.typeConfig ?? { value: 0 },
+    widgetConfig: src.widgetConfig,
+  };
+}
+
+function migrateProfile(raw: PersistedProfile, index: number): { profile: FrameProfile; changed: boolean } | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const now = new Date().toISOString();
+  const fields = Array.isArray(raw.fields)
+    ? raw.fields.map((f, i) => normalizeField(f, i)).filter((f): f is Field => !!f)
+    : [];
+
+  const framingMode = raw.framing?.mode;
+  const profile: FrameProfile = {
+    id: typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id : `legacy-profile-${index}`,
+    name: typeof raw.name === 'string' && raw.name.trim().length > 0 ? raw.name : `Recovered Profile ${index + 1}`,
+    description: typeof raw.description === 'string' ? raw.description : '',
+    baudRate: Number.isFinite(raw.baudRate) ? Number(raw.baudRate) : 9600,
+    dataBits: Number.isFinite(raw.dataBits) ? Number(raw.dataBits) : 8,
+    parity: isParity(raw.parity) ? raw.parity : 'None',
+    stopBits: isStopBits(raw.stopBits) ? raw.stopBits : 1,
+    sendIntervalMs: Number.isFinite(raw.sendIntervalMs) ? Math.max(10, Number(raw.sendIntervalMs)) : 100,
+    fields,
+    framing: {
+      mode: isFramingMode(framingMode) ? framingMode : 'fixed',
+      delimiter: typeof raw.framing?.delimiter === 'number' ? raw.framing.delimiter : undefined,
+      header: Array.isArray(raw.framing?.header) ? raw.framing.header.filter((b): b is number => typeof b === 'number') : undefined,
+      footer: Array.isArray(raw.framing?.footer) ? raw.framing.footer.filter((b): b is number => typeof b === 'number') : undefined,
+    },
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : now,
+    updatedAt: now,
+  };
+
+  const changed =
+    raw.schemaVersion !== PROFILE_SCHEMA_VERSION ||
+    !raw.framing ||
+    !Array.isArray(raw.fields) ||
+    fields.length !== (raw.fields?.length ?? 0) ||
+    profile.updatedAt !== raw.updatedAt;
+
+  return { profile, changed };
+}
+
+function migrateProfiles(profiles: PersistedProfile[]): { profiles: FrameProfile[]; changed: boolean } {
+  let changed = false;
+  const migrated: FrameProfile[] = [];
+
+  profiles.forEach((raw, index) => {
+    const result = migrateProfile(raw, index);
+    if (!result) {
+      changed = true;
+      return;
+    }
+    if (result.changed) changed = true;
+    migrated.push(result.profile);
+  });
+
+  return { profiles: migrated, changed };
+}
+
 function load<T>(key: string): T[] {
   try {
     const raw = localStorage.getItem(key);
@@ -149,11 +250,25 @@ function save<T>(key: string, data: T[]): void {
 // ── Profiles ─────────────────────────────────
 
 export function loadProfiles(): FrameProfile[] {
-  return load<FrameProfile>(PROFILES_KEY);
+  const loaded = load<PersistedProfile>(PROFILES_KEY);
+  const { profiles, changed } = migrateProfiles(loaded);
+
+  if (profiles.length === 0) {
+    // Recovery fallback if storage is corrupted/empty after parse.
+    return INITIAL_PROFILES;
+  }
+
+  if (changed) {
+    const withSchema = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+    save(PROFILES_KEY, withSchema);
+  }
+
+  return profiles;
 }
 
 export function saveProfiles(profiles: FrameProfile[]): void {
-  save(PROFILES_KEY, profiles);
+  const persisted = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+  save(PROFILES_KEY, persisted);
 }
 
 export function saveProfile(profile: FrameProfile): void {

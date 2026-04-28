@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { SimulationState, OutputMode, GeneratedFrame, SignalIntegrity, DashboardWidget } from './simulation';
 import type { WidgetType } from './field';
 import type { FrameProfile } from './protocol';
@@ -10,6 +11,8 @@ import { AutomationSequence } from './automation';
 
 export interface SimulationContextType {
   state: SimulationState;
+  /** Waveform data ref — updated outside React state for zero-render chart updates */
+  waveformHistoryRef: React.MutableRefObject<Array<Record<string, number>>>;
   start: (profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => void;
   stop: () => void;
   pause: () => void;
