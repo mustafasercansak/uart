@@ -8,10 +8,12 @@ import { useSimulation } from '../../hooks/useSimulation';
 import { useTranslation } from '../../i18n/context';
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Tıbbi: 'text-red-400 bg-red-900/20 border-red-800/40',
-  'Tıbbi (İnsanlık İçin)': 'text-emerald-400 bg-emerald-900/20 border-emerald-800/40',
-  Çevresel: 'text-green-400 bg-green-900/20 border-green-800/40',
-  Genel: 'text-gray-400 bg-gray-800/40 border-gray-700/40',
+  medical: 'text-red-400 bg-red-900/20 border-red-800/40',
+  medical_humanity: 'text-emerald-400 bg-emerald-900/20 border-emerald-800/40',
+  environmental: 'text-green-400 bg-green-900/20 border-emerald-800/40',
+  general: 'text-gray-400 bg-gray-800/40 border-gray-700/40',
+  industrial: 'text-orange-400 bg-orange-900/20 border-orange-800/40',
+  navigation: 'text-blue-400 bg-blue-900/20 border-blue-800/40',
 };
 
 export default function TemplateBrowser() {

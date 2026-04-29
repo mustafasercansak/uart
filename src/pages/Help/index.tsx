@@ -2,19 +2,30 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Book, HelpCircle, FileText, Globe, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import { useTranslation } from '../../i18n/context';
 
-type DocType = 'tr' | 'en' | 'readme';
+type DocType = 'tr' | 'en' | 'readme' | 'full';
 
-const docs = {
-  tr: { titleKey: 'helpPage.trTitle', file: '/docs/KULLANIM_KILAVUZU.md', icon: Book, langKey: 'helpPage.trLang' },
-  en: { titleKey: 'helpPage.enTitle', file: '/docs/HELP.md', icon: HelpCircle, langKey: 'helpPage.enLang' },
-  readme: { titleKey: 'helpPage.readmeTitle', file: '/docs/README.md', icon: FileText, langKey: 'helpPage.readmeLang' }
-};
+const docs = (lang: string) => ({
+  master: { 
+    titleKey: 'helpPage.masterTitle', 
+    file: lang === 'en' ? '/docs/GUIDE_EN.md' : '/docs/GUIDE_TR.md', 
+    icon: Book, 
+    langKey: 'helpPage.masterLang' 
+  },
+  readme: { 
+    titleKey: 'helpPage.readmeTitle', 
+    file: '/docs/README.md', 
+    icon: FileText, 
+    langKey: 'helpPage.readmeLang' 
+  }
+});
 
 const HelpPage: React.FC = () => {
-  const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<DocType>('tr');
+  const { t, language } = useTranslation();
+  const [activeTab, setActiveTab] = useState<DocType>('master');
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +33,8 @@ const HelpPage: React.FC = () => {
     const fetchDoc = async () => {
       setLoading(true);
       try {
-        const response = await fetch(docs[activeTab].file);
+        const availableDocs = docs(language);
+        const response = await fetch(availableDocs[activeTab].file);
         const text = await response.text();
         setContent(text);
       } catch (_err) {
@@ -76,8 +88,8 @@ const HelpPage: React.FC = () => {
            <section>
               <h3 className="text-[11px] font-mono font-black text-gray-600 uppercase tracking-[0.2em] mb-8 border-l-2 border-blue-500/30 pl-4">{t('helpPage.guideSelection')}</h3>
               <nav className="flex flex-col gap-3">
-                 {(Object.keys(docs) as DocType[]).map((key) => {
-                    const doc = docs[key];
+                 {(Object.keys(docs(language)) as DocType[]).map((key) => {
+                    const doc = docs(language)[key];
                     const Icon = doc.icon;
                     return (
                        <button
@@ -118,6 +130,8 @@ const HelpPage: React.FC = () => {
               ) : (
                  <article className="prose prose-invert prose-blue max-w-none">
                     <ReactMarkdown 
+                      rehypePlugins={[rehypeRaw as any]}
+                      remarkPlugins={[remarkGfm]}
                       components={{
                         // Hydration fix: Avoid div in p by mapping p to a div with a paragraph class
                         p: ({ node: _node, ...props }) => <div className="paragraph" {...props} />,

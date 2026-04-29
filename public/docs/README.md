@@ -18,8 +18,8 @@ Instead of carrying physical sensors, you can:
 4. **Action**: Open [http://localhost:5173](http://localhost:5173), select a profile, and hit **"Start"**.
 
 ## 📖 Documentation
-- [KULLANIM KILAVUZU (Turkish)](KULLANIM_KILAVUZU.md) - Detailed guide.
-- [HELP (English)](HELP.md) - Technical reference.
+- [Ana Mühendislik Kılavuzu (Turkish)](GUIDE_TR.md) - Kapsamlı teknik rehber.
+- [Master Engineering Manual (English)](GUIDE_EN.md) - Comprehensive technical reference.
 
 ---
 Developed by **Mustafa Sercan Sak**

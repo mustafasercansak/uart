@@ -11,7 +11,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'YS2000A Monitör',
     description: '8 byte frame: Sync (0x01), Pleth Wave, Bar, Nabız, SpO2, Status, CRC16 Checksum',
     icon: '🏥',
-    category: 'Tıbbi',
+    category: 'medical',
     profile: {
       name: 'YS2000A Monitör',
       description: 'YS2000A serisi hasta monitörü SpO2 modülü simülasyonu',
@@ -73,7 +73,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'Berry BM1000',
     description: '8 byte frame: Sync (0x01), PPG, Bar, Pulse, SpO2, Status, Sum-16 Checksum',
     icon: '⌚',
-    category: 'Tıbbi',
+    category: 'medical',
     profile: {
       name: 'Berry BM1000',
       description: 'Berry Medical BM1000 bluetooth/seri oksimetre protokolü',
@@ -134,7 +134,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'SpO2 Modülü',
     description: '5 byte frame: Sync (0xAA), SpO2 (%90-100), Nabız (60-120), Durum bayrakları, XOR checksum',
     icon: '❤️',
-    category: 'Tıbbi',
+    category: 'medical',
     profile: {
       name: 'SpO2 Modülü',
       description: 'Kan oksijen saturasyonu sensörü simülasyonu',
@@ -232,7 +232,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'Nabız Oksimetre',
     description: '7 byte frame: Sync, Pletismogram dalgası, Bar, Nabız MSB/LSB, SpO2, Checksum',
     icon: '🫀',
-    category: 'Tıbbi',
+    category: 'medical',
     profile: {
       name: 'Nabız Oksimetre',
       description: 'Pletismogram dalgalı tam nabız oksimetre simülasyonu',
@@ -328,7 +328,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'Sıcaklık Sensörü',
     description: '4 byte frame: Sync (0xFF), Sıcaklık yüksek byte, Sıcaklık düşük byte, XOR Checksum',
     icon: '🌡️',
-    category: 'Çevresel',
+    category: 'environmental',
     profile: {
       name: 'Sıcaklık Sensörü',
       description: 'İki byte hassasiyetli sıcaklık sensörü (0.1°C çözünürlük)',
@@ -401,7 +401,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'NIBP Modülü',
     description: '8 byte yanıt frame: Sync, Komut, Sistolik MSB/LSB, Diastolik MSB/LSB, Nabız, Durum, Checksum',
     icon: '🩺',
-    category: 'Tıbbi',
+    category: 'medical',
     profile: {
       name: 'NIBP Modülü',
       description: 'Non-invazif kan basıncı ölçüm modülü simülasyonu',
@@ -432,7 +432,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'EKG Modülü',
     description: '6 byte frame: Sync, EKG dalga verisi (2 byte), Kalp hızı, Durum, Checksum',
     icon: '📈',
-    category: 'Tıbbi',
+    category: 'medical',
     profile: {
       name: 'EKG Modülü',
       description: 'Elektrokardiyogram modülü simülasyonu',
@@ -490,7 +490,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'Modbus RTU Master',
     description: 'FC03 Read Holding Registers isteği — cihaz adresi 0x01, register 40001 başlangıç, 4 register',
     icon: '🏭',
-    category: 'Endüstriyel',
+    category: 'industrial',
     profile: {
       name: 'Modbus RTU Master (FC03)',
       description: 'Modbus RTU protokolü FC03 Read Holding Registers isteği simülasyonu',
@@ -595,7 +595,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'Modbus RTU Slave Yanıtı',
     description: 'FC03 yanıt — 4 register değeri (sıcaklık, basınç, nem, akım) + CRC-16',
     icon: '🔌',
-    category: 'Endüstriyel',
+    category: 'industrial',
     profile: {
       name: 'Modbus RTU Slave (FC03 Response)',
       description: 'Endüstriyel sensör kümesi: sıcaklık, basınç, nem, akım',
@@ -707,7 +707,7 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
     name: 'NMEA 0183 GPS',
     description: '$GPGGA cümlesi — UTC saat, enlem/boylam, uydu sayısı, yükseklik + checksum',
     icon: '📡',
-    category: 'Navigasyon',
+    category: 'navigation',
     profile: {
       name: 'NMEA 0183 GPS (GPGGA)',
       description: 'Standart NMEA 0183 GPGGA cümlesi simülasyonu — GPS alıcısı taklit eder',

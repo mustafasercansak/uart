@@ -27,6 +27,14 @@
     "max": "Max",
     "tcp": "TCP"
   },
+  "rxMonitor": {
+    "title": "RX Geçmişi",
+    "slotA": "A Yuvası",
+    "slotB": "B Yuvası",
+    "new": "YENİ",
+    "waitingData": "RX trafiği bekleniyor...",
+    "clearHistory": "Geçmişi Temizle"
+  },
   "scriptEditor": {
     "title": "Gelişmiş Mantık Editörü",
     "subTitle": "Gerçek Zamanlı Yanıtlayıcı Scripti (JavaScript)",
@@ -107,6 +115,18 @@
     "csvExport": "CSV Aktar",
     "bitFlip": "Bit Çevirme",
     "logEmpty": "Simülasyon başlatıldığında log burada görünecek..."
+  },
+  "diagnostics": {
+    "avgLatency": "Ort. Gecikme",
+    "jitter": "Jitter (Sapma)",
+    "timingStability": "Zamanlama Kararlılığı",
+    "responseErrors": "Yanıt Hataları",
+    "errorTypeSub": "Simüle Edilen/Gerçek Hatalar",
+    "latencyStability": "Varış Kararlılığı (Son 50)",
+    "arrivalDistribution": "Varış Arası Dağılım (Histogram)",
+    "minMax": "Min: {min}ms / Max: {max}ms",
+    "successRate": "Başarı Oranı",
+    "cleanFrames": "{count} Hatasız Paket"
   },
   "profileEditor": {
     "title": "Profil Düzenleyici",
@@ -673,10 +693,12 @@
     "all": "Tümü",
     "categories": {
       "all": "Tümü",
-      "Tıbbi": "Tıbbi",
-      "Tıbbi (İnsanlık İçin)": "Tıbbi (İnsanlık İçin)",
-      "Çevresel": "Çevresel",
-      "Genel": "Genel"
+      "medical": "Tıbbi",
+      "medical_humanity": "Tıbbi (İnsanlık İçin)",
+      "environmental": "Çevresel",
+      "general": "Genel",
+      "industrial": "Endüstriyel",
+      "navigation": "Navigasyon"
     },
     "frameStructure": "Paket Yapısı",
     "interval": "{ms}ms aralık",
@@ -703,12 +725,10 @@
     "loadingText": "Bilgi Paketi Çözülüyor",
     "scrollTop": "YUKARI DÖN ↑",
     "loadError": "# Hata\nDoküman yüklenirken bir sorun oluştu.",
-    "trTitle": "Kullanım Kılavuzu (Türkçe)",
-    "enTitle": "Hızlı Yardım (İngilizce)",
-    "readmeTitle": "README (Teknik)",
-    "trLang": "Türkçe",
-    "enLang": "İngilizce",
-    "readmeLang": "Genel",
+    "masterTitle": "Ana Mühendislik Kılavuzu (v1.2)",
+    "readmeTitle": "Teknik Referans",
+    "masterLang": "Bilingual",
+    "readmeLang": "Geliştirici",
     "developer": "Mustafa Sercan Sak",
     "date": "16 Nisan 2026"
   },

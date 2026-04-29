@@ -52,7 +52,7 @@ const Diagnostics = memo(({ timingStats, errorCount, frameCount }: DiagnosticsPr
             <div className="p-1.5 bg-emerald-500/10 rounded-lg"><CheckCircle2 size={14} className="text-emerald-500" /></div>
           </div>
           <div className="text-2xl font-black font-mono text-gray-100">%{successRate}</div>
-          <div className="text-[9px] font-mono text-gray-600 mt-1">{frameCount.toLocaleString(locale)} {t('report.cleanFrames').replace('{count}', '')}</div>
+          <div className="text-[9px] font-mono text-gray-600 mt-1">{t('diagnostics.cleanFrames', { count: frameCount })}</div>
         </div>
 
         <div className="bg-gray-900/40 border border-gray-800/50 p-4 rounded-2xl backdrop-blur-sm">
@@ -61,7 +61,7 @@ const Diagnostics = memo(({ timingStats, errorCount, frameCount }: DiagnosticsPr
             <div className="p-1.5 bg-blue-500/10 rounded-lg"><Timer size={14} className="text-blue-500" /></div>
           </div>
           <div className="text-2xl font-black font-mono text-gray-100">{timingStats.averageLatencyMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">ms</span></div>
-          <div className="text-[9px] font-mono text-gray-600 mt-1">Min: {timingStats.minLatencyMs}ms / Max: {timingStats.maxLatencyMs}ms</div>
+          <div className="text-[9px] font-mono text-gray-600 mt-1">{t('diagnostics.minMax', { min: timingStats.minLatencyMs, max: timingStats.maxLatencyMs })}</div>
         </div>
 
         <div className="bg-gray-900/40 border border-gray-800/50 p-4 rounded-2xl backdrop-blur-sm">

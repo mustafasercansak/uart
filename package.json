@@ -1,7 +1,7 @@
 {
   "name": "uart",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.2.0",
   "type": "module",
   "engines": {
     "node": ">=20.19"
@@ -35,6 +35,8 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
     "serialport": "^13.0.0",
     "tailwindcss": "^4.2.2",
     "three": "^0.184.0",

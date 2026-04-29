@@ -132,14 +132,14 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
                       <button
                         onClick={(e) => { e.stopPropagation(); setDiffFrame(0, frame); }}
                         className="p-1 hover:bg-blue-500/30 text-blue-400 rounded transition-colors"
-                        title="Slot A"
+                        title={t('rxMonitor.slotA')}
                       >
                         <GitCompare size={10} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setDiffFrame(1, frame); }}
                         className="p-1 hover:bg-purple-500/30 text-purple-400 rounded transition-colors"
-                        title="Slot B"
+                        title={t('rxMonitor.slotB')}
                       >
                         <GitCompare size={10} />
                       </button>

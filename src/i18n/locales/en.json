@@ -27,6 +27,14 @@
     "max": "Max",
     "tcp": "TCP"
   },
+  "rxMonitor": {
+    "title": "RX History",
+    "slotA": "Slot A",
+    "slotB": "Slot B",
+    "new": "NEW",
+    "waitingData": "Waiting for RX traffic...",
+    "clearHistory": "Clear History"
+  },
   "scriptEditor": {
     "title": "Advanced Logic Editor",
     "subTitle": "Real-time Responder Script (JavaScript)",
@@ -114,6 +122,18 @@
     "console": "Console Logs",
     "csvExport": "Export CSV",
     "logEmpty": "Logs will appear here when simulation starts..."
+  },
+  "diagnostics": {
+    "avgLatency": "Avg Latency",
+    "jitter": "Jitter (Deviation)",
+    "timingStability": "Timing Stability",
+    "responseErrors": "Response Errors",
+    "errorTypeSub": "Simulated/Real Errors",
+    "latencyStability": "Arrival Stability (Last 50)",
+    "arrivalDistribution": "Inter-arrival Distribution (Histogram)",
+    "minMax": "Min: {min}ms / Max: {max}ms",
+    "successRate": "Success Rate",
+    "cleanFrames": "{count} Clean Frames"
   },
   "profileEditor": {
     "title": "Profile Editor",
@@ -680,10 +700,12 @@
     "all": "All",
     "categories": {
       "all": "All",
-      "Tıbbi": "Medical",
-      "Tıbbi (İnsanlık İçin)": "Medical (For Humanity)",
-      "Çevresel": "Environmental",
-      "Genel": "General"
+      "medical": "Medical",
+      "medical_humanity": "Medical (For Humanity)",
+      "environmental": "Environmental",
+      "general": "General",
+      "industrial": "Industrial",
+      "navigation": "Navigation"
     },
     "frameStructure": "Frame Structure",
     "interval": "{ms}ms interval",
@@ -710,12 +732,10 @@
     "loadingText": "Decoding Info Package",
     "scrollTop": "SCROLL TO TOP ↑",
     "loadError": "# Error\nAn issue occurred while loading the document.",
-    "trTitle": "User Manual (Turkish)",
-    "enTitle": "Quick Help (English)",
-    "readmeTitle": "README (Technical)",
-    "trLang": "Turkish",
-    "enLang": "English",
-    "readmeLang": "General",
+    "masterTitle": "Master Engineering Manual (v1.2)",
+    "readmeTitle": "Technical Reference",
+    "masterLang": "Bilingual",
+    "readmeLang": "Developer",
     "developer": "Mustafa Sercan Sak",
     "date": "April 16, 2026"
   },

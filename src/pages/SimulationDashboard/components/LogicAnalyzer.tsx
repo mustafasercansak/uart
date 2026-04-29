@@ -133,10 +133,11 @@ const LogicAnalyzer = memo(() => {
         if (tr.label && zoom > 150) {
            ctx.save();
            ctx.shadowBlur = 0;
+           const labelText = tr.label === 'START' ? t('logic.start') : tr.label === 'STOP' ? t('logic.stop') : tr.label === 'PARITY' ? t('logic.parity') : tr.label;
            ctx.fillStyle = tr.label === 'START' ? '#f59e0b' : tr.label === 'STOP' ? '#8b5cf6' : tr.label === 'PARITY' ? '#3b82f6' : '#94a3b8';
            ctx.font = 'bold 8px ui-monospace';
            ctx.textAlign = 'center';
-           ctx.fillText(tr.label, x, highY - 15);
+           ctx.fillText(labelText, x, highY - 15);
            ctx.restore();
         }
 
@@ -185,8 +186,8 @@ const LogicAnalyzer = memo(() => {
       ctx.fillStyle = '#f8fafc';
       ctx.font = '10px ui-monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(`ΔT: ${deltaT.toFixed(3)} ms`, width - 150, 25);
-      ctx.fillText(`Freq: ${freq.toFixed(1)} Hz`, width - 150, 42);
+      ctx.fillText(`${t('logic.deltaT')}: ${deltaT.toFixed(3)} ms`, width - 150, 25);
+      ctx.fillText(`${t('logic.freq')}: ${freq.toFixed(1)} Hz`, width - 150, 42);
     }
 
     // This function now just performs a single static draw of the current state.
@@ -285,7 +286,7 @@ const LogicAnalyzer = memo(() => {
         
         {/* Signal Labels */}
         <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-1 pointer-events-none opacity-40">
-           <span className="text-[10px] font-mono font-black text-emerald-500 uppercase">TX_LINE</span>
+           <span className="text-[10px] font-mono font-black text-emerald-500 uppercase">{t('logic.txLine')}</span>
            <div className="h-px w-8 bg-emerald-500" />
         </div>
       </div>
