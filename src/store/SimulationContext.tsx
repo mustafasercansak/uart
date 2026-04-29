@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useReducer, useLayoutEffect } from 'react';
 import { SimulationContext } from './context';
+import { useTranslation } from '../i18n/context';
 import type {
   FrameProfile,
   Scenario,
@@ -32,6 +33,7 @@ import {
 } from './storage';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const stateRef = useRef(state);
   useLayoutEffect(() => {
@@ -133,8 +135,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
             timestamp,
             type: isSuccess ? 'compliance_success' : 'compliance_failure',
             message: isSuccess
-              ? `${target.fieldName} normale döndü: ${value} ${target.unit}`
-              : `${target.fieldName} limit dışı: ${value} ${target.unit} (Beklenen: ${target.expectedMin}-${target.expectedMax})`,
+              ? t('simulation.validation.returnedToNormal', { field: target.fieldName, value, unit: target.unit })
+              : t('simulation.validation.outOfLimits', { field: target.fieldName, value, unit: target.unit, min: target.expectedMin, max: target.expectedMax }),
             fieldName: target.fieldName,
             value,
             targetRange: [target.expectedMin, target.expectedMax]
@@ -208,7 +210,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       const port = Number.parseInt(portPart || '5000', 10);
 
       if (!Number.isInteger(port) || port < 1 || port > 65535) {
-        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Geçersiz TCP portu: ${portPart ?? ''}` });
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('simulation.network.invalidPort', { port: portPart ?? '' }) });
         return;
       }
 
@@ -224,7 +226,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         ws.onopen = () => {
           wsRef.current = ws;
           dispatch({ type: 'SET_NETWORK_CONNECTED', connected: true });
-          dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Network bağlandı: ${url}` });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.network.connected', { url }) });
           resolve();
         };
 
@@ -234,7 +236,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           const now = new Date();
           const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 
-          const logEntry = { time: timeStr, text: `RX (NET): ${hex}`, type: 'rx' as const };
+          const logEntry = { time: timeStr, text: t('simulation.network.rxNet', { hex }), type: 'rx' as const };
           fullLogRef.current.push(logEntry);
 
           const currentProfile = stateRef.current.profileId
@@ -268,7 +270,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         ws.onclose = () => {
           wsRef.current = null;
           dispatch({ type: 'SET_NETWORK_CONNECTED', connected: false });
-          dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Network bağlantısı kesildi' });
+          dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.network.disconnected') });
         };
 
         ws.onerror = (err) => {
@@ -278,7 +280,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         reject(error);
       }
     });
-  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef]);
+  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t]);
 
   const disconnectNetwork = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_TCP' }));
@@ -306,8 +308,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const startRecording = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
     dispatch({ type: 'SET_RECORDING', recording: true });
-    dispatch({ type: 'ADD_LOG', entryType: 'info', text: 'Kayıt başlatıldı...' });
-  }, [backendWsRef, dispatch]);
+    dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.recording.started') });
+  }, [backendWsRef, dispatch, t]);
 
   const stopRecording = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
@@ -327,8 +329,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   const startPlayback = useCallback((data: Array<{ time: number; frame: GeneratedFrame }>) => {
     backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
-    dispatch({ type: 'ADD_LOG', entryType: 'info', text: `Kayıt oynatılıyor: ${data.length} frame.` });
-  }, [backendWsRef, dispatch]);
+    dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.recording.playbackStarted', { count: data.length }) });
+  }, [backendWsRef, dispatch, t]);
 
   const pausePlayback = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE_PLAYBACK' }));
@@ -388,21 +390,21 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       status: 'running',
       startTime: Date.now(),
       targets,
-      events: [{ id: uuidv4(), timestamp: Date.now(), type: 'session_start', message: `Validasyon seansı başlatıldı: ${name}` }],
+      events: [{ id: uuidv4(), timestamp: Date.now(), type: 'session_start', message: t('simulation.validation.sessionStarted', { name }) }],
       dataHistory: [],
       complianceScore: 100
     };
     dispatch({ type: 'START_VALIDATION', session });
-    dispatch({ type: 'ADD_LOG', entryType: 'info', text: `VALIDASYON BAŞLATILDI: ${name}` });
-  }, [dispatch]);
+    dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.validation.sessionStartedLog', { name }) });
+  }, [dispatch, t]);
 
   const stopValidation = useCallback(() => {
     if (!stateRef.current.validationSession) return;
     const failures = stateRef.current.validationSession.events.filter(e => e.type === 'compliance_failure').length;
     const score = Math.max(0, 100 - (failures * 10));
     dispatch({ type: 'STOP_VALIDATION', endTime: Date.now(), score });
-    dispatch({ type: 'ADD_LOG', entryType: 'info', text: `VALIDASYON TAMAMLANDI. Skor: ${score}%` });
-  }, [dispatch, stateRef]);
+    dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.validation.sessionCompleted', { score }) });
+  }, [dispatch, stateRef, t]);
 
   return (
     <SimulationContext.Provider

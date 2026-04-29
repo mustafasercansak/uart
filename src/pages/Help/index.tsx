@@ -7,9 +7,9 @@ import { useTranslation } from '../../i18n/context';
 type DocType = 'tr' | 'en' | 'readme';
 
 const docs = {
-  tr: { title: 'Kullanım Kılavuzu', file: '/docs/KULLANIM_KILAVUZU.md', icon: Book, lang: 'Türkçe' },
-  en: { title: 'Quick Help', file: '/docs/HELP.md', icon: HelpCircle, lang: 'English' },
-  readme: { title: 'README', file: '/docs/README.md', icon: FileText, lang: 'General' }
+  tr: { titleKey: 'helpPage.trTitle', file: '/docs/KULLANIM_KILAVUZU.md', icon: Book, langKey: 'helpPage.trLang' },
+  en: { titleKey: 'helpPage.enTitle', file: '/docs/HELP.md', icon: HelpCircle, langKey: 'helpPage.enLang' },
+  readme: { titleKey: 'helpPage.readmeTitle', file: '/docs/README.md', icon: FileText, langKey: 'helpPage.readmeLang' }
 };
 
 const HelpPage: React.FC = () => {
@@ -91,7 +91,7 @@ const HelpPage: React.FC = () => {
                        >
                           <div className="flex items-center gap-4 text-xs font-mono font-black">
                              <Icon size={18} className={activeTab === key ? 'text-white' : 'text-gray-600'} />
-                             {doc.title}
+                             {t(doc.titleKey)}
                           </div>
                        </button>
                     );
@@ -140,8 +140,8 @@ const HelpPage: React.FC = () => {
               
               <footer className="mt-48 pt-16 border-t border-white/10 flex justify-between items-center text-[11px] font-mono text-gray-600 uppercase tracking-[0.3em] px-4">
                  <div className="flex flex-col gap-3">
-                    <span>Mustafa Sercan Sak</span>
-                    <span>16 Nisan 2026</span>
+                    <span>{t('helpPage.developer')}</span>
+                    <span>{t('helpPage.date')}</span>
                  </div>
                  <div className="flex gap-10">
                     <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-blue-400 transition-all font-black">{t('helpPage.scrollTop')}</button>

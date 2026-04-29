@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { BitTransition, LogicSignal } from '../../../types';
+import { useTranslation } from '../../../i18n/context';
 
 const COLORS = {
   bg: '#0a0c10',
@@ -14,6 +15,7 @@ const COLORS = {
 };
 
 export const LogicAnalyzerView: React.FC = () => {
+  const { t } = useTranslation();
   const { state } = useSimulation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +70,7 @@ export const LogicAnalyzerView: React.FC = () => {
       ctx.fillStyle = COLORS.label;
       ctx.font = '10px ui-monospace, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('NO DATA STREAM DETECTED... START SIMULATION', width / 2, height / 2);
+      ctx.fillText(t('logic.noData'), width / 2, height / 2);
       return;
     }
 
@@ -88,15 +90,15 @@ export const LogicAnalyzerView: React.FC = () => {
     // Vertical timing lines every 1ms or 10ms depending on zoom
     const gridStep = zoom > 50 ? 1 : 10;
     const firstGrid = Math.floor(startTime / gridStep) * gridStep;
-    for (let t = firstGrid; t <= endTime; t += gridStep) {
-      const x = (t - startTime) * zoom;
+    for (let time_val = firstGrid; time_val <= endTime; time_val += gridStep) {
+      const x = (time_val - startTime) * zoom;
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
       
       if (zoom > 20) {
         ctx.fillStyle = COLORS.label;
         ctx.font = '8px ui-monospace, monospace';
-        ctx.fillText(`${t.toFixed(1)}ms`, x + 2, height - 10);
+        ctx.fillText(t('logic.ms', { t: time_val.toFixed(1) }), x + 2, height - 10);
       }
     }
     ctx.stroke();
@@ -183,7 +185,7 @@ export const LogicAnalyzerView: React.FC = () => {
       ctx.fillText(`Freq: ${freq.toFixed(2)} Hz`, 20, 55);
     }
     // Static draw session
-  }, [canvasSize, cursorA, cursorB, scrollX, signal.transitions, zoom]);
+  }, [canvasSize, cursorA, cursorB, scrollX, signal.transitions, zoom, t]);
 
   useEffect(() => {
     draw();
@@ -239,10 +241,10 @@ export const LogicAnalyzerView: React.FC = () => {
       <div className="px-4 py-2 bg-white/5 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-            Logic Analyzer v1.0
+            {t('logic.title')}
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-mono text-gray-500 uppercase">Zoom:</span>
+            <span className="text-[9px] font-mono text-gray-500 uppercase">{t('logic.zoom')}</span>
             <input 
               type="range" 
               min="1" max="5000" 
@@ -257,13 +259,13 @@ export const LogicAnalyzerView: React.FC = () => {
              onClick={() => { setCursorA(null); setCursorB(null); }}
              className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-[9px] font-mono text-gray-400 uppercase transition-colors"
            >
-             Reset Cursors
+             {t('logic.resetCursors')}
            </button>
            <button 
              onClick={() => { setAutoScroll(true); if (signal.transitions.length > 0) setScrollX(signal.transitions[signal.transitions.length-1].t - (canvasSize.width / 2 / zoom)); }}
              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors ${autoScroll ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400'}`}
            >
-             {autoScroll ? 'Live Sync' : 'Static View'}
+             {autoScroll ? t('logic.liveSync') : t('logic.staticView')}
            </button>
         </div>
       </div>
@@ -283,7 +285,7 @@ export const LogicAnalyzerView: React.FC = () => {
         {/* Overlay Labels */}
         <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-mono font-bold text-emerald-500/50 uppercase tracking-tighter">UART TX</span>
+              <span className="text-[10px] font-mono font-bold text-emerald-500/50 uppercase tracking-tighter">{t('logic.uartTx')}</span>
               <div className="h-px w-8 bg-emerald-500/20" />
            </div>
         </div>
@@ -291,12 +293,12 @@ export const LogicAnalyzerView: React.FC = () => {
 
       <div className="px-4 py-1.5 bg-white/[0.02] border-t border-white/5 flex justify-between items-center">
          <div className="flex gap-4 text-[9px] font-mono text-gray-500 uppercase">
-            <span>Scroll: Drag / Wheel</span>
-            <span>Zoom: Ctrl + Wheel</span>
-            <span>Measure: Click to place A/B</span>
+            <span>{t('logic.controls.scroll')}</span>
+            <span>{t('logic.controls.zoom')}</span>
+            <span>{t('logic.controls.measure')}</span>
          </div>
          <div className="text-[9px] font-mono text-gray-400">
-            Current Baud: {state.profileId ? (state.profileId.includes('Medical') ? 9600 : 115200) : '-' } bps
+            {t('logic.baud')} {state.profileId ? (state.profileId.includes('Medical') ? 9600 : 115200) : '-' } bps
          </div>
       </div>
     </div>

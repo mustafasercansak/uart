@@ -72,7 +72,7 @@ const DiffLab = memo(({ frameA, frameB, onClear }: DiffLabProps) => {
             className={`w-3 h-5 flex items-center justify-center text-[8px] font-mono select-none transition-colors border-r border-gray-800/20 ${
                 r.diff ? 'bg-red-500/40 text-white font-bold' : 'text-gray-600'
             }`}
-            title={`Byte ${r.byteIdx}, Bit ${r.bitIdx}`}
+            title={t('diffLab.bitTooltip', { byteIdx: r.byteIdx, bitIdx: r.bitIdx })}
           >
             {r.valB}
           </div>

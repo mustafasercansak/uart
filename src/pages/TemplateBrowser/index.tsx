@@ -99,7 +99,7 @@ export default function TemplateBrowser() {
                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
               }`}
             >
-              {cat === 'all' ? t('templateBrowser.all') : cat}
+              {cat === 'all' ? t('templateBrowser.all') : t(`templateBrowser.categories.${cat}`, { defaultValue: cat })}
             </button>
           ))}
         </div>
@@ -116,7 +116,7 @@ export default function TemplateBrowser() {
                 <div className="flex items-start justify-between mb-2">
                   <div className="text-3xl">{template.icon}</div>
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${CATEGORY_COLORS[template.category] ?? 'text-gray-400 bg-gray-700 border-gray-600'}`}>
-                    {template.category}
+                    {t(`templateBrowser.categories.${template.category}`, { defaultValue: template.category })}
                   </span>
                 </div>
                 <h3 className="text-gray-200 font-mono font-bold text-sm">{template.name}</h3>
@@ -166,7 +166,7 @@ export default function TemplateBrowser() {
                 <button
                   onClick={() => navigate('/profiles')}
                   className="px-3 py-2 bg-gray-700 border border-gray-600 text-gray-400 text-xs font-mono rounded hover:bg-gray-600 hover:text-gray-200 transition-colors"
-                  title="Profillere git"
+                  title={t('templateBrowser.goToProfiles')}
                 >
                   →
                 </button>

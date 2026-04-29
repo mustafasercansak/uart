@@ -46,7 +46,7 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
           >
             {/* Raw hex */}
             <div className="bg-gray-950 rounded p-3 font-mono text-xs">
-              <span className="text-gray-600">HEX: </span>
+              <span className="text-gray-600">{t('frameMonitor.hex')} </span>
               <span className="text-green-400">{lastFrame.rawHex}</span>
               {lastFrame.errors.length > 0 && (
                 <span className="ml-3 text-red-400 text-[10px]">{lastFrame.errors[0]}</span>
@@ -62,7 +62,7 @@ const FrameMonitor = memo(({ lastFrame, recentFrames, selectedFrameId, onSelectF
                     e.stopPropagation();
                     addWidget(f.name.toLowerCase().includes('wave') || f.name.toLowerCase().includes('plet') ? 'chart' : 'gauge', f.name);
                   }}
-                  title={`Pano'ya ekle (${f.name})`}
+                  title={t('frameMonitor.addToDashboard', { name: f.name })}
                 >
                   <span className="text-gray-500 text-[9px] font-mono">{f.name}:</span>
                   <span className="text-gray-200 text-[9px] font-mono font-bold whitespace-nowrap">{f.decimal}</span>

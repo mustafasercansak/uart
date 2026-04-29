@@ -19,10 +19,10 @@ const SCENARIO_CATEGORY_COLORS: Record<string, string> = {
 
 // SCENARIO_CATEGORY_LABELS now built inside component using t()
 
-const PRESET_SCENARIOS: Partial<Scenario>[] = [
+const PRESET_SCENARIOS: Array<{ nameKey: string; descKey: string; category: ScenarioCategory; durationMs: number; loop: boolean; steps: ScenarioStep[] }> = [
   {
-    name: 'Normal Başlatma',
-    description: 'Sensörün normal çalışma düzenine geçiş senaryosu',
+    nameKey: 'scenarioEditor.presets.normalStart',
+    descKey: 'scenarioEditor.presets.normalStartDesc',
     category: 'custom',
     durationMs: 10000,
     loop: false,
@@ -32,8 +32,8 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     ],
   },
   {
-    name: 'Bradycardia Atağı (Kritik Düşüş)',
-    description: 'Nabzın aniden düşüp kritik seviyede kalmasını simüle eder. Alarmları test etmek için idealdir.',
+    nameKey: 'scenarioEditor.presets.bradycardia',
+    descKey: 'scenarioEditor.presets.bradycardiaDesc',
     category: 'physiological',
     durationMs: 30000,
     loop: false,
@@ -44,8 +44,8 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     ],
   },
   {
-    name: 'Sensor Disconnect (Lead-Off)',
-    description: 'Sensörün fiziksel olarak koptuğu durumu simüle eder. Tüm dalga formları sıfıra iner.',
+    nameKey: 'scenarioEditor.presets.leadOff',
+    descKey: 'scenarioEditor.presets.leadOffDesc',
     category: 'error',
     durationMs: 20000,
     loop: false,
@@ -57,8 +57,8 @@ const PRESET_SCENARIOS: Partial<Scenario>[] = [
     ],
   },
   {
-    name: 'CRC Stress Test',
-    description: 'Yüksek frekansta checksum hataları göndererek alıcı cihazın hata ayıklama kapasitesini zorlar.',
+    nameKey: 'scenarioEditor.presets.stress',
+    descKey: 'scenarioEditor.presets.stressDesc',
     category: 'stress',
     durationMs: 60000,
     loop: true,
@@ -150,7 +150,7 @@ export default function ScenarioEditor() {
     const now = new Date().toISOString();
     const newScenario: Scenario = {
       id: uuidv4(),
-      name: 'Yeni Senaryo',
+      name: t('scenarioEditor.newScenarioName'),
       description: '',
       category: 'custom',
       durationMs: 10000,
@@ -203,21 +203,21 @@ export default function ScenarioEditor() {
     if (selectedStepId === stepId) setSelectedStepId(null);
   };
 
-  const clonePreset = (preset: Partial<Scenario>) => {
+  const clonePreset = (preset: typeof PRESET_SCENARIOS[number]) => {
     const now = new Date().toISOString();
     const id = uuidv4();
     const newScenario: Scenario = {
-      ...preset,
       id,
-      name: `${preset.name} (Kopya)`,
+      name: `${t(preset.nameKey)} (${t('scenarioEditor.copy')})`,
+      description: t(preset.descKey),
+      category: preset.category,
+      durationMs: preset.durationMs,
+      loop: preset.loop,
       profileId: state.profileId || '',
-      loop: preset.loop || false,
-      description: preset.description || '',
-      category: (preset.category as string) || 'custom',
-      steps: (preset.steps || []).map(s => ({ ...s, id: uuidv4() })),
+      steps: preset.steps.map(s => ({ ...s, id: uuidv4() })),
       createdAt: now,
       updatedAt: now,
-    } as Scenario;
+    };
     const newScenarios = [...scenarios, newScenario];
     setScenarios(newScenarios);
     persistScenario(newScenario);
@@ -415,8 +415,8 @@ export default function ScenarioEditor() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {PRESET_SCENARIOS.map((p, idx) => (
                 <div key={idx} onClick={() => clonePreset(p)} className="bg-gray-800/30 border border-gray-800 p-6 rounded-2xl cursor-pointer hover:border-green-600/50 hover:bg-green-900/5 transition-all group">
-                  <div className="text-gray-100 text-sm font-bold mb-2 group-hover:text-green-400 transition-colors">{p.name}</div>
-                  <div className="text-gray-500 text-[11px] leading-relaxed line-clamp-2 font-mono h-10">{p.description}</div>
+                  <div className="text-gray-100 text-sm font-bold mb-2 group-hover:text-green-400 transition-colors">{t(p.nameKey)}</div>
+                  <div className="text-gray-500 text-[11px] leading-relaxed line-clamp-2 font-mono h-10">{t(p.descKey)}</div>
                 </div>
               ))}
             </div>

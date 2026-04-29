@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { LayoutDashboard, X, Activity, TrendingUp, Gauge as GaugeIcon } from 'lucide-react';
+import { useTranslation } from '../../../i18n/context';
 import type { GeneratedFrame } from '../../../types';
 
 interface LiveDashboardProps {
@@ -9,6 +10,7 @@ interface LiveDashboardProps {
 }
 
 const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashboardProps) => {
+  const { t } = useTranslation();
   const { state, removeWidget, deleteSnapshot } = useSimulation();
   const { dashboardLayout, lastFrame } = state;
   const widgets = dashboardLayout?.widgets || [];
@@ -17,9 +19,9 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-900/20 border border-dashed border-gray-800 rounded-2xl m-4">
         <LayoutDashboard size={48} className="text-gray-800 mb-4" />
-        <h3 className="text-gray-400 font-mono text-sm font-bold uppercase tracking-widest mb-2">HUD Empty</h3>
+        <h3 className="text-gray-400 font-mono text-sm font-bold uppercase tracking-widest mb-2">{t('liveDashboard.hudEmpty')}</h3>
         <p className="text-gray-600 text-xs font-mono max-w-[200px]">
-          Pin fields from the Dissector to populate your live telemetry HUD.
+          {t('liveDashboard.pinInstructions')}
         </p>
       </div>
     );
@@ -33,8 +35,8 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
             <Activity size={16} className="text-blue-400" />
           </div>
           <div className="flex flex-col">
-            <span className="text-gray-200 text-xs font-bold font-mono">TELEMETRY HUD</span>
-            <span className="text-gray-600 text-[9px] font-mono uppercase tracking-widest">Active Systems Monitor</span>
+            <span className="text-gray-200 text-xs font-bold font-mono">{t('liveDashboard.telemetryHud')}</span>
+            <span className="text-gray-600 text-[9px] font-mono uppercase tracking-widest">{t('liveDashboard.activeSystemsMonitor')}</span>
           </div>
         </div>
       </div>
@@ -43,7 +45,7 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
         {/* Widgets Section */}
         {widgets.length > 0 && (
             <div className="space-y-3">
-                <h3 className="text-[9px] text-gray-600 font-mono uppercase tracking-widest px-1">Active Watchers</h3>
+                <h3 className="text-[9px] text-gray-600 font-mono uppercase tracking-widest px-1">{t('liveDashboard.activeWatchers')}</h3>
                 {widgets.map((widget) => {
                 const fieldData = lastFrame?.fields.find(f => f.name.toLowerCase() === widget.fieldId.toLowerCase());
                 const value = fieldData?.decimal ?? 0;
@@ -72,7 +74,7 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
                                 {fieldData ? value.toLocaleString() : '--'}
                             </span>
                             <div className="flex flex-col items-end">
-                                <span className="text-[8px] font-mono text-gray-600 uppercase">{widget.type} mode</span>
+                                <span className="text-[8px] font-mono text-gray-600 uppercase">{t('liveDashboard.mode', { type: widget.type })}</span>
                                 <div className="w-12 h-1 bg-gray-800 rounded-full mt-1 overflow-hidden">
                                      <div className="h-full bg-current transition-all duration-300" style={{ width: `${Math.min(100, (value/255)*100)}%`, color }} />
                                 </div>
@@ -88,7 +90,7 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
         {state.snapshots.length > 0 && (
             <div className="space-y-4 mt-8">
                 <div className="flex items-center justify-between px-1">
-                    <h3 className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">Snapshot Library</h3>
+                    <h3 className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">{t('liveDashboard.snapshotLibrary')}</h3>
                     <div className="px-1.5 py-0.5 bg-blue-500/10 rounded text-blue-400 text-[9px] font-mono">{state.snapshots.length}</div>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
@@ -105,7 +107,7 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
                                         <span className={`text-[10px] font-mono font-bold ${isSelected ? 'text-blue-400' : 'text-white'}`}>
-                                            FRAME #{snap.frameNumber}
+                                            {t('liveDashboard.frameNum', { num: snap.frameNumber })}
                                         </span>
                                         <span className="text-[9px] text-gray-600 font-mono">{new Date(snap.timestampMs).toLocaleTimeString()}</span>
                                     </div>
@@ -133,7 +135,7 @@ const LiveDashboard = memo(({ onSelectSnapshot, selectedSnapshotId }: LiveDashbo
       </div>
 
       <div className="p-3 border-t border-gray-800 bg-gray-950/60 text-[9px] font-mono text-gray-700 text-center uppercase tracking-widest">
-         Active Watchers: {state.watchlist.length} | Snapshots: {state.snapshots.length}
+         {t('liveDashboard.summary', { watchlist: state.watchlist.length, snapshots: state.snapshots.length })}
       </div>
     </div>
   );

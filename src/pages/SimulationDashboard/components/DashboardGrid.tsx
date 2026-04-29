@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from '../../../i18n/context';
 import { type MutableRefObject } from 'react';
 import { ResponsiveGridLayout } from 'react-grid-layout';
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
@@ -47,6 +48,7 @@ function savePerPanelPositions(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePanel, onUpdatePanel }: DashboardGridProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null);
@@ -138,13 +140,13 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
   return (
     <div ref={containerRef} className="w-full">
       <div className="flex items-center justify-end px-4 py-1.5 gap-2 border-b border-gray-800/40">
-        <span className="text-[9px] font-mono text-gray-600">{panels.length} WIDGET ACTIVE</span>
+        <span className="text-[9px] font-mono text-gray-600">{t('dashboard.widgetActive').replace('{count}', String(panels.length))}</span>
         <button
           onClick={handleReset}
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-all border border-gray-800/50"
         >
           <RotateCcw size={10} />
-          RESET LAYOUT
+          {t('dashboard.resetLayout')}
         </button>
       </div>
 
@@ -193,7 +195,7 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
                       setSettingsOpen(prev => prev === panel.id ? null : panel.id);
                     }}
                     className={`p-0.5 rounded transition-colors ${settingsOpen === panel.id ? 'text-blue-400 bg-blue-900/30' : 'text-gray-500 hover:text-gray-300'}`}
-                    title="Ayarlar"
+                    title={t('dashboard.settings')}
                   >
                     <Settings size={10} />
                   </button>
@@ -210,24 +212,24 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
                  {settingsOpen === panel.id && (
                    <div className="absolute inset-0 z-[100] bg-gray-950/95 backdrop-blur-md p-3 flex flex-col gap-2.5">
                      <div className="text-[9px] uppercase font-bold text-gray-500 tracking-widest border-b border-gray-800 pb-1 mb-1">
-                       WIDGET SETTINGS
+                       {t('dashboard.widgetSettings')}
                      </div>
                      <div className="flex flex-col gap-1">
-                       <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">TYPE</label>
+                       <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">{t('dashboard.type')}</label>
                        <select 
                          className="bg-gray-900 text-xs text-gray-200 p-1.5 rounded border border-gray-800 font-mono focus:outline-none focus:border-blue-500/50"
                          value={panel.widgetType}
                          onChange={(e) => onUpdatePanel?.(panel.id, { widgetType: e.target.value as WidgetType })}
                        >
-                         <option value="chart">Waveform Chart</option>
-                         <option value="gauge">Analog Gauge</option>
-                         <option value="led">LED Indicator</option>
-                         <option value="7segment">7-Segment Display</option>
+                         <option value="chart">{t('dashboard.widgets.chart')}</option>
+                         <option value="gauge">{t('dashboard.widgets.gauge')}</option>
+                         <option value="led">{t('dashboard.widgets.led')}</option>
+                         <option value="7segment">{t('dashboard.widgets.7segment')}</option>
                        </select>
                      </div>
                      <div className="flex gap-2">
                        <div className="flex-1 flex flex-col gap-1">
-                         <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">MIN VAL</label>
+                         <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">{t('dashboard.minVal')}</label>
                          <input 
                            type="number"
                            className="bg-gray-900 text-[11px] text-gray-200 p-1.5 rounded border border-gray-800 w-full font-mono focus:outline-none focus:border-blue-500/50"
@@ -237,7 +239,7 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
                          />
                        </div>
                        <div className="flex-1 flex flex-col gap-1">
-                         <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">MAX VAL</label>
+                         <label className="text-[8px] text-gray-400 font-mono tracking-widest pl-0.5">{t('dashboard.maxVal')}</label>
                          <input 
                            type="number"
                            className="bg-gray-900 text-[11px] text-gray-200 p-1.5 rounded border border-gray-800 w-full font-mono focus:outline-none focus:border-blue-500/50"
@@ -253,7 +255,7 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
                        className="w-full bg-blue-600 hover:bg-blue-500 text-white py-1.5 rounded flex items-center justify-center gap-1.5 text-[9px] font-bold tracking-widest uppercase transition-colors"
                      >
                        <Check size={11} strokeWidth={3} />
-                       APPLY
+                       {t('dashboard.apply')}
                      </button>
                    </div>
                  )}

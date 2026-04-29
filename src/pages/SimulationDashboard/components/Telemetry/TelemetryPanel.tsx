@@ -114,9 +114,9 @@ const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: T
           <span className="text-[10px] font-mono font-black uppercase tracking-widest text-gray-400">{t('telemetryPanel.designerMode')}</span>
         </div>
         <div className="flex items-center gap-3">
-            <span className="text-[9px] font-mono text-gray-600">PIN FIELDS FROM SIDEBAR OR DISSECTOR</span>
+            <span className="text-[9px] font-mono text-gray-600">{t('telemetryPanel.pinInstructions')}</span>
             <div className="h-4 w-[1px] bg-gray-800" />
-            <span className="text-[9px] font-mono text-emerald-500/60 uppercase tracking-tighter">Auto-Save Active</span>
+            <span className="text-[9px] font-mono text-emerald-500/60 uppercase tracking-tighter">{t('telemetryPanel.autoSave')}</span>
         </div>
       </div>
 

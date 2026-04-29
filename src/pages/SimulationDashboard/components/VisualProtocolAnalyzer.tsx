@@ -128,7 +128,7 @@ const VisualProtocolAnalyzer = memo(({ frame, profile }: VisualProtocolAnalyzerP
                         {isSet ? '1' : '0'}
                       </div>
                       <div className="text-[8px] font-mono text-gray-600 uppercase tracking-tighter truncate w-full text-center group-hover/bit:text-gray-400 transition-colors">
-                        {flagLabel || `Bit ${bitIdx}`}
+                        {flagLabel || t('visualAnalyzer.bit', { index: bitIdx })}
                       </div>
                     </div>
                   );

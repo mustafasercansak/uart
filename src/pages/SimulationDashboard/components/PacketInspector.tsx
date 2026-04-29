@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { X, Activity, Camera, Code2, Copy, FileJson, Hash, ChartLine, Gauge as GaugeIcon, Lightbulb, ArrowUp, ArrowDown } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { parseFrame } from '../../../engines/FrameParser';
+import { useTranslation } from '../../../i18n/context';
 import type { FrameProfile, Exchange, GeneratedFrame } from '../../../types';
 
 interface PacketInspectorProps {
@@ -11,6 +12,7 @@ interface PacketInspectorProps {
 }
 
 const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorProps) => {
+  const { t } = useTranslation();
   const { addWidget, saveSnapshot } = useSimulation();
   
   if (!exchange) return null;
@@ -54,10 +56,10 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
         <table className="w-full text-left border-collapse font-mono text-[10px]">
            <thead className="sticky top-0 bg-gray-900 z-10">
              <tr className="text-gray-600 border-b border-gray-800">
-               <th className="p-2 w-24">Field</th>
-               <th className="p-2 w-16">Hex</th>
-               <th className="p-2 w-16">Dec</th>
-               <th className="p-2 w-12">Action</th>
+               <th className="p-2 w-24">{t('inspector.field')}</th>
+               <th className="p-2 w-16">{t('inspector.hex')}</th>
+               <th className="p-2 w-16">{t('inspector.dec')}</th>
+               <th className="p-2 w-12">{t('inspector.action')}</th>
              </tr>
            </thead>
            <tbody className="divide-y divide-gray-800/50">
@@ -72,28 +74,28 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
                         <button 
                            onClick={() => addWidget('chart', f.name)}
                            className="p-1 text-gray-700 hover:text-blue-400"
-                           title="Grafik Ekle"
+                           title={t('inspector.addChart')}
                         >
                           <ChartLine size={10} />
                         </button>
                         <button 
                            onClick={() => addWidget('gauge', f.name)}
                            className="p-1 text-gray-700 hover:text-amber-400"
-                           title="Kadran Ekle"
+                           title={t('inspector.addGauge')}
                         >
                           <GaugeIcon size={10} />
                         </button>
                         <button 
                            onClick={() => addWidget('led', f.name)}
                            className="p-1 text-gray-700 hover:text-emerald-400"
-                           title="LED Ekle"
+                           title={t('inspector.addLed')}
                         >
                           <Lightbulb size={10} />
                         </button>
                         <button 
                            onClick={() => addWidget('7segment', f.name)}
                            className="p-1 text-gray-700 hover:text-red-400"
-                           title="7-Segment Ekle"
+                           title={t('inspector.add7Segment')}
                         >
                           <Hash size={10} />
                         </button>
@@ -116,9 +118,9 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
             <Activity size={18} className="text-blue-400" />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-xs font-black text-white uppercase tracking-widest font-mono line-height-none">Dissector Engine</h2>
+            <h2 className="text-xs font-black text-white uppercase tracking-widest font-mono line-height-none">{t('inspector.title')}</h2>
             <div className={`text-[9px] uppercase font-black font-mono ${exchange.isLoopbackMatch ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {exchange.isLoopbackMatch ? 'Integrity Verified' : 'Deep Analysis'}
+                {exchange.isLoopbackMatch ? t('inspector.verified') : t('inspector.deepAnalysis')}
             </div>
           </div>
         </div>
@@ -127,21 +129,21 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
              <button 
                 onClick={() => copyToClipboard('hex')}
                 className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 transition-all rounded-md"
-                title="Copy Hex"
+                title={t('inspector.copyHex')}
              >
                 <Hash size={12} />
              </button>
              <button 
                 onClick={() => copyToClipboard('cstruct')}
                 className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 transition-all rounded-md"
-                title="Copy as C-Struct"
+                title={t('inspector.copyCStruct')}
              >
                 <Code2 size={12} />
              </button>
              <button 
                 onClick={() => copyToClipboard('json')}
                 className="p-1.5 text-gray-500 hover:text-white hover:bg-white/5 transition-all rounded-md"
-                title="Copy as JSON"
+                title={t('inspector.copyJson')}
              >
                 <FileJson size={12} />
              </button>
@@ -152,7 +154,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
                 if (primaryFrame) saveSnapshot(primaryFrame as unknown as import('../../../types').GeneratedFrame);
             }}
             className="p-1.5 text-gray-400 hover:text-white transition-all bg-white/5 border border-white/10 rounded-lg shadow-xl"
-            title="Snapshot"
+            title={t('inspector.snapshot')}
            >
              <Camera size={14} />
            </button>
@@ -167,22 +169,22 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
 
       <div className="flex-1 p-3 flex flex-col gap-3 min-h-0 overflow-hidden bg-gray-950/50">
         <div className="flex gap-2 h-1/2 min-h-0">
-            {txFrame && renderFieldTable(txFrame, 'Master TX', 'text-blue-400')}
-            {rxFrame && renderFieldTable(rxFrame, 'Slave RX', 'text-emerald-400')}
+            {txFrame && renderFieldTable(txFrame, t('inspector.masterTx'), 'text-blue-400')}
+            {rxFrame && renderFieldTable(rxFrame, t('inspector.slaveRx'), 'text-emerald-400')}
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col bg-black/60 border border-gray-800 rounded-lg p-3 shadow-2xl">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest font-mono">Binary Diff Analysis</span>
+                <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest font-mono">{t('inspector.diffAnalysis')}</span>
                 {!exchange.isLoopbackMatch && txFrame && rxFrame && (
-                    <span className="text-[9px] font-bold text-red-500 animate-pulse bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">INTEGRITY FAILURE</span>
+                    <span className="text-[9px] font-bold text-red-500 animate-pulse bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">{t('inspector.integrityFailure')}</span>
                 )}
             </div>
             <div className="flex-1 overflow-y-auto font-mono text-[9px] text-gray-500 custom-scrollbar">
                 {txFrame && (
                     <div className="mb-4">
                         <div className="text-blue-500/60 mb-1.5 flex items-center gap-2 border-b border-blue-900/30 pb-1 text-[8px] font-bold uppercase tracking-tighter">
-                            <ArrowUp size={10} /> Master Data Stream
+                            <ArrowUp size={10} /> {t('inspector.masterStream')}
                         </div>
                         <div className="grid grid-cols-5 sm:grid-cols-4 lg:grid-cols-5 gap-1.5">
                             {txFrame.rawBytes.map((b: number, i: number) => (
@@ -197,7 +199,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
                 {rxFrame && (
                     <div>
                         <div className="text-emerald-500/60 mb-1.5 flex items-center gap-2 border-b border-emerald-900/30 pb-1 text-[8px] font-bold uppercase tracking-tighter">
-                            <ArrowDown size={10} /> Slave Data Stream
+                            <ArrowDown size={10} /> {t('inspector.slaveStream')}
                         </div>
                         <div className="grid grid-cols-5 sm:grid-cols-4 lg:grid-cols-5 gap-1.5">
                             {rxFrame.rawBytes.map((b: number, i: number) => {

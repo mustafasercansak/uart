@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Settings, BarChart3, Maximize2, Zap } from 'lucide-react';
 import { DSPEngine, type WindowType } from '../../../engines/DSPEngine';
+import { useTranslation } from '../../../i18n/context';
 
 interface SpectrumAnalyzerProps {
   waveformHistory: Array<Record<string, number>>;
@@ -8,6 +9,7 @@ interface SpectrumAnalyzerProps {
 }
 
 const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, dataKey }) => {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [windowType, setWindowType] = useState<WindowType>('Hanning');
 
@@ -107,24 +109,24 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
              <BarChart3 size={16} className="text-indigo-400" />
           </div>
           <div className="flex flex-col">
-             <span className="text-[10px] font-mono font-black text-indigo-400 uppercase tracking-widest">Spectral Analysis</span>
+             <span className="text-[10px] font-mono font-black text-indigo-400 uppercase tracking-widest">{t('spectrum.title')}</span>
              <span className="text-[9px] text-gray-500 font-mono uppercase tracking-tighter">
-               {dataKey ? `Source: ${dataKey}` : 'Select a signal for FFT'}
+               {dataKey ? t('spectrum.source', { key: dataKey }) : t('spectrum.selectSignal')}
              </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-950/60 rounded-md border border-gray-800/50">
-               <span className="text-[8px] font-mono text-gray-500 uppercase">Window:</span>
+               <span className="text-[8px] font-mono text-gray-500 uppercase">{t('spectrum.window')}</span>
                <select 
                  value={windowType}
                  onChange={(e) => setWindowType(e.target.value as WindowType)}
                  className="bg-transparent text-[9px] font-mono text-indigo-400 outline-none cursor-pointer"
                >
-                 <option value="Rectangular">Rectangular</option>
-                 <option value="Hanning">Hanning</option>
-                 <option value="Hamming">Hamming</option>
+                 <option value="Rectangular">{t('spectrum.rectangular')}</option>
+                 <option value="Hanning">{t('spectrum.hanning')}</option>
+                 <option value="Hamming">{t('spectrum.hamming')}</option>
                </select>
             </div>
             <button className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors">
@@ -138,8 +140,8 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
            <div className="flex flex-col items-center gap-4 opacity-30 select-none">
               <Zap size={48} className="text-gray-600 animate-pulse" />
               <div className="flex flex-col items-center text-center">
-                <span className="text-xs font-mono font-bold text-gray-400 uppercase">Insufficient Data</span>
-                <span className="text-[10px] font-mono text-gray-600 mt-1 max-w-[200px]">FFT requires at least 256 data points. Please wait for signal accumulation.</span>
+                <span className="text-xs font-mono font-bold text-gray-400 uppercase">{t('spectrum.insufficientData')}</span>
+                <span className="text-[10px] font-mono text-gray-600 mt-1 max-w-[200px]">{t('spectrum.waitSignal')}</span>
               </div>
            </div>
         ) : (
@@ -155,27 +157,27 @@ const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ waveformHistory, da
         {fftData && (
           <>
             <div className="absolute left-6 top-6 bottom-6 flex flex-col justify-between text-[8px] font-mono text-indigo-500/50 pointer-events-none">
-                <span>0 dB</span>
-                <span>-20 dB</span>
-                <span>-40 dB</span>
-                <span>-60 dB</span>
-                <span>-80 dB</span>
-                <span>-100 dB</span>
+                <span>{t('spectrum.db', { value: 0 })}</span>
+                <span>{t('spectrum.db', { value: -20 })}</span>
+                <span>{t('spectrum.db', { value: -40 })}</span>
+                <span>{t('spectrum.db', { value: -60 })}</span>
+                <span>{t('spectrum.db', { value: -80 })}</span>
+                <span>{t('spectrum.db', { value: -100 })}</span>
             </div>
             <div className="absolute bottom-6 left-6 right-6 flex justify-between text-[8px] font-mono text-indigo-500/50 pointer-events-none">
-                <span>0 Hz</span>
-                <span>Nyquist Limit</span>
+                <span>{t('spectrum.hz')}</span>
+                <span>{t('spectrum.nyquistLimit')}</span>
             </div>
           </>
         )}
       </div>
 
       <div className="px-4 py-2 bg-indigo-500/5 border-t border-indigo-500/10 flex items-center justify-between">
-         <span className="text-[8px] font-mono text-indigo-400 uppercase font-black">Cooley-Tukey Radix-2 Real-Time Engine active</span>
+         <span className="text-[8px] font-mono text-indigo-400 uppercase font-black">{t('spectrum.engineActive')}</span>
          <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
                <div className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
-               <span className="text-[8px] font-mono text-gray-500 uppercase">Resolution: {fftData?.length || 0} bins</span>
+               <span className="text-[8px] font-mono text-gray-500 uppercase">{t('spectrum.resolution', { count: fftData?.length || 0 })}</span>
             </div>
          </div>
       </div>

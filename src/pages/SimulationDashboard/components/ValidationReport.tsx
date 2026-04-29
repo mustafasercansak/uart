@@ -57,15 +57,15 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
           <div>
             <div className="flex items-center gap-3 text-emerald-600 mb-2">
                 <ShieldCheck size={32} />
-                <h1 className="text-3xl font-black tracking-tighter uppercase">MedNet Monitor</h1>
+                <h1 className="text-3xl font-black tracking-tighter uppercase">{t('validationReport.title')}</h1>
             </div>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Advanced Laboratory Validation Suite</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">{t('validationReport.suite')}</p>
           </div>
           <div className="text-right">
             <div className={`px-4 py-2 rounded-xl border-2 font-black text-sm uppercase tracking-widest ${isPass ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-rose-200 text-rose-700 bg-rose-50'}`}>
                 {isPass ? t('validation.passed') : t('validation.failed')}
             </div>
-            <p className="text-[10px] text-gray-400 mt-2 font-mono">DOC-ID: {session.id.slice(0, 8).toUpperCase()}</p>
+            <p className="text-[10px] text-gray-400 mt-2 font-mono">{t('validationReport.docId')} {session.id.slice(0, 8).toUpperCase()}</p>
           </div>
         </div>
 
@@ -76,11 +76,11 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
             <div className="grid grid-cols-[80px_1fr] gap-y-2 text-[11px]">
               <span className="text-gray-400 font-bold uppercase">{t('validation.testName')}:</span>
               <span className="font-bold">{session.name}</span>
-              <span className="text-gray-400 font-bold uppercase">Tarih:</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validationReport.date')}</span>
               <span className="font-mono">{new Date(session.startTime).toLocaleString()}</span>
-              <span className="text-gray-400 font-bold uppercase">Cihaz:</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validationReport.device')}</span>
               <span className="font-mono">{session.deviceId}</span>
-              <span className="text-gray-400 font-bold uppercase">Durum:</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validationReport.status')}</span>
               <span className={session.status === 'completed' ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>{session.status.toUpperCase()}</span>
             </div>
           </div>
@@ -89,10 +89,10 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
             <div className="grid grid-cols-[80px_1fr] gap-y-2 text-[11px]">
               <span className="text-gray-400 font-bold uppercase">{t('validation.operator')}:</span>
               <span className="font-bold">{session.operator}</span>
-              <span className="text-gray-400 font-bold uppercase">Kurum:</span>
-              <span className="font-bold">Mustafa Sercan Sak Diagnostics</span>
-              <span className="text-gray-400 font-bold uppercase">Sistem:</span>
-              <span className="font-mono">ClinicSync Engine v7.1</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validationReport.institution')}</span>
+              <span className="font-bold">{t('validationReport.institutionName')}</span>
+              <span className="text-gray-400 font-bold uppercase">{t('validationReport.system')}</span>
+              <span className="font-mono">{t('validationReport.systemName')}</span>
             </div>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
            </div>
            <div className="w-px bg-gray-200" />
            <div className="text-center">
-             <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest block mb-1">Compliance</span>
+             <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('validationReport.compliance')}</span>
              <span className="text-4xl font-black text-emerald-600">{passCount}</span>
            </div>
            <div className="w-px bg-gray-200" />
@@ -127,7 +127,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
                 <th className="py-4 px-4 text-left">{t('validation.fieldName')}</th>
                 <th className="py-4 px-4 text-center">{t('validation.expectedRange')}</th>
                 <th className="py-4 px-4 text-center">{t('validation.unit')}</th>
-                <th className="py-4 px-4 text-right">Durum</th>
+                <th className="py-4 px-4 text-right">{t('validationReport.status')}</th>
               </tr>
             </thead>
             <tbody className="border border-gray-100">
@@ -170,7 +170,7 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
                   <span className="text-gray-700">{e.message}</span>
                 </div>
                 {e.value !== undefined && (
-                  <span className="font-mono text-gray-500">Value: {e.value}</span>
+                  <span className="font-mono text-gray-500">{t('validationReport.value')} {e.value}</span>
                 )}
               </div>
             ))}
@@ -180,9 +180,9 @@ export default function ValidationReport({ session, onClose }: ValidationReportP
         {/* Footer / Signature Area */}
         <div className="mt-auto pt-12 border-t border-gray-100 flex justify-between items-end">
           <div className="text-[9px] text-gray-400 space-y-1">
-             <p>© 2026 MedNet Suite - Automated Certification Tool</p>
-             <p>This report was digitally generated and hash-verified for integrity.</p>
-             <p className="font-mono">HASH: {session.id.slice(0, 16)}...</p>
+             <p>{t('validationReport.copyright')}</p>
+             <p>{t('validationReport.integrityNotice')}</p>
+             <p className="font-mono">{t('validationReport.hash')} {session.id.slice(0, 16)}...</p>
           </div>
           <div className="flex gap-12">
             <div className="text-center w-40">

@@ -18,8 +18,8 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
   const docs = useMemo(() => ({
     tr: { title: t('helpModal.userGuide'), file: '/docs/KULLANIM_KILAVUZU.md', icon: Book },
-    en: { title: 'Quick Help', file: '/docs/HELP.md', icon: HelpCircle },
-    readme: { title: 'README', file: '/docs/README.md', icon: FileText }
+    en: { title: t('helpModal.quickHelp'), file: '/docs/HELP.md', icon: HelpCircle },
+    readme: { title: t('helpModal.readme'), file: '/docs/README.md', icon: FileText }
   }), [t]);
 
   useEffect(() => {

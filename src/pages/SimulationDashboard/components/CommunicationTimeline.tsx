@@ -21,12 +21,12 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-300">TX (Sistem)</span>
+            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-300">{t('timeline.txSystem')}</span>
           </div>
           {hasRealDevice && (
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-300">RX (Cihaz)</span>
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-300">{t('timeline.rxDevice')}</span>
             </div>
           )}
         </div>
@@ -38,7 +38,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
             </div>
           )}
           <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest bg-gray-950 px-2 py-1 rounded">
-            Son {displayExchanges.length} frame
+            {t('timeline.lastFrames').replace('{count}', String(displayExchanges.length))}
           </div>
           {onClear && (
             <button
@@ -93,7 +93,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                       } as unknown as GeneratedFrame)}
                       className="bg-blue-900/20 border border-blue-800/50 hover:border-blue-500/50 p-2.5 rounded-xl transition-all hover:bg-blue-900/40 text-left max-w-[280px] relative group/btn"
                     >
-                      <div className="text-[8px] font-mono font-black text-blue-400 mb-1 uppercase tracking-tighter opacity-60">TX OUT</div>
+                      <div className="text-[8px] font-mono font-black text-blue-400 mb-1 uppercase tracking-tighter opacity-60">{t('timeline.txOut')}</div>
                       <div className="text-[10px] font-mono text-blue-100 break-all leading-tight">{ex.tx.rawHex}</div>
                       {hasRealDevice && (
                         <div className="absolute top-1/2 -right-8 -translate-y-1/2 text-blue-500 opacity-0 group-hover/btn:opacity-100 transition-opacity">
@@ -126,7 +126,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                         className="bg-emerald-900/20 border border-emerald-800/50 hover:border-emerald-500/50 p-2.5 rounded-xl transition-all hover:bg-emerald-900/40 text-left max-w-[280px] relative group/btn"
                       >
                         <div className="text-[8px] font-mono font-black text-emerald-400 mb-1 uppercase tracking-tighter opacity-60">
-                          RX IN
+                          {t('timeline.rxIn')}
                           {ex.latencyMs != null && (
                             <span className="ml-2 text-gray-500 normal-case">{ex.latencyMs}ms</span>
                           )}

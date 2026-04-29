@@ -169,7 +169,7 @@ export default function ErrorReportPanel({ frames, profile, elapsedMs, frameCoun
         <div className="hidden print:block mb-6">
           <h1 className="text-xl font-bold">{t('report.printHeader')}</h1>
           <p className="text-sm text-gray-600">
-            Profil: {profile?.name ?? '-'} | Tarih: {new Date().toLocaleString(locale)}
+            {t('report.profileLabel')} {profile?.name ?? '-'} | {t('report.dateLabel')} {new Date().toLocaleString(locale)}
           </p>
         </div>
 
@@ -186,7 +186,7 @@ export default function ErrorReportPanel({ frames, profile, elapsedMs, frameCoun
               <StatCard
                 label={t('report.totalFrames')}
                 value={frameCount.toLocaleString(locale)}
-                sub={`${(stats.framesPerSecond).toFixed(1)} fps`}
+                sub={t('report.fps', { count: stats.framesPerSecond.toFixed(1) })}
                 accent="blue"
               />
               <StatCard
@@ -197,14 +197,14 @@ export default function ErrorReportPanel({ frames, profile, elapsedMs, frameCoun
               />
               <StatCard
                 label={t('report.successRate')}
-                value={`%${successRatePct}`}
+                value={t('report.successRatePct', { rate: successRatePct })}
                 sub={t('report.cleanFrames').replace('{count}', (stats.totalFrames - stats.errorFrames).toString())}
                 accent={stats.errorRate < 0.01 ? 'green' : 'yellow'}
               />
               <StatCard
                 label={t('report.avgFrame')}
-                value={`${stats.avgFrameSize.toFixed(1)} B`}
-                sub={`Min: ${stats.minFrameSize}B / Max: ${stats.maxFrameSize}B`}
+                value={t('report.byte', { count: stats.avgFrameSize.toFixed(1) })}
+                sub={t('report.minMax', { min: stats.minFrameSize, max: stats.maxFrameSize })}
                 accent="blue"
               />
             </div>
@@ -217,7 +217,7 @@ export default function ErrorReportPanel({ frames, profile, elapsedMs, frameCoun
               </div>
               <div className="grid grid-cols-3 gap-3 text-[11px]">
                 <div>
-                  <span className="text-gray-500">Profil:</span>{' '}
+                  <span className="text-gray-500">{t('report.profileLabel')}:</span>{' '}
                   <span className="text-gray-200">{profile?.name ?? '-'}</span>
                 </div>
                 <div>

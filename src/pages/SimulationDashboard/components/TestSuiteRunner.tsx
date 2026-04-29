@@ -79,15 +79,13 @@ function runTest(
         return { 
           ...base, 
           status: 'pass', 
-          message: t('testSuite.messages.noErrors').replace('{count}', frames.length.toString()) 
+          message: t('testSuite.messages.noErrors', { count: frames.length }) 
         };
       }
       return {
         ...base,
         status: 'fail',
-        message: t('testSuite.messages.errorsFound')
-          .replace('{failed}', failed.length.toString())
-          .replace('{total}', frames.length.toString()),
+        message: t('testSuite.messages.errorsFound', { failed: failed.length, total: frames.length }),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
@@ -105,7 +103,7 @@ function runTest(
       return {
         ...base,
         status: 'fail',
-        message: t('testSuite.messages.checksumErrors').replace('{count}', failed.length.toString()),
+        message: t('testSuite.messages.checksumErrors', { count: failed.length }),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
@@ -128,18 +126,13 @@ function runTest(
         return { 
           ...base, 
           status: 'pass', 
-          message: t('testSuite.messages.inRange')
-            .replace('{field}', tc.fieldName)
-            .replace('{min}', min.toString())
-            .replace('{max}', max.toString()) 
+          message: t('testSuite.messages.inRange', { field: tc.fieldName, min: min.toString(), max: max.toString() })
         };
       }
       return {
         ...base,
         status: 'fail',
-        message: t('testSuite.messages.outOfRange')
-          .replace('{field}', tc.fieldName)
-          .replace('{count}', failed.length.toString()),
+        message: t('testSuite.messages.outOfRange', { field: tc.fieldName, count: failed.length }),
         failedFrames: failed,
       };
     }
@@ -156,18 +149,13 @@ function runTest(
         return { 
           ...base, 
           status: 'pass', 
-          message: t('testSuite.messages.equals')
-            .replace('{field}', tc.fieldName)
-            .replace('{expected}', expected.toString()) 
+          message: t('testSuite.messages.equals', { field: tc.fieldName, expected: expected.toString() })
         };
       }
       return {
         ...base,
         status: 'fail',
-        message: t('testSuite.messages.notEquals')
-          .replace('{field}', tc.fieldName)
-          .replace('{count}', failed.length.toString())
-          .replace('{expected}', expected.toString()),
+        message: t('testSuite.messages.notEquals', { field: tc.fieldName, count: failed.length, expected: expected.toString() }),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
@@ -181,17 +169,13 @@ function runTest(
         return { 
           ...base, 
           status: 'pass', 
-          message: t('testSuite.messages.fpsOk')
-            .replace('{actual}', fps.toFixed(1))
-            .replace('{min}', minFPS.toString()) 
+          message: t('testSuite.messages.fpsOk', { actual: fps.toFixed(1), min: minFPS.toString() })
         };
       }
       return { 
         ...base, 
         status: 'fail', 
-        message: t('testSuite.messages.fpsLow')
-          .replace('{actual}', fps.toFixed(1))
-          .replace('{min}', minFPS.toString()) 
+        message: t('testSuite.messages.fpsLow', { actual: fps.toFixed(1), min: minFPS.toString() })
       };
     }
 
@@ -350,7 +334,7 @@ function TestCaseForm({
               type="number"
               value={tc.expectedMin ?? ''}
               onChange={(e) => onUpdate(tc.id, { expectedMin: Number(e.target.value) })}
-              placeholder="Min"
+              placeholder={t('testSuite.min')}
               className="w-20 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
             />
             <span className="text-gray-600 text-[10px]">–</span>
@@ -358,7 +342,7 @@ function TestCaseForm({
               type="number"
               value={tc.expectedMax ?? ''}
               onChange={(e) => onUpdate(tc.id, { expectedMax: Number(e.target.value) })}
-              placeholder="Max"
+              placeholder={t('testSuite.max')}
               className="w-20 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
             />
           </>
@@ -370,7 +354,7 @@ function TestCaseForm({
             type="number"
             value={tc.expectedValue ?? ''}
             onChange={(e) => onUpdate(tc.id, { expectedValue: Number(e.target.value) })}
-            placeholder="Value"
+            placeholder={t('testSuite.value')}
             className="w-32 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           />
         )}
@@ -381,7 +365,7 @@ function TestCaseForm({
             type="number"
             value={tc.minFPS ?? ''}
             onChange={(e) => onUpdate(tc.id, { minFPS: Number(e.target.value) })}
-            placeholder="Min FPS"
+            placeholder={t('testSuite.minFps')}
             className="w-24 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           />
         )}
@@ -392,7 +376,7 @@ function TestCaseForm({
             type="number"
             value={tc.expectedByteCount ?? ''}
             onChange={(e) => onUpdate(tc.id, { expectedByteCount: Number(e.target.value) })}
-            placeholder="Byte count"
+            placeholder={t('testSuite.byteCount')}
             className="w-28 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           />
         )}
@@ -402,7 +386,7 @@ function TestCaseForm({
           <input
             value={tc.hexPattern ?? ''}
             onChange={(e) => onUpdate(tc.id, { hexPattern: e.target.value })}
-            placeholder="e.g. 55 AA"
+            placeholder={t('testSuite.hexExample')}
             className="w-36 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] font-mono rounded px-2 py-1"
           />
         )}
@@ -470,7 +454,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
       ...prev,
       {
         id: makeId(),
-        name: `Test ${prev.length + 1}`,
+        name: t('testSuite.testNum', { num: prev.length + 1 }),
         assertion: 'no_errors',
         enabled: true,
       },
@@ -509,14 +493,14 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
   }, []);
 
   const exportResults = useCallback(() => {
-    const lines = [t('testSuite.title'), `Date: ${new Date().toISOString()}`, `Total Frames: ${frames.length}`, ''];
+    const lines = [t('testSuite.title'), `${t('testSuite.reportDate')} ${new Date().toISOString()}`, `${t('testSuite.reportTotalFrames')} ${frames.length}`, ''];
     for (const r of results) {
       const tc = tests.find((t) => t.id === r.caseId);
       const label = tc?.name ?? r.caseId;
-      lines.push(`[${r.status.toUpperCase()}] ${label}`);
+      lines.push(`[${t(`testSuite.${r.status}`).toUpperCase()}] ${label}`);
       lines.push(`  ${r.message}`);
       if (r.failedFrames.length > 0) {
-        lines.push(`  Failed frames: ${r.failedFrames.slice(0, 20).join(', ')}${r.failedFrames.length > 20 ? '...' : ''}`);
+        lines.push(`  ${t('testSuite.failedFramesLabel')} ${r.failedFrames.slice(0, 20).join(', ')}${r.failedFrames.length > 20 ? '...' : ''}`);
       }
       lines.push('');
     }
@@ -524,7 +508,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
     const pass = results.filter((r) => r.status === 'pass').length;
     const fail = results.filter((r) => r.status === 'fail').length;
     const skip = results.filter((r) => r.status === 'skip').length;
-    lines.push(`Summary: ${pass} PASS / ${fail} FAIL / ${skip} SKIP`);
+    lines.push(t('testSuite.summary', { pass, fail, skip }));
 
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -592,17 +576,17 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
             <span className="text-[10px] text-gray-500">{completed}/{total}</span>
             {pass > 0 && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-900/50 text-emerald-300 border border-emerald-800/50">
-                {pass} PASS
+                {pass} {t('testSuite.pass')}
               </span>
             )}
             {fail > 0 && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/50 text-red-300 border border-red-800/50">
-                {fail} FAIL
+                {fail} {t('testSuite.fail')}
               </span>
             )}
             {skip > 0 && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-900/40 text-yellow-300 border border-yellow-800/40">
-                {skip} SKIP
+                {skip} {t('testSuite.skip')}
               </span>
             )}
           </div>

@@ -239,12 +239,12 @@ const LogicAnalyzer = memo(() => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-mono font-bold text-gray-300 uppercase tracking-widest">Logic Analyzer v4.0</span>
+            <span className="text-[10px] font-mono font-bold text-gray-300 uppercase tracking-widest">{t('logic.title')}</span>
           </div>
           <div className="h-4 w-px bg-gray-800" />
           <div className="flex gap-4">
              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-500 uppercase">Zoom</span>
+                <span className="text-[9px] text-gray-500 uppercase">{t('logic.zoom')}</span>
                 <input 
                   type="range" min="5" max="2000" step="5" value={zoom} 
                   onChange={e => setZoom(Number(e.target.value))}
@@ -261,12 +261,12 @@ const LogicAnalyzer = memo(() => {
            >
              {t('logic.clearCursors')}
            </button>
-           <button 
-             onClick={() => autoScroll.current = !autoScroll.current}
-             className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors font-bold ${autoScroll.current ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-800 text-gray-500'}`}
-           >
-             {autoScroll.current ? t('logic.running') : t('logic.paused')}
-           </button>
+            <button 
+              onClick={() => autoScroll.current = !autoScroll.current}
+              className={`px-2 py-1 rounded text-[9px] font-mono uppercase transition-colors font-bold ${autoScroll.current ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-800 text-gray-500'}`}
+            >
+              {autoScroll.current ? t('logic.running') : t('logic.paused')}
+            </button>
         </div>
       </div>
 

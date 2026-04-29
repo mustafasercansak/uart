@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { GeneratedFrame } from '../../types';
+import { useTranslation } from '../../i18n/context';
 
 interface Visualizer3DProps {
   lastFrame: GeneratedFrame | null;
 }
 
 export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Sparkline Canvas Refs for HUD
@@ -304,7 +306,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
         {/* Intro */}
         {isBooting && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/98 z-50">
-                <div className="text-cyan-400 font-black tracking-[0.8em] text-xl animate-pulse">CLINICAL SYNC ENGINE v7.0</div>
+                <div className="text-cyan-400 font-black tracking-[0.8em] text-xl animate-pulse">{t('visualizer.booting')}</div>
                 <div className="w-64 h-1 bg-white/5 mt-8 rounded-full overflow-hidden">
                     <div className="h-full bg-cyan-500 animate-progress origin-left" />
                 </div>
@@ -320,15 +322,15 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                 <div className="space-y-1">
                     <div className="flex items-center gap-4">
                         <div className={`w-4 h-4 rounded-sm ${isAlarm ? 'bg-rose-500 animate-ping' : 'bg-emerald-500 shadow-[0_0_20px_#10b981]'}`} />
-                        <span className="text-3xl font-black text-white tracking-widest uppercase [text-shadow:0_0_10px_rgba(255,255,255,0.2)]">MedNet Monitor</span>
+                        <span className="text-3xl font-black text-white tracking-widest uppercase [text-shadow:0_0_10px_rgba(255,255,255,0.2)]">{t('visualizer.monitorName')}</span>
                     </div>
-                    <span className="text-[11px] text-gray-500 font-black uppercase tracking-[0.4em] pl-8 opacity-60">Mustafa Sercan Sak Diagnostics • Bed-402A</span>
+                    <span className="text-[11px] text-gray-500 font-black uppercase tracking-[0.4em] pl-8 opacity-60">{t('visualizer.institution')} • {t('visualizer.bed')}</span>
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="text-white font-black text-3xl tracking-tighter tabular-nums [text-shadow:0_0_15px_rgba(255,255,255,0.2)]">
                         {new Date().toLocaleTimeString()}
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest px-4 py-1 bg-emerald-500/10 rounded-xl border border-emerald-500/20 mt-2">Zero-Latency Link</span>
+                    <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest px-4 py-1 bg-emerald-500/10 rounded-xl border border-emerald-500/20 mt-2">{t('visualizer.linkStatus')}</span>
                 </div>
             </div>
 
@@ -337,7 +339,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                 {/* Diagnostics Scope (v7 Enhanced) */}
                 <div className="p-8 bg-black/60 backdrop-blur-3xl border-l-[6px] border-l-cyan-500 rounded-3xl min-w-[450px] shadow-2xl animate-in fade-in slide-in-from-left duration-1000">
                     <div className="flex items-center justify-between mb-6">
-                        <span className="text-[12px] font-black text-cyan-500 tracking-widest uppercase italic">Live Protocol Analytics</span>
+                        <span className="text-[12px] font-black text-cyan-500 tracking-widest uppercase italic">{t('visualizer.analytics')}</span>
                         <div className="flex gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/40" />
@@ -346,23 +348,23 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                     {/* Diagnostic Monitor */}
                     <div className="h-20 w-full bg-black/80 rounded-2xl mb-6 p-3 border border-white/5 relative overflow-hidden">
                         <canvas ref={diagScopeRef} width={400} height={80} className="w-full h-full" />
-                        <div className="absolute top-2 right-4 text-[8px] text-cyan-600 font-black">250Hz SAMPLING</div>
+                        <div className="absolute top-2 right-4 text-[8px] text-cyan-600 font-black">{t('visualizer.sampling')}</div>
                     </div>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[11px] font-mono">
                         <div className="flex justify-between border-b border-white/5 pb-1">
-                            <span className="text-gray-500 uppercase">Packet ID:</span>
+                            <span className="text-gray-500 uppercase">{t('visualizer.packetId')}:</span>
                             <span className="text-white font-black">#{hudData.frameId}</span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-1">
-                            <span className="text-gray-500 uppercase">Consistency:</span>
-                            <span className="text-emerald-500 font-black uppercase tracking-widest">Fixed</span>
+                            <span className="text-gray-500 uppercase">{t('visualizer.consistency')}:</span>
+                            <span className="text-emerald-500 font-black uppercase tracking-widest">{t('visualizer.fixed')}</span>
                         </div>
                         <div className="flex justify-between pt-1">
-                            <span className="text-gray-500 uppercase">Throughput:</span>
+                            <span className="text-gray-500 uppercase">{t('visualizer.throughput')}:</span>
                             <span className="text-cyan-400 font-black">3.4 MB/s</span>
                         </div>
                         <div className="flex justify-between pt-1">
-                            <span className="text-gray-500 uppercase">Jitter:</span>
+                            <span className="text-gray-500 uppercase">{t('visualizer.jitter')}:</span>
                             <span className="text-emerald-500 font-black">0.02ms</span>
                         </div>
                     </div>
@@ -375,7 +377,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                     <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && hudData.bpm > 0 ? 'border-rose-600 bg-rose-950/40' : 'border-emerald-500'}`}>
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <div>
-                                <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">Heart Rate</div>
+                                <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">{t('visualizer.hr')}</div>
                                 <div className="flex items-baseline gap-2">
                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && hudData.bpm > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                                         {hudData.bpm || '--'}
@@ -399,7 +401,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                     <div className={`p-8 bg-black/60 backdrop-blur-3xl border-r-[10px] w-72 shadow-2xl transition-all duration-300 relative overflow-hidden ${isAlarm && hudData.spo2 < 90 ? 'border-rose-600 bg-rose-950/40' : 'border-cyan-500'}`}>
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <div>
-                                <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">O2 Saturation</div>
+                                <div className="text-[12px] text-gray-500 font-black uppercase tracking-widest mb-2">{t('visualizer.spo2')}</div>
                                 <div className="flex items-baseline gap-2">
                                     <span className={`text-7xl font-black tabular-nums tracking-tighter ${isAlarm && hudData.spo2 < 90 ? 'text-rose-500' : 'text-cyan-400'}`}>
                                         {hudData.spo2 || '--'}
@@ -419,11 +421,11 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                     {/* Secondary Cluster */}
                     <div className="flex gap-6">
                         <div className="p-6 bg-black/60 border-r-[6px] border-yellow-500 flex-1 text-center shadow-xl">
-                            <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">RR</span>
+                            <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">{t('visualizer.rr')}</span>
                             <span className="text-3xl font-black text-yellow-500">{hudData.resp || '--'}</span>
                         </div>
                         <div className="p-6 bg-black/60 border-r-[6px] border-purple-600 flex-1 text-center shadow-xl">
-                            <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">Temp</span>
+                            <span className="text-[10px] text-gray-600 font-black uppercase block mb-1">{t('visualizer.temp')}</span>
                             <span className="text-3xl font-black text-purple-400">{hudData.temp ? (hudData.temp/10).toFixed(1) : '--'}°</span>
                         </div>
                     </div>

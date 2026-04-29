@@ -9,6 +9,7 @@
     "collapse": "Collapse"
   },
   "common": {
+    "log": "Log",
     "live": "LIVE",
     "paused": "PAUSED",
     "idle": "IDLE",
@@ -21,7 +22,28 @@
     "resume": "Resume",
     "save": "Save",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "min": "Min",
+    "max": "Max",
+    "tcp": "TCP"
+  },
+  "scriptEditor": {
+    "title": "Advanced Logic Editor",
+    "subTitle": "Real-time Responder Script (JavaScript)",
+    "subtitle": "Real-time Dynamic Responder (NodeJS Environment)",
+    "save": "SAVE & APPLY",
+    "saved": "✓ Script Saved & Active",
+    "dynamicResponder": "Dynamic JS Responder",
+    "template": "/**\n * Dynamic Responder Script\n * ... */",
+    "saveScript": "SAVE SCRIPT",
+    "inputVars": "Input Variables",
+    "returnFormat": "Return Format",
+    "bytesVar": "Incoming raw byte array (number[])",
+    "stateVar": "Current simulation state (readonly)",
+    "sendHexVar": "Hex to send as response (string)",
+    "setFieldsVar": "Updated values for telemetry fields.",
+    "warning": "⚠ Be careful with infinite loops. Errors are logged to the console.",
+    "defaultCode": "// UART Script Engine v1.0\n// Incoming packet: bytes[] (array of numbers)\n// System state: state{}\n\nif (bytes[0] === 0x55) {\n  // Example: Calculate checksum and respond\n  return {\n    sendHex: \"AA BB CC\",\n    setFields: { \"Pulse\": 120 }\n  };\n}\n\nreturn null;"
   },
   "dashboard": {
     "profile": "Profile",
@@ -54,15 +76,39 @@
     "testsuite": "Test Suite",
     "builder": "Builder",
     "learn": "Learn Mode",
-    "viewReport": "VIEW REPORT"
+    "viewReport": "VIEW REPORT",
+    "widgetActive": "{count} WIDGET ACTIVE",
+    "resetLayout": "RESET LAYOUT",
+    "openDashboard": "Open Live Dashboard",
+    "closeDashboard": "Close Dashboard",
+    "settings": "Settings",
+    "widgetSettings": "WIDGET SETTINGS",
+    "type": "TYPE",
+    "minVal": "MIN VAL",
+    "maxVal": "MAX VAL",
+    "apply": "APPLY",
+    "widgets": {
+      "chart": "Waveform Chart",
+      "gauge": "Analog Gauge",
+      "led": "LED Indicator",
+      "7segment": "7-Segment Display"
+    }
   },
   "controls": {
-    "flags": "Flag Controls",
-    "overrides": "Field Overrides",
+    "flags": "FLAGS (Control)",
+    "colorCode": "Field Type Color Coding",
+    "goToProfiles": "Go to Profiles",
+    "categories": {
+      "Tıbbi": "Medical",
+      "Tıbbi (İnsanlık İçin)": "Medical (For Humanity)",
+      "Çevresel": "Environmental",
+      "Genel": "General"
+    },
     "reset": "Reset",
     "injection": "Error Injection",
     "pendingErrors": "{count} errors pending",
     "signalQuality": "Signal Quality",
+    "bitFlip": "Bit Flip",
     "noise": "Noise",
     "jitter": "Jitter",
     "console": "Console Logs",
@@ -100,6 +146,11 @@
     "triangle": "Triangle",
     "amplitude": "Amplitude",
     "phase": "Phase Offset",
+    "delimiterLabel": "Delimiter (\\n, \\r)",
+    "slipProtocol": "SLIP Protocol",
+    "cobsProtocol": "COBS Protocol",
+    "delimiterExample": "Ex: 0A",
+    "checksum": "Checksum",
     "saveProfile": "Save Profile",
     "fieldConfig": "Field Configuration",
     "name": "Name",
@@ -179,6 +230,12 @@
     "duplicate": "Are you sure you want to delete this profile?"
   },
   "validation": {
+    "sessionActive": "VALIDATION SESSION ACTIVE",
+    "startSession": "Start Validation Session",
+    "complianceMode": "Medical Compliance Mode v7.0",
+    "min": "Min",
+    "max": "Max",
+    "defaultOperator": "Default Operator",
     "startTitle": "Start Validation Session",
     "testName": "Test Name",
     "deviceId": "Device ID / Serial No",
@@ -188,7 +245,6 @@
     "fieldName": "Field Name (UART Field)",
     "unit": "Unit",
     "noCriteria": "No criteria defined. Please add a criterion.",
-    "startSession": "Start Session",
     "defaultTestName": "Standard Compliance Test",
     "printPdf": "Print as PDF",
     "passed": "VERIFIED - PASSED",
@@ -216,9 +272,23 @@
     "downloadReport": "Download Report",
     "simulationRequired": "⚠ Start simulation and generate frames",
     "noTests": "No tests — Start with \"Add Test\"",
-    "testNamePlaceholder": "Test name...",
-    "active": "Active",
+    "testNamePlaceholder": "Assertion name...",
     "selectField": "-- Select Field --",
+    "active": "Active",
+    "min": "Min",
+    "max": "Max",
+    "value": "Value",
+    "minFps": "Min FPS",
+    "byteCount": "Byte count",
+    "hexExample": "e.g. 55 AA",
+    "testNum": "Test {num}",
+    "pass": "PASS",
+    "fail": "FAIL",
+    "skip": "SKIP",
+    "summary": "Summary: {pass} PASS / {fail} FAIL / {skip} SKIP",
+    "failedFramesLabel": "Failed frames:",
+    "reportDate": "Date:",
+    "reportTotalFrames": "Total Frames:",
     "assertions": {
       "field_in_range": "Field in range",
       "field_equals": "Field equals",
@@ -269,7 +339,13 @@
     "duration": "Duration",
     "interval": "Send Interval",
     "fieldCount": "Field Count",
-    "crcFail": "CRC Failure",
+    "crcFail": "CRC Fail Rate",
+    "profileLabel": "Profile:",
+    "fps": "{count} fps",
+    "byte": "{count} B",
+    "minMax": "Min: {min}B / Max: {max}B",
+    "dateLabel": "Date:",
+    "successRatePct": "%{rate}",
     "errorTypeBreakdown": "Error Type Breakdown",
     "timelineTitle": "Frame Distribution Over Time (OK / Error)",
     "success": "Success",
@@ -298,7 +374,18 @@
     "copy": "Copy",
     "resend": "Resend",
     "noCalculation": "No Calculation",
-    "resendNote": "(resend)"
+    "resendNote": "Resent from history",
+    "hex": "Hex:",
+    "checksum": "Checksum:",
+    "xor": "XOR",
+    "sum256": "SUM MOD 256",
+    "crc16": "CRC-16 Modbus",
+    "sync": "Sync",
+    "addr": "Addr",
+    "fc": "FC",
+    "hi": "Hi",
+    "lo": "Lo",
+    "header": "Header"
   },
   "diagnostics": {
     "avgLatency": "Avg Latency",
@@ -326,13 +413,27 @@
     "recHelp": "Press REC to start recording a session"
   },
   "logic": {
-    "waiting": "WAITING FOR HARDWARE SIGNAL...",
+    "title": "Logic Analyzer v1.0",
+    "noData": "NO DATA STREAM DETECTED... START SIMULATION",
+    "zoom": "Zoom:",
+    "resetCursors": "Reset Cursors",
+    "liveSync": "Live Sync",
+    "staticView": "Static View",
+    "uartTx": "UART TX",
+    "controls": {
+      "scroll": "Scroll: Drag / Wheel",
+      "zoom": "Zoom: Ctrl + Wheel",
+      "measure": "Measure: Click to place A/B"
+    },
+    "baud": "Current Baud:",
+    "ms": "{t}ms",
+    "waiting": "WAITING FOR DATA... START SIMULATION",
     "clearCursors": "Clear Cursors",
-    "running": "● Running",
+    "running": "Running",
     "paused": "Paused",
     "scrollInstr": "Scroll: Wheel",
     "zoomInstr": "Zoom: Ctrl+Wheel",
-    "measureInstr": "Measure: Click to set A/B"
+    "measureInstr": "Measure: Click"
   },
   "errors": {
     "checksum": "Corrupt Checksum",
@@ -376,50 +477,45 @@
     "fiO2": "FiO2"
   },
   "scenarioEditor": {
+    "presets": {
+      "normalStart": "Normal Startup",
+      "normalStartDesc": "Transition scenario of the sensor to normal operation.",
+      "bradycardia": "Bradycardia Attack (Critical Drop)",
+      "bradycardiaDesc": "Simulates a sudden drop in pulse to a critical level. Ideal for testing alarms.",
+      "leadOff": "Sensor Disconnect (Lead-Off)",
+      "leadOffDesc": "Simulates physical sensor disconnection. All waveforms drop to zero.",
+      "stress": "CRC Stress Test",
+      "stressDesc": "Challenges receiver debugging capacity by sending checksum errors at high frequency."
+    },
+    "copy": "Copy",
     "scenarios": "Scenarios",
     "helpGuide": "Help Guide",
     "loadFromFile": "Load from File",
-    "templates": "Templates",
     "newScenario": "New Scenario",
-    "waitingForSelection": "Waiting for Scenario Selection",
-    "scenarioTitle": "Scenario Title...",
+    "stepCount": "{count} events",
+    "downloadScenario": "Download Scenario",
+    "waitingForSelection": "Waiting for Selection",
+    "scenarioTitle": "Scenario Title",
     "category": "Category",
-    "maxDuration": "Max Duration",
+    "maxDuration": "Duration",
     "deleteScenario": "Delete Scenario",
     "saved": "SAVED",
     "eventFlow": "Event Flow",
-    "addStep": "+ ADD STEP",
-    "firstStep": "Add the first step from the top right.",
+    "addStep": "Add Event",
+    "firstStep": "Add your first event to build the scenario",
     "parameters": "Parameters",
-    "waitingData": "Waiting for Data",
-    "timingHelp": "Timing (atMs)",
-    "timingDesc": "Determines how many milliseconds after simulation start this step will trigger. Steps are automatically sorted by time.",
-    "targetHelp": "Target (Target)",
-    "targetDesc": "You can target a field in your profile in the format `field:Name`. E.g: `field:BPM`",
+    "waitingData": "Select an event to edit parameters",
+    "timingHelp": "Timing",
+    "timingDesc": "Events are triggered sequentially based on milliseconds.",
+    "targetHelp": "Target",
+    "targetDesc": "You can target specific fields or the entire system.",
     "actionTypes": "Action Types",
-    "actionSet": "Changes the value instantly.",
-    "actionRamp": "Changes the value with a smooth transition (e.g. pulse drop).",
-    "actionInjectError": "Generates a protocol-level error (CRC/Sync).",
-    "quote": "\"You can use this tool to stress test your hardware when you don't have your sensor.\"",
-    "openDocs": "OPEN DETAILED GUIDE (NEW TAB)",
+    "actionSet": "Instantly sets a field value.",
+    "actionRamp": "Transitions a value smoothly over time.",
+    "actionInjectError": "Simulates communication/protocol errors.",
+    "quote": "Automation is the key to rigorous validation.",
+    "openDocs": "Open Automation Documentation",
     "libraryTemplates": "Library Templates",
-    "confirmDelete": "Are you sure you want to delete this scenario?",
-    "invalidFile": "Invalid scenario file!",
-    "copyOf": "(Copy)",
-    "newScenarioName": "New Scenario",
-    "unnamed": "Unnamed",
-    "downloadScenario": "Download Scenario",
-    "stepCount": "{count} steps",
-    "time": "Time (ms)",
-    "target": "Target (Field/Bit)",
-    "targetPlaceholder": "e.g: field:SpO2",
-    "action": "Action",
-    "errorType": "Error Type",
-    "checksumError": "Checksum Error",
-    "signalLoss": "Signal Loss",
-    "syncError": "Sync Error",
-    "notes": "Notes",
-    "notesPlaceholder": "Notes...",
     "categoryLabel": {
       "custom": "Custom",
       "physiological": "Physiological",
@@ -430,22 +526,37 @@
     },
     "actionLabel": {
       "set": "Set Value",
-      "range": "Change Range",
+      "range": "Random Range",
       "ramp": "Ramp Transition",
-      "toggle": "Toggle Bit",
-      "pulse": "Temporary Value",
-      "inject_error": "Inject Error",
+      "toggle": "Toggle",
+      "pulse": "Single Pulse",
+      "inject_error": "Error Injection",
       "unknown": "Unknown"
     },
     "actionField": {
       "value": "Value",
       "min": "Min",
       "max": "Max",
-      "from": "Start",
-      "to": "End",
+      "from": "From",
+      "to": "To",
       "durationMs": "Duration (ms)",
-      "count": "Count"
-    }
+      "count": "Error Count"
+    },
+    "time": "Time (ms)",
+    "target": "Target (field:Name)",
+    "action": "Action",
+    "errorType": "Error Type",
+    "checksumError": "Checksum Corruption",
+    "signalLoss": "Signal Loss (Skip Bytes)",
+    "syncError": "Sync / Header Error",
+    "notes": "Notes",
+    "notesPlaceholder": "What does this step simulate?",
+    "confirmDelete": "Are you sure you want to delete this scenario?",
+    "invalidFile": "Invalid scenario file!",
+    "newScenarioName": "New Scenario",
+    "unnamed": "Unnamed",
+    "copyOf": "(Copy)",
+    "targetPlaceholder": "e.g: field:SpO2"
   },
   "timeline": {
     "txSystem": "TX (System)",
@@ -453,7 +564,9 @@
     "noRealDevice": "No real device — TX only",
     "lastFrames": "Last {count} frames",
     "waitingComm": "Waiting for communication",
-    "clear": "CLEAR"
+    "clear": "CLEAR",
+    "txOut": "TX OUT",
+    "rxIn": "RX IN"
   },
   "conversationMonitor": {
     "title": "Live Encounter Log",
@@ -480,7 +593,10 @@
     "subtitle": "UART Simulator usage details and technical references",
     "loading": "Preparing Document...",
     "docVersion": "Documentation Version: v1.2",
-    "loadError": "Error loading document."
+    "loadError": "Error loading document.",
+    "userGuide": "User Guide",
+    "quickHelp": "Quick Help",
+    "readme": "README"
   },
   "diffLab": {
     "title": "Protocol Comparison Laboratory",
@@ -491,18 +607,8 @@
     "testPacket": "Test Packet (B)",
     "bitChangeMap": "Bit-Level Change Map (B)",
     "tip": "Tip: Fields marked in red show changed values between the two packets. The Bit-Level map shows the changes of packet (B) relative to packet (A).",
+    "bitTooltip": "Byte {byteIdx}, Bit {bitIdx}",
     "byteDetail": "Byte {index} ({name}) Detail:"
-  },
-  "scriptEditor": {
-    "title": "Advanced Logic Editor",
-    "saveScript": "SAVE SCRIPT",
-    "inputVars": "Input Variables",
-    "returnFormat": "Return Format",
-    "bytesVar": "Incoming raw byte array (number[])",
-    "stateVar": "Current simulation state (readonly)",
-    "sendHexVar": "Hex to send as response (string)",
-    "setFieldsVar": "Fields to override (Object)",
-    "warning": "Warning: Scripts run in real-time when rules match. Avoid complex loops."
   },
   "protocolDecoder": {
     "title": "Protocol Decoder",
@@ -523,7 +629,9 @@
     "clearHistory": "Clear History"
   },
   "statBar": {
-    "serialPort": "Serial Port"
+    "serialPort": "Serial Port",
+    "noPort": "No port",
+    "unknown": "Unknown"
   },
   "triggerManager": {
     "title": "Trigger Engine",
@@ -547,9 +655,10 @@
     }
   },
   "visualAnalyzer": {
-    "title": "Visual Protocol Analyzer (Bit-Level)",
-    "waitingData": "Waiting for data for analyzer...",
-    "byteDetail": "Byte {index} ({name}) Detail:"
+    "title": "Visual Protocol Stream Analyzer",
+    "waitingData": "NO ACTIVE DATA FLOW DETECTED",
+    "byteDetail": "Byte {index} ({name}) Detail:",
+    "bit": "Bit {index}"
   },
   "waveformCharts": {
     "signalMonitor": "Signal Monitor · Waveforms",
@@ -562,26 +671,33 @@
     "frequency": "Frequency (Loose)",
     "resetCursors": "Reset Cursors",
     "openChannels": "Open channels from above — will be added to grid",
-    "cursorsToggle": "Toggle Lab Measurement Cursors"
+    "cursorsToggle": "Toggle Lab Measurement Cursors",
+    "live": "LIVE"
   },
   "templateBrowser": {
     "title": "Template Library",
-    "subtitle": "Create profiles and scenarios from ready-made sensor templates",
+    "subtitle": "Pre-configured sensor simulation templates",
+    "all": "All",
+    "categories": {
+      "all": "All",
+      "Tıbbi": "Medical",
+      "Tıbbi (İnsanlık İçin)": "Medical (For Humanity)",
+      "Çevresel": "Environmental",
+      "Genel": "General"
+    },
     "frameStructure": "Frame Structure",
     "interval": "{ms}ms interval",
-    "scenarios": "{count} scenario",
-    "created": "✓ Profile created!",
-    "applying": "Creating...",
-    "useTemplate": "⚡ Use This Template",
+    "scenarios": "{count} scenarios",
+    "created": "Applied to Simulation",
+    "applying": "Applying...",
+    "useTemplate": "Use This Template",
     "goToProfiles": "Go to Profiles",
-    "colorCode": "Field Color Code",
-    "fixed": "fixed — Fixed",
-    "range": "range — Random Range",
-    "waveform": "waveform — Waveform",
-    "checksum": "checksum — Checksum",
-    "flags": "flags — Flags",
-    "all": "All",
-    "filterAll": "All"
+    "colorCode": "Field Type Color Coding",
+    "fixed": "Fixed",
+    "range": "Range",
+    "waveform": "Waveform",
+    "checksum": "Checksum",
+    "flags": "Flags"
   },
   "helpPage": {
     "backToSystem": "Back to System",
@@ -593,16 +709,26 @@
     "techNoteText": "The documentation portal is updated with each version.",
     "loadingText": "Decoding Info Package",
     "scrollTop": "SCROLL TO TOP ↑",
-    "loadError": "# Error\nAn issue occurred while loading the document."
+    "loadError": "# Error\nAn issue occurred while loading the document.",
+    "trTitle": "User Manual (Turkish)",
+    "enTitle": "Quick Help (English)",
+    "readmeTitle": "README (Technical)",
+    "trLang": "Turkish",
+    "enLang": "English",
+    "readmeLang": "General",
+    "developer": "Mustafa Sercan Sak",
+    "date": "April 16, 2026"
   },
   "telemetryPanel": {
     "waitingData": "Waiting for data stream...",
     "startSimulation": "Start simulation or connect external device",
     "dashboardReady": "Dashboard Ready",
     "noWidgets": "No widgets added yet.",
-    "pinFromSidebar": "Use the pin icons in the sidebar (Frame Monitor) or Decoder panel to add fields here.",
-    "applyTemplate": "Apply Template Layout",
-    "loadWidgets": "Load {name} default widgets",
+    "pinFromSidebar": "You can pin fields from the Profile sidebar or use the Dissector tool in the live stream.",
+    "applyTemplate": "Apply Smart Layout",
+    "loadWidgets": "Load {name} widgets",
+    "pinInstructions": "PIN FIELDS FROM SIDEBAR OR DISSECTOR",
+    "autoSave": "Auto-Save Active",
     "designerMode": "Designer Mode"
   },
   "automation": {
@@ -628,5 +754,303 @@
     "ready": "READY",
     "pass": "PASS:",
     "fail": "FAIL:"
+  },
+  "onboarding": {
+    "skip": "SKIP TOUR",
+    "back": "← BACK",
+    "welcome": {
+      "title": "Welcome to the ICU Simulator",
+      "subtitle": "Learn how medical devices communicate — visually, in real time.",
+      "body": "This simulator lets you run real UART protocol data through 3D medical device twins. You can see exactly how a patient monitor, ventilator, IV pump, and pulse oximeter exchange bytes over a serial connection.",
+      "tip": "No hardware needed. Everything runs in your browser.",
+      "action": "Get Started →",
+      "monitor": "Patient Monitor",
+      "ventilator": "Ventilator",
+      "pump": "IV Pump",
+      "oximeter": "Pulse Oximeter"
+    },
+    "profile": {
+      "title": "Step 1: Choose a Sensor Profile",
+      "subtitle": "A profile defines the UART frame structure for a device.",
+      "body": "Each medical sensor sends data in a specific byte format. The profile tells the simulator which bytes represent heart rate, SpO₂, temperature, and so on. You can use a built-in template or build your own.",
+      "tip": "Try the \"YS2000A Patient Monitor\" template to start immediately.",
+      "action": "Browse Templates →",
+      "exampleFrame": "EXAMPLE UART FRAME",
+      "sync": "Sync byte",
+      "hr": "Heart Rate = 75 BPM",
+      "spo2": "SpO₂ = 98%",
+      "temp": "Temperature = 36.5°C",
+      "crc": "CRC checksum"
+    },
+    "simulate": {
+      "title": "Step 2: Run the Simulation",
+      "subtitle": "Watch the devices come alive with real data.",
+      "body": "Press Start on the dashboard. The simulator generates UART frames at the configured baud rate and interval. Each frame updates the 3D device twins, waveform charts, logic analyzer, and protocol decoder — simultaneously.",
+      "tip": "Open the \"3D Visualizer\" tab to see the ICU room. Click any device to zoom in and read its UART data explanation.",
+      "action": "Go to Dashboard →",
+      "visualizer": "3D Visualizer",
+      "visualizerDesc": "ICU room with clickable device twins",
+      "waveforms": "Waveforms",
+      "waveformsDesc": "Live ECG, SpO₂ and pressure curves",
+      "logic": "Logic Analyzer",
+      "logicDesc": "Bit-level UART signal timing",
+      "decoder": "Decoder",
+      "decoderDesc": "Human-readable protocol breakdown",
+      "learn": "Learn Mode",
+      "learnDesc": "Guided step-by-step walkthroughs"
+    }
+  },
+  "learning": {
+    "title": "Learning Mode",
+    "subtitle": "Step-by-step lessons that teach UART protocols through live simulation data.",
+    "done": "✓ DONE",
+    "stepsCount": "{count} steps",
+    "loadProfileWarning": "⚠ Load a compatible profile first",
+    "tip": "Tip:",
+    "globalTip": "Start a simulation first, then work through the lessons in order. Each lesson references live data from the running simulation.",
+    "backToLessons": "← Lessons",
+    "stepProgress": "Step {current} of {total}",
+    "byteLayout": "BYTE LAYOUT",
+    "liveValue": "LIVE VALUE",
+    "fieldNotFound": "Field \"{field}\" not found in active profile.",
+    "startSimulationPrompt": "Start the simulation to see live values.",
+    "currentFrameHex": "CURRENT FRAME HEX",
+    "watchingCondition": "Watching for condition — will auto-advance when met",
+    "back": "← BACK",
+    "next": "NEXT →",
+    "completeLesson": "✓ COMPLETE LESSON",
+    "lessons": {
+      "uartBasics": {
+        "title": "How UART Works",
+        "desc": "Understand the byte-by-byte structure of a serial UART frame.",
+        "steps": {
+          "start": {
+            "title": "What is UART?",
+            "explanation": "UART stands for Universal Asynchronous Receiver-Transmitter. It is the most common serial protocol used in medical devices, sensors, and industrial equipment. Both sides agree on a speed (baud rate) and then exchange data one byte at a time.",
+            "tip": "Start the simulation and watch the Frame Monitor — each row is one UART transmission."
+          },
+          "anatomy": {
+            "title": "Anatomy of a Frame",
+            "explanation": "Every UART transmission follows a fixed structure: a START bit (logic LOW), then 8 data bits (LSB first), an optional PARITY bit for error detection, and finally a STOP bit (logic HIGH). The \"frame\" in this simulator is a packet of multiple bytes sent together.",
+            "byteAnnotation": "START | D0 D1 D2 D3 D4 D5 D6 D7 | PARITY | STOP",
+            "tip": "Open the Logic Analyzer tab to see individual bit transitions for each byte."
+          },
+          "baud": {
+            "title": "Baud Rate = Speed",
+            "explanation": "The baud rate defines how many symbols per second are transmitted. At 9600 baud, each bit lasts ~104 µs. At 115200 baud, each bit lasts ~8.7 µs. Both sides must use the same baud rate — even a 1% mismatch causes framing errors.",
+            "tip": "Change the baud rate in the Profile Editor and watch how the Logic Analyzer bit widths change."
+          },
+          "checksum": {
+            "title": "Error Detection with Checksums",
+            "explanation": "Medical devices add a checksum byte at the end of each frame. The receiver independently calculates the checksum from the received bytes. If it does not match, the frame is rejected. Common algorithms: XOR, Sum-Mod-256, CRC8, CRC16-CCITT.",
+            "tip": "Use the Error Injection panel to corrupt the checksum and watch the receiver reject the frame."
+          }
+        }
+      },
+      "patientMonitor": {
+        "title": "Patient Monitor Deep Dive",
+        "desc": "Learn how a bedside patient monitor encodes and transmits vital signs over UART.",
+        "steps": {
+          "intro": {
+            "title": "The Patient Monitor",
+            "explanation": "A patient monitor continuously measures and displays vital signs: heart rate (ECG), blood oxygen saturation (SpO₂), respiratory rate, and temperature. All of these are digitised and packed into a UART frame that is transmitted every 40–100 ms.",
+            "tip": "Click the Patient Monitor in the 3D view to see its live values."
+          },
+          "heartRate": {
+            "title": "Heart Rate Byte",
+            "explanation": "The BPM (beats per minute) value is stored as a single byte (0–255). A value of 75 is encoded as 0x4B. The receiver reads this byte, validates it is within physiological range (typically 30–250 BPM), and displays it. Values outside range trigger an alarm flag in the status byte.",
+            "byteAnnotation": "75 BPM → 0x4B",
+            "tip": "Watch the BPM field in the Frame Monitor as the simulation runs."
+          },
+          "spo2": {
+            "title": "SpO₂ Byte",
+            "explanation": "Blood oxygen saturation is sent as a percentage (0–100). A healthy value like 98% is encoded as 0x62. If the value drops below 90%, the alarm byte flips bit 1, and the monitor sounds an audible alert. The 3D patient monitor will also turn red.",
+            "byteAnnotation": "98% SpO₂ → 0x62",
+            "tip": "Use the Error Injection panel to simulate a \"Low SpO₂\" event and watch the 3D alarm ring appear."
+          },
+          "ecg": {
+            "title": "ECG Waveform Samples",
+            "explanation": "In addition to the numeric BPM, the monitor transmits raw ECG waveform samples at 250 Hz. Each sample is a 12-bit value (0–4095) stored in 2 bytes (big-endian). The receiver renders these into the characteristic PQRST waveform you see on hospital screens.",
+            "byteAnnotation": "ECG sample 2048 → 0x08 0x00 (big-endian)",
+            "tip": "Open the Waveforms tab to see the live ECG reconstruction from these bytes."
+          }
+        }
+      },
+      "signalIntegrity": {
+        "title": "Signal Integrity & Noise",
+        "desc": "Explore what happens to UART data when the electrical signal degrades.",
+        "steps": {
+          "perfect": {
+            "title": "A Perfect Signal",
+            "explanation": "In ideal conditions, a UART TX line sits at logic HIGH (e.g., +3.3V or +5V) between frames. Each bit transition is sharp and clean. The receiver samples the line at the center of each bit period, so small timing variations do not matter.",
+            "tip": "In the Signal Integrity panel, set noise and jitter to zero and observe the Logic Analyzer."
+          },
+          "noise": {
+            "title": "Electrical Noise",
+            "explanation": "Real cables pick up electromagnetic interference (EMI) from nearby motors, power lines, or radio signals. This corrupts individual bits — a 1 becomes a 0 or vice versa. The result: framing errors or wrong data values. UART has no built-in retry mechanism, which is why checksums are critical.",
+            "tip": "Increase the Noise Level slider in Signal Integrity and watch the error count climb in the Status Bar."
+          },
+          "jitter": {
+            "title": "Clock Jitter",
+            "explanation": "Jitter is timing uncertainty — the bit edges arrive slightly early or late. Since both sides run independent clocks (asynchronous!), any frequency mismatch compounds over the 10 bits in a frame. Excessive jitter causes the receiver to sample the wrong bit. Maximum tolerance is typically ±2–3%.",
+            "tip": "Enable Bit Flip in Signal Integrity and watch random bytes get corrupted in the Frame Monitor."
+          },
+          "solutions": {
+            "title": "Engineering Solutions",
+            "explanation": "Engineers use hardware solutions (shielded cables, twisted pairs, RS-422/485 differential signalling) and software solutions (CRC checksums, retransmission, redundant sensors) to handle real-world signal degradation. In critical medical devices, all of these are required simultaneously.",
+            "tip": "Try enabling all three signal integrity options at once and observe how quickly the system degrades."
+          }
+        }
+      }
+    }
+  },
+  "simulation": {
+    "validation": {
+      "returnedToNormal": "{field} returned to normal: {value} {unit}",
+      "outOfLimits": "{field} out of limits: {value} {unit} (Expected: {min}-{max})",
+      "sessionStarted": "Validation session started: {name}",
+      "sessionStartedLog": "VALIDATION STARTED: {name}",
+      "sessionCompleted": "VALIDATION COMPLETED. Score: {score}%"
+    },
+    "network": {
+      "invalidPort": "Invalid TCP port: {port}",
+      "connected": "Network connected: {url}",
+      "disconnected": "Network connection lost",
+      "rxNet": "RX (NET): {hex}"
+    },
+    "recording": {
+      "started": "Recording started...",
+      "playbackStarted": "Playback started: {count} frames."
+    }
+  },
+  "trace": {
+    "title": "Live Trace Stream",
+    "packets": "{count} PACKETS",
+    "filterPlaceholder": "Filter: bpm > 100 && status == ok | id == 0x01 | contains...",
+    "noTraffic": "No traffic detected matching current filter...",
+    "headers": {
+      "no": "No.",
+      "time": "Time",
+      "source": "Source",
+      "size": "Size",
+      "status": "Status",
+      "info": "Info / Data Stream"
+    },
+    "source": {
+      "tx": "TX Master",
+      "rx": "RX Slave"
+    },
+    "status": {
+      "loopback": "Loopback Perfect Match",
+      "matched": "MATCHED",
+      "mismatch": "MISMATCH / ERROR"
+    },
+    "latency": "{ms}ms latency",
+    "bitrate": "BITRATE:",
+    "encoding": "ENCODING:",
+    "baud": "9600 BAUD",
+    "encodingValue": "8N1"
+  },
+  "spectrum": {
+    "title": "Spectral Analysis",
+    "source": "Source: {key}",
+    "selectSignal": "Select a signal for FFT",
+    "window": "Window:",
+    "rectangular": "Rectangular",
+    "hanning": "Hanning",
+    "hamming": "Hamming",
+    "insufficientData": "Insufficient Data",
+    "waitSignal": "FFT requires at least 256 data points. Please wait for signal accumulation.",
+    "nyquistLimit": "Nyquist Limit",
+    "engineActive": "Cooley-Tukey Radix-2 Real-Time Engine active",
+    "db": "{value} dB",
+    "hz": "0 Hz",
+    "resolution": "Resolution: {count} bins"
+  },
+  "validationReport": {
+    "title": "MedNet Monitor",
+    "suite": "Advanced Laboratory Validation Suite",
+    "docId": "DOC-ID:",
+    "date": "Date:",
+    "device": "Device:",
+    "status": "Status:",
+    "institution": "Institution:",
+    "institutionName": "Mustafa Sercan Sak Diagnostics",
+    "system": "System:",
+    "systemName": "ClinicSync Engine v7.1",
+    "compliance": "Compliance",
+    "copyright": "© 2026 MedNet Suite - Automated Certification Tool",
+    "integrityNotice": "This report was digitally generated and hash-verified for integrity.",
+    "hash": "HASH:",
+    "value": "Value:"
+  },
+  "inspector": {
+    "title": "Dissector Engine",
+    "verified": "Integrity Verified",
+    "deepAnalysis": "Deep Analysis",
+    "copyHex": "Copy Hex",
+    "copyCStruct": "Copy as C-Struct",
+    "copyJson": "Copy as JSON",
+    "snapshot": "Snapshot",
+    "masterTx": "Master TX",
+    "slaveRx": "Slave RX",
+    "field": "Field",
+    "hex": "Hex",
+    "dec": "Dec",
+    "action": "Action",
+    "addChart": "Add Chart",
+    "addGauge": "Add Gauge",
+    "addLed": "Add LED",
+    "add7Segment": "Add 7-Segment",
+    "diffAnalysis": "Binary Diff Analysis",
+    "integrityFailure": "INTEGRITY FAILURE",
+    "masterStream": "Master Data Stream",
+    "slaveStream": "Slave Data Stream"
+  },
+  "liveDashboard": {
+    "hudEmpty": "HUD Empty",
+    "pinInstructions": "Pin fields from the Dissector to populate your live telemetry HUD.",
+    "telemetryHud": "TELEMETRY HUD",
+    "activeSystemsMonitor": "Active Systems Monitor",
+    "activeWatchers": "Active Watchers",
+    "snapshotLibrary": "Snapshot Library",
+    "frameNum": "FRAME #{num}",
+    "mode": "{type} mode",
+    "summary": "Active Watchers: {watchlist} | Snapshots: {snapshots}"
+  },
+  "hardware": {
+    "txActive": "TX Active",
+    "rxActive": "RX Active",
+    "power": "Power",
+    "uartBus": "UART (TX/RX)",
+    "i2cBus": "I2C (SCL/SDA)",
+    "spiBus": "SPI Bus"
+  },
+  "frameMonitor": {
+    "liveFrame": "Live Frame Monitor",
+    "recentFrames": "Recent Frames",
+    "waitingData": "Waiting for data...",
+    "slotARef": "Slot A (Reference)",
+    "slotBTest": "Slot B (Test)",
+    "hex": "HEX:",
+    "addToDashboard": "Add to Dashboard ({name})"
+  },
+  "visualizer": {
+    "booting": "CLINICAL SYNC ENGINE v7.0",
+    "monitorName": "MedNet Monitor",
+    "institution": "Mustafa Sercan Sak Diagnostics",
+    "bed": "Bed-402A",
+    "linkStatus": "Zero-Latency Link",
+    "analytics": "Live Protocol Analytics",
+    "sampling": "250Hz SAMPLING",
+    "packetId": "Packet ID",
+    "consistency": "Consistency",
+    "fixed": "Fixed",
+    "throughput": "Throughput",
+    "jitter": "Jitter",
+    "hr": "Heart Rate",
+    "spo2": "O2 Saturation",
+    "rr": "RR",
+    "temp": "Temp"
   }
 }

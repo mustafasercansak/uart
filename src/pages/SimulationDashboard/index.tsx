@@ -404,7 +404,7 @@ export default function SimulationDashboard() {
                     className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-2 bg-brand/10 hover:bg-brand/20 border border-brand/20 text-brand rounded-l-xl shadow-lg transition-all duration-300 ${
                       isDashboardOpen ? 'translate-x-0' : 'translate-x-[-12px] scale-110'
                     }`}
-                    title={isDashboardOpen ? "Close Dashboard" : "Open Live Dashboard"}
+                    title={isDashboardOpen ? t('dashboard.closeDashboard') : t('dashboard.openDashboard')}
                 >
                     <LayoutDashboard size={18} />
                     {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand rounded-full animate-pulse border-2 border-[#030712]" />}

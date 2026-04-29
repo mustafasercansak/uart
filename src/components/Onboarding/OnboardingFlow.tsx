@@ -1,97 +1,99 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from '../../i18n/context';
 
 const STORAGE_KEY = 'uart_onboarding_done';
-
-const STEPS = [
-  {
-    id: 'welcome',
-    title: 'Welcome to the ICU Simulator',
-    subtitle: 'Learn how medical devices communicate — visually, in real time.',
-    body: 'This simulator lets you run real UART protocol data through 3D medical device twins. You can see exactly how a patient monitor, ventilator, IV pump, and pulse oximeter exchange bytes over a serial connection.',
-    tip: 'No hardware needed. Everything runs in your browser.',
-    action: 'Get Started →',
-    visual: (
-      <div className="grid grid-cols-2 gap-3 text-center">
-        {[
-          { icon: '🏥', label: 'Patient Monitor', color: '#10b981' },
-          { icon: '💨', label: 'Ventilator', color: '#3b82f6' },
-          { icon: '💉', label: 'IV Pump', color: '#f59e0b' },
-          { icon: '🩺', label: 'Pulse Oximeter', color: '#ec4899' },
-        ].map(d => (
-          <div key={d.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
-            <div className="text-3xl mb-2">{d.icon}</div>
-            <div className="text-[11px] font-black tracking-widest" style={{ color: d.color }}>{d.label}</div>
-          </div>
-        ))}
-      </div>
-    ),
-  },
-  {
-    id: 'profile',
-    title: 'Step 1: Choose a Sensor Profile',
-    subtitle: 'A profile defines the UART frame structure for a device.',
-    body: 'Each medical sensor sends data in a specific byte format. The profile tells the simulator which bytes represent heart rate, SpO₂, temperature, and so on. You can use a built-in template or build your own.',
-    tip: 'Try the "YS2000A Patient Monitor" template to start immediately.',
-    action: 'Browse Templates →',
-    visual: (
-      <div className="bg-black/40 rounded-xl border border-white/10 p-4 font-mono text-xs space-y-2">
-        <div className="text-gray-500 text-[10px] tracking-widest mb-3">EXAMPLE UART FRAME</div>
-        {[
-          { byte: '0x01', label: 'Sync byte', color: '#6366f1' },
-          { byte: '0x4B', label: 'Heart Rate = 75 BPM', color: '#10b981' },
-          { byte: '0x62', label: 'SpO₂ = 98%', color: '#06b6d4' },
-          { byte: '0x12', label: 'Temperature = 36.5°C', color: '#f59e0b' },
-          { byte: '0xA3', label: 'CRC checksum', color: '#6b7280' },
-        ].map(row => (
-          <div key={row.byte} className="flex items-center gap-3">
-            <span className="w-12 text-right font-black" style={{ color: row.color }}>{row.byte}</span>
-            <span className="text-gray-400">{row.label}</span>
-          </div>
-        ))}
-      </div>
-    ),
-  },
-  {
-    id: 'simulate',
-    title: 'Step 2: Run the Simulation',
-    subtitle: 'Watch the devices come alive with real data.',
-    body: 'Press Start on the dashboard. The simulator generates UART frames at the configured baud rate and interval. Each frame updates the 3D device twins, waveform charts, logic analyzer, and protocol decoder — simultaneously.',
-    tip: 'Open the "3D Visualizer" tab to see the ICU room. Click any device to zoom in and read its UART data explanation.',
-    action: 'Go to Dashboard →',
-    visual: (
-      <div className="space-y-3">
-        {[
-          { tab: '3D Visualizer', desc: 'ICU room with clickable device twins', color: '#6366f1' },
-          { tab: 'Waveforms', desc: 'Live ECG, SpO₂, and pressure curves', color: '#10b981' },
-          { tab: 'Logic Analyzer', desc: 'Bit-level UART signal timing', color: '#06b6d4' },
-          { tab: 'Decoder', desc: 'Human-readable protocol breakdown', color: '#f59e0b' },
-          { tab: 'Learn Mode', desc: 'Guided step-by-step walkthroughs', color: '#ec4899' },
-        ].map(row => (
-          <div key={row.tab} className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2 border border-white/5">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
-            <span className="font-black text-[11px] tracking-widest text-white w-32">{row.tab}</span>
-            <span className="text-gray-500 text-[11px]">{row.desc}</span>
-          </div>
-        ))}
-      </div>
-    ),
-  },
-];
 
 interface Props {
   onDone: () => void;
 }
 
 export default function OnboardingFlow({ onDone }: Props) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+
+  const STEPS = [
+    {
+      id: 'welcome',
+      title: t('onboarding.welcome.title'),
+      subtitle: t('onboarding.welcome.subtitle'),
+      body: t('onboarding.welcome.body'),
+      tip: t('onboarding.welcome.tip'),
+      action: t('onboarding.welcome.action'),
+      visual: (
+        <div className="grid grid-cols-2 gap-3 text-center">
+          {[
+            { icon: '🏥', label: t('onboarding.welcome.monitor'), color: '#10b981' },
+            { icon: '💨', label: t('onboarding.welcome.ventilator'), color: '#3b82f6' },
+            { icon: '💉', label: t('onboarding.welcome.pump'), color: '#f59e0b' },
+            { icon: '🩺', label: t('onboarding.welcome.oximeter'), color: '#ec4899' },
+          ].map(d => (
+            <div key={d.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <div className="text-3xl mb-2">{d.icon}</div>
+              <div className="text-[11px] font-black tracking-widest" style={{ color: d.color }}>{d.label}</div>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: 'profile',
+      title: t('onboarding.profile.title'),
+      subtitle: t('onboarding.profile.subtitle'),
+      body: t('onboarding.profile.body'),
+      tip: t('onboarding.profile.tip'),
+      action: t('onboarding.profile.action'),
+      visual: (
+        <div className="bg-black/40 rounded-xl border border-white/10 p-4 font-mono text-xs space-y-2">
+          <div className="text-gray-500 text-[10px] tracking-widest mb-3">{t('onboarding.profile.exampleFrame')}</div>
+          {[
+            { byte: '0x01', label: t('onboarding.profile.sync'), color: '#6366f1' },
+            { byte: '0x4B', label: t('onboarding.profile.hr'), color: '#10b981' },
+            { byte: '0x62', label: t('onboarding.profile.spo2'), color: '#06b6d4' },
+            { byte: '0x12', label: t('onboarding.profile.temp'), color: '#f59e0b' },
+            { byte: '0xA3', label: t('onboarding.profile.crc'), color: '#6b7280' },
+          ].map(row => (
+            <div key={row.byte} className="flex items-center gap-3">
+              <span className="w-12 text-right font-black" style={{ color: row.color }}>{row.byte}</span>
+              <span className="text-gray-400">{row.label}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: 'simulate',
+      title: t('onboarding.simulate.title'),
+      subtitle: t('onboarding.simulate.subtitle'),
+      body: t('onboarding.simulate.body'),
+      tip: t('onboarding.simulate.tip'),
+      action: t('onboarding.simulate.action'),
+      visual: (
+        <div className="space-y-3">
+          {[
+            { tab: t('onboarding.simulate.visualizer'), desc: t('onboarding.simulate.visualizerDesc'), color: '#6366f1' },
+            { tab: t('onboarding.simulate.waveforms'), desc: t('onboarding.simulate.waveformsDesc'), color: '#10b981' },
+            { tab: t('onboarding.simulate.logic'), desc: t('onboarding.simulate.logicDesc'), color: '#06b6d4' },
+            { tab: t('onboarding.simulate.decoder'), desc: t('onboarding.simulate.decoderDesc'), color: '#f59e0b' },
+            { tab: t('onboarding.simulate.learn'), desc: t('onboarding.simulate.learnDesc'), color: '#ec4899' },
+          ].map(row => (
+            <div key={row.tab} className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2 border border-white/5">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+              <span className="font-black text-[11px] tracking-widest text-white w-32">{row.tab}</span>
+              <span className="text-gray-500 text-[11px]">{row.desc}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+  ];
+
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
   const handleAction = () => {
     if (step === 1) {
-      // Go to templates
       localStorage.setItem(STORAGE_KEY, '1');
       onDone();
       navigate('/templates');
@@ -155,7 +157,7 @@ export default function OnboardingFlow({ onDone }: Props) {
               onClick={handleSkip}
               className="text-gray-600 text-xs font-black tracking-widest hover:text-gray-400 transition-colors"
             >
-              SKIP TOUR
+              {t('onboarding.skip')}
             </button>
             <div className="flex items-center gap-3">
               {step > 0 && (
@@ -163,7 +165,7 @@ export default function OnboardingFlow({ onDone }: Props) {
                   onClick={() => setStep(s => s - 1)}
                   className="px-4 py-2 text-xs font-black tracking-widest text-gray-400 border border-white/10 rounded-xl hover:border-white/20 transition-all"
                 >
-                  ← BACK
+                  {t('onboarding.back')}
                 </button>
               )}
               <button

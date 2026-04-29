@@ -181,15 +181,15 @@ function ChecksumBar({ bytes }: { bytes: number[] }) {
 
   return (
     <div className="flex items-center gap-3 px-3 py-2 bg-gray-900/50 rounded-lg border border-gray-800/50 text-[10px] font-mono">
-      <span className="text-gray-500">Checksum:</span>
+      <span className="text-gray-500">{t('builder.checksum')}</span>
       <select
         value={algo}
         onChange={(e) => setAlgo(e.target.value as CSAlgo)}
         className="bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-1.5 py-0.5"
       >
-        <option value="xor">XOR</option>
-        <option value="sum256">SUM MOD 256</option>
-        <option value="crc16_modbus">CRC-16 Modbus</option>
+        <option value="xor">{t('builder.xor')}</option>
+        <option value="sum256">{t('builder.sum256')}</option>
+        <option value="crc16_modbus">{t('builder.crc16')}</option>
         <option value="none">{t('builder.noCalculation')}</option>
       </select>
       {result !== null && (
@@ -262,11 +262,11 @@ interface Props {
 export default function FrameBuilder({ profile, onSendFrame }: Props) {
   const { t } = useTranslation();
   const [cells, setCells] = useState<ByteCell[]>([
-    { id: makeId(), hex: 'AA', label: 'Sync' },
-    { id: makeId(), hex: '01', label: 'Addr' },
-    { id: makeId(), hex: '03', label: 'FC' },
-    { id: makeId(), hex: '00', label: 'Hi' },
-    { id: makeId(), hex: '00', label: 'Lo' },
+    { id: makeId(), hex: 'AA', label: t('builder.sync') },
+    { id: makeId(), hex: '01', label: t('builder.addr') },
+    { id: makeId(), hex: '03', label: t('builder.fc') },
+    { id: makeId(), hex: '00', label: t('builder.hi') },
+    { id: makeId(), hex: '00', label: t('builder.lo') },
   ]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -347,7 +347,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
     const headerCells: ByteCell[] = profile.framing.header.map((b, i) => ({
       id: makeId(),
       hex: b.toString(16).padStart(2, '0').toUpperCase(),
-      label: i === 0 ? 'Header' : '',
+      label: i === 0 ? t('builder.header') : '',
       locked: true,
     }));
     const remaining = cells.filter((c) => !c.locked);
@@ -456,7 +456,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
 
         {/* Hex preview */}
         <div className="flex items-center gap-3 px-3 py-2 bg-gray-950/60 rounded-lg border border-gray-800/40 text-[11px]">
-          <span className="text-gray-500 shrink-0">Hex:</span>
+          <span className="text-gray-500 shrink-0">{t('builder.hex')}</span>
           <span className="flex-1 text-emerald-300 font-bold break-all">{hexString || '—'}</span>
           <span className="text-gray-600 shrink-0">{bytes.length} byte</span>
         </div>

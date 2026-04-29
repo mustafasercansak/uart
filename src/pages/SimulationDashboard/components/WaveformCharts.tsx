@@ -65,7 +65,7 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
     setGridPanels(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   }, []);
 
-  if (!selectedProfile || waveformHistory.length <= 1) return null;
+  if (!selectedProfile) return null;
 
   const waveformFields = selectedProfile.fields.filter(f => f.type === 'waveform');
   const toggleableFields = selectedProfile.fields.filter(f => f.type !== 'waveform' && f.type !== 'checksum');
@@ -99,7 +99,7 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
                     <span className="text-[9px] font-mono font-bold uppercase tracking-wider" style={{ color, textShadow: `0 0 8px ${color}80` }}>
                       {f.name}
                     </span>
-                    <span className="text-[8px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">LIVE</span>
+                    <span className="text-[8px] font-mono text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">{t('waveformCharts.live')}</span>
                   </div>
                   <div className="absolute top-2 right-4 z-10 text-base font-bold font-mono tabular-nums pointer-events-none" style={{ color, textShadow: `0 0 10px ${color}60` }}>
                     {cv}
@@ -155,7 +155,7 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
               title={t('waveformCharts.cursorsToggle')}
             >
               <MousePointer2 size={12} />
-              <span className="text-[9px] font-bold font-mono">LAB CURSORS</span>
+              <span className="text-[9px] font-bold font-mono">{t('waveformCharts.labCursors')}</span>
             </button>
           </div>
         </div>

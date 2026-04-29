@@ -107,7 +107,7 @@ const StatBar = memo(({
   const handleExport = () => {
     const report = {
       timestamp: new Date().toISOString(),
-      profile: selectedProfile?.name || 'Unknown',
+      profile: selectedProfile?.name || t('statBar.unknown'),
       stats: {
         frameCount,
         errorCount,
@@ -193,7 +193,7 @@ const StatBar = memo(({
           onChange={(e) => onSetOutputMode(e.target.value as OutputMode)} 
           disabled={status !== 'stopped'}
         >
-          <option value="log">Log</option>
+          <option value="log">{t('common.log')}</option>
           <option value="serial">{t('statBar.serialPort')}</option>
           <option value="tcp">TCP</option>
         </select>
@@ -217,7 +217,7 @@ const StatBar = memo(({
                 disabled={status !== 'stopped'}
               >
                 {availablePorts.length === 0 ? (
-                    <option value="">Port yok</option>
+                    <option value="">{t('statBar.noPort')}</option>
                 ) : (
                     availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)
                 )}
@@ -275,7 +275,7 @@ const StatBar = memo(({
             className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border border-rose-500/50 bg-rose-500/10 text-rose-500 animate-pulse"
           >
             <ClipboardCheck size={12} />
-            STOP
+            {t('common.stop').toUpperCase()}
           </button>
         ) : (
           <button 
@@ -339,13 +339,13 @@ const StatBar = memo(({
             </button>
           ) : status === 'running' ? (
             <div className="flex gap-1">
-              <button onClick={onPause} className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-mono rounded font-bold shadow-sm">PAUSE</button>
-              <button onClick={onStop} className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-mono rounded font-bold shadow-sm">STOP</button>
+              <button onClick={onPause} className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-mono rounded font-bold shadow-sm">{t('common.pause').toUpperCase()}</button>
+              <button onClick={onStop} className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-mono rounded font-bold shadow-sm">{t('common.stop').toUpperCase()}</button>
             </div>
           ) : (
             <div className="flex gap-1">
-              <button onClick={onResume} className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-mono rounded font-bold shadow-sm">RESUME</button>
-              <button onClick={onStop} className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-mono rounded font-bold shadow-sm">STOP</button>
+              <button onClick={onResume} className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-mono rounded font-bold shadow-sm">{t('common.resume').toUpperCase()}</button>
+              <button onClick={onStop} className="px-2 py-0.5 bg-rose-800 hover:bg-rose-700 text-white text-[10px] font-mono rounded font-bold shadow-sm">{t('common.stop').toUpperCase()}</button>
             </div>
           )}
         </div>

@@ -9,7 +9,7 @@ interface ScriptEditorProps {
 
 const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
   const { t } = useTranslation();
-  const [code, setCode] = useState(initialCode || `// UART Script Engine v1.0\n// Gelen paket: bytes[] (number dizisi)\n// Sistem durumu: state{}\n\nif (bytes[0] === 0x55) {\n  // Örnek: Checksum hesaplayıp yanıtla\n  return {\n    sendHex: "AA BB CC",\n    setFields: { "Nabız": 120 }\n  };\n}\n\nreturn null;`);
+  const [code, setCode] = useState(initialCode || t('scriptEditor.defaultCode'));
 
   return (
     <div className="flex-1 flex flex-col p-6 space-y-4 h-full bg-transparent">
@@ -18,7 +18,7 @@ const ScriptEditor = memo(({ initialCode = '', onSave }: ScriptEditorProps) => {
           <Code className="text-yellow-500" size={20} />
           <div>
             <h2 className="text-gray-200 text-xs font-black uppercase tracking-widest">{t('scriptEditor.title')}</h2>
-            <p className="text-[10px] text-gray-500 font-mono italic">Real-time Responder Script (JavaScript)</p>
+            <p className="text-[10px] text-gray-500 font-mono italic">{t('scriptEditor.subTitle')}</p>
           </div>
         </div>
         <button

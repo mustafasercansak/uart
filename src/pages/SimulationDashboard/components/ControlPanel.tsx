@@ -138,7 +138,7 @@ const ControlPanel = memo(({
         </div>
         {pendingErrors.length > 0 && (
           <div className="mt-2 text-orange-400 text-[10px] font-mono">
-            {t('controls.pendingErrors').replace('{count}', pendingErrors.length.toString())}
+            {t('controls.pendingErrors', { count: pendingErrors.length })}
           </div>
         )}
       </div>
@@ -148,7 +148,7 @@ const ControlPanel = memo(({
         <div className="flex items-center justify-between mb-3 text-gray-500 text-xs font-mono uppercase tracking-wider">
           <span>{t('controls.signalQuality')}</span>
           <div className="flex items-center gap-2">
-             <span className="text-[9px] text-gray-600 uppercase">Bit Flip</span>
+             <span className="text-[9px] text-gray-600 uppercase">{t('controls.bitFlip')}</span>
              <button 
                onClick={() => onSetSignalIntegrity({ bitFlipsEnabled: !signalIntegrity.bitFlipsEnabled })}
                className={`w-7 h-3.5 rounded-full relative transition-colors ${signalIntegrity.bitFlipsEnabled ? 'bg-amber-600' : 'bg-gray-700'}`}

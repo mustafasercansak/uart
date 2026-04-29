@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useTranslation } from '../../../../i18n/context';
 
 interface GaugeProps {
   value: number;
@@ -11,6 +12,7 @@ interface GaugeProps {
 }
 
 const Gauge = memo(({ value, min, max, unit, label, color: baseColor = '#10b981' }: GaugeProps) => {
+  const { t } = useTranslation();
   const [sessionMin, setSessionMin] = useState(value);
   const [sessionMax, setSessionMax] = useState(value);
   const [trend, setTrend] = useState<'up' | 'down' | 'stable'>('stable');
@@ -51,11 +53,11 @@ const Gauge = memo(({ value, min, max, unit, label, color: baseColor = '#10b981'
     <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-gray-900/40 border border-gray-800/50 backdrop-blur-sm group hover:border-gray-700/50 transition-all">
       <div className="flex justify-between w-full px-1 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
         <div className="flex flex-col">
-          <span className="text-[7px] uppercase font-black text-gray-500">Min</span>
+          <span className="text-[7px] uppercase font-black text-gray-500">{t('common.min')}</span>
           <span className="text-[9px] font-mono font-bold text-gray-300">{Math.round(sessionMin)}</span>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-[7px] uppercase font-black text-gray-500">Max</span>
+          <span className="text-[7px] uppercase font-black text-gray-500">{t('common.max')}</span>
           <span className="text-[9px] font-mono font-bold text-gray-300">{Math.round(sessionMax)}</span>
         </div>
       </div>

@@ -18,6 +18,7 @@ import TestSuiteRunner from './TestSuiteRunner';
 import ErrorReportPanel from './ErrorReportPanel';
 import FrameBuilder from './FrameBuilder';
 import { GeneratedFrame, FrameProfile, SimulationState } from '../../../types';
+import { useTranslation } from '../../../i18n/context';
 
 interface TabContentProps {
   activeTab: string;
@@ -61,6 +62,7 @@ export default function TabContent({
   frameCount: frameCountProp,
   errorCount: errorCountProp,
 }: TabContentProps) {
+  const { t } = useTranslation();
   const { timingStats, frameCount, errorCount, status, recordings, playbackIndex, playbackTotal, responderRules, diffFrames, watchlist, triggers, recentFrames } = state;
   const resolvedFrameCount = frameCountProp ?? frameCount;
   const resolvedErrorCount = errorCountProp ?? errorCount;
@@ -117,7 +119,7 @@ export default function TabContent({
           onSave={(code) => {
             const dynamicRule = {
               id: 'dynamic-script',
-              name: 'Dynamic JS Responder',
+              name: t('scriptEditor.dynamicResponder'),
               enabled: true,
               pattern: '01',
               patternType: 'hex' as const,

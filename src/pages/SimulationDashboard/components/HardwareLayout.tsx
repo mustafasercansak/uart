@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Cpu, Zap, Activity } from 'lucide-react';
+import { useTranslation } from '../../../i18n/context';
 import type { GeneratedFrame } from '../../../types';
 
 interface HardwareLayoutProps {
@@ -9,6 +10,7 @@ interface HardwareLayoutProps {
 }
 
 const HardwareLayout: React.FC<HardwareLayoutProps> = ({ lastTxFrame, lastRxFrame, protocol }) => {
+  const { t } = useTranslation();
   const [isTxActive, setIsTxActive] = React.useState(false);
   const [isRxActive, setIsRxActive] = React.useState(false);
 
@@ -90,21 +92,21 @@ const HardwareLayout: React.FC<HardwareLayoutProps> = ({ lastTxFrame, lastRxFram
         <div className="flex items-center gap-12">
           <div className={`flex flex-col items-center gap-2 transition-opacity ${isTxActive ? 'opacity-100' : 'opacity-20'}`}>
             <Zap size={20} className="text-emerald-500" />
-            <span className="text-[9px] font-mono text-emerald-500 font-bold uppercase">TX Active</span>
+            <span className="text-[9px] font-mono text-emerald-500 font-bold uppercase">{t('hardware.txActive')}</span>
           </div>
           <div className={`flex flex-col items-center gap-2 transition-opacity ${isRxActive ? 'opacity-100' : 'opacity-20'}`}>
             <Activity size={20} className="text-blue-500" />
-            <span className="text-[9px] font-mono text-blue-500 font-bold uppercase">RX Active</span>
+            <span className="text-[9px] font-mono text-blue-500 font-bold uppercase">{t('hardware.rxActive')}</span>
           </div>
         </div>
       </div>
 
       {/* Lab Legend */}
       <div className="absolute bottom-4 left-4 flex flex-col gap-1">
-        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-red-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">Power</span></div>
-        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-emerald-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">UART (TX/RX)</span></div>
-        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-yellow-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">I2C (SCL/SDA)</span></div>
-        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-purple-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">SPI Bus</span></div>
+        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-red-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">{t('hardware.power')}</span></div>
+        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-emerald-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">{t('hardware.uartBus')}</span></div>
+        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-yellow-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">{t('hardware.i2cBus')}</span></div>
+        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded bg-purple-500" /> <span className="text-[8px] text-gray-500 uppercase font-mono">{t('hardware.spiBus')}</span></div>
       </div>
     </div>
   );

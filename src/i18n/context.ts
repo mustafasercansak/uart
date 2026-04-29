@@ -8,7 +8,7 @@ export interface LanguageContextType {
   locale: Locale;
   language: Locale;
   setLocale: (locale: Locale) => void;
-  t: (path: string) => string;
+  t: (path: string, params?: Record<string, any>) => string;
 }
 
 export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

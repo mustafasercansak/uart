@@ -21,7 +21,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const t = useCallback((path: string): string => {
+  const t = useCallback((path: string, params?: Record<string, any>): string => {
     const keys = path.split('.');
     let current: unknown = translations[locale];
     
@@ -34,12 +34,21 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             if (typeof fallback !== 'object' || fallback === null || (fallback as Record<string, unknown>)[fKey] === undefined) return path;
             fallback = (fallback as Record<string, unknown>)[fKey];
         }
-        return fallback as string;
+        current = fallback;
+        break;
       }
       current = (current as Record<string, unknown>)[key];
     }
     
-    return current as string;
+    let result = typeof current === 'string' ? current : path;
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        result = result.replace(new RegExp(`{${key}}`, 'g'), String(value));
+      });
+    }
+    
+    return result;
   }, [locale]);
 
   return (

@@ -126,16 +126,16 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                       className="w-full bg-gray-950 border border-gray-800 text-xs p-2 rounded outline-none text-gray-300"
                     >
                       <option value="fixed">{t('profileEditor.fixed')}</option>
-                      <option value="delimiter">Delimiter (\n, \r)</option>
-                      <option value="slip">SLIP Protocol</option>
-                      <option value="cobs">COBS Protocol</option>
+                      <option value="delimiter">{t('profileEditor.delimiterLabel')}</option>
+                      <option value="slip">{t('profileEditor.slipProtocol')}</option>
+                      <option value="cobs">{t('profileEditor.cobsProtocol')}</option>
                     </select>
                   </div>
                   {edited.framing.mode === 'delimiter' && (
                     <div>
                       <label className="text-[10px] text-gray-500 uppercase block mb-1">{t('profileEditor.delimiter')}</label>
                       <input 
-                        placeholder="Örn: 0A"
+                        placeholder={t('profileEditor.delimiterExample')}
                         onChange={e => setEdited({...edited, framing: {...edited.framing, delimiter: parseInt(e.target.value, 16)}})}
                         className="w-full bg-gray-950 border border-gray-800 text-xs p-2 rounded outline-none text-yellow-500"
                       />
@@ -255,8 +255,8 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                               <option value="range">{t('profileEditor.range')}</option>
                               <option value="waveform">{t('profileEditor.waveform')}</option>
                               <option value="flags">{t('profileEditor.flags')}</option>
-                              <option value="checksum">Checksum</option>
-                              <option value="computed">Computed</option>
+                              <option value="checksum">{t('profileEditor.checksum')}</option>
+                              <option value="computed">{t('profileEditor.computed')}</option>
                             </select>
                           </div>
                           <div>

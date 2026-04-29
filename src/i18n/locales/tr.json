@@ -9,6 +9,7 @@
     "collapse": "Daralt"
   },
   "common": {
+    "log": "Günlük",
     "live": "CANLI",
     "paused": "DURAKLATILDI",
     "idle": "BOŞTA",
@@ -21,7 +22,28 @@
     "resume": "Devam Et",
     "save": "Kaydet",
     "cancel": "İptal",
-    "delete": "Sil"
+    "delete": "Sil",
+    "min": "Min",
+    "max": "Max",
+    "tcp": "TCP"
+  },
+  "scriptEditor": {
+    "title": "Gelişmiş Mantık Editörü",
+    "subTitle": "Gerçek Zamanlı Yanıtlayıcı Scripti (JavaScript)",
+    "subtitle": "Gerçek Zamanlı Dinamik Yanıtlayıcı (NodeJS Ortamı)",
+    "save": "KAYDET VE UYGULA",
+    "saved": "✓ Betik Kaydedildi & Aktif",
+    "dynamicResponder": "Dinamik JS Yanıtlayıcı",
+    "template": "/**\n * Dinamik Yanıtlayıcı Betiği\n * ... */",
+    "saveScript": "SCRİPTİ KAYDET",
+    "inputVars": "Input Değişkenleri",
+    "returnFormat": "Dönüş Formatı",
+    "bytesVar": "Gelen ham byte dizisi (number[])",
+    "stateVar": "Mevcut simülasyon durumu (readonly)",
+    "sendHexVar": "Yanıt olarak gönderilecek Hex (string)",
+    "setFieldsVar": "Telemetri alanları için güncellenmiş değerler.",
+    "warning": "⚠ Sonsuz döngülere dikkat edin. Hatalar konsola kaydedilir.",
+    "defaultCode": "// UART Script Engine v1.0\n// Gelen paket: bytes[] (number dizisi)\n// Sistem durumu: state{}\n\nif (bytes[0] === 0x55) {\n  // Örnek: Checksum hesaplayıp yanıtla\n  return {\n    sendHex: \"AA BB CC\",\n    setFields: { \"Nabız\": 120 }\n  };\n}\n\nreturn null;"
   },
   "dashboard": {
     "profile": "Profil",
@@ -53,7 +75,24 @@
     "decoder": "Çözücü",
     "testsuite": "Test Paketi",
     "builder": "Oluşturucu",
-    "learn": "Öğrenme Modu"
+    "learn": "Öğrenme Modu",
+    "viewReport": "RAPORU GÖRÜNTÜLE",
+    "widgetActive": "{count} WIDGET AKTİF",
+    "resetLayout": "YERLEŞİMİ SIFIRLA",
+    "openDashboard": "Canlı Panoyu Aç",
+    "closeDashboard": "Panoyu Kapat",
+    "settings": "Ayarlar",
+    "widgetSettings": "WIDGET AYARLARI",
+    "type": "TİP",
+    "minVal": "MİN DEĞER",
+    "maxVal": "MAX DEĞER",
+    "apply": "UYGULA",
+    "widgets": {
+      "chart": "Dalga Formu Grafiği",
+      "gauge": "Analog Gösterge",
+      "led": "LED Gösterge",
+      "7segment": "7-Segment Ekran"
+    }
   },
   "controls": {
     "flags": "Bayrak Kontrolleri",
@@ -66,6 +105,7 @@
     "jitter": "Titreme",
     "console": "Konsol Logları",
     "csvExport": "CSV Aktar",
+    "bitFlip": "Bit Çevirme",
     "logEmpty": "Simülasyon başlatıldığında log burada görünecek..."
   },
   "profileEditor": {
@@ -99,6 +139,11 @@
     "triangle": "Üçgen",
     "amplitude": "Genlik",
     "phase": "Faz Kayması",
+    "delimiterLabel": "Ayırıcı (\\n, \\r)",
+    "slipProtocol": "SLIP Protokolü",
+    "cobsProtocol": "COBS Protokolü",
+    "delimiterExample": "Örn: 0A",
+    "checksum": "Sağlama",
     "saveProfile": "Profili Kaydet",
     "fieldConfig": "Alan Yapılandırması",
     "name": "İsim",
@@ -136,7 +181,7 @@
     "initialValue": "Başlangıç Değeri (hex)",
     "bitCapacity": "{max} bit kapasitesi",
     "behavior": "Davranış",
-    "manual": "Manuel",
+    "manual": "Manual",
     "random": "Rastgele",
     "timed": "Zamanlı",
     "default": "Varsayılan",
@@ -187,7 +232,12 @@
     "fieldName": "Alan Adı (UART Field)",
     "unit": "Birim",
     "noCriteria": "Kriter belirlenmedi. Lütfen bir kriter ekleyin.",
-    "startSession": "Oturumu Başlat",
+    "sessionActive": "VALİDASYON OTURUMU AKTİF",
+    "startSession": "Doğrulama Oturumunu Başlat",
+    "complianceMode": "Tıbbi Uyumluluk Modu v7.0",
+    "min": "Min",
+    "max": "Max",
+    "defaultOperator": "Standart Operatörü",
     "defaultTestName": "Standart Uyumluluk Testi",
     "selectField": "Seçiniz...",
     "testNamePlaceholder": "Örn: EKG Kararlılık Testi",
@@ -212,12 +262,26 @@
     "addTest": "Test Ekle",
     "runAll": "Tümünü Çalıştır",
     "reset": "Sıfırla",
-    "downloadReport": "Rapor İndir",
+    "downloadReport": "Raporu İndir",
+    "testNamePlaceholder": "Test adı...",
+    "selectField": "-- Alan Seç --",
+    "active": "Aktif",
+    "min": "Min",
+    "max": "Max",
+    "value": "Değer",
+    "minFps": "Min FPS",
+    "byteCount": "Byte sayısı",
+    "hexExample": "Örn: 55 AA",
+    "testNum": "Test {num}",
+    "pass": "GEÇTİ",
+    "fail": "KALDI",
+    "skip": "ATLADI",
+    "summary": "Özet: {pass} GEÇTİ / {fail} KALDI / {skip} ATLADI",
+    "failedFramesLabel": "Hatalı paketler:",
+    "reportDate": "Tarih:",
+    "reportTotalFrames": "Toplam Paket:",
     "simulationRequired": "⚠ Simülasyonu başlatın ve frame oluşturun",
     "noTests": "Test yok — \"Test Ekle\" ile başlayın",
-    "testNamePlaceholder": "Test adı...",
-    "active": "Aktif",
-    "selectField": "-- Alan seçin --",
     "assertions": {
       "field_in_range": "Alan aralık içinde",
       "field_equals": "Alan değere eşit",
@@ -268,7 +332,13 @@
     "duration": "Süre",
     "interval": "Gönderim Aralığı",
     "fieldCount": "Alan Sayısı",
-    "crcFail": "CRC Başarısız",
+    "crcFail": "CRC Hata Oranı",
+    "profileLabel": "Profil:",
+    "fps": "{count} fps",
+    "byte": "{count} B",
+    "minMax": "Min: {min}B / Max: {max}B",
+    "dateLabel": "Tarih:",
+    "successRatePct": "%{rate}",
     "errorTypeBreakdown": "Hata Tipi Dağılımı",
     "timelineTitle": "Zaman İçinde Paket Dağılımı (OK / Hata)",
     "success": "Başarılı",
@@ -291,13 +361,24 @@
     "notePlaceholder": "Not (opsiyonel — geçmişte görünür)",
     "hexPlaceholder": "Hex yapıştır: AA 01 03 00 00 veya AA,01,03,00,00",
     "load": "Yükle",
-    "history": "Gönderilen Geçmiş",
+    "history": "Gönderim Geçmişi",
+    "resendNote": "Geçmişten tekrar gönderildi",
+    "hex": "Hex:",
+    "checksum": "Sağlama:",
+    "xor": "XOR",
+    "sum256": "TOPLAM MOD 256",
+    "crc16": "CRC-16 Modbus",
+    "sync": "Sync",
+    "addr": "Addr",
+    "fc": "FC",
+    "hi": "Hi",
+    "lo": "Lo",
+    "header": "Başlık",
     "insertAfter": "Sonraya byte ekle",
     "delete": "Sil",
     "copy": "Kopyala",
     "resend": "Tekrar gönder",
-    "noCalculation": "Hesaplama Yok",
-    "resendNote": "(tekrar)"
+    "noCalculation": "Hesaplama Yok"
   },
   "diagnostics": {
     "avgLatency": "Ort. Gecikme",
@@ -325,13 +406,27 @@
     "recHelp": "REC butonuna basarak seans kaydedebilirsiniz"
   },
   "logic": {
-    "waiting": "DONANIM SİNYALİ BEKLENİYOR...",
+    "title": "Lojik Analizör v1.0",
+    "noData": "VERİ AKIŞI TESPİT EDİLMEDİ... SİMÜLASYONU BAŞLATIN",
+    "zoom": "Yakınlaştırma:",
+    "resetCursors": "İmleçleri Sıfırla",
+    "liveSync": "Canlı Senkronizasyon",
+    "staticView": "Statik Görünüm",
+    "uartTx": "UART TX",
+    "controls": {
+      "scroll": "Kaydırma: Sürükle / Tekerlek",
+      "zoom": "Yakınlaştırma: Ctrl + Tekerlek",
+      "measure": "Ölçüm: A/B yerleştirmek için tıklayın"
+    },
+    "baud": "Mevcut Baud:",
+    "ms": "{t}ms",
+    "waiting": "VERİ BEKLENİYOR... SİMÜLASYONU BAŞLATIN",
     "clearCursors": "İmleçleri Temizle",
-    "running": "● Çalışıyor",
-    "paused": "Durduruldu",
-    "scrollInstr": "Kaydır: Tekerlek",
-    "zoomInstr": "Zoom: Ctrl+Tekerlek",
-    "measureInstr": "Ölçüm: A/B imleçlerini yerleştirin"
+    "running": "Çalışıyor",
+    "paused": "Duraklatıldı",
+    "scrollInstr": "Kaydırma: Tekerlek",
+    "zoomInstr": "Yakınlaştırma: Ctrl+Tekerlek",
+    "measureInstr": "Ölçüm: Tıkla"
   },
   "errors": {
     "checksum": "Checksum Boz",
@@ -375,50 +470,45 @@
     "fiO2": "FiO2"
   },
   "scenarioEditor": {
+    "presets": {
+      "normalStart": "Normal Başlatma",
+      "normalStartDesc": "Sensörün normal çalışma düzenine geçiş senaryosu.",
+      "bradycardia": "Bradikardi Atağı (Kritik Düşüş)",
+      "bradycardiaDesc": "Nabzın aniden düşüp kritik seviyede kalmasını simüle eder. Alarmları test etmek için idealdir.",
+      "leadOff": "Sensör Kopması (Lead-Off)",
+      "leadOffDesc": "Sensörün fiziksel olarak koptuğu durumu simüle eder. Tüm dalga formları sıfıra iner.",
+      "stress": "CRC Stres Testi",
+      "stressDesc": "Yüksek frekansta checksum hataları göndererek alıcı cihazın hata ayıklama kapasitesini zorlar."
+    },
+    "copy": "Kopya",
     "scenarios": "Senaryolar",
-    "helpGuide": "Yardım Kılavuzu",
+    "helpGuide": "Yardım Klavuzu",
     "loadFromFile": "Dosyadan Yükle",
-    "templates": "Şablonlar",
     "newScenario": "Yeni Senaryo",
-    "waitingForSelection": "Senaryo Seçimi Bekleniyor",
-    "scenarioTitle": "Senaryo Başlığı...",
+    "stepCount": "{count} olay",
+    "downloadScenario": "Senaryoyu İndir",
+    "waitingForSelection": "Seçim Bekleniyor",
+    "scenarioTitle": "Senaryo Başlığı",
     "category": "Kategori",
-    "maxDuration": "Maks. Süre",
+    "maxDuration": "Süre",
     "deleteScenario": "Senaryoyu Sil",
     "saved": "KAYDEDİLDİ",
     "eventFlow": "Olay Akışı",
-    "addStep": "+ ADIM EKLE",
-    "firstStep": "Sağ üstten ilk adımı ekleyin.",
+    "addStep": "Olay Ekle",
+    "firstStep": "Senaryoyu oluşturmak için ilk olayınızı ekleyin",
     "parameters": "Parametreler",
-    "waitingData": "Veri Bekleniyor",
-    "timingHelp": "Zamanlama (atMs)",
-    "timingDesc": "Simülasyon başladıktan kaç milisaniye sonra bu adımın tetikleneceğini belirler. Adımlar otomatik olarak zamana göre sıralanır.",
-    "targetHelp": "Hedef (Target)",
-    "targetDesc": "Profildeki bir alanı `field:Ad` formatında hedefleyebilirsiniz. Örn: `field:BPM`",
+    "waitingData": "Parametreleri düzenlemek için bir olay seçin",
+    "timingHelp": "Zamanlama",
+    "timingDesc": "Olaylar milisaniye bazında sıralı olarak tetiklenir.",
+    "targetHelp": "Hedef",
+    "targetDesc": "Belirli alanları veya tüm sistemi hedefleyebilirsiniz.",
     "actionTypes": "Aksiyon Tipleri",
-    "actionSet": "Değeri anında değiştirir.",
-    "actionRamp": "Değeri yumuşak geçişle değiştirir (örn. nabız düşüşü).",
-    "actionInjectError": "Protokol düzeyinde hata üretir (CRC/Sync).",
-    "quote": "\"Bu aracı sensörünüz olmadığında donanımınızı stres testine tabi tutmak için kullanabilirsiniz.\"",
-    "openDocs": "AYRINTILI KILAVUZU AÇ (YENİ SEKME)",
+    "actionSet": "Bir alan değerini anında ayarlar.",
+    "actionRamp": "Bir değeri zaman içinde yumuşak bir şekilde değiştirir.",
+    "actionInjectError": "İletişim/protokol hatalarını simüle eder.",
+    "quote": "Otomasyon, titiz doğrulamanın anahtarıdır.",
+    "openDocs": "Otomasyon Dokümantasyonunu Aç",
     "libraryTemplates": "Kütüphane Şablonları",
-    "confirmDelete": "Bu senaryoyu silmek istediğinize emin misiniz?",
-    "invalidFile": "Geçersiz senaryo dosyası!",
-    "copyOf": "(Kopya)",
-    "newScenarioName": "Yeni Senaryo",
-    "unnamed": "İsimsiz",
-    "downloadScenario": "Senaryoyu İndir",
-    "stepCount": "{count} adım",
-    "time": "Zaman (ms)",
-    "target": "Hedef (Alan/Bit)",
-    "targetPlaceholder": "örn: field:SpO2",
-    "action": "Aksiyon",
-    "errorType": "Hata Tipi",
-    "checksumError": "Checksum Hatası",
-    "signalLoss": "Sinyal Kaybı",
-    "syncError": "Sync Hatası",
-    "notes": "Notlar",
-    "notesPlaceholder": "Notlar...",
     "categoryLabel": {
       "custom": "Özel",
       "physiological": "Fizyolojik",
@@ -429,10 +519,10 @@
     },
     "actionLabel": {
       "set": "Değer Ata",
-      "range": "Aralık Değiştir",
-      "ramp": "Rampa Geçiş",
-      "toggle": "Bit Değiştir",
-      "pulse": "Geçici Değer",
+      "range": "Rastgele Aralık",
+      "ramp": "Rampa Geçişi",
+      "toggle": "Değiştir",
+      "pulse": "Tekil Darbe",
       "inject_error": "Hata Enjekte Et",
       "unknown": "Bilinmeyen"
     },
@@ -443,16 +533,33 @@
       "from": "Başlangıç",
       "to": "Bitiş",
       "durationMs": "Süre (ms)",
-      "count": "Adet"
-    }
+      "count": "Hata Sayısı"
+    },
+    "time": "Zaman (ms)",
+    "target": "Hedef (field:İsim)",
+    "action": "Aksiyon",
+    "errorType": "Hata Tipi",
+    "checksumError": "Checksum Bozulması",
+    "signalLoss": "Sinyal Kaybı (Bayt Atlama)",
+    "syncError": "Sync / Başlık Hatası",
+    "notes": "Notlar",
+    "notesPlaceholder": "Bu adım neyi simüle ediyor?",
+    "confirmDelete": "Bu senaryoyu silmek istediğinize emin misiniz?",
+    "invalidFile": "Geçersiz senaryo dosyası!",
+    "newScenarioName": "Yeni Senaryo",
+    "unnamed": "İsimsiz",
+    "copyOf": "(Kopya)",
+    "targetPlaceholder": "örn: field:SpO2"
   },
   "timeline": {
     "txSystem": "TX (Sistem)",
     "rxDevice": "RX (Cihaz)",
     "noRealDevice": "Gerçek cihaz yok — sadece TX",
-    "lastFrames": "Son {count} frame",
+    "lastFrames": "Son {count} paket",
     "waitingComm": "İletişim bekleniyor",
-    "clear": "TEMİZLE"
+    "clear": "TEMİZLE",
+    "txOut": "TX ÇIKIŞ",
+    "rxIn": "RX GİRİŞ"
   },
   "conversationMonitor": {
     "title": "Canlı Karşılaşma Günlüğü",
@@ -479,7 +586,10 @@
     "subtitle": "UART Simülatörü kullanım detayları ve teknik referanslar",
     "loading": "Doküman Hazırlanıyor...",
     "docVersion": "Dokümantasyon Sürümü: v1.2",
-    "loadError": "Doküman yüklenirken hata oluştu."
+    "loadError": "Doküman yüklenirken hata oluştu.",
+    "userGuide": "Kullanım Kılavuzu",
+    "quickHelp": "Hızlı Yardım",
+    "readme": "BENİ OKU"
   },
   "diffLab": {
     "title": "Protokol Karşılaştırma Laboratuvarı",
@@ -490,18 +600,8 @@
     "testPacket": "Test Paketi (B)",
     "bitChangeMap": "Bit-Düzeyinde Değişim Haritası (B)",
     "tip": "İpucu: Kırmızı ile işaretlenmiş alanlar, iki paket arasındaki değişen değerleri göstermektedir. Bit-Düzeyinde harita ise (B) paketinin (A) paketine göre olan değişimlerini gösterir.",
+    "bitTooltip": "Bayt {byteIdx}, Bit {bitIdx}",
     "byteDetail": "Byte {index} ({name}) Detayı:"
-  },
-  "scriptEditor": {
-    "title": "Gelişmiş Mantık Editörü",
-    "saveScript": "SCRİPTİ KAYDET",
-    "inputVars": "Input Değişkenleri",
-    "returnFormat": "Dönüş Formatı",
-    "bytesVar": "Gelen ham byte dizisi (number[])",
-    "stateVar": "Mevcut simülasyon durumu (readonly)",
-    "sendHexVar": "Yanıt olarak gönderilecek Hex (string)",
-    "setFieldsVar": "Override edilecek alanlar (Object)",
-    "warning": "Dikkat: Scriptler kural eşleştiğinde real-time yürütülür. Karmaşık döngülerden kaçının."
   },
   "protocolDecoder": {
     "title": "Protokol Çözücü",
@@ -522,7 +622,9 @@
     "clearHistory": "Geçmişi Temizle"
   },
   "statBar": {
-    "serialPort": "Seri Port"
+    "serialPort": "Seri Port",
+    "noPort": "Port yok",
+    "unknown": "Bilinmiyor"
   },
   "triggerManager": {
     "title": "Tetikleyici Motoru",
@@ -546,9 +648,10 @@
     }
   },
   "visualAnalyzer": {
-    "title": "Görsel Protokol Analizörü (Bit-Level)",
-    "waitingData": "Analizör için veri bekleniyor...",
-    "byteDetail": "Byte {index} ({name}) Detayı:"
+    "title": "Görsel Protokol Akış Analizörü",
+    "waitingData": "AKTİF VERİ AKIŞI TESPİT EDİLMEDİ",
+    "byteDetail": "Byte {index} ({name}) Detayı:",
+    "bit": "Bit {index}"
   },
   "waveformCharts": {
     "signalMonitor": "Sinyal İzleme · Dalga Formları",
@@ -560,27 +663,34 @@
     "deltaT": "Δt:",
     "frequency": "Frekans (Gevşek)",
     "resetCursors": "İmleçleri Sıfırla",
-    "openChannels": "Yukarıdan kanalları aç — grid'e eklenecek",
-    "cursorsToggle": "Lab Ölçüm İmleçlerini Aç/Kapat"
+    "openChannels": "Yukarıdan kanalları açın — ızgaraya eklenecektir",
+    "cursorsToggle": "Laboratuvar Ölçüm İmleçlerini Aç/Kapat",
+    "live": "CANLI"
   },
   "templateBrowser": {
     "title": "Şablon Kütüphanesi",
-    "subtitle": "Hazır sensör şablonlarından profil ve senaryo oluşturun",
-    "frameStructure": "Frame Yapısı",
+    "subtitle": "Önceden yapılandırılmış sensör simülasyon şablonları",
+    "all": "Tümü",
+    "categories": {
+      "all": "Tümü",
+      "Tıbbi": "Tıbbi",
+      "Tıbbi (İnsanlık İçin)": "Tıbbi (İnsanlık İçin)",
+      "Çevresel": "Çevresel",
+      "Genel": "Genel"
+    },
+    "frameStructure": "Paket Yapısı",
     "interval": "{ms}ms aralık",
     "scenarios": "{count} senaryo",
-    "created": "✓ Profil oluşturuldu!",
-    "applying": "Oluşturuluyor...",
-    "useTemplate": "⚡ Bu Şablonu Kullan",
-    "goToProfiles": "Profillere Git",
-    "colorCode": "Alan Renk Kodu",
-    "fixed": "fixed — Sabit",
-    "range": "range — Rastgele Aralık",
-    "waveform": "waveform — Dalga Formu",
-    "checksum": "checksum — Checksum",
-    "flags": "flags — Bitler",
-    "all": "Tümü",
-    "filterAll": "Tümü"
+    "created": "Simülasyona Uygulandı",
+    "applying": "Uygulanıyor...",
+    "useTemplate": "Bu Şablonu Kullan",
+    "goToProfiles": "Profillere git",
+    "colorCode": "Alan Tipi Renk Kodlaması",
+    "fixed": "Sabit",
+    "range": "Aralık",
+    "waveform": "Dalga",
+    "checksum": "Checksum",
+    "flags": "Bayrak"
   },
   "helpPage": {
     "backToSystem": "Sisteme Dön",
@@ -592,16 +702,27 @@
     "techNoteText": "Dökümantasyon portalı her sürümde güncellenmektedir.",
     "loadingText": "Bilgi Paketi Çözülüyor",
     "scrollTop": "YUKARI DÖN ↑",
-    "loadError": "# Hata\nDoküman yüklenirken bir sorun oluştu."
+    "loadError": "# Hata\nDoküman yüklenirken bir sorun oluştu.",
+    "trTitle": "Kullanım Kılavuzu (Türkçe)",
+    "enTitle": "Hızlı Yardım (İngilizce)",
+    "readmeTitle": "README (Teknik)",
+    "trLang": "Türkçe",
+    "enLang": "İngilizce",
+    "readmeLang": "Genel",
+    "developer": "Mustafa Sercan Sak",
+    "date": "16 Nisan 2026"
   },
   "telemetryPanel": {
     "waitingData": "Veri akışı bekleniyor...",
     "startSimulation": "Simülasyonu başlatın veya harici cihaz bağlayın",
     "dashboardReady": "Gösterge Paneli Hazır",
     "noWidgets": "Henüz widget eklenmedi.",
-    "pinFromSidebar": "Buraya alan eklemek için Frame Monitor'deki veya Decoder panelindeki sabitleme ikonlarını kullanın.",
-    "applyTemplate": "Şablon Düzeni Uygula",
-    "loadWidgets": "{name} varsayılan widget'larını yükle",
+    "pinFromSidebar": "Profil kenar çubuğundan alanları sabitleyebilir veya canlı akıştaki Ayrıştırıcı aracını kullanabilirsiniz.",
+    "applyTemplate": "Akıllı Yerleşimi Uygula",
+    "loadWidgets": "{name} widget'larını yükle",
+    "pinInstructions": "KENAR ÇUBUĞUNDAN VEYA AYRIŞTIRICIDAN ALANLARI SABİTLEYİN",
+    "autoSave": "Otomatik Kayıt Aktif",
+    "monitor": "Monitör",
     "designerMode": "Tasarımcı Modu"
   },
   "automation": {
@@ -627,5 +748,303 @@
     "ready": "HAZIR",
     "pass": "PAS:",
     "fail": "HATA:"
+  },
+  "onboarding": {
+    "skip": "TURU GEÇ",
+    "back": "← GERİ",
+    "welcome": {
+      "title": "YBÜ Simülatörüne Hoş Geldiniz",
+      "subtitle": "Tıbbi cihazların nasıl iletişim kurduğunu görsel olarak gerçek zamanlı öğrenin.",
+      "body": "Bu simülatör, gerçek UART protokol verilerini 3D tıbbi cihaz ikizleri üzerinden çalıştırmanıza olanak tanır. Bir hasta başı monitörü, ventilatör, IV pompası ve nabız oksimetresinin seri bağlantı üzerinden nasıl bayt alışverişi yaptığını tam olarak görebilirsiniz.",
+      "tip": "Donanıma gerek yok. Her şey tarayıcınızda çalışır.",
+      "action": "Başlayalım →",
+      "monitor": "Hasta Monitörü",
+      "ventilator": "Ventilatör",
+      "pump": "IV Pompa",
+      "oximeter": "Nabız Oksimetresi"
+    },
+    "profile": {
+      "title": "Adım 1: Sensör Profili Seçin",
+      "subtitle": "Profil, bir cihaz için UART paket yapısını tanımlar.",
+      "body": "Her tıbbi sensör verileri belirli bir bayt formatında gönderir. Profil, simülatöre hangi baytların kalp atış hızını, SpO₂'yi, sıcaklığı vb. temsil ettiğini söyler. Yerleşik bir şablonu kullanabilir veya kendinizinkini oluşturabilirsiniz.",
+      "tip": "Hemen başlamak için \"YS2000A Hasta Monitörü\" şablonunu deneyin.",
+      "action": "Şablonlara Göz At →",
+      "exampleFrame": "ÖRNEK UART PAKETİ",
+      "sync": "Sync baytı",
+      "hr": "Kalp Atışı = 75 BPM",
+      "spo2": "SpO₂ = 98%",
+      "temp": "Sıcaklık = 36.5°C",
+      "crc": "CRC checksum"
+    },
+    "simulate": {
+      "title": "Adım 2: Simülasyonu Çalıştırın",
+      "subtitle": "Cihazların gerçek verilerle hayat bulmasını izleyin.",
+      "body": "Kontrol panelinde Başlat'a basın. Simülatör, yapılandırılan baud hızında ve aralıkta UART paketleri oluşturur. Her paket 3D cihaz ikizlerini, dalga formu grafiklerini, mantık analizörünü ve protokol çözücüyü aynı anda günceller.",
+      "tip": "ICU odasını görmek için \"3D Görselleştirici\" sekmesini açın. Herhangi bir cihaza tıklayarak yakınlaşın ve UART veri açıklamasını okuyun.",
+      "action": "Panele Git →",
+      "visualizer": "3D Görselleştirici",
+      "visualizerDesc": "Tıklanabilir cihaz ikizleri ile YBÜ odası",
+      "waveforms": "Dalga Formları",
+      "waveformsDesc": "Canlı EKG, SpO₂ ve basınç eğrileri",
+      "logic": "Lojik Analizör",
+      "logicDesc": "Bit düzeyinde UART sinyal zamanlaması",
+      "decoder": "Çözücü",
+      "decoderDesc": "İnsan tarafından okunabilir protokol dökümü",
+      "learn": "Öğrenme Modu",
+      "learnDesc": "Rehberli adım adım anlatımlar"
+    }
+  },
+  "learning": {
+    "title": "Öğrenme Modu",
+    "subtitle": "Canlı simülasyon verileriyle UART protokollerini öğreten adım adım dersler.",
+    "done": "✓ TAMAMLANDI",
+    "stepsCount": "{count} adım",
+    "loadProfileWarning": "⚠ Önce uyumlu bir profil yükleyin",
+    "tip": "İpucu:",
+    "globalTip": "Önce bir simülasyon başlatın, ardından dersleri sırayla tamamlayın. Her ders, çalışan simülasyondan canlı verilere atıfta bulunur.",
+    "backToLessons": "← Dersler",
+    "stepProgress": "{total} adımın {current}. adımı",
+    "byteLayout": "BAYT DÜZENİ",
+    "liveValue": "CANLI DEĞER",
+    "fieldNotFound": "\"{field}\" alanı aktif profilde bulunamadı.",
+    "startSimulationPrompt": "Canlı değerleri görmek için simülasyonu başlatın.",
+    "currentFrameHex": "GÜNCEL PAKET HEX",
+    "watchingCondition": "Koşul bekleniyor — sağlandığında otomatik ilerleyecektir",
+    "back": "← GERİ",
+    "next": "İLERİ →",
+    "completeLesson": "✓ DERSİ TAMAMLA",
+    "lessons": {
+      "uartBasics": {
+        "title": "UART Nasıl Çalışır?",
+        "desc": "Bir seri UART paketinin bayt bayt yapısını anlayın.",
+        "steps": {
+          "start": {
+            "title": "UART Nedir?",
+            "explanation": "UART, Evrensel Asenkron Alıcı-Verici anlamına gelir. Tıbbi cihazlarda, sensörlerde ve endüstriyel ekipmanlarda kullanılan en yaygın seri protokoldür. Her iki taraf da bir hız (baud hızı) üzerinde anlaşır ve ardından her seferinde bir bayt veri alışverişi yapar.",
+            "tip": "Simülasyonu başlatın ve Frame Monitor'ü izleyin — her satır bir UART iletimidir."
+          },
+          "anatomy": {
+            "title": "Bir Paketin Anatomisi",
+            "explanation": "Her UART iletimi sabit bir yapıyı takip eder: bir BAŞLAT biti (lojik DÜŞÜK), ardından 8 veri biti (önce LSB), hata tespiti için isteğe bağlı bir PARİTE biti ve son olarak bir DURDUR biti (lojik YÜKSEK). Bu simülatördeki \"paket\", birlikte gönderilen birden fazla bayttan oluşan bir gruptur.",
+            "byteAnnotation": "START | D0 D1 D2 D3 D4 D5 D6 D7 | PARITY | STOP",
+            "tip": "Her bayt için ayrı bit geçişlerini görmek için Lojik Analizör sekmesini açın."
+          },
+          "baud": {
+            "title": "Baud Hızı = Hız",
+            "explanation": "Baud hızı, saniyede kaç sembolün iletildiğini tanımlar. 9600 baud hızında, her bit ~104 µs sürer. 115200 baud hızında, her bit ~8.7 µs sürer. Her iki taraf da aynı baud hızını kullanmalıdır — %1'lik bir uyumsuzluk bile paketleme hatalarına neden olur.",
+            "tip": "Profil Düzenleyici'de baud hızını değiştirin ve Lojik Analizör bit genişliklerinin nasıl değiştiğini izleyin."
+          },
+          "checksum": {
+            "title": "Checksum ile Hata Tespiti",
+            "explanation": "Tıbbi cihazlar, her paketin sonuna bir checksum baytı ekler. Alıcı, alınan baytlardan checksum'ı bağımsız olarak hesaplar. Eğer eşleşmezse, paket reddedilir. Yaygın algoritmalar: XOR, Sum-Mod-256, CRC8, CRC16-CCITT.",
+            "tip": "Checksum'ı bozmak için Hata Enjeksiyonu panelini kullanın ve alıcının paketi reddetmesini izleyin."
+          }
+        }
+      },
+      "patientMonitor": {
+        "title": "Hasta Monitörü İncelemesi",
+        "desc": "Bir hasta başı monitörünün hayati belirtileri UART üzerinden nasıl kodlayıp ilettiğini öğrenin.",
+        "steps": {
+          "intro": {
+            "title": "Hasta Monitörü",
+            "explanation": "Bir hasta monitörü hayati belirtileri sürekli olarak ölçer ve görüntüler: kalp atış hızı (EKG), kandaki oksijen doygunluğu (SpO₂), solunum hızı ve sıcaklık. Bunların tümü dijitalleştirilir ve her 40–100 ms'de bir iletilen bir UART paketine yerleştirilir.",
+            "tip": "Canlı değerlerini görmek için 3D görünümdeki Hasta Monitörü'ne tıklayın."
+          },
+          "heartRate": {
+            "title": "Kalp Atış Hızı Baytı",
+            "explanation": "BPM (dakikadaki atış sayısı) değeri tek bir bayt (0–255) olarak saklanır. 75 değeri 0x4B olarak kodlanır. Alıcı bu baytı okur, fizyolojik aralıkta (genellikle 30–250 BPM) olduğunu doğrular ve görüntüler. Aralık dışındaki değerler durum baytında bir alarm bayrağını tetikler.",
+            "byteAnnotation": "75 BPM → 0x4B",
+            "tip": "Simülasyon çalışırken Frame Monitor'deki BPM alanını izleyin."
+          },
+          "spo2": {
+            "title": "SpO₂ Baytı",
+            "explanation": "Kandaki oksijen doygunluğu yüzde (0–100) olarak gönderilir. %98 gibi sağlıklı bir değer 0x62 olarak kodlanır. Değer %90'ın altına düşerse, alarm baytı 1. biti değiştirir ve monitör sesli bir uyarı verir. 3D hasta monitörü de kırmızıya dönecektir.",
+            "byteAnnotation": "%98 SpO₂ → 0x62",
+            "tip": "Düşük SpO₂ olayını simüle etmek için Hata Enjeksiyonu panelini kullanın ve 3D alarm halkasının görünmesini izleyin."
+          },
+          "ecg": {
+            "title": "EKG Dalga Formu Örnekleri",
+            "explanation": "Sayısal BPM'ye ek olarak, monitör 250 Hz'de ham EKG dalga formu örnekleri iletir. Her örnek, 2 baytta (big-endian) saklanan 12 bitlik bir değerdir (0–4095). Alıcı bunları hastane ekranlarında gördüğünüz karakteristik PQRST dalga formuna dönüştürür.",
+            "byteAnnotation": "EKG örneği 2048 → 0x08 0x00 (big-endian)",
+            "tip": "Bu baytlardan canlı EKG yeniden oluşturulmasını görmek için Dalga Formları sekmesini açın."
+          }
+        }
+      },
+      "signalIntegrity": {
+        "title": "Sinyal Bütünlüğü ve Gürültü",
+        "desc": "Elektriksel sinyal bozulduğunda UART verilerine ne olduğunu keşfedin.",
+        "steps": {
+          "perfect": {
+            "title": "Mükemmel Bir Sinyal",
+            "explanation": "İdeal koşullarda, bir UART TX hattı paketler arasında lojik YÜKSEK (örn. +3.3V veya +5V) seviyesinde durur. Her bit geçişi keskin ve temizdir. Alıcı, hattı her bit periyodunun merkezinde örnekler, bu nedenle küçük zamanlama varyasyonları önemli değildir.",
+            "tip": "Sinyal Bütünlüğü panelinde gürültü ve titremeyi sıfıra ayarlayın ve Lojik Analizörü gözlemleyin."
+          },
+          "noise": {
+            "title": "Elektriksel Gürültü",
+            "explanation": "Gerçek kablolar yakındaki motorlardan, güç hatlarından veya radyo sinyallerinden elektromanyetik girişim (EMI) toplar. Bu, tek tek bitleri bozar — bir 1, 0 olur veya tam tersi. Sonuç: paketleme hataları veya yanlış veri değerleri. UART'ın yerleşik bir yeniden deneme mekanizması yoktur, bu nedenle checksum'lar kritiktir.",
+            "tip": "Sinyal Bütünlüğü'nde Gürültü Seviyesi kaydırıcısını artırın ve Durum Çubuğunda hata sayısının yükselmesini izleyin."
+          },
+          "jitter": {
+            "title": "Saat Titremesi (Jitter)",
+            "explanation": "Titreme, zamanlama belirsizliğidir — bit kenarları biraz erken veya geç gelir. Her iki taraf da bağımsız saatler çalıştırdığından (asenkron!), herhangi bir frekans uyumsuzluğu bir paketteki 10 bit üzerinde birikir. Aşırı titreme, alıcının yanlış biti örneklemesine neden olur. Maksimum tolerans genellikle ±%2-3'tür.",
+            "tip": "Sinyal Bütünlüğü'nde Bit Flip'i etkinleştirin ve Frame Monitor'de rastgele baytların bozulmasını izleyin."
+          },
+          "solutions": {
+            "title": "Mühendislik Çözümleri",
+            "explanation": "Mühendisler, gerçek dünyadaki sinyal bozulmasını yönetmek için donanım çözümleri (ekranlı kablolar, bükümlü çiftler, RS-422/485 diferansiyel sinyalleşme) ve yazılım çözümleri (CRC checksum'lar, yeniden iletim, yedekli sensörler) kullanırlar. Kritik tıbbi cihazlarda bunların tümü aynı anda gereklidir.",
+            "tip": "Üç sinyal bütünlüğü seçeneğini de aynı anda etkinleştirmeyi deneyin ve sistemin ne kadar çabuk bozulduğunu gözlemleyin."
+          }
+        }
+      }
+    }
+  },
+  "simulation": {
+    "validation": {
+      "returnedToNormal": "{field} normale döndü: {value} {unit}",
+      "outOfLimits": "{field} limit dışı: {value} {unit} (Beklenen: {min}-{max})",
+      "sessionStarted": "Validasyon seansı başlatıldı: {name}",
+      "sessionStartedLog": "VALIDASYON BAŞLATILDI: {name}",
+      "sessionCompleted": "VALIDASYON TAMAMLANDI. Skor: {score}%"
+    },
+    "network": {
+      "invalidPort": "Geçersiz TCP portu: {port}",
+      "connected": "Network bağlandı: {url}",
+      "disconnected": "Network bağlantısı kesildi",
+      "rxNet": "RX (NET): {hex}"
+    },
+    "recording": {
+      "started": "Kayıt başlatıldı...",
+      "playbackStarted": "Kayıt oynatılıyor: {count} paket."
+    }
+  },
+  "trace": {
+    "title": "Canlı İzleme Akışı",
+    "packets": "{count} PAKET",
+    "filterPlaceholder": "Filtre: bpm > 100 && status == ok | id == 0x01 | contains...",
+    "noTraffic": "Mevcut filtreyle eşleşen trafik tespit edilmedi...",
+    "headers": {
+      "no": "No.",
+      "time": "Zaman",
+      "source": "Kaynak",
+      "size": "Boyut",
+      "status": "Durum",
+      "info": "Bilgi / Veri Akışı"
+    },
+    "source": {
+      "tx": "TX Master",
+      "rx": "RX Slave"
+    },
+    "status": {
+      "loopback": "Loopback Tam Eşleşme",
+      "matched": "EŞLEŞTİ",
+      "mismatch": "UYUŞMAZLIK / HATA"
+    },
+    "latency": "{ms}ms gecikme",
+    "bitrate": "BITRATE:",
+    "encoding": "KODLAMA:",
+    "baud": "9600 BAUD",
+    "encodingValue": "8N1"
+  },
+  "spectrum": {
+    "title": "Spektral Analiz",
+    "source": "Kaynak: {key}",
+    "selectSignal": "FFT için bir sinyal seçin",
+    "window": "Pencere:",
+    "rectangular": "Dikdörtgen",
+    "hanning": "Hanning",
+    "hamming": "Hamming",
+    "insufficientData": "Yetersiz Veri",
+    "waitSignal": "FFT en az 256 veri noktası gerektirir. Lütfen sinyal birikmesini bekleyin.",
+    "nyquistLimit": "Nyquist Limiti",
+    "engineActive": "Cooley-Tukey Radix-2 Real-Time Motoru aktif",
+    "db": "{value} dB",
+    "hz": "0 Hz",
+    "resolution": "Çözünürlük: {count} bin"
+  },
+  "validationReport": {
+    "title": "MedNet Monitor",
+    "suite": "Gelişmiş Laboratuvar Validasyon Seti",
+    "docId": "DOKÜMAN-ID:",
+    "date": "Tarih:",
+    "device": "Cihaz:",
+    "status": "Durum:",
+    "institution": "Kurum:",
+    "institutionName": "Mustafa Sercan Sak Diagnostics",
+    "system": "Sistem:",
+    "systemName": "ClinicSync Engine v7.1",
+    "compliance": "Uyumluluk",
+    "copyright": "© 2026 MedNet Suite - Otomatik Sertifikasyon Aracı",
+    "integrityNotice": "Bu rapor dijital olarak oluşturulmuş ve bütünlük için hash doğrulaması yapılmıştır.",
+    "hash": "HASH:",
+    "value": "Değer:"
+  },
+  "inspector": {
+    "title": "Ayrıştırıcı Motoru",
+    "verified": "Bütünlük Doğrulandı",
+    "deepAnalysis": "Derin Analiz",
+    "copyHex": "Hex Kopyala",
+    "copyCStruct": "C-Struct Olarak Kopyala",
+    "copyJson": "JSON Olarak Kopyala",
+    "snapshot": "Anlık Görüntü",
+    "masterTx": "Master TX",
+    "slaveRx": "Slave RX",
+    "field": "Alan",
+    "hex": "Hex",
+    "dec": "Dec",
+    "action": "Aksiyon",
+    "addChart": "Grafik Ekle",
+    "addGauge": "Kadran Ekle",
+    "addLed": "LED Ekle",
+    "add7Segment": "7-Segment Ekle",
+    "diffAnalysis": "Binary Fark Analizi",
+    "integrityFailure": "BÜTÜNLÜK HATASI",
+    "masterStream": "Master Veri Akışı",
+    "slaveStream": "Slave Veri Akışı"
+  },
+  "liveDashboard": {
+    "hudEmpty": "HUD Boş",
+    "pinInstructions": "Canlı telemetri HUD'ınızı doldurmak için Ayrıştırıcıdan alanları sabitleyin.",
+    "telemetryHud": "TELEMETRİ HUD",
+    "activeSystemsMonitor": "Aktif Sistem İzleyici",
+    "activeWatchers": "Aktif Gözlemciler",
+    "snapshotLibrary": "Anlık Görüntü Kütüphanesi",
+    "frameNum": "PAKET #{num}",
+    "mode": "{type} modu",
+    "summary": "Aktif Gözlemciler: {watchlist} | Anlık Görüntüler: {snapshots}"
+  },
+  "hardware": {
+    "txActive": "TX Aktif",
+    "rxActive": "RX Aktif",
+    "power": "Güç",
+    "uartBus": "UART (TX/RX)",
+    "i2cBus": "I2C (SCL/SDA)",
+    "spiBus": "SPI Veri Yolu"
+  },
+  "frameMonitor": {
+    "liveFrame": "Canlı Paket İzleyici",
+    "recentFrames": "Son Paketler",
+    "waitingData": "Veri bekleniyor...",
+    "slotARef": "Slot A (Referans)",
+    "slotBTest": "Slot B (Test)",
+    "hex": "HEX:",
+    "addToDashboard": "Pano'ya ekle ({name})"
+  },
+  "visualizer": {
+    "booting": "CLINICAL SYNC ENGINE v7.0",
+    "monitorName": "MedNet Monitörü",
+    "institution": "Mustafa Sercan Sak Tanılama",
+    "bed": "Yatak-402A",
+    "linkStatus": "Sıfır Gecikmeli Bağlantı",
+    "analytics": "Canlı Protokol Analitiği",
+    "sampling": "250Hz ÖRNEKLEME",
+    "packetId": "Paket ID",
+    "consistency": "Tutarlılık",
+    "fixed": "Sabit",
+    "throughput": "Veri Akışı",
+    "jitter": "Jitter",
+    "hr": "Kalp Atış Hızı",
+    "spo2": "O2 Saturasyonu",
+    "rr": "RR",
+    "temp": "Sıcaklık"
   }
 }

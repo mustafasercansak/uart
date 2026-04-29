@@ -16,7 +16,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
   
   // Fix purity: move random ID generation to useState initializer
   const [deviceId, setDeviceId] = useState(() => `MN-${Math.floor(Math.random() * 10000)}`);
-  const [operator, setOperator] = useState('Mustafa Sercan Sak');
+  const [operator, setOperator] = useState(t('validation.defaultOperator'));
   
   const [targets, setTargets] = useState<ValidationTarget[]>(() => {
     // Default targets from profile waveforms/ranges
@@ -61,7 +61,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
             </div>
             <div>
               <h2 className="text-xl font-black text-white tracking-tight">{t('validation.startTitle')}</h2>
-              <p className="text-xs text-emerald-500/60 font-mono font-bold uppercase tracking-widest mt-0.5">Medical Compliance Mode v7.0</p>
+              <p className="text-xs text-emerald-500/60 font-mono font-bold uppercase tracking-widest mt-0.5">{t('validation.complianceMode')}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-gray-500 transition-colors">
@@ -136,7 +136,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
                     </select>
                   </div>
                   <div className="w-24 space-y-2">
-                    <label className="text-[9px] font-bold text-gray-600 uppercase">Min</label>
+                    <label className="text-[9px] font-bold text-gray-600 uppercase">{t('validation.min')}</label>
                     <input 
                       type="number" value={target.expectedMin}
                       onChange={e => updateTarget(target.id, { expectedMin: Number(e.target.value) })}
@@ -144,7 +144,7 @@ export default function ValidationControls({ profile, onStart, onClose }: Valida
                     />
                   </div>
                   <div className="w-24 space-y-2">
-                    <label className="text-[9px] font-bold text-gray-600 uppercase">Max</label>
+                    <label className="text-[9px] font-bold text-gray-600 uppercase">{t('validation.max')}</label>
                     <input 
                       type="number" value={target.expectedMax}
                       onChange={e => updateTarget(target.id, { expectedMax: Number(e.target.value) })}
