@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UART Pro Lab v1.2.0 - Ultimate Suite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --primary: #3b82f6; --accent: #60a5fa; --bg: #020617; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: white; overflow: hidden; margin: 0; }
+        h1, h2 { font-family: 'Outfit', sans-serif; }
+        .slide { display: none; height: 100vh; width: 100vw; padding: 1rem 4rem; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); animation: fadeIn 0.5s ease-out; }
+        .slide.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.99); } to { opacity: 1; transform: scale(1); } }
+        .screenshot-frame { position: relative; width: 92%; border-radius: 0.75rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 40px 100px -20px rgba(0,0,0,0.8), 0 0 50px rgba(59,130,246,0.1); }
+        .screenshot-frame img { width: 100%; display: block; }
+        .feature-tag { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; padding: 0.2rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.2em; font-weight: 900; }
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 0.75rem; padding: 1.25rem; }
+        .gradient-text { background: linear-gradient(to bottom right, #93c5fd, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-hint { position: absolute; bottom: 2rem; color: rgba(255,255,255,0.2); font-size: 0.7rem; font-family: monospace; letter-spacing: 0.1em; }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Cover -->
+    <div class="slide active" id="slide-1">
+        <div class="flex flex-col items-center text-center space-y-6">
+            <div class="feature-tag">Complete Engineering Suite</div>
+            <h1 class="text-7xl font-extrabold tracking-tight">UART PRO LAB <span class="gradient-text">v1.2.0</span></h1>
+            <p class="text-xl text-gray-400 max-w-3xl font-light">The definitive real-time telemetry, diagnostics, and validation environment for mission-critical hardware development.</p>
+            <div class="mt-4 screenshot-frame">
+                <img src="/docs/images/v1.2/dashboard_tr.png" alt="Full Suite">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Waveforms -->
+    <div class="slide" id="slide-2">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Visual Layer</div>
+                <h2 class="text-4xl font-extrabold italic">Medical <br>Waveforms</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">SIGNAL FIDELITY</p>
+                    Cubic spline interpolation for high-resolution ECG, SpO2, and Resp monitoring with zero latency.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/waveforms_live.png" alt="Waveforms">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Logic Analyzer -->
+    <div class="slide" id="slide-3">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/logic_live.png" alt="Logic Analyzer">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Bit-Precision</div>
+                <h2 class="text-4xl font-extrabold italic">Logic <br>Analyzer</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">TIMING ANALYSIS</p>
+                    Automatic START/STOP bit detection and microsecond Δt measurement for protocol validation.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Telemetry -->
+    <div class="slide" id="slide-4">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Monitoring</div>
+                <h2 class="text-4xl font-extrabold italic">Telemetry <br>Dashboard</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">MISSION CONTROL</p>
+                    Dynamic gauges, sparklines, and status LEDs mapped directly to your UART packet fields.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/telemetry_live.png" alt="Telemetry">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Lab Diff -->
+    <div class="slide" id="slide-5">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/lab_diff_live.png" alt="Lab Diff">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Protocol Lab</div>
+                <h2 class="text-4xl font-extrabold italic">Differential <br>Analysis</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">BINARY DEBUGGING</p>
+                    Compare frames at the bit level. Instantly identify byte-level changes between system states.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Timeline -->
+    <div class="slide" id="slide-6">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">History</div>
+                <h2 class="text-4xl font-extrabold italic">Comm. <br>Timeline</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">TRAFFIC AUDIT</p>
+                    Full TX/RX exchange history with latency tracking and individual packet inspection.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/timeline_live.png" alt="Timeline">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Diagnostics -->
+    <div class="slide" id="slide-7">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/diagnostics_live.png" alt="Diagnostics">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Integrity</div>
+                <h2 class="text-4xl font-extrabold italic">Advanced <br>Diagnostics</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">STABILITY METRICS</p>
+                    Inter-arrival distribution, success rates, and jitter analysis for network robustness.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Playback -->
+    <div class="slide" id="slide-8">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Recording</div>
+                <h2 class="text-4xl font-extrabold italic">Session <br>Playback</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">REPLAY SCENARIOS</p>
+                    Record live sessions and replay them frame-by-frame for post-incident analysis.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/playback_live.png" alt="Playback">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Scripting -->
+    <div class="slide" id="slide-9">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/scripting_live.png" alt="Scripting">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Automation</div>
+                <h2 class="text-4xl font-extrabold italic">Responder <br>Scripts</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">DYNAMIC TWIN</p>
+                    Write custom logic to interact with your hardware via simulated or real UART responder rules.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Hardware -->
+    <div class="slide" id="slide-10">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Physical</div>
+                <h2 class="text-4xl font-extrabold italic">Pin <br>Visualizer</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">IO MONITORING</p>
+                    Live status of TX/RX, SDA/SCL, and MOSI/MISO pins on a virtualized MCU core.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/hardware_live.png" alt="Hardware">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 11: Testing -->
+    <div class="slide" id="slide-11">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/testing_live.png" alt="Testing">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Compliance</div>
+                <h2 class="text-4xl font-extrabold italic">Test <br>Sequencer</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">AUTOMATION</p>
+                    Build complex test sequences to verify device behavior under extreme conditions.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 12: Spectrum -->
+    <div class="slide" id="slide-12">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">DSP Engine</div>
+                <h2 class="text-4xl font-extrabold italic">Spectral <br>Analysis</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">FFT ANALYZER</p>
+                    Real-time spectral power density analysis of incoming signals using Hanning/Hamming windows.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/spectrum_live.png" alt="Spectrum">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 13: Profile Editor -->
+    <div class="slide" id="slide-13">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/profile_editor_live.png" alt="Profile Editor">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Customization</div>
+                <h2 class="text-4xl font-extrabold italic">Template <br>Library</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">PROFILE EDITOR</p>
+                    Define your own packet structures, byte orderings, and clinical safe ranges without writing code.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 14: Scenarios -->
+    <div class="slide" id="slide-14">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Edge Cases</div>
+                <h2 class="text-4xl font-extrabold italic">Simulation <br>Scenarios</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">SCENARIO RUNNER</p>
+                    Instantly trigger predefined medical scenarios like Arrhythmia, Hypoxia, or Sensor Failure.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/scenarios_live.png" alt="Scenarios">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 15: Validation Report -->
+    <div class="slide" id="slide-15">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/report_live.png" alt="Validation Report">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Evidence</div>
+                <h2 class="text-4xl font-extrabold italic">Validation <br>Report</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">AUDIT READY</p>
+                    Generate professional PDF-ready compliance reports showing test results, scores, and event logs.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 16: 3D Visualizer -->
+    <div class="slide" id="slide-16">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Digital Twin</div>
+                <h2 class="text-4xl font-extrabold italic">Medical <br>Visualizer</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">3D MAPPING</p>
+                    Real-time 3D clinical scene mapping patient telemetry to equipment and environment.
+                </div>
+            </div>
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/visualizer_live.png" alt="3D Visualizer">
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 17: Learn -->
+    <div class="slide" id="slide-17">
+        <div class="grid grid-cols-4 gap-8 items-center w-full max-w-[98vw]">
+            <div class="col-span-3 screenshot-frame">
+                <img src="/docs/images/v1.2/learn_live.png" alt="Learn">
+            </div>
+            <div class="col-span-1 space-y-6">
+                <div class="feature-tag">Education</div>
+                <h2 class="text-4xl font-extrabold italic">Interactive <br>Learn Mode</h2>
+                <div class="glass-panel text-sm text-gray-400">
+                    <p class="text-blue-400 font-bold mb-2">CURRICULUM</p>
+                    Master UART protocols and signal integrity through built-in interactive lessons.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 18: Final CTA -->
+    <div class="slide" id="slide-18">
+        <div class="text-center space-y-8">
+            <div class="feature-tag">v1.2.0 Stable</div>
+            <h1 class="text-8xl font-extrabold tracking-tighter">THE ULTIMATE <span class="gradient-text">UART LAB</span></h1>
+            <p class="text-2xl text-gray-500 font-light max-w-2xl mx-auto">Engineered for Excellence. Built for Professionals.</p>
+            <div class="flex gap-4 justify-center mt-12">
+                <div class="glass-panel px-12 py-6 border-blue-500/30">
+                    <p class="text-blue-400 font-bold text-3xl">MUSTAFA SERCAN SAK</p>
+                    <p class="text-xs text-gray-500 uppercase tracking-[0.5em] font-black mt-2">Lead Architect — UART Pro Lab</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-hint">PRESS SPACE OR ARROWS TO EXPLORE THE SUITE</div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 18;
+        function showSlide(n) {
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+            document.getElementById(`slide-${n}`).classList.add('active');
+        }
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                currentSlide = (currentSlide % totalSlides) + 1;
+                showSlide(currentSlide);
+            }
+            if (e.key === 'ArrowLeft') {
+                currentSlide = currentSlide === 1 ? totalSlides : currentSlide - 1;
+                showSlide(currentSlide);
+            }
+        });
+    </script>
+</body>
+</html>

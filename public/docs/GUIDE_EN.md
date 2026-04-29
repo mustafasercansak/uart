@@ -9,10 +9,15 @@ Welcome to the **UART Pro Lab Master Manual**. This document provides an exhaust
 1. [🏗️ System Architecture](#architecture)
 2. [📡 Signal Integrity Theory](#signal-integrity)
 3. [📊 Dashboard Deep-Dive](#dashboard-details)
-4. [🛠️ Protocol Engineering](#protocol-engineering)
-5. [🧪 Clinical Validation](#clinical-validation)
-6. [🤖 Automation & Scripting](#automation)
-7. [🛠️ Troubleshooting & Optimization](#troubleshooting)
+4. [🔬 Advanced Lab Modules](#advanced-lab)
+5. [📈 DSP & Spectral Analysis](#dsp-analysis)
+6. [📋 Configuration & Templates](#config-templates)
+7. [📄 Validation & Reporting](#validation-reporting)
+8. [🛠️ Protocol Engineering](#protocol-engineering)
+9. [🧪 Clinical Validation](#clinical-validation)
+10. [🤖 Automation & Scripting](#automation)
+11. [🎞️ Session Management](#session-management)
+12. [🛠️ Troubleshooting & Optimization](#troubleshooting)
 
 ---
 
@@ -23,7 +28,7 @@ The UART Pro Lab is built on a **High-Concurrency Real-Time Engine**. Unlike sta
 - **Precision Timing**: We use `process.hrtime()` for nanosecond-precision intervals, essential for simulating high-speed baud rates (up to 921,600 bps) without jitter.
 - **Zero-Copy Buffers**: Data is transmitted between the engine and the UI using shared memory or high-speed WebSockets to minimize latency.
 
-![System Dashboard](/docs/images/v1.2/dashboard_en.png)
+![System Dashboard](/docs/images/v1.2/dashboard_tr.png)
 
 ---
 
@@ -55,7 +60,7 @@ Simulating a "perfect" UART line is easy, but real-world hardware is messy. Our 
 - **Interpolation**: We use **Cubic Spline** interpolation. This is critical for medical waveforms; without it, an ECG would look like a series of "stairs".
 - **Cursors**: Use the vertical cursors to measure the distance between two peaks. The Δt (Delta-Time) is calculated with microsecond resolution.
 
-![Waveform Analysis](/docs/images/v1.2/waveforms.png)
+![Waveform Analysis](/docs/images/v1.2/waveforms_live.png)
 
 ### 🔍 Logic Analyzer
 **Detailed Operation**:
@@ -67,7 +72,7 @@ Simulating a "perfect" UART line is easy, but real-world hardware is messy. Our 
     - **STOP bits**: Always 1 (logic high).
 - **Use Case**: Use this to verify that your "Bit Time" is correct. If the bit widths are inconsistent, your receiver will experience "bit-slip".
 
-![Logic Analyzer](/docs/images/v1.2/logic.png)
+![Logic Analyzer](/docs/images/v1.2/logic_live.png)
 
 ### 📊 Telemetry HUD & Widgets
 **Detailed Operation**:
@@ -77,7 +82,7 @@ Simulating a "perfect" UART line is easy, but real-world hardware is messy. Our 
     - **Sparkline**: Shows the last 30 seconds of history to identify trends.
     - **Status LED**: Maps a bitfield to a color indicator.
 
-![Telemetry HUD](/docs/images/v1.2/telemetry.png)
+![Telemetry HUD](/docs/images/v1.2/telemetry_live.png)
 
 ### 🩺 Advanced Diagnostics
 **Detailed Operation**:
@@ -85,19 +90,91 @@ Simulating a "perfect" UART line is easy, but real-world hardware is messy. Our 
 - **Clean Frames**: Frames that arrived exactly on time without any jitter or checksum failures.
 - **Latency Heatmap**: Visualizes the "Network Jitter".
 
-![Diagnostics Panel](/docs/images/v1.2/diagnostics.png)
+![Diagnostics Panel](/docs/images/v1.2/diagnostics_live.png)
 
 ### 🎮 3D Clinical Visualizer
 **Detailed Operation**:
 - **Digital Twin Mapping**: Uses a **Three.js** engine to map incoming UART fields to 3D objects.
 - **Interaction**: If the simulation sends a "Heart Rate" of 120, the 3D heart model's animation speed increases accordingly.
 
-![3D Medical Scene](/docs/images/v1.2/visualizer_3d.png)
+![3D Medical Scene](/docs/images/v1.2/visualizer_live.png)
 
-### 🎓 Interactive Learn Tab
+![Learn Mode](/docs/images/v1.2/learn_live.png)
+
+---
+
+<a name="config-templates"></a>
+## 📋 Configuration & Templates
+
+### 🛠️ Profile Template Editor
 **Detailed Operation**:
-- **Interactive Lessons**: A built-in curriculum covering UART basics, framing, and signal integrity.
-- **Live Experiments**: Lessons include "Try it now" buttons that automatically configure the simulator.
+- **Visual Dissector**: Define the structure of your UART packets without writing code. Set start bytes, field lengths, and data types (Integer, Float, Bitmask).
+- **Template Library**: Save and switch between different device protocols (e.g., Patient Monitor v1, ECG Module x2).
+- **Safe Range Mapping**: Define the "Green Zone" for every field to enable automatic compliance monitoring.
+
+![Profile Editor](/docs/images/v1.2/profile_editor_live.png)
+
+### 🎭 Simulation Scenarios
+**Detailed Operation**:
+- **Behavior Injection**: Instantly shift the simulation from "Stable" to "Emergency" (e.g., Tachycardia, Hypoxia).
+- **Scripted Events**: Scenarios can trigger specific field overrides at defined intervals to test your system's alarm logic.
+
+![Scenarios](/docs/images/v1.2/scenarios_live.png)
+
+---
+
+<a name="validation-reporting"></a>
+## 📄 Validation & Reporting
+
+### 📜 Validation Report (PDF Export)
+**Detailed Operation**:
+- **Compliance Scoring**: Automatically calculates a final "Health Score" based on the duration of the session and the number of violations detected.
+- **Evidence Logging**: Captures every violation with a high-resolution timestamp and the exact raw data that caused it.
+- **Session Metadata**: Tracks Device ID, Operator Name, and Environment Stats for full traceability in regulated environments.
+
+![Validation Report](/docs/images/v1.2/report_live.png)
+
+---
+
+<a name="advanced-lab"></a>
+## 🔬 Advanced Lab Modules
+
+### 🧪 Differential Analysis (Lab Diff)
+**Detailed Operation**:
+- **Bit-Level Comparison**: Select any two frames from history to perform a "diff". The system highlights exactly which bits changed.
+- **Protocol Discovery**: Essential for reverse-engineering unknown UART protocols where only a few bits change based on sensor input.
+
+![Lab Diff](/docs/images/v1.2/lab_diff_live.png)
+
+### 📜 Communication Timeline
+**Detailed Operation**:
+- **Sequence Audit**: A vertical stream of all TX and RX events. 
+- **Latency Tracking**: Automatically calculates the time between a request (TX) and the corresponding response (RX).
+
+![Timeline](/docs/images/v1.2/timeline_live.png)
+
+### 🔌 Hardware Layout Visualizer
+**Detailed Operation**:
+- **IO Monitoring**: A virtual representation of the MCU (UART-X1).
+- **Live Pins**: The TX and RX pins glow in real-time as data packets are processed, providing visual confirmation of physical layer activity.
+
+![Hardware Visualizer](/docs/images/v1.2/hardware_live.png)
+
+---
+
+<a name="dsp-analysis"></a>
+## 📈 DSP & Spectral Analysis
+
+### 📊 FFT Spectrum Analyzer
+**Detailed Operation**:
+- **Transformation**: Converts time-domain waveform data into the frequency domain using a **Fast Fourier Transform (FFT)**.
+- **Windowing Functions**:
+    - **Hanning**: Best for general purpose frequency resolution.
+    - **Hamming**: Optimized for minimizing "leakage" at the edges.
+    - **Rectangular**: Highest frequency resolution but prone to spectral leakage.
+- **Use Case**: Identify periodic noise, power line interference (50/60Hz), or harmonic distortions in your simulated signals.
+
+![Spectral Analysis](/docs/images/v1.2/spectrum_live.png)
 
 ---
 
@@ -128,7 +205,7 @@ Our engine uses mathematical models to generate:
 - **Audit Logs**: Every packet is timestamped and checked against clinical safety ranges.
 - **Violation Triggers**: If a value exceeds a limit, the system can automatically trigger a "Critical Failure" event.
 
-![Compliance Suite](/docs/images/v1.2/test_suite.png)
+![Compliance Suite](/docs/images/v1.2/testing_live.png)
 
 ---
 

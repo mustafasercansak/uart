@@ -9,10 +9,15 @@
 1. [🏗️ Sistem Mimarisi](#architecture)
 2. [📡 Sinyal Bütünlüğü Teorisi](#signal-integrity)
 3. [📊 Panel Detayları (Deep-Dive)](#dashboard-details)
-4. [🛠️ Protokol Mühendisliği](#protocol-engineering)
-5. [🧪 Klinik Doğrulama](#clinical-validation)
-6. [🤖 Otomasyon ve Betikleme](#automation)
-7. [🛠️ Sorun Giderme ve Optimizasyon](#troubleshooting)
+4. [🔬 Gelişmiş Laboratuvar Modülleri](#advanced-lab)
+5. [📈 DSP ve Spektral Analiz](#dsp-analysis)
+6. [📋 Yapılandırma ve Şablonlar](#config-templates)
+7. [📄 Doğrulama ve Raporlama](#validation-reporting)
+8. [🛠️ Protokol Mühendisliği](#protocol-engineering)
+9. [🧪 Klinik Doğrulama](#clinical-validation)
+10. [🤖 Otomasyon ve Betikleme](#automation)
+11. [🎞️ Oturum Yönetimi](#session-management)
+12. [🛠️ Sorun Giderme ve Optimizasyon](#troubleshooting)
 
 ---
 
@@ -55,7 +60,7 @@ UART Pro Lab, **Yüksek Eşzamanlı Gerçek Zamanlı Motor** üzerine kurulmuşt
 - **İnterpolasyon**: **Cubic Spline** interpolasyonu kullanıyoruz. Bu, tıbbi dalga formları için kritiktir; o olmadan bir EKG "merdiven" dizisi gibi görünürdü.
 - **İmleçler**: İki tepe noktası arasındaki mesafeyi ölçmek için dikey imleçleri kullanın. Δt (Delta-Zaman) mikrosaniye çözünürlüğüyle hesaplanır.
 
-![Dalga Formu Analizi](/docs/images/v1.2/waveforms.png)
+![Dalga Formu Analizi](/docs/images/v1.2/waveforms_live.png)
 
 ### 🔍 Lojik Analizör
 **Detaylı Çalışma**:
@@ -67,7 +72,7 @@ UART Pro Lab, **Yüksek Eşzamanlı Gerçek Zamanlı Motor** üzerine kurulmuşt
     - **STOP bitleri**: Her zaman 1 (lojik yüksek).
 - **Kullanım Durumu**: "Bit Sürenizin" (1 / Baud Rate) mikrosaniye hassasiyetinde doğru olduğunu doğrulamak için bunu kullanın.
 
-![Lojik Analizör](/docs/images/v1.2/logic.png)
+![Lojik Analizör](/docs/images/v1.2/logic_live.png)
 
 ### 📊 Telemetri HUD ve Widget'lar
 **Detaylı Çalışma**:
@@ -77,21 +82,96 @@ UART Pro Lab, **Yüksek Eşzamanlı Gerçek Zamanlı Motor** üzerine kurulmuşt
     - **Sparkline**: Eğilimleri belirlemek için son 30 saniyelik geçmişi gösterir.
     - **Durum LED'i**: Bir bit alanını bir renk göstergesine eşler.
 
-![Telemetri Paneli](/docs/images/v1.2/telemetry.png)
+![Telemetri Paneli](/docs/images/v1.2/telemetry_live.png)
 
 ### 🩺 Gelişmiş Tanılama (Diagnostics)
 **Detaylı Çalışma**:
 - **Başarı Oranı**: `(Toplam Kare - Hata Karesi) / Toplam Kare` olarak hesaplanır. Kritik bir sistemde bu oran %99.9+ seviyesinde kalmalıdır.
 - **Temiz Kareler**: Jitter veya checksum hatası olmadan tam zamanında gelen kareler.
 
-![Tanılama Paneli](/docs/images/v1.2/diagnostics.png)
+![Tanılama Paneli](/docs/images/v1.2/diagnostics_live.png)
 
 ### 🎮 3D Klinik Görselleştirici
 **Detaylı Çalışma**:
 - **Dijital İkiz Eşleme**: Gelen UART alanlarını 3D nesnelere eşlemek için bir **Three.js** motoru kullanır.
 - **Etkileşim**: Simülasyon 120 "Nabız" gönderirse, 3D kalp modelinin animasyon hızı buna göre artar.
 
-![3D Tıbbi Sahne](/docs/images/v1.2/visualizer_3d.png)
+![3D Tıbbi Sahne](/docs/images/v1.2/visualizer_live.png)
+
+---
+
+<a name="config-templates"></a>
+## 📋 Yapılandırma ve Şablonlar
+
+### 🛠️ Profil Şablon Düzenleyici (Profile Editor)
+**Detaylı Çalışma**:
+- **Görsel Ayrıştırıcı**: Kod yazmadan UART paketlerinizin yapısını tanımlayın. Başlangıç baytlarını, alan uzunluklarını ve veri tiplerini (Integer, Float, Bitmask) ayarlayın.
+- **Şablon Kütüphanesi**: Farklı cihaz protokollerini (örn: Hasta Monitörü v1, EKG Modülü x2) kaydedin ve aralarında anında geçiş yapın.
+- **Güvenli Aralık Eşleme**: Otomatik uyumluluk izlemeyi etkinleştirmek için her alan için "Yeşil Bölge" (Güvenli Aralık) tanımlayın.
+
+![Profil Düzenleyici](/docs/images/v1.2/profile_editor_live.png)
+
+### 🎭 Simülasyon Senaryoları
+**Detaylı Çalışma**:
+- **Davranış Enjeksiyonu**: Simülasyonu anında "Stabil" durumdan "Acil Durum"a (örn: Taşikardi, Hipoksi) geçirin.
+- **Betiklenmiş Olaylar**: Senaryolar, sisteminizin alarm mantığını test etmek için tanımlanan aralıklarla belirli alan geçersiz kılmalarını (overrides) tetikleyebilir.
+
+![Senaryolar](/docs/images/v1.2/scenarios_live.png)
+
+---
+
+<a name="validation-reporting"></a>
+## 📄 Doğrulama ve Raporlama
+
+### 📜 Doğrulama Raporu (PDF Dışa Aktarma)
+**Detaylı Çalışma**:
+- **Uyumluluk Puanlaması**: Oturumun süresine ve tespit edilen ihlal sayısına göre otomatik olarak bir "Sağlık Puanı" hesaplar.
+- **Kanıt Günlüğü**: Her ihlali yüksek çözünürlüklü zaman damgası ve buna neden olan ham (raw) veri ile birlikte yakalar.
+- **Oturum Üstverileri**: Düzenlemeye tabi ortamlarda tam izlenebilirlik için Cihaz Kimliği, Operatör Adı ve Ortam İstatistiklerini takip eder.
+
+![Doğrulama Raporu](/docs/images/v1.2/report_live.png)
+
+---
+
+<a name="advanced-lab"></a>
+## 🔬 Gelişmiş Laboratuvar Modülleri
+
+### 🧪 Diferansiyel Analiz (Lab Diff)
+**Detaylı Çalışma**:
+- **Bit Seviyesinde Karşılaştırma**: Geçmişteki herhangi iki kareyi seçerek "diff" işlemi yapın. Sistem hangi bitlerin değiştiğini tam olarak vurgular.
+- **Protokol Keşfi**: Sadece birkaç bitin sensör girişine bağlı olarak değiştiği bilinmeyen UART protokollerini tersine mühendislik (reverse-engineering) ile çözmek için temeldir.
+
+![Lab Diff](/docs/images/v1.2/lab_diff_live.png)
+
+### 📜 İletişim Zaman Çizelgesi (Timeline)
+**Detaylı Çalışma**:
+- **Dizi Denetimi**: Tüm TX ve RX olaylarının dikey bir akışı.
+- **Gecikme Takibi**: Bir istek (TX) ile karşılık gelen yanıt (RX) arasındaki süreyi otomatik olarak hesaplar.
+
+![Timeline](/docs/images/v1.2/timeline_live.png)
+
+### 🔌 Donanım Yerleşim Görselleştirici
+**Detaylı Çalışma**:
+- **IO İzleme**: MCU'nun (UART-X1) sanal bir temsili.
+- **Canlı Pinler**: Veri paketleri işlendikçe TX ve RX pinleri gerçek zamanlı olarak parlar ve fiziksel katman etkinliğinin görsel onayını sağlar.
+
+![Donanım Görselleştirici](/docs/images/v1.2/hardware_live.png)
+
+---
+
+<a name="dsp-analysis"></a>
+## 📈 DSP ve Spektral Analiz
+
+### 📊 FFT Spektrum Analizörü
+**Detaylı Çalışma**:
+- **Dönüşüm**: Zaman düzlemindeki dalga formu verilerini **Hızlı Fourier Dönüşümü (FFT)** kullanarak frekans düzlemine dönüştürür.
+- **Pencereleme Fonksiyonları**:
+    - **Hanning**: Genel amaçlı frekans çözünürlüğü için en iyisidir.
+    - **Hamming**: Kenarlardaki "sızıntıyı" en aza indirmek için optimize edilmiştir.
+    - **Rectangular**: En yüksek frekans çözünürlüğü sağlar ancak spektral sızıntıya eğilimlidir.
+- **Kullanım Durumu**: Simüle edilen sinyallerinizdeki periyodik gürültüyü, güç hattı parazitini (50/60Hz) veya harmonik bozulmaları belirleyin.
+
+![Spektral Analiz](/docs/images/v1.2/spectrum_live.png)
 
 ---
 
@@ -122,7 +202,7 @@ Motorumuz şu formları oluşturmak için matematiksel modeller kullanır:
 - **Denetim Günlükleri**: Her paket zaman damgalıdır ve klinik güvenlik aralıklarına göre kontrol edilir.
 - **İhlal Tetikleyicileri**: Bir değer sınırı aşarsa (örn: SpO2 < 85), sistem otomatik olarak bir "Kritik Hata" olayı tetikleyebilir.
 
-![Sertifikasyon Testleri](/docs/images/v1.2/test_suite.png)
+![Sertifikasyon Testleri](/docs/images/v1.2/testing_live.png)
 
 ---
 

@@ -56,6 +56,8 @@ export function useUIUpdateLoop({
         if (newLogs.length < MAX_LOGS_PER_CYCLE) newLogs.push(entry);
       };
 
+      const tickPoints: Array<Record<string, number>> = [];
+
       for (const raw of rawMsgs) {
         try {
           const parsed = JSON.parse(raw);
@@ -78,8 +80,9 @@ export function useUIUpdateLoop({
                 const point: Record<string, number> = { t: msg.frame.timestampMs };
                 msg.frame.fields.forEach((f: { name: string; decimal: number }) => { point[f.name] = f.decimal; });
                 waveformHistoryRef.current.push(point);
-                if (waveformHistoryRef.current.length > 180) {
-                  waveformHistoryRef.current.splice(0, waveformHistoryRef.current.length - 180);
+                tickPoints.push(point);
+                if (waveformHistoryRef.current.length > 1024) {
+                  waveformHistoryRef.current.splice(0, waveformHistoryRef.current.length - 1024);
                 }
                 break;
               }
@@ -231,13 +234,14 @@ export function useUIUpdateLoop({
 
       const hasUpdates =
         Object.keys(masterBatch).length > 0 ||
+        tickPoints.length > 0 ||
         newLogs.length > 0;
 
       if (hasUpdates) {
         dispatch({
           type: 'MASTER_TICK',
           updates: masterBatch,
-          points: [],   // waveformHistory now lives in waveformHistoryRef, not state
+          points: tickPoints,
           logEntries: newLogs,
           elapsedMs: latestElapsed
         });
