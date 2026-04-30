@@ -546,6 +546,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           setActiveSequence: (id: string | null) => {
             dispatch({ type: 'SET_ACTIVE_SEQUENCE', id });
           }
+        },
+        setCustomWaveform: (waveform: number[] | null) => {
+          backendWsRef.current?.send(JSON.stringify({ type: 'SET_CUSTOM_WAVEFORM', waveform }));
+          dispatch({ type: 'SET_CUSTOM_WAVEFORM', waveform });
         }
       }}
     >

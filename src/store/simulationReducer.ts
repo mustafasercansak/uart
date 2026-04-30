@@ -135,10 +135,14 @@ export type SimAction =
   | { type: 'SAVE_SEQUENCE'; sequence: AutomationSequence }
   | { type: 'DELETE_SEQUENCE'; id: string }
   | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
-  | { type: 'CLEAR_EXCHANGES' };
+  | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
+  | { type: 'CLEAR_EXCHANGES' }
+  | { type: 'SET_CUSTOM_WAVEFORM'; waveform: number[] | null };
 
 export function reducer(state: SimulationState, action: SimAction): SimulationState {
   switch (action.type) {
+    case 'SET_CUSTOM_WAVEFORM':
+      return { ...state, customWaveform: action.waveform || undefined };
     case 'SET_PROFILE':
       return { ...state, profileId: action.profileId };
     case 'SET_SCENARIO':

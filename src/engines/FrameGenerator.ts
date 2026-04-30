@@ -91,6 +91,16 @@ function getFieldValue(
     case 'waveform': {
       const cfg = { ...typeConfig as WaveformConfig };
 
+      // Custom Waveform Injection
+      if (state.customWaveform && state.customWaveform.length > 0) {
+        const samples = state.customWaveform;
+        // Map time to sample index based on frequency (Hz)
+        const periodMs = 1000 / (cfg.frequency || 1);
+        const progress = (elapsedMs % periodMs) / periodMs;
+        const index = Math.floor(progress * samples.length);
+        return clampValue(samples[index], byteWidth);
+      }
+
       // Medical Sync: If this is an ECG and there's a BPM field, sync them
       if (cfg.shape === 'ecg') {
         const bpm = namedValues['BPM'] || namedValues['HR'] || 0;

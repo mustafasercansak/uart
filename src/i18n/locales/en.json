@@ -407,55 +407,33 @@
     "fc": "FC",
     "hi": "Hi",
     "lo": "Lo",
-    "header": "Header"
+    "header": "Header",
+    "frameBuilder": "Frame Builder",
+    "waveformDesigner": "Waveform Designer"
   },
-  "diagnostics": {
-    "avgLatency": "Avg Latency",
-    "jitter": "Jitter (Deviation)",
-    "timingStability": "Timing Stability",
-    "responseErrors": "Response Errors",
-    "errorTypeSub": "Simulated/Real Errors",
-    "latencyStability": "Arrival Stability (Last 50)",
-    "arrivalDistribution": "Inter-arrival Distribution (Histogram)"
-  },
-  "playback": {
-    "activePlayer": "Active Player",
-    "activeSub": "High-precision UART Replay mode",
-    "stepBack": "Step Back (Packet)",
-    "stepForward": "Step Forward (Packet)",
-    "packetIndex": "PACKET #{index}",
-    "packetTotal": "TOTAL {count} PACKETS",
-    "library": "Recording Library",
-    "librarySub": "Manage and replay stored UART sessions",
-    "refreshList": "Refresh List",
-    "play": "Play",
-    "packetCount": "Packet Count",
-    "totalDuration": "Total Duration",
-    "noRecordings": "No recordings found",
-    "recHelp": "Press REC to start recording a session"
-  },
-  "logic": {
-    "title": "Logic Analyzer v1.0",
-    "noData": "NO DATA STREAM DETECTED... START SIMULATION",
-    "zoom": "Zoom:",
-    "resetCursors": "Reset Cursors",
-    "liveSync": "Live Sync",
-    "staticView": "Static View",
-    "uartTx": "UART TX",
-    "controls": {
-      "scroll": "Scroll: Drag / Wheel",
-      "zoom": "Zoom: Ctrl + Wheel",
-      "measure": "Measure: Click to place A/B"
-    },
-    "baud": "Current Baud:",
-    "ms": "{t}ms",
-    "waiting": "WAITING FOR DATA... START SIMULATION",
-    "clearCursors": "Clear Cursors",
-    "running": "Running",
-    "paused": "Paused",
-    "scrollInstr": "Scroll: Wheel",
-    "zoomInstr": "Zoom: Ctrl+Wheel",
-    "measureInstr": "Measure: Click"
+  "waveformDesigner": {
+    "title": "Waveform Designer",
+    "subtitle": "Custom Signal Generation Lab",
+    "freehand": "Freehand Draw",
+    "formula": "Math Formula",
+    "presets": "Presets Library",
+    "expression": "Mathematical Expression",
+    "smoothing": "SMOOTHING",
+    "library": "Signal Library",
+    "empty": "Canvas Empty - Start Designing",
+    "inject": "Inject to Stream",
+    "presetsList": {
+      "ecg": "ECG Normal",
+      "ecgDesc": "P-QRS-T Complex",
+      "ppg": "PPG Pulse",
+      "ppgDesc": "Heart Saturation",
+      "resp": "Ventilation",
+      "respDesc": "Resp. Flow/Pressure",
+      "square": "Square Wave",
+      "squareDesc": "Digital Switching",
+      "noise": "White Noise",
+      "noiseDesc": "Signal Interference"
+    }
   },
   "errors": {
     "checksum": "Corrupt Checksum",
@@ -609,72 +587,6 @@
     "waitingTraffic": "Waiting for traffic...",
     "mirroringData": "Mirroring data...",
     "waitingDevice": "Waiting for device..."
-  },
-  "helpModal": {
-    "title": "System Help & Documentation",
-    "subtitle": "UART Simulator usage details and technical references",
-    "loading": "Preparing Document...",
-    "docVersion": "Documentation Version: v1.3",
-    "loadError": "Error loading document.",
-    "userGuide": "User Guide",
-    "quickHelp": "Quick Help",
-    "readme": "README"
-  },
-  "diffLab": {
-    "title": "Protocol Comparison Laboratory",
-    "description": "Select two packets to compare. You can add packets from the history list or snapshots by pressing the 'Compare' button.",
-    "analysisTitle": "Differential Analysis",
-    "reset": "RESET",
-    "referencePacket": "Reference Packet (A)",
-    "testPacket": "Test Packet (B)",
-    "bitChangeMap": "Bit-Level Change Map (B)",
-    "tip": "Tip: Fields marked in red show changed values between the two packets. The Bit-Level map shows the changes of packet (B) relative to packet (A).",
-    "bitTooltip": "Byte {byteIdx}, Bit {bitIdx}",
-    "byteDetail": "Byte {index} ({name}) Detail:"
-  },
-  "protocolDecoder": {
-    "title": "Protocol Decoder",
-    "auto": "Auto",
-    "last": "Last",
-    "noFrames": "No frames yet — start simulation",
-    "noMatch": "This frame does not conform to {protocol} protocol",
-    "crcError": "CRC ERROR",
-    "decodeError": "Decode Error",
-    "unknown": "Unknown"
-  },
-  "rxMonitor": {
-    "title": "Incoming RX Frames",
-    "waitingData": "Waiting for data from external device...",
-    "new": "● NEW",
-    "slotA": "Send to Slot A",
-    "slotB": "Send to Slot B",
-    "clearHistory": "Clear History"
-  },
-  "statBar": {
-    "serialPort": "Serial Port",
-    "noPort": "No port",
-    "unknown": "Unknown"
-  },
-  "triggerManager": {
-    "title": "Trigger Engine",
-    "noRules": "No active rules yet...",
-    "ruleName": "Rule Name",
-    "condition": "Condition (JS)",
-    "action": "Action",
-    "conditionPlaceholder": "E.g: BPM > 100",
-    "save": "Save",
-    "cancel": "Cancel",
-    "active": "ACTIVE",
-    "criticalMonitor": "Critical Sensor Monitoring Active",
-    "newTrigger": "New Trigger",
-    "unnamed": "Unnamed",
-    "actionLabels": {
-      "stop_simulation": "Stop Simulation",
-      "start_recording": "Start Recording",
-      "log_warning": "Log Warning",
-      "inject_error": "Inject Error",
-      "set_field": "Change Field Value"
-    }
   },
   "visualAnalyzer": {
     "title": "Visual Protocol Stream Analyzer",

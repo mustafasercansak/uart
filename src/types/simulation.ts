@@ -128,4 +128,6 @@ export interface SimulationState {
   validationSession: ValidationSession | null;
   sequences: AutomationSequence[];
   activeSequenceId: string | null;
+  builderSubTab?: 'frame' | 'waveform';
+  customWaveform?: number[];
 }

@@ -17,6 +17,7 @@ import ProtocolDecoderPanel from './ProtocolDecoderPanel';
 import TestSuiteRunner from './TestSuiteRunner';
 import ErrorReportPanel from './ErrorReportPanel';
 import FrameBuilder from './FrameBuilder';
+import WaveformDesigner from './WaveformDesigner';
 import { GeneratedFrame, FrameProfile, SimulationState } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
@@ -63,6 +64,7 @@ export default function TabContent({
   errorCount: errorCountProp,
 }: TabContentProps) {
   const { t } = useTranslation();
+  const [localSubTab, setLocalSubTab] = React.useState<'frame' | 'waveform'>('frame');
   const { timingStats, frameCount, errorCount, status, recordings, playbackIndex, playbackTotal, responderRules, diffFrames, watchlist, triggers, recentFrames } = state;
   const resolvedFrameCount = frameCountProp ?? frameCount;
   const resolvedErrorCount = errorCountProp ?? errorCount;
@@ -199,10 +201,32 @@ export default function TabContent({
       );
     case 'builder':
       return (
-        <FrameBuilder
-          profile={selectedProfile}
-          onSendFrame={hooks.onSendFrame ?? (() => {})}
-        />
+        <div className="h-full flex flex-col">
+          <div className="shrink-0 flex border-b border-white/5 bg-gray-950/20 p-1">
+             <button 
+               onClick={() => setLocalSubTab('frame')}
+               className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${localSubTab === 'frame' ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20' : 'text-gray-500 hover:text-gray-300'}`}
+             >
+               {t('builder.frameBuilder')}
+             </button>
+             <button 
+               onClick={() => setLocalSubTab('waveform')}
+               className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${localSubTab === 'waveform' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-gray-500 hover:text-gray-300'}`}
+             >
+               {t('builder.waveformDesigner')}
+             </button>
+          </div>
+          <div className="flex-1 min-h-0">
+            {localSubTab === 'frame' ? (
+              <FrameBuilder
+                profile={selectedProfile}
+                onSendFrame={hooks.onSendFrame ?? (() => {})}
+              />
+            ) : (
+              <WaveformDesigner />
+            )}
+          </div>
+        </div>
       );
     case 'learn':
       return (
