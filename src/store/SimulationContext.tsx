@@ -18,7 +18,8 @@ import type {
   AutomationSequence,
   AutomationStep,
   Field,
-  ValidationTarget
+  ValidationTarget,
+  ScriptablePeripheral
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -32,6 +33,7 @@ import {
   deleteSequence
 } from './storage';
 import { usePeripheralStore } from './usePeripheralStore';
+import type { PeripheralState } from './usePeripheralStore';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -148,12 +150,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [state.lastRxFrame, state.validationSession, state.validationSession?.status, t]);
 
   // ── PERIPHERAL SYNC ──────────────────────────
-  const peripherals = usePeripheralStore(s => s.peripherals);
+  const peripherals = usePeripheralStore((s: PeripheralState) => s.peripherals);
   React.useEffect(() => {
     if (!backendWsRef.current || backendWsRef.current.readyState !== WebSocket.OPEN) return;
     backendWsRef.current.send(JSON.stringify({ 
       type: 'UPDATE_PERIPHERALS', 
-      peripherals: peripherals.map(p => ({
+      peripherals: peripherals.map((p: ScriptablePeripheral) => ({
         id: p.id,
         name: p.name,
         protocol: p.protocol,

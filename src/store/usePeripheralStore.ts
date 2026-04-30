@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { ScriptablePeripheral } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
-interface PeripheralState {
+export interface PeripheralState {
   peripherals: ScriptablePeripheral[];
   activePeripheralId: string | null;
   

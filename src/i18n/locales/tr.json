@@ -106,15 +106,23 @@
   "controls": {
     "flags": "Bayrak Kontrolleri",
     "overrides": "Alan Geçersiz Kılma",
+    "colorCode": "Alan Tipi Renk Kodlaması",
+    "goToProfiles": "Profillere Git",
+    "categories": {
+      "Tıbbi": "Tıbbi",
+      "Tıbbi (İnsanlık İçin)": "Tıbbi (İnsanlık İçin)",
+      "Çevresel": "Çevresel",
+      "Genel": "Genel"
+    },
     "reset": "Sıfırla",
     "injection": "Hata Enjeksiyonu",
     "pendingErrors": "{count} hata sırada bekleniyor",
     "signalQuality": "Sinyal Kalitesi",
+    "bitFlip": "Bit Çevirme",
     "noise": "Gürültü",
     "jitter": "Titreme",
     "console": "Konsol Logları",
     "csvExport": "CSV Aktar",
-    "bitFlip": "Bit Çevirme",
     "logEmpty": "Simülasyon başlatıldığında log burada görünecek..."
   },
   "diagnostics": {

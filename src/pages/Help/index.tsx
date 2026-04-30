@@ -6,7 +6,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from '../../i18n/context';
 
-type DocType = 'tr' | 'en' | 'readme' | 'full';
+type DocType = 'master' | 'readme';
 
 const docs = (lang: string) => ({
   master: { 
