@@ -50,14 +50,14 @@ const ControlPanel = memo(({
     <div className="w-80 flex flex-col border-l border-gray-800 bg-gray-900/30 shrink-0">
       {/* Flag Toggles */}
       {flagsFields.length > 0 && (
-        <div className="p-4 border-b border-gray-800">
-          <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">{t('controls.flags')}</div>
-          <div className="space-y-2">
+        <div className="p-3 border-b border-gray-800/50">
+          <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest mb-2">{t('controls.flags')}</div>
+          <div className="space-y-1.5">
             {flagsFields.map((field) => {
               const cfg = field.typeConfig as FlagsConfig;
               return (
                 <div key={field.id}>
-                  <div className="text-gray-600 text-[10px] font-mono mb-1">{field.name}</div>
+                  <div className="text-gray-500 text-[8.5px] font-mono mb-1">{field.name}</div>
                   <div className="flex flex-wrap gap-1">
                     {cfg.bits.map((bit) => {
                       const bitKey = `${field.id}.${bit.name}`;
@@ -66,10 +66,10 @@ const ControlPanel = memo(({
                         <button
                           key={bit.index}
                           onClick={() => onOverrideBit(bitKey, currentVal ? 0 : 1)}
-                          className={`px-2 py-1 rounded text-[10px] font-mono border transition-colors ${
+                          className={`px-1.5 py-0.5 rounded-[3px] text-[8.5px] font-mono border transition-all ${
                             currentVal
-                              ? 'bg-green-900/50 border-green-700 text-green-300'
-                              : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600'
+                              ? 'bg-green-900/50 border-green-700/50 text-green-400'
+                              : 'bg-gray-800/50 border-gray-700/50 text-gray-500 hover:border-gray-600'
                           }`}
                         >
                           {bit.name}
@@ -86,21 +86,21 @@ const ControlPanel = memo(({
 
       {/* Field Overrides */}
       {allRangeFields.length > 0 && (
-        <div className="p-4 border-b border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">{t('controls.overrides')}</div>
-            <button onClick={onResetOverrides} className="text-gray-600 hover:text-gray-400 text-xs font-mono transition-colors">{t('controls.reset')}</button>
+        <div className="p-3 border-b border-gray-800/50">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest">{t('controls.overrides')}</div>
+            <button onClick={onResetOverrides} className="text-gray-700 hover:text-gray-500 text-[9px] font-mono transition-colors uppercase">{t('controls.reset')}</button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {allRangeFields.map((field) => {
               const cfg = field.typeConfig as RangeConfig;
               const currentVal = fieldOverrides[field.id] ?? Math.round((cfg.min + cfg.max) / 2);
               const hasOverride = fieldOverrides[field.id] !== undefined;
               return (
                 <div key={field.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-mono ${hasOverride ? 'text-yellow-400' : 'text-gray-400'}`}>{field.name}</span>
-                    <span className="text-gray-300 text-xs font-mono font-bold w-8 text-right">{currentVal}</span>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className={`text-[9px] font-mono ${hasOverride ? 'text-yellow-500 font-bold' : 'text-gray-500'}`}>{field.name}</span>
+                    <span className="text-gray-400 text-[9px] font-mono font-bold">{currentVal}</span>
                   </div>
                   <input
                     type="range"
@@ -108,12 +108,8 @@ const ControlPanel = memo(({
                     max={cfg.max}
                     value={currentVal}
                     onChange={(e) => onOverrideField(field.id, Number(e.target.value))}
-                    className="w-full accent-green-500 cursor-pointer"
+                    className="w-full h-1 accent-green-600 cursor-pointer bg-gray-800 rounded-full appearance-none"
                   />
-                  <div className="flex justify-between text-gray-700 text-[9px] font-mono">
-                    <span>{cfg.min}</span>
-                    <span>{cfg.max}</span>
-                  </div>
                 </div>
               );
             })}
@@ -122,47 +118,48 @@ const ControlPanel = memo(({
       )}
 
       {/* Error Injection */}
-      <div className="p-4 border-b border-gray-800">
-        <div className="text-gray-500 text-xs font-mono uppercase tracking-wider mb-3">{t('controls.injection')}</div>
-        <div className="grid grid-cols-2 gap-1.5">
+      <div className="p-3 border-b border-gray-800/50">
+        <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest mb-2">{t('controls.injection')}</div>
+        <div className="grid grid-cols-2 gap-1">
           {errorTypes.map(({ type, label, color }) => (
             <button
               key={type}
               onClick={() => onInjectError(type)}
               disabled={status !== 'running'}
-              className={`text-[10px] font-mono px-2 py-1.5 rounded border transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${color}`}
+              className={`text-[9px] font-mono px-1.5 py-1 rounded-[3px] border transition-all disabled:opacity-20 disabled:cursor-not-allowed ${color}`}
             >
               {label}
             </button>
           ))}
         </div>
         {pendingErrors.length > 0 && (
-          <div className="mt-2 text-orange-400 text-[10px] font-mono">
+          <div className="mt-1.5 text-orange-500 text-[8.5px] font-mono flex items-center gap-1">
+            <span className="w-1 h-1 bg-orange-500 rounded-full animate-pulse" />
             {t('controls.pendingErrors', { count: pendingErrors.length })}
           </div>
         )}
       </div>
 
       {/* Signal Integrity Controls */}
-      <div className="p-4 border-b border-gray-800 bg-gray-900/40">
-        <div className="flex items-center justify-between mb-3 text-gray-500 text-xs font-mono uppercase tracking-wider">
+      <div className="p-3 border-b border-gray-800/50 bg-gray-900/40">
+        <div className="flex items-center justify-between mb-2 text-gray-600 text-[9px] font-mono uppercase tracking-widest">
           <span>{t('controls.signalQuality')}</span>
-          <div className="flex items-center gap-2">
-             <span className="text-[9px] text-gray-600 uppercase">{t('controls.bitFlip')}</span>
+          <div className="flex items-center gap-1.5">
+             <span className="text-[8px] text-gray-600 uppercase font-black">{t('controls.bitFlip')}</span>
              <button 
                onClick={() => onSetSignalIntegrity({ bitFlipsEnabled: !signalIntegrity.bitFlipsEnabled })}
-               className={`w-7 h-3.5 rounded-full relative transition-colors ${signalIntegrity.bitFlipsEnabled ? 'bg-amber-600' : 'bg-gray-700'}`}
+               className={`w-6 h-3 rounded-full relative transition-colors ${signalIntegrity.bitFlipsEnabled ? 'bg-amber-600' : 'bg-gray-700'}`}
              >
-               <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${signalIntegrity.bitFlipsEnabled ? 'left-4' : 'left-0.5'}`} />
+               <div className={`absolute top-0.5 w-2 h-2 bg-white rounded-full transition-all ${signalIntegrity.bitFlipsEnabled ? 'left-3.5' : 'left-0.5'}`} />
              </button>
           </div>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
-            <div className="flex justify-between text-[10px] font-mono mb-1">
-              <span className="text-gray-400">{t('controls.noise')}</span>
-              <span className="text-amber-400">{(signalIntegrity.noiseLevel * 100).toFixed(1)}%</span>
+            <div className="flex justify-between text-[9px] font-mono mb-0.5">
+              <span className="text-gray-500">{t('controls.noise')}</span>
+              <span className="text-amber-500 font-bold">{(signalIntegrity.noiseLevel * 100).toFixed(1)}%</span>
             </div>
             <input
               type="range" min="0" max="0.05" step="0.001"
@@ -173,9 +170,9 @@ const ControlPanel = memo(({
           </div>
 
           <div>
-             <div className="flex justify-between text-[10px] font-mono mb-1">
-              <span className="text-gray-400">{t('controls.jitter')}</span>
-              <span className="text-blue-400">{signalIntegrity.jitterMs.toFixed(1)}ms</span>
+             <div className="flex justify-between text-[9px] font-mono mb-0.5">
+              <span className="text-gray-500">{t('controls.jitter')}</span>
+              <span className="text-blue-500 font-bold">{signalIntegrity.jitterMs.toFixed(1)}ms</span>
             </div>
             <input
               type="range" min="0" max="50" step="0.5"
@@ -188,23 +185,22 @@ const ControlPanel = memo(({
       </div>
 
       {/* Log */}
-      <div className="flex-1 flex flex-col min-h-[300px] p-3">
-        <div className="flex flex-col gap-2 mb-3">
+      <div className="flex-1 flex flex-col min-h-[200px] p-2">
+        <div className="flex flex-col gap-1.5 mb-2">
           <div className="flex items-center justify-between">
-            <div className="text-gray-500 text-xs font-mono uppercase tracking-wider">{t('controls.console')}</div>
+            <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest">{t('controls.console')}</div>
             <button 
               onClick={onExportLogs}
-              className="text-[10px] font-mono text-gray-500 hover:text-green-400 flex items-center gap-1 transition-colors"
-              title={t('controls.csvExport')}
+              className="text-[8px] font-mono text-gray-700 hover:text-green-500 flex items-center gap-1 transition-colors uppercase"
             >
-              <FileDown size={14} />
+              <FileDown size={10} />
               {t('controls.csvExport')}
             </button>
           </div>
         </div>
-        <div ref={logRef} className="flex-1 overflow-y-auto bg-gray-950 rounded border border-gray-800 p-2 font-mono text-[10px] space-y-0.5">
+        <div ref={logRef} className="flex-1 overflow-y-auto bg-gray-950/50 rounded border border-gray-800/50 p-1.5 font-mono text-[9px] space-y-0.5 custom-scrollbar">
           {logEntries.length === 0 && (
-            <div className="text-gray-700">{t('controls.logEmpty')}</div>
+            <div className="text-gray-800 italic">{t('controls.logEmpty')}</div>
           )}
           {logEntries.map((entry, i) => {
             const isTx = entry.type === 'tx';
@@ -212,22 +208,22 @@ const ControlPanel = memo(({
             const isError = entry.type === 'error';
             
             return (
-              <div key={i} className="flex flex-col border-b border-gray-900/50 pb-1 mb-1 last:border-0 hover:bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                   <span className="text-gray-700 text-[9px] shrink-0">[{entry.time}]</span>
-                   <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-tighter ${
-                     isTx ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 
-                     isRx ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 
-                     isError ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-gray-800 text-gray-400'
+              <div key={i} className="flex flex-col border-b border-gray-900/30 pb-0.5 mb-0.5 last:border-0 hover:bg-white/[0.01]">
+                <div className="flex items-center gap-1.5">
+                   <span className="text-gray-800 text-[8px] shrink-0">[{entry.time}]</span>
+                   <span className={`px-1 py-0 rounded-[2px] text-[7px] font-black uppercase tracking-tighter ${
+                     isTx ? 'bg-green-500/10 text-green-600 border border-green-500/10' : 
+                     isRx ? 'bg-blue-500/10 text-blue-500 border border-blue-500/10' : 
+                     isError ? 'bg-red-500/10 text-red-600 border border-red-500/10' : 'bg-gray-800 text-gray-400'
                    }`}>
                      {entry.type}
                    </span>
                 </div>
-                <div className={`mt-0.5 pl-2 border-l-2 ${
-                  isTx ? 'border-green-500/50 text-green-600' : 
-                  isRx ? 'border-blue-500/50 text-blue-600' : 
-                  isError ? 'border-red-500/50 text-red-600' : 'border-gray-500 text-gray-500'
-                } font-mono break-all leading-relaxed`}>
+                <div className={`mt-0.5 pl-1.5 border-l ${
+                  isTx ? 'border-green-900 text-green-700' : 
+                  isRx ? 'border-blue-900 text-blue-700' : 
+                  isError ? 'border-red-900 text-red-700' : 'border-gray-800 text-gray-600'
+                } font-mono break-all leading-tight text-[8.5px]`}>
                   {entry.text.replace(/^\[RAW RX\]: |^TX: /, '')}
                 </div>
               </div>

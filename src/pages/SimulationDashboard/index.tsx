@@ -363,8 +363,8 @@ export default function SimulationDashboard() {
         )}
         <div className="flex-1 min-w-0 flex flex-col relative bg-gradient-to-br from-gray-950 to-gray-900">
           {analyzerMode ? (
-            <div className="flex-1 min-h-0 p-6 flex gap-6 overflow-hidden relative">
-                <div className="flex-[3] min-h-0 flex flex-col gap-6">
+            <div className="flex-1 min-h-0 p-3 flex gap-3 overflow-hidden relative">
+                <div className="flex-[3] min-h-0 flex flex-col gap-3">
                     <TraceTable 
                         exchanges={exchanges}
                         selectedId={selectedExchangeId}
@@ -373,14 +373,14 @@ export default function SimulationDashboard() {
                         onFilterChange={setDisplayFilter}
                         profile={selectedProfile}
                     />
-                    <div className="h-72 shrink-0 glass-panel rounded-2xl overflow-hidden shadow-2xl">
+                    <div className="h-64 shrink-0 glass-panel rounded-xl overflow-hidden shadow-2xl">
                          <LogicAnalyzer />
                     </div>
                 </div>
 
                 <div className="flex shrink-0">
                   {analyzerMode && selectedExchange && (
-                    <div className="w-[500px] shrink-0 border-l border-white/5 relative z-30 glass-panel rounded-l-2xl">
+                    <div className="w-[400px] shrink-0 border-l border-white/5 relative z-30 glass-panel rounded-l-xl">
                       <PacketInspector 
                         exchange={selectedExchange} 
                         profile={selectedProfile} 
@@ -390,7 +390,7 @@ export default function SimulationDashboard() {
                   )}
 
                   {isDashboardOpen && (
-                    <div className={`${(analyzerMode && selectedExchange) ? 'w-80' : 'w-96'} shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-md transition-all duration-300 relative z-20`}>
+                    <div className={`${(analyzerMode && selectedExchange) ? 'w-72' : 'w-80'} shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-md transition-all duration-300 relative z-20`}>
                       <LiveDashboard 
                         onSelectSnapshot={setSelectedSnapshotFrame}
                         selectedSnapshotId={selectedSnapshotFrame?.frameNumber}
@@ -401,42 +401,42 @@ export default function SimulationDashboard() {
 
                 <button
                     onClick={() => setIsDashboardOpen(!isDashboardOpen)}
-                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-2 bg-brand/10 hover:bg-brand/20 border border-brand/20 text-brand rounded-l-xl shadow-lg transition-all duration-300 ${
-                      isDashboardOpen ? 'translate-x-0' : 'translate-x-[-12px] scale-110'
+                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-brand/10 hover:bg-brand/20 border border-brand/20 text-brand rounded-l-lg shadow-lg transition-all duration-300 ${
+                      isDashboardOpen ? 'translate-x-0' : 'translate-x-[-8px] scale-105'
                     }`}
                     title={isDashboardOpen ? t('dashboard.closeDashboard') : t('dashboard.openDashboard')}
                 >
-                    <LayoutDashboard size={18} />
-                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand rounded-full animate-pulse border-2 border-[#030712]" />}
+                    <LayoutDashboard size={14} />
+                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-brand rounded-full animate-pulse border-2 border-[#030712]" />}
                 </button>
             </div>
           ) : (
-            <div className="flex-1 min-h-0 overflow-hidden relative p-6 flex flex-col">
-              <div className="relative mb-6 flex items-center group max-w-full overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden relative p-3 flex flex-col">
+              <div className="relative mb-3 flex items-center group max-w-full overflow-hidden">
                 {showLeftArrow && (
                   <button 
                     onClick={() => scrollTabs('left')}
-                    className="absolute left-0 z-20 p-2 bg-gray-900/80 backdrop-blur-md border border-white/5 text-gray-400 hover:text-white rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95"
+                    className="absolute left-0 z-20 p-1.5 bg-gray-900/80 backdrop-blur-md border border-white/5 text-gray-400 hover:text-white rounded-full shadow-2xl transition-all"
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={14} />
                   </button>
                 )}
                 
                 <div 
                   ref={tabContainerRef}
                   onScroll={checkScroll}
-                  className="flex items-center gap-1 glass-panel p-1 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth"
+                  className="flex items-center gap-1 glass-panel p-0.5 rounded-xl overflow-x-auto no-scrollbar scroll-smooth"
                   style={{ maskImage: `linear-gradient(to right, ${showLeftArrow ? 'transparent' : 'black'} 0%, black 5%, black 95%, ${showRightArrow ? 'transparent' : 'black'} 100%)` }}
                 >
                   {tabs.map((tab) => (
                     <button 
                       key={tab.id}
                       onClick={() => setActiveCenterTab(tab.id)}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap shrink-0 group/tab ${
-                        activeCenterTab === tab.id ? `${tab.color} text-white shadow-lg ${tab.shadow}` : 'text-gray-500 hover:text-gray-300'
+                      className={`px-3 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 group/tab ${
+                        activeCenterTab === tab.id ? `${tab.color} text-white shadow-lg ${tab.shadow}` : 'text-gray-500 hover:text-gray-400'
                       }`}
                     >
-                      <tab.icon size={14} className={activeCenterTab === tab.id ? 'animate-pulse' : 'group-hover/tab:scale-110 transition-transform'} />
+                      <tab.icon size={12} className={activeCenterTab === tab.id ? 'animate-pulse' : 'group-hover/tab:scale-110 transition-transform'} />
                       {t(tab.label)}
                     </button>
                   ))}
@@ -445,14 +445,14 @@ export default function SimulationDashboard() {
                 {showRightArrow && (
                   <button 
                     onClick={() => scrollTabs('right')}
-                    className="absolute right-0 z-20 p-2 bg-gray-900/80 backdrop-blur-md border border-white/5 text-gray-400 hover:text-white rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95"
+                    className="absolute right-0 z-20 p-1.5 bg-gray-900/80 backdrop-blur-md border border-white/5 text-gray-400 hover:text-white rounded-full shadow-2xl transition-all"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={14} />
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-0 glass-panel rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+              <div className="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col shadow-2xl border-white/5">
                 <TabContent
                   activeTab={activeCenterTab}
                   state={state}
@@ -488,6 +488,7 @@ export default function SimulationDashboard() {
             </div>
           )}
         </div>
+
 
         {!analyzerMode && (
           <button
