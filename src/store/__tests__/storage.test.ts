@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { loadProfiles, saveProfile, deleteProfile, getProfile, saveScenario, getScenario, deleteScenario, exportAsJson, importFromJson } from '../storage';
+import { 
+  loadProfiles, saveProfile, deleteProfile, getProfile, 
+  saveScenario, getScenario, deleteScenario, 
+  exportAsJson, importFromJson,
+  saveSequence, loadSequences, deleteSequence
+} from '../storage';
 import type { FrameProfile, Scenario } from '../../types';
 
 describe('storage.ts', () => {
@@ -155,5 +160,80 @@ describe('storage.ts', () => {
     it('handles invalid JSON in importFromJson', async () => {
         const file = new File(['invalid json'], 'test.json', { type: 'application/json' });
         await expect(importFromJson(file)).rejects.toThrow('Geçersiz JSON dosyası');
+    });
+
+    describe('Migration & Normalization Edge Cases', () => {
+        it('handles null/invalid profile in migrateProfile', () => {
+            localStorage.setItem('uart_profiles', JSON.stringify([null, { name: 'Valid' }]));
+            const profiles = loadProfiles();
+            // Should filter out null and keep the valid one
+            expect(profiles.length).toBe(1);
+        });
+
+        it('normalizeField: handles invalid inputs and provides defaults', () => {
+            const legacy = [{
+                id: 'legacy-1',
+                fields: [
+                    { id: '', name: '', byteWidth: -5, order: NaN },
+                    null,
+                    { id: 'f2', type: 'range' }
+                ]
+            }];
+            localStorage.setItem('uart_profiles', JSON.stringify(legacy));
+            const profiles = loadProfiles();
+            const fields = profiles[0].fields;
+            expect(fields).toHaveLength(2);
+            expect(fields[0].id).toBe('field-0');
+            expect(fields[0].name).toBe('Field_1');
+            expect(fields[0].byteWidth).toBe(1);
+            expect(fields[0].order).toBe(0);
+        });
+
+        it('migrateProfile: handles diverse framing modes and optional fields', () => {
+            const legacy = [{
+                id: 'p1',
+                framing: { mode: 'slip', delimiter: 0x0A, header: [0x55], footer: [0xAA] },
+                parity: 'Even',
+                stopBits: 2,
+                sendIntervalMs: -10
+            }];
+            localStorage.setItem('uart_profiles', JSON.stringify(legacy));
+            const profiles = loadProfiles();
+            const p = profiles[0];
+            expect(p.framing.mode).toBe('slip');
+            expect(p.framing.delimiter).toBe(0x0A);
+            expect(p.framing.header).toEqual([0x55]);
+            expect(p.framing.footer).toEqual([0xAA]);
+            expect(p.parity).toBe('Even');
+            expect(p.stopBits).toBe(2);
+            expect(p.sendIntervalMs).toBe(10); // Clamped to min 10
+        });
+
+        it('migrateProfile: handles invalid framing header/footer elements', () => {
+            const legacy = [{
+                id: 'p1',
+                framing: { mode: 'fixed', header: [0x55, 'invalid', 0xAA], footer: [null, 0xBB] }
+            }];
+            localStorage.setItem('uart_profiles', JSON.stringify(legacy));
+            const profiles = loadProfiles();
+            expect(profiles[0].framing.header).toEqual([0x55, 0xAA]);
+            expect(profiles[0].framing.footer).toEqual([0xBB]);
+        });
+    });
+
+    describe('Sequence Actions', () => {
+        it('saves, loads and deletes sequences', () => {
+            const seq = { id: 'seq1', name: 'Seq 1', steps: [] } as any;
+            saveSequence(seq);
+            let loaded = loadSequences();
+            expect(loaded).toContainEqual(seq);
+
+            const updated = { ...seq, name: 'Updated' };
+            saveSequence(updated);
+            expect(loadSequences().find(s => s.id === 'seq1')?.name).toBe('Updated');
+
+            deleteSequence('seq1');
+            expect(loadSequences().find(s => s.id === 'seq1')).toBeUndefined();
+        });
     });
 });

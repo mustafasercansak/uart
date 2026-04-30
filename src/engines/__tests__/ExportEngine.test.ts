@@ -136,5 +136,19 @@ describe('ExportEngine', () => {
             expect(createObjectURLSpy).toHaveBeenCalled();
             vi.restoreAllMocks();
         });
+
+        it('covers computeErrorStats edge cases (duration=0)', () => {
+            const frames = [{ timestampMs: 1000, rawBytes: [0], errors: [] }] as any;
+            const stats = computeErrorStats(frames);
+            expect(stats.durationMs).toBe(1); // Fallback to 1
+            expect(stats.framesPerSecond).toBe(1000);
+        });
+
+        it('covers exportToPCAP with empty data handled', () => {
+             const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+             exportToPCAP([]);
+             expect(createObjectURLSpy).not.toHaveBeenCalled();
+             vi.restoreAllMocks();
+        });
     });
 });

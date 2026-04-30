@@ -55,5 +55,9 @@ describe('ChecksumCalculator', () => {
 
     // Unknown algorithm
     expect(calculateChecksum(data, { algorithm: 'unknown' as unknown as ChecksumAlgorithm })).toEqual([0x00]);
+
+    // Custom with defaults (nullish coalescing branches)
+    const resultDefault = calculateChecksum(data, { algorithm: 'custom' });
+    expect(resultDefault).toEqual([0x31, 0xC3]);
   });
 });

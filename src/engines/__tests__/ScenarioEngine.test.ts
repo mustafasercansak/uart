@@ -254,4 +254,25 @@ describe('ScenarioEngine', () => {
         expect(processScenarioStep({ target: 'field:BPM', action: 'unknown' } as unknown as ScenarioStep, mockProfile, mockState).newState).toEqual({});
         expect(processScenarioStep({ target: 'bit:BPM.READY', action: 'unknown' } as unknown as ScenarioStep, mockProfile, mockState).newState).toEqual({});
     });
+
+    it('covers ScenarioEngine default branches', () => {
+        const scenario: Scenario = {
+            steps: [{ 
+                id: 'd1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'UNKNOWN' as any } 
+            }]
+        } as unknown as Scenario;
+        // evaluateCondition default returns true
+        expect(tickScenarioEngine(scenario, mockProfile, mockState).executedSteps.length).toBe(1);
+    });
+
+    it('covers compareValues default branch (Line 246)', () => {
+        const scenario: Scenario = {
+            steps: [{ 
+                id: 'cv1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'elapsed_time', operator: 'INVALID' as any, value: 0 } 
+            }]
+        } as unknown as Scenario;
+        expect(tickScenarioEngine(scenario, mockProfile, mockState).executedSteps.length).toBe(0);
+    });
 });

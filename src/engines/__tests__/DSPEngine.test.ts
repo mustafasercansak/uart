@@ -31,6 +31,14 @@ describe('DSPEngine', () => {
             expect(data[3]).toBeCloseTo(0);
             expect(data[1]).toBeGreaterThan(0);
         });
+
+        it('modifies signal with Hamming window', () => {
+            const data = new Float32Array([1, 1, 1, 1]);
+            DSPEngine.applyWindow(data, 'Hamming');
+            // Hamming window doesn't go to zero at edges (0.54 - 0.46 = 0.08)
+            expect(data[0]).toBeCloseTo(0.08);
+            expect(data[3]).toBeCloseTo(0.08);
+        });
     });
 
     describe('calculateMagnitude', () => {

@@ -80,4 +80,18 @@ describe('TriggerEngine', () => {
         const results = evaluateTriggers(triggers, mockFrame, mockState);
         expect(results.length).toBe(0);
     });
+
+    it('handles evaluation errors in triggers', () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const triggers: Trigger[] = [
+            {
+                id: 'err', name: 'Bad Trigger', enabled: true,
+                condition: 'invalid syntax !!!', action: 'log_warning'
+            }
+        ];
+        const results = evaluateTriggers(triggers, mockFrame, mockState);
+        expect(results.length).toBe(0);
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+    });
 });

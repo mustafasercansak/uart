@@ -109,4 +109,18 @@ describe('WaveformGenerator', () => {
      const sample = generateWaveformSample(config, 0); // At t=0, sine is 0, so result is noise
      expect(sample).toBeDefined();
   });
+
+  it('covers all respiratory wave branches', () => {
+    const pCfg: WaveformConfig = { shape: 'resp_pressure', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 0 };
+    // t < ieRatio (ramp)
+    expect(generateWaveformSample(pCfg, 100)).toBeGreaterThan(0);
+    // t >= ieRatio (decay)
+    expect(generateWaveformSample(pCfg, 500)).toBeGreaterThan(0);
+
+    const fCfg: WaveformConfig = { shape: 'resp_flow', frequency: 1, amplitude: 100, offset: 0, noiseLevel: 0 };
+    // t < ieRatio (const)
+    expect(generateWaveformSample(fCfg, 100)).toBe(100);
+    // t >= ieRatio (exp)
+    expect(generateWaveformSample(fCfg, 500)).toBeLessThan(0);
+  });
 });

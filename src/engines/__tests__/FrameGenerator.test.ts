@@ -462,5 +462,20 @@ describe('FrameGenerator', () => {
       const frameParity = generateFrame(parityProfile, mockState, 1);
       expect(frameParity.bitStream?.some(t => t.label === 'PARITY')).toBe(true); // Still adds parity bit but it defaults to 0
     });
+
+    it('covers gaussian clamp limits', () => {
+      const clampProfile = {
+        ...mockProfile,
+        fields: [{
+          id: 'g', name: 'G', byteWidth: 1, order: 0,
+          type: 'range', typeConfig: { min: 100, max: 101, distribution: 'gaussian', mean: 500, stddev: 1 },
+          endianness: 'big'
+        }]
+      } as unknown as FrameProfile;
+      const frame = generateFrame(clampProfile, mockState, 1);
+      // clampValue uses byteWidth (1) -> max is 255. 
+      // Gaussian mean 500 with stddev 1 will definitely hit 255.
+      expect(frame.rawBytes[0]).toBe(255); 
+    });
   });
 });

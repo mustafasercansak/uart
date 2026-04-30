@@ -119,5 +119,10 @@ describe('FilterEngine', () => {
             
             consoleSpy.mockRestore();
         });
+
+        it('covers default branch in evaluateCondition', () => {
+            // Craft a condition that has an unknown operator to hit 'default' in switch
+            expect(FilterEngine.evaluate(mockExchange, 'latency ??? 10')).toBe(false);
+        });
     });
 });

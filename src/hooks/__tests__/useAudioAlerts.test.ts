@@ -117,4 +117,14 @@ describe('useAudioAlerts hook', () => {
 
         expect(mockAudioContextInstance.resume).toHaveBeenCalled();
     });
+
+    it('handles AudioContext creation failure', () => {
+        // Suppress expected console.error if needed, though useAudioAlerts.ts doesn't log it
+        AudioContextSpy.mockImplementation(() => { throw new Error('Not allowed'); });
+        
+        const { result } = renderHook(() => useAudioAlerts());
+        result.current.alertTick(); // Should catch and return null gracefully
+        
+        expect(AudioContextSpy).toHaveBeenCalled();
+    });
 });

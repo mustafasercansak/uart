@@ -421,5 +421,62 @@ describe('simulationReducer', () => {
       state = reducer(state, { type: 'BATCH_LOGS', entries });
       expect(state.logEntries.length).toBe(100);
     });
+
+    describe('Sequence Actions', () => {
+      it('handles SET_ACTIVE_SEQUENCE', () => {
+        const action = { type: 'SET_ACTIVE_SEQUENCE' as const, id: 'seq-1' };
+        const newState = reducer(INITIAL_STATE, action);
+        expect(newState.activeSequenceId).toBe('seq-1');
+      });
+
+      it('handles SAVE_SEQUENCE: adds new sequence', () => {
+        const sequence = { id: 'seq-1', name: 'Test Sequence', steps: [] } as any;
+        const action = { type: 'SAVE_SEQUENCE' as const, sequence };
+        const newState = reducer(INITIAL_STATE, action);
+        expect(newState.sequences.length).toBe(1);
+        expect(newState.sequences[0].id).toBe('seq-1');
+      });
+
+      it('handles SAVE_SEQUENCE: updates existing sequence', () => {
+        const sequence1 = { id: 'seq-1', name: 'Old' } as any;
+        const state = { ...INITIAL_STATE, sequences: [sequence1] };
+        const sequence2 = { id: 'seq-1', name: 'New' } as any;
+        const action = { type: 'SAVE_SEQUENCE' as const, sequence: sequence2 };
+        const newState = reducer(state, action);
+        expect(newState.sequences.length).toBe(1);
+        expect(newState.sequences[0].name).toBe('New');
+      });
+
+      it('handles DELETE_SEQUENCE', () => {
+        const sequence = { id: 'seq-1' } as any;
+        const state = { ...INITIAL_STATE, sequences: [sequence], activeSequenceId: 'seq-1' };
+        
+        // Delete active sequence
+        const state1 = reducer(state, { type: 'DELETE_SEQUENCE' as const, id: 'seq-1' });
+        expect(state1.sequences.length).toBe(0);
+        expect(state1.activeSequenceId).toBeNull();
+
+        // Delete non-active sequence
+        const state2 = { ...INITIAL_STATE, sequences: [{ id: 'seq-1' }, { id: 'seq-2' }] as any, activeSequenceId: 'seq-2' };
+        const state3 = reducer(state2, { type: 'DELETE_SEQUENCE' as const, id: 'seq-1' });
+        expect(state3.sequences.length).toBe(1);
+        expect(state3.activeSequenceId).toBe('seq-2');
+      });
+
+      it('handles SET_SEQUENCES', () => {
+        const sequences = [{ id: 'seq-1' }, { id: 'seq-2' }] as any;
+        const action = { type: 'SET_SEQUENCES' as const, sequences };
+        const newState = reducer(INITIAL_STATE, action);
+        expect(newState.sequences).toEqual(sequences);
+      });
+
+      it('handles CLEAR_EXCHANGES', () => {
+        const state = { ...INITIAL_STATE, exchanges: [{ id: 'ex1' }] as any, selectedExchangeId: 'ex1' };
+        const action = { type: 'CLEAR_EXCHANGES' as const };
+        const newState = reducer(state, action);
+        expect(newState.exchanges.length).toBe(0);
+        expect(newState.selectedExchangeId).toBeNull();
+      });
+    });
   });
 });
