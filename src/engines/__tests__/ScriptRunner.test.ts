@@ -29,8 +29,8 @@ describe('ScriptRunner', () => {
     const input = [42];
     const result = executePeripheralScript(script, input, initialState);
 
-    expect(result.nextState.count).toBe(6);
-    expect(result.nextState.lastValue).toBe(42);
+    expect(result.nextState!.count).toBe(6);
+    expect(result.nextState!.lastValue).toBe(42);
     // Ensure original state is not modified (if it's handled by value)
     expect(initialState.count).toBe(5);
   });
