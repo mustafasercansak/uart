@@ -1,5 +1,5 @@
 # 🔬 UART PRO LAB — Ana Mühendislik Kılavuzu
-## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi v1.2.0
+## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi v1.3.0
 
 **UART Pro Lab Ana Kılavuzu**'na hoş geldiniz. Bu belge, en gelişmiş UART simülasyon ortamı için kapsamlı bir teknik ve operasyonel kılavuz sağlar.
 

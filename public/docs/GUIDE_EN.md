@@ -1,5 +1,5 @@
 # 🔬 UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite v1.2.0
+## Professional Simulation, Diagnostic & Validation Suite v1.3.0
 
 Welcome to the **UART Pro Lab Master Manual**. This document provides an exhaustive technical and operational guide to the most advanced UART simulation environment.
 

@@ -4,7 +4,7 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
-## [v1.2.0] — 2026-04-29
+## [v1.3.0] — 2026-04-30
 ### 🌐 Tam Yerelleştirme & Mühendislik Portalı
 - **Eksiksiz Internationalization (I18n)**: Tüm çekirdek modüllerde (Tanılama, Lojik Analizör, RX Monitör) %100 İngilizce ve Türkçe desteği sağlandı.
 - **Ana Mühendislik Kılavuzları**: Sinyal teorisi, sistem mimarisi ve klinik mantığı kapsayan, her iki dilde ayrı ayrı hazırlanmış derinlemesine teknik dökümantasyon (GUIDE_EN.md & GUIDE_TR.md).

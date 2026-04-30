@@ -1,4 +1,4 @@
-﻿{
+{
   "nav": {
     "dashboard": "Gösterge Paneli",
     "profiles": "Profil Editörü",
@@ -606,7 +606,7 @@
     "title": "Sistem Yardım & Dokümantasyon",
     "subtitle": "UART Simülatörü kullanım detayları ve teknik referanslar",
     "loading": "Doküman Hazırlanıyor...",
-    "docVersion": "Dokümantasyon Sürümü: v1.2",
+    "docVersion": "Dokümantasyon Sürümü: v1.3",
     "loadError": "Doküman yüklenirken hata oluştu.",
     "userGuide": "Kullanım Kılavuzu",
     "quickHelp": "Hızlı Yardım",
@@ -726,7 +726,7 @@
     "loadingText": "Bilgi Paketi Çözülüyor",
     "scrollTop": "YUKARI DÖN ↑",
     "loadError": "# Hata\nDoküman yüklenirken bir sorun oluştu.",
-    "masterTitle": "Ana Mühendislik Kılavuzu (v1.2)",
+    "masterTitle": "Ana Mühendislik Kılavuzu (v1.3)",
     "readmeTitle": "Teknik Referans",
     "masterLang": "Bilingual",
     "readmeLang": "Geliştirici",

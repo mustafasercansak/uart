@@ -1,4 +1,4 @@
-﻿{
+{
   "nav": {
     "dashboard": "Dashboard",
     "profiles": "Profile Editor",
@@ -613,7 +613,7 @@
     "title": "System Help & Documentation",
     "subtitle": "UART Simulator usage details and technical references",
     "loading": "Preparing Document...",
-    "docVersion": "Documentation Version: v1.2",
+    "docVersion": "Documentation Version: v1.3",
     "loadError": "Error loading document.",
     "userGuide": "User Guide",
     "quickHelp": "Quick Help",
@@ -733,7 +733,7 @@
     "loadingText": "Decoding Info Package",
     "scrollTop": "SCROLL TO TOP ↑",
     "loadError": "# Error\nAn issue occurred while loading the document.",
-    "masterTitle": "Master Engineering Manual (v1.2)",
+    "masterTitle": "Master Engineering Manual (v1.3)",
     "readmeTitle": "Technical Reference",
     "masterLang": "Bilingual",
     "readmeLang": "Developer",

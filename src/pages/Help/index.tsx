@@ -78,7 +78,7 @@ const HelpPage: React.FC = () => {
             </div>
          </div>
          <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-emerald-500/5 border border-emerald-500/10 px-4 py-2 rounded-xl">
-            {t('helpPage.systemVersion')} <span className="text-emerald-400 font-black">v1.2.0-STABLE</span>
+            {t('helpPage.systemVersion')} <span className="text-emerald-400 font-black">v1.3.0-STABLE</span>
          </div>
       </header>
 
