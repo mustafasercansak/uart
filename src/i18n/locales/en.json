@@ -1,8 +1,9 @@
-{
+﻿{
   "nav": {
     "dashboard": "Dashboard",
     "profiles": "Profile Editor",
     "scenarios": "Scenario Editor",
+    "designer": "Peripheral Designer",
     "templates": "Template Library",
     "subtitle": "Sensor Simulator",
     "expand": "Expand",
@@ -1072,5 +1073,22 @@
     "spo2": "O2 Saturation",
     "rr": "RR",
     "temp": "Temp"
+  },
+  "designer": {
+    "title": "Peripheral Designer",
+    "subtitle": "Scriptable Virtual Hardware Models",
+    "peripherals": "Peripherals",
+    "newDevice": "New Custom Device",
+    "noDevices": "No custom devices. Click + to create one.",
+    "deploy": "DEPLOY",
+    "deleteDevice": "Delete Device",
+    "deviceState": "Device State",
+    "debugConsole": "Debug Console",
+    "reset": "Reset",
+    "lastExec": "Last Exec",
+    "helperApi": "Helper API",
+    "noActivity": "No activity yet... Run the simulation to see logs.",
+    "exampleScript": "// Example: Respond with ACK (0x06) to any input\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Device received data, sending ACK\");\n}"
   }
 }
+

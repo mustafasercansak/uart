@@ -1,7 +1,7 @@
 import { generateFrame } from '../engines/FrameGenerator';
 import { tickScenarioEngine } from '../engines/ScenarioEngine';
 import { evaluateTriggers } from '../engines/TriggerEngine';
-import { VirtualPeripheralEngine } from '../engines/VirtualPeripheralEngine';
+import { VirtualPeripheralEngine, ScriptableDriver } from '../engines/VirtualPeripheralEngine';
 import type { 
   SimulationState, 
   FrameProfile, 
@@ -13,7 +13,8 @@ import type {
   ConversationEntry,
   Exchange,
   ErrorType,
-  SimulationStatus
+  SimulationStatus,
+  ScriptablePeripheral
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -87,6 +88,18 @@ export class SimulationEngine {
     this.responderRules = rules;
     this.lastMatchTime = {};
     console.log(`\x1b[34m[RESP]\x1b[0m ${rules.length} adet yanıt kuralı yüklendi.`);
+  }
+
+  public updatePeripherals(peripherals: ScriptablePeripheral[]) {
+    this.peripheralEngine.clearScriptableDrivers();
+    peripherals.forEach(p => {
+      if (p.isActive) {
+        this.peripheralEngine.addDriver(new ScriptableDriver(
+          p.id, p.name, p.protocol, p.script, p.initialState
+        ));
+      }
+    });
+    console.log(`\x1b[34m[PERIPH]\x1b[0m ${peripherals.filter(p => p.isActive).length} adet aktif sanal cihaz güncellendi.`);
   }
 
   public injectRawTX(bytes: number[]) {

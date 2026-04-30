@@ -69,4 +69,13 @@ En yeni güncelleme ile simülatör, profesyonel bir **Yeterlilik (Certification
 2. **Kriter Belirle**: Cihazınızın uyması gereken Min/Max değerleri girin.
 3. **Rapor Üret**: Test sonunda, tıbbi standartlara uygun, PDF olarak kaydedilebilen profesyonel bir doğrulama raporu alın.
 
-© 2026 Mustafa Sercan Sak — MedNet Suite Team v7.1.0
+---
+
+## 🔌 Sanal Cihaz Tasarımcısı (Peripheral Designer)
+
+Yeni **Script Edilebilir Çevre Birimi** motoru ile kendi donanım modellerinizi oluşturun.
+- **Özel Mantık**: Gelen UART komutlarına cihazınızın nasıl yanıt vereceğini JavaScript ile programlayın.
+- **Anlık State İzleme**: Cihazınızın iç değişkenlerini (state) tasarım ekranından canlı olarak takip edin.
+- **Debug Konsolu**: Scriptleriniz içinden `console.log()` kullanarak protokol iletişimini analiz edin.
+
+© 2026 Mustafa Sercan Sak — MedNet Suite Team v7.2.0

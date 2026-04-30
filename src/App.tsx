@@ -6,6 +6,7 @@ import SimulationDashboard from './pages/SimulationDashboard';
 import ProfileEditor from './pages/ProfileEditor';
 import ScenarioEditor from './pages/ScenarioEditor';
 import TemplateBrowser from './pages/TemplateBrowser';
+import PeripheralDesigner from './pages/PeripheralDesigner/PeripheralDesigner';
 import HelpPage from './pages/Help';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { useOnboarding } from './hooks/useOnboarding';
@@ -20,6 +21,7 @@ function AppRoutes() {
           <Route path="/" element={<SimulationDashboard />} />
           <Route path="/profiles" element={<ProfileEditor />} />
           <Route path="/scenarios" element={<ScenarioEditor />} />
+          <Route path="/designer" element={<PeripheralDesigner />} />
           <Route path="/templates" element={<TemplateBrowser />} />
         </Route>
         <Route path="/help" element={<HelpPage />} />

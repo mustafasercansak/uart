@@ -31,6 +31,7 @@ import {
   saveSequence,
   deleteSequence
 } from './storage';
+import { usePeripheralStore } from './usePeripheralStore';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -145,6 +146,23 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
     });
   }, [state.lastRxFrame, state.validationSession, state.validationSession?.status]);
+
+  // ── PERIPHERAL SYNC ──────────────────────────
+  const peripherals = usePeripheralStore(s => s.peripherals);
+  React.useEffect(() => {
+    if (!backendWsRef.current || backendWsRef.current.readyState !== WebSocket.OPEN) return;
+    backendWsRef.current.send(JSON.stringify({ 
+      type: 'UPDATE_PERIPHERALS', 
+      peripherals: peripherals.map(p => ({
+        id: p.id,
+        name: p.name,
+        protocol: p.protocol,
+        script: p.script,
+        initialState: p.initialState,
+        isActive: p.isActive
+      }))
+    }));
+  }, [peripherals, backendWsRef]);
 
   // ── SIMULATION CONTROLS ──────────────────────
   const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {

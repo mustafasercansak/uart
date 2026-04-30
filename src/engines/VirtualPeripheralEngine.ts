@@ -1,4 +1,5 @@
 import type { ProtocolType } from '../types';
+import { executePeripheralScript } from './ScriptRunner';
 
 export interface PeripheralResponse {
   bytes: number[];
@@ -20,6 +21,36 @@ export abstract class PeripheralDriver<T extends Record<string, unknown> = Recor
   
   getState() {
     return this.state;
+  }
+}
+
+export class ScriptableDriver extends PeripheralDriver {
+  id: string;
+  name: string;
+  protocol: ProtocolType;
+  private script: string;
+
+  constructor(id: string, name: string, protocol: ProtocolType, script: string, initialState: Record<string, any>) {
+    super(initialState);
+    this.id = id;
+    this.name = name;
+    this.protocol = protocol;
+    this.script = script;
+  }
+
+  process(input: number[]): PeripheralResponse | null {
+    const result = executePeripheralScript(this.script, input, this.state);
+    if (result.nextState) {
+      this.state = result.nextState;
+    }
+    return {
+      bytes: result.bytes,
+      log: result.log
+    };
+  }
+
+  updateScript(script: string) {
+    this.script = script;
   }
 }
 
@@ -262,6 +293,20 @@ export class VirtualPeripheralEngine {
     new ClampDriver(),
     new VentilatorDriver()
   ];
+
+  addDriver(driver: PeripheralDriver) {
+    // Remove if exists
+    this.peripherals = this.peripherals.filter(p => p.id !== driver.id);
+    this.peripherals.push(driver);
+  }
+
+  removeDriver(id: string) {
+    this.peripherals = this.peripherals.filter(p => p.id !== id);
+  }
+
+  clearScriptableDrivers() {
+    this.peripherals = this.peripherals.filter(p => !(p instanceof ScriptableDriver));
+  }
 
   processIncoming(protocol: ProtocolType, bytes: number[]): PeripheralResponse[] {
     const responses: PeripheralResponse[] = [];

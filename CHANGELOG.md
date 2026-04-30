@@ -4,6 +4,17 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
+### [7.2.0] - 2026-04-30
+#### ✨ Scriptable Virtual Peripheral Designer
+- **Dynamic Hardware Modeling**: Kullanıcıların dahili bir JavaScript motoru kullanarak kendi sanal çevre birimlerini (peripherals) tasarlamasına ve programlamasına olanak tanıyan yeni modül eklendi.
+- **Zustand State Management**: Tüm çevre birimi yönetimi, yüksek performans ve kalıcılık için `Zustand` store mimarisine taşındı.
+- **Real-time Script Runner**: Gelen baytları işleyen ve özel mantığa dayalı anlık yanıtlar üreten, kum havuzu (sandboxed) mimarili script çalışma motoru.
+- **Integrated Debugger**: Kod editörü, anlık state görselleştirici ve gerçek zamanlı debug konsolu içeren "Peripheral Designer" sayfası.
+- **Backend Sync**: Tasarımcı arayüzü ile simülasyon motoru arasında WebSocket tabanlı gerçek zamanlı senkronizasyon (hot-reload) desteği.
+- **Full i18n Support**: Peripheral Designer arayüzü İngilizce ve Türkçe dilleriyle tam uyumlu hale getirildi.
+
+---
+
 ### [7.1.1] - 2026-04-17
 #### Eklendi
 - **Akıllı Jumper Hizalama (Smart Loopback Alignment)**: TX ve RX sinyalleri artık zaman tünelinde otomatik olarak eşleştiriliyor ve tek bir işlem satırı olarak gösteriliyor.

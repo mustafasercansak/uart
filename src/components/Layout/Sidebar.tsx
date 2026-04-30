@@ -17,6 +17,7 @@ export function Sidebar() {
     { path: '/', label: t('nav.dashboard'), icon: '▶' },
     { path: '/profiles', label: t('nav.profiles'), icon: '⊞' },
     { path: '/scenarios', label: t('nav.scenarios'), icon: '⏱' },
+    { path: '/designer', label: t('nav.designer'), icon: '🔌' },
     { path: '/templates', label: t('nav.templates'), icon: '📦' },
   ];
 

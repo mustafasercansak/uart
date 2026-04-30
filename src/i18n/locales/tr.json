@@ -1,8 +1,9 @@
-{
+﻿{
   "nav": {
     "dashboard": "Gösterge Paneli",
     "profiles": "Profil Editörü",
     "scenarios": "Senaryo Editörü",
+    "designer": "Sanal Cihaz Tasarımcısı",
     "templates": "Şablon Kütüphanesi",
     "subtitle": "Sensör Simülatörü",
     "expand": "Genişlet",
@@ -1066,5 +1067,21 @@
     "spo2": "O2 Saturasyonu",
     "rr": "RR",
     "temp": "Sıcaklık"
+  },
+  "designer": {
+    "title": "Sanal Cihaz Tasarımcısı",
+    "subtitle": "Script Edilebilir Donanım Modelleri",
+    "peripherals": "Sanal Cihazlar",
+    "newDevice": "Yeni Özel Cihaz",
+    "noDevices": "Özel cihaz bulunamadı. + butonu ile oluşturun.",
+    "deploy": "UYGULA",
+    "deleteDevice": "Cihazı Sil",
+    "deviceState": "Cihaz Durumu (State)",
+    "debugConsole": "Debug Konsolu",
+    "reset": "Sıfırla",
+    "lastExec": "Son Çalıştırma",
+    "helperApi": "Yardımcı API",
+    "noActivity": "Henüz aktivite yok... Logları görmek için simülasyonu başlatın.",
+    "exampleScript": "// Örnek: Gelen veriye ACK (0x06) ile yanıt ver\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Cihaz veri aldı, ACK gönderiliyor\");\n}"
   }
 }

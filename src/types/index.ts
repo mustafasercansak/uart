@@ -8,3 +8,4 @@ export * from './simulation';
 export * from './output';
 export * from './context';
 export * from './automation';
+export * from './peripheral';

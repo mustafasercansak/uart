@@ -45,6 +45,14 @@ For deep hardware troubleshooting, the Pro Suite includes a high-performance **B
 
 ---
 
+## 🔌 Scriptable Virtual Peripheral Designer
+Design your own hardware responses using JavaScript.
+- **Custom Logic**: Define how your virtual device responds to incoming UART commands.
+- **State Visualization**: Monitor the internal state of your custom device in real-time.
+- **Debug Console**: Use `console.log()` within your scripts to debug protocol exchanges.
+
+---
+
 Developed by **Mustafa Sercan Sak**
  
 

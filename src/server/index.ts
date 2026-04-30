@@ -390,6 +390,9 @@ wss.on('connection', (ws) => {
         case 'SET_SIGNAL_INTEGRITY':
           engine.setSignalIntegrity(data.integrity);
           break;
+        case 'UPDATE_PERIPHERALS':
+          engine.updatePeripherals(data.peripherals);
+          break;
         case 'GET_PORTS':
           if (!SerialPortLib) {
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PORTS_LIST', ports: [] }));
