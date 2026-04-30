@@ -459,7 +459,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
         enabled: true,
       },
     ]);
-  }, []);
+  }, [t]);
 
   const updateTest = useCallback((id: string, patch: Partial<TestCase>) => {
     setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));

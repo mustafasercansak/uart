@@ -30,7 +30,7 @@ export class ScriptableDriver extends PeripheralDriver {
   protocol: ProtocolType;
   private script: string;
 
-  constructor(id: string, name: string, protocol: ProtocolType, script: string, initialState: Record<string, any>) {
+  constructor(id: string, name: string, protocol: ProtocolType, script: string, initialState: Record<string, unknown>) {
     super(initialState);
     this.id = id;
     this.name = name;

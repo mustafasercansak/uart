@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
@@ -32,7 +33,7 @@ export default function CanvasWaveform({
 
   // Keep latest prop values readable inside RAF closure without re-creating the effect
   const dataKeyRef = useRef(dataKey);
-  dataKeyRef.current = dataKey;
+  useEffect(() => { dataKeyRef.current = dataKey; }, [dataKey]);
 
   // Respond to container resizes imperatively
   useEffect(() => {

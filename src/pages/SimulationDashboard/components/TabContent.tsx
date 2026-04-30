@@ -80,7 +80,6 @@ export default function TabContent({
       return selectedProfile ? (
         <TelemetryPanel 
           lastFrame={lastFrame}
-          waveformHistory={waveformHistory}
           fields={selectedProfile.fields}
           profiles={profiles}
         />

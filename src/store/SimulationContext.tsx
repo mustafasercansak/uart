@@ -145,7 +145,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         });
       }
     });
-  }, [state.lastRxFrame, state.validationSession, state.validationSession?.status]);
+  }, [state.lastRxFrame, state.validationSession, state.validationSession?.status, t]);
 
   // ── PERIPHERAL SYNC ──────────────────────────
   const peripherals = usePeripheralStore(s => s.peripherals);
@@ -298,7 +298,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         reject(error);
       }
     });
-  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t]);
+  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t, backendWsRef]);
 
   const disconnectNetwork = useCallback(() => {
     backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_TCP' }));

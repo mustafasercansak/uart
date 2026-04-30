@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { memo, useState, useCallback } from 'react';
 import { LayoutGrid, List, GripHorizontal, MousePointer2, Activity, Ruler } from 'lucide-react';
 import { useTranslation } from '../../../i18n/context';
@@ -71,6 +72,11 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
   const toggleableFields = selectedProfile.fields.filter(f => f.type !== 'waveform' && f.type !== 'checksum');
   const activeToggleFields = toggleableFields.filter(f => enabledCharts[f.name]);
   const lastPoint = waveformHistory[waveformHistory.length - 1] ?? {};
+  const deltaT = (showCursors && cursorA !== null && cursorB !== null) 
+    ? Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0))
+    : 0;
+  
+  const frequency = deltaT > 0 ? (1000 / deltaT) : 0;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-gray-950/20 overflow-y-auto custom-scrollbar">
@@ -197,16 +203,14 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
                 <span className="text-[9px] font-mono text-blue-400 uppercase font-black tracking-widest">{t('waveformCharts.measurement')}</span>
                 <div className="flex items-center gap-2 mt-1">
                   <Ruler size={14} className="text-blue-500" />
-                  <span className="text-sm font-mono font-bold text-white">Δt: {Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0)).toFixed(2)}ms</span>
+                  <span className="text-sm font-mono font-bold text-white">Δt: {deltaT.toFixed(2)}ms</span>
                 </div>
               </div>
               <div className="w-[1px] h-8 bg-blue-500/20" />
               <div className="flex flex-col">
                 <span className="text-[9px] font-mono text-gray-500 uppercase">{t('waveformCharts.frequency')}</span>
                 <span className="text-xs font-mono font-bold text-gray-300">
-                  {1000 / Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0)) > 0 
-                   ? (1000 / Math.abs((waveformHistory[cursorB]?.t || 0) - (waveformHistory[cursorA]?.t || 0))).toFixed(1) + ' Hz'
-                   : '---'}
+                  {frequency > 0 ? frequency.toFixed(1) + ' Hz' : '---'}
                 </span>
               </div>
            </div>

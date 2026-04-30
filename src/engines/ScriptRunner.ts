@@ -4,13 +4,13 @@ import type { PeripheralScriptResult } from '../types';
  * Executes a user-provided script in a (relatively) safe sandbox.
  * The script has access to:
  * - input: number[] (the incoming bytes)
- * - state: Record<string, any> (the peripheral's persistent state)
+ * - state: Record<string, unknown> (the peripheral's persistent state)
  * - console: a custom logger
  */
 export function executePeripheralScript(
   script: string,
   input: number[],
-  state: Record<string, any>
+  state: Record<string, unknown>
 ): PeripheralScriptResult {
   try {
     // Create the execution context
@@ -20,7 +20,7 @@ export function executePeripheralScript(
       output: [] as number[],
       logText: '',
       console: {
-        log: (msg: any) => { context.logText += String(msg) + '\n'; }
+        log: (msg: unknown) => { context.logText += String(msg) + '\n'; }
       },
       // Utility for easier byte handling
       send: (bytes: number | number[]) => {
@@ -49,10 +49,11 @@ export function executePeripheralScript(
       log: context.logText || (result?.log || ''),
       nextState: context.state
     };
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as Error;
     return {
       bytes: [],
-      log: `Script Error: ${error.message}`,
+      log: `Script Error: ${err.message}`,
       nextState: state // Keep old state on error
     };
   }

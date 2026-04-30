@@ -46,7 +46,7 @@ const HelpPage: React.FC = () => {
 
     fetchDoc();
     window.scrollTo(0, 0);
-  }, [activeTab, t]);
+  }, [activeTab, t, language]);
 
   return (
     <div className="h-screen bg-[#05070a] text-white flex flex-col font-sans overflow-hidden">
@@ -130,7 +130,7 @@ const HelpPage: React.FC = () => {
               ) : (
                  <article className="prose prose-invert prose-blue max-w-none">
                     <ReactMarkdown 
-                      rehypePlugins={[rehypeRaw as any]}
+                      rehypePlugins={[rehypeRaw as never]}
                       remarkPlugins={[remarkGfm]}
                       components={{
                         // Hydration fix: Avoid div in p by mapping p to a div with a paragraph class

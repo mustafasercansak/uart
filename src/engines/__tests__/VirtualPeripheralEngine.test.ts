@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { VirtualPeripheralEngine, LM75Driver, EEPROMDriver } from '../VirtualPeripheralEngine';
+import { VirtualPeripheralEngine, LM75Driver, EEPROMDriver, ScriptableDriver } from '../VirtualPeripheralEngine';
 
 describe('VirtualPeripheralEngine', () => {
   let engine: VirtualPeripheralEngine;
@@ -149,6 +149,59 @@ describe('VirtualPeripheralEngine', () => {
     });
   });
 
+  describe('ScriptableDriver', () => {
+    it('should execute scripts and maintain state', () => {
+      const script = 'state.val = (state.val || 0) + input[0]; send(state.val);';
+      const driver = new ScriptableDriver('custom', 'Custom Driver', 'UART', script, { val: 10 });
+      
+      const res = driver.process([5]);
+      expect(res!.bytes).toEqual([15]);
+      expect(driver.getState()).toEqual({ val: 15 });
+    });
+
+    it('should allow updating the script', () => {
+      const driver = new ScriptableDriver('custom', 'Custom Driver', 'UART', 'send(1);', {});
+      expect(driver.process([])!.bytes).toEqual([1]);
+      
+      driver.updateScript('send(2);');
+      expect(driver.process([])!.bytes).toEqual([2]);
+    });
+  });
+
+  describe('Engine Management', () => {
+    it('should add and remove drivers', () => {
+      const driver = new LM75Driver();
+      driver.id = 'temp-test';
+      
+      // First, remove existing one if we want exactly one response, 
+      // or just check that we can add and then remove.
+      engine.removeDriver('lm75'); 
+      
+      engine.addDriver(driver);
+      expect(engine.processIncoming('I2C', [(0x48 << 1) | 1])).toHaveLength(1);
+      
+      // Adding same ID should replace (filtering logic)
+      engine.addDriver(driver);
+      expect(engine.processIncoming('I2C', [(0x48 << 1) | 1])).toHaveLength(1);
+      
+      engine.removeDriver('temp-test');
+      expect(engine.processIncoming('I2C', [(0x48 << 1) | 1])).toHaveLength(0);
+    });
+
+    it('should clear scriptable drivers', () => {
+      const scriptable = new ScriptableDriver('s1', 'S1', 'UART', 'send(1)', {});
+      engine.addDriver(scriptable);
+      
+      expect(engine.processIncoming('UART', [0x00]).length).toBeGreaterThan(0);
+      
+      engine.clearScriptableDrivers();
+      // Only built-in drivers should remain. Built-ins might still respond to 0x00 if they don't check length correctly,
+      // but ScriptableDriver definitely won't be there.
+      const res = engine.processIncoming('UART', [0x00]);
+      expect(res.find(r => r.bytes.includes(1))).toBeUndefined();
+    });
+  });
+
   describe('Engine edge cases', () => {
     it('should handle empty input', () => {
       expect(engine.processIncoming('UART', [])).toHaveLength(0);
@@ -156,14 +209,14 @@ describe('VirtualPeripheralEngine', () => {
 
     it('should hit driver edge cases', () => {
       const lm75 = new LM75Driver();
-      expect(lm75.getState()).toBeDefined(); // line 22
-      expect(lm75.process([])).toBeNull(); // line 39
-      expect(lm75.process([0x48 << 1])).toBeNull(); // line 64
-      expect(lm75.process([(0x48 << 1), 0x01])).toBeNull(); // line 58 branch false
+      expect(lm75.getState()).toBeDefined();
+      expect(lm75.process([])).toBeNull();
+      expect(lm75.process([0x48 << 1])).toBeNull();
+      expect(lm75.process([(0x48 << 1), 0x01])).toBeNull();
 
       const eeprom = new EEPROMDriver();
-      expect(eeprom.process([])).toBeNull(); // line 83
-      expect(eeprom.process([0x03])).toBeNull(); // line 99
+      expect(eeprom.process([])).toBeNull();
+      expect(eeprom.process([0x03])).toBeNull();
     });
   });
 });

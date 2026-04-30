@@ -5,7 +5,7 @@ export interface ScriptablePeripheral {
   name: string;
   protocol: ProtocolType;
   script: string; // The JS code
-  initialState: Record<string, any>;
+  initialState: Record<string, unknown>;
   lastExecution?: {
     timestamp: number;
     input: number[];
@@ -19,5 +19,5 @@ export interface ScriptablePeripheral {
 export interface PeripheralScriptResult {
   bytes: number[];
   log: string;
-  nextState?: Record<string, any>;
+  nextState?: Record<string, unknown>;
 }

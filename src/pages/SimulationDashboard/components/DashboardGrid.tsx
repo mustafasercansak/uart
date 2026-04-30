@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from '../../../i18n/context';
 import { type MutableRefObject } from 'react';

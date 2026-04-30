@@ -8,12 +8,11 @@ import { useTranslation } from '../../../../i18n/context';
 
 interface TelemetryPanelProps {
   lastFrame: GeneratedFrame | null;
-  waveformHistory: Array<Record<string, number>>;
   fields: Field[];
   profiles: FrameProfile[];
 }
 
-const TelemetryPanel = memo(({ lastFrame, waveformHistory, fields, profiles }: TelemetryPanelProps) => {
+const TelemetryPanel = memo(({ lastFrame, fields, profiles }: TelemetryPanelProps) => {
   const { t } = useTranslation();
   const { state, updateLayout, removeWidget, waveformHistoryRef } = useSimulation();
   const { dashboardLayout, profileId } = state;

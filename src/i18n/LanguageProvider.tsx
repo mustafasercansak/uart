@@ -21,7 +21,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const t = useCallback((path: string, params?: Record<string, any>): string => {
+  const t = useCallback((path: string, params?: Record<string, unknown>): string => {
     const keys = path.split('.');
     let current: unknown = translations[locale];
     

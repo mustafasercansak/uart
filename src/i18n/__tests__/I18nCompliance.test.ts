@@ -168,7 +168,7 @@ function scanFile(filePath: string): HardcodedString[] {
 
             // Ignore if it's likely a technical string
             // Refined Tailwind/Technical detection
-            const isLikelyTailwind = /^[a-z0-9\s\-\[\]\/\:\#\%\(\)\.\!\,\>\<]+$/.test(text) && 
+            const isLikelyTailwind = /^[a-z0-9\s\-[\]/:#%().!,><]+$/.test(text) && 
                                     (text.includes(' ') || text.includes('-') || text.includes(':')) && 
                                     !/[A-Z]/.test(text) && 
                                     !/[ğüşıöçĞÜŞİÖÇ]/.test(text);
@@ -179,7 +179,7 @@ function scanFile(filePath: string): HardcodedString[] {
                                 /^[a-z]+[A-Z][a-z]+$/.test(text) || // camelCase
                                 /^[A-Z][a-z]+[A-Z][a-z]+$/.test(text) || // PascalCase
                                 (text.includes('.') && !text.includes(' ')) || // translation keys
-                                /^[a-z0-9\-]+$/.test(text) || // kebab-case technical words
+                                /^[a-z0-9-]+$/.test(text) || // kebab-case technical words
                                 /^[a-z]+:[a-z0-9]+$/i.test(text); // field:Name patterns
 
             const isCssOrSvg = text.startsWith('hsla(') || 
@@ -203,7 +203,7 @@ function scanFile(filePath: string): HardcodedString[] {
                                text.includes('`') ||
                                text.includes('return ') ||
                                text.includes('if (') ||
-                               /^[0-9\s\.\,\+\-\*\/\%\|\&\!\?\:\;\[\]\(\)\{\}\=]+$/.test(text);
+                               /^[0-9\s.,+\-*/%|&!? :;[\](){}=]+$/.test(text);
 
             const hasUppercase = /[A-Z]/.test(text);
             const hasTurkish = /[ğüşıöçĞÜŞİÖÇ]/.test(text);

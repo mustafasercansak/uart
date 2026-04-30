@@ -352,7 +352,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
     }));
     const remaining = cells.filter((c) => !c.locked);
     setCells([...headerCells, ...remaining]);
-  }, [profile, cells]);
+  }, [profile, cells, t]);
 
   // ── Gönder ───────────────────────────────────
   const send = useCallback(() => {

@@ -191,7 +191,7 @@ const LogicAnalyzer = memo(() => {
     }
 
     // This function now just performs a single static draw of the current state.
-  }, [canvasSize, cursorA, cursorB, scrollX, signal.transitions, t, zoom]);
+  }, [canvasSize, cursorA, cursorB, scrollX, signal.transitions, t, zoom, COLORS]);
 
   useEffect(() => {
     // Only trigger a draw when something meaningful changes.

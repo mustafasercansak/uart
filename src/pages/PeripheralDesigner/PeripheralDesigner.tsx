@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { usePeripheralStore } from '../../store/usePeripheralStore';
 import { useTranslation } from '../../i18n/context';
-import { Play, Save, Trash2, Plus, Code, Zap, Info } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Play, Save, Trash2, Plus, Code, Zap } from 'lucide-react';
 
 export default function PeripheralDesigner() {
   const { t } = useTranslation();
@@ -16,7 +15,6 @@ export default function PeripheralDesigner() {
   } = usePeripheralStore();
 
   const activePeripheral = peripherals.find(p => p.id === activePeripheralId);
-  const [isEditing, setIsEditing] = useState(false);
 
   const handleCreate = () => {
     addPeripheral({
