@@ -190,6 +190,12 @@ export function useUIUpdateLoop({
                   });
                 }
                 break;
+              case 'RECORDING_FINISHED':
+                // data available in msg.data for playback — SET_RECORDING already dispatched in stopRecording()
+                break;
+              case 'RECORDINGS_LIST':
+                dispatch({ type: 'SET_RECORDINGS', recordings: msg.recordings });
+                break;
             }
           }
         } catch (e) {

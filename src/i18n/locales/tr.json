@@ -901,7 +901,7 @@
     "spiBus": "SPI Veri Yolu"
   },
   "frameMonitor": {
-    "liveFrame": "Canlı Paket İzleyici",
+    "liveFrame": "TX Geçmişi",
     "recentFrames": "Son Paketler",
     "waitingData": "Veri bekleniyor...",
     "slotARef": "Slot A (Referans)",

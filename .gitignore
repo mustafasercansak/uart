@@ -25,3 +25,10 @@ package-lock.json
 *.sw?
 
 /coverage
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Recordings (kullanıcı verisi, repoya girmemeli)
+recordings/

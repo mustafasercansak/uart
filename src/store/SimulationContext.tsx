@@ -16,7 +16,6 @@ import type {
   Exchange,
   ValidationSession,
   AutomationSequence,
-  AutomationStep,
   Field,
   ValidationTarget,
   ScriptablePeripheral
@@ -24,8 +23,11 @@ import type {
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
 import { reducer, INITIAL_STATE } from './simulationReducer';
-import { useBackendConnection } from './useBackendConnection';
+import { useSimulationEngine } from './useSimulationEngine';
 import { useUIUpdateLoop } from './useUIUpdateLoop';
+import { invoke } from '../lib/tauri-bridge';
+import { loadLastSettings, saveLastSettings } from '../lib/lastSettings';
+// SimulationEngine is now in a Web Worker — commands go via workerRef.postMessage()
 import type { SimulationState } from '../types';
 import {
   loadSequences,
@@ -57,10 +59,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   /** Waveform samples stored outside React state — charts read this via RAF, not renders */
   const waveformHistoryRef = useRef<Array<Record<string, number>>>([]);
 
-  // ── BACKEND CONNECTION ───────────────────────
-  const { backendWsRef } = useBackendConnection(dispatch, msgBufferRef);
+  // ── ENGINE (Web Worker) ──────────────────────────────────────────────────────
+  const { workerRef } = useSimulationEngine(dispatch, msgBufferRef);
+  const send = (msg: unknown) => workerRef.current?.postMessage(msg);
 
-  // ── UI UPDATE LOOP ───────────────────────────
+  // ── UI UPDATE LOOP (unchanged) ───────────────────────────────────────────────
   useUIUpdateLoop({
     stateRef,
     msgBufferRef,
@@ -72,13 +75,14 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     dispatch,
   });
 
-  // ── PERSISTENCE ──────────────────────────────
+  // ── PERSISTENCE ──────────────────────────────────────────────────────────────
   React.useEffect(() => {
     try {
       const persisted = localStorage.getItem('uart_pro_state');
       const legacyLayouts = localStorage.getItem('uart_telemetry_layouts');
       const parsed = persisted ? JSON.parse(persisted) : {};
       const layouts = legacyLayouts ? JSON.parse(legacyLayouts) : (parsed.telemetryLayouts || {});
+      const last = loadLastSettings();
       dispatch({
         type: 'INIT_STATE', newState: {
           watchlist: parsed.watchlist || [],
@@ -86,7 +90,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           analyzerMode: parsed.analyzerMode ?? true,
           telemetryLayouts: layouts,
           dashboardLayout: parsed.dashboardLayout || { widgets: [] },
-          sequences: loadSequences()
+          sequences: loadSequences(),
+          profileId: last.profileId,
+          scenarioId: last.scenarioId,
+          outputMode: (last.outputMode as SimulationState['outputMode']) || 'log',
         }
       });
       isInitializedRef.current = true;
@@ -107,7 +114,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     localStorage.setItem('uart_pro_state', JSON.stringify(toPersist));
   }, [state.watchlist, state.snapshots, state.analyzerMode, state.dashboardLayout]);
 
-  // ── MEDICAL VALIDATION MONITORING ───────────
+  // ── MEDICAL VALIDATION MONITORING ────────────────────────────────────────────
   React.useEffect(() => {
     if (!state.validationSession || state.validationSession.status !== 'running' || !state.lastRxFrame) return;
 
@@ -149,78 +156,77 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     });
   }, [state.lastRxFrame, state.validationSession, state.validationSession?.status, t]);
 
-  // ── PERIPHERAL SYNC ──────────────────────────
+  // ── PERIPHERAL SYNC ──────────────────────────────────────────────────────────
   const peripherals = usePeripheralStore((s: PeripheralState) => s.peripherals);
   React.useEffect(() => {
-    if (!backendWsRef.current || backendWsRef.current.readyState !== WebSocket.OPEN) return;
-    backendWsRef.current.send(JSON.stringify({ 
-      type: 'UPDATE_PERIPHERALS', 
+    send({
+      type: 'UPDATE_PERIPHERALS',
       peripherals: peripherals.map((p: ScriptablePeripheral) => ({
-        id: p.id,
-        name: p.name,
-        protocol: p.protocol,
-        script: p.script,
-        initialState: p.initialState,
-        isActive: p.isActive
+        id: p.id, name: p.name, protocol: p.protocol,
+        script: p.script, initialState: p.initialState, isActive: p.isActive
       }))
-    }));
-  }, [peripherals, backendWsRef]);
+    });
+  }, [peripherals]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── SIMULATION CONTROLS ──────────────────────
+  // ── SIMULATION CONTROLS ───────────────────────────────────────────────────────
   const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
     waveformHistoryRef.current = [];
-    backendWsRef.current?.send(JSON.stringify({ type: 'START', profile, scenario, outputMode }));
+    send({ type: 'START', profile, scenario, outputMode });
     dispatch({ type: 'START', profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
-  }, [backendWsRef, dispatch, waveformHistoryRef]);
+    saveLastSettings({ profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stop = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'STOP' }));
+    send({ type: 'STOP' });
     dispatch({ type: 'STOP' });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pause = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE' }));
+    send({ type: 'PAUSE' });
     dispatch({ type: 'PAUSE' });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const resume = useCallback((profile: FrameProfile, scenario: Scenario | null) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME', profile, scenario }));
+  const resume = useCallback((_profile: FrameProfile, _scenario: Scenario | null) => {
+    send({ type: 'RESUME' });
     dispatch({ type: 'RESUME' });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const overrideField = useCallback((fieldId: string, value: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_FIELD', fieldId, value }));
+    send({ type: 'OVERRIDE_FIELD', fieldId, value });
     dispatch({ type: 'OVERRIDE_FIELD', fieldId, value });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const overrideBit = useCallback((bitKey: string, value: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_BIT', bitKey, value }));
+    send({ type: 'OVERRIDE_BIT', bitKey, value });
     dispatch({ type: 'OVERRIDE_BIT', bitKey, value });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const injectError = useCallback((errorType: ErrorType) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'INJECT_ERROR', errorType }));
+    send({ type: 'INJECT_ERROR', errorType });
     dispatch({ type: 'INJECT_ERROR', errorType });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetOverrides = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESET_OVERRIDES' }));
+    send({ type: 'RESET_OVERRIDES' });
     dispatch({ type: 'RESET_OVERRIDES' });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clearExchanges = useCallback(() => {
     exchangeBufferRef.current = [];
     dispatch({ type: 'CLEAR_EXCHANGES' });
   }, [dispatch]);
 
-  // ── SERIAL / NETWORK ─────────────────────────
+  // ── SERIAL / NETWORK ──────────────────────────────────────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_SERIAL', config: { portName, baudRate } }));
-  }, [backendWsRef]);
+    await invoke('connect_serial', { portName, baudRate }).catch((e: unknown) => {
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Seri port hatası: ${e}` });
+    });
+  }, []);
 
   const disconnectSerial = useCallback(async () => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_SERIAL' }));
-  }, [backendWsRef]);
+    await invoke('disconnect_serial').catch(console.error);
+    send({ type: 'SET_SERIAL_CONNECTED', connected: false });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const connectNetwork = useCallback(async (url: string) => {
     if (url.startsWith('tcp://')) {
@@ -234,10 +240,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_TCP', host, port }));
+      await invoke('connect_tcp', { host, port }).catch((e: unknown) => {
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `TCP hatası: ${e}` });
+      });
       return;
     }
 
+    // WebSocket URL — direct browser connection
     return new Promise<void>((resolve, reject) => {
       try {
         const ws = new WebSocket(url);
@@ -293,21 +302,19 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.network.disconnected') });
         };
 
-        ws.onerror = (err) => {
-          console.error('WS Error:', err);
-        };
+        ws.onerror = (err) => { console.error('WS Error:', err); };
       } catch (error) {
         reject(error);
       }
     });
-  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t, backendWsRef]);
+  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t]);
 
   const disconnectNetwork = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_TCP' }));
+    invoke('disconnect_tcp').catch(console.error);
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-  }, [wsRef, backendWsRef]);
+  }, []);
 
-  // ── LOGGING ──────────────────────────────────
+  // ── LOGGING ───────────────────────────────────────────────────────────────────
   const exportLogs = useCallback(() => {
     if (fullLogRef.current.length === 0) return;
     const headers = ['Time', 'Type', 'Text'];
@@ -324,64 +331,70 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     document.body.removeChild(link);
   }, [fullLogRef]);
 
-  // ── RECORDING & PLAYBACK ─────────────────────
+  // ── RECORDING & PLAYBACK ──────────────────────────────────────────────────────
   const startRecording = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
+    send({ type: 'START_RECORDING' });
     dispatch({ type: 'SET_RECORDING', recording: true });
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.recording.started') });
-  }, [backendWsRef, dispatch, t]);
+  }, [t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopRecording = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
-  }, [backendWsRef]);
+    send({ type: 'STOP_RECORDING' });
+    dispatch({ type: 'SET_RECORDING', recording: false });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveRecording = useCallback((name: string, data: Array<{ time: number; frame: GeneratedFrame }>) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SAVE_RECORDING', name, data }));
-  }, [backendWsRef]);
+  const saveRecording = useCallback(async (name: string, data: Array<{ time: number; frame: GeneratedFrame }>) => {
+    await invoke('save_recording', { name, data }).catch((e: unknown) => {
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Kayıt kaydedilemedi: ${e}` });
+    });
+  }, [dispatch]);
 
-  const deleteRecording = useCallback((id: string) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'DELETE_RECORDING', id }));
-  }, [backendWsRef]);
+  const deleteRecording = useCallback(async (id: string) => {
+    await invoke('delete_recording', { id }).catch((e: unknown) => {
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Kayıt silinemedi: ${e}` });
+    });
+  }, [dispatch]);
 
-  const refreshRecordings = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'LIST_RECORDINGS' }));
-  }, [backendWsRef]);
+  const refreshRecordings = useCallback(async () => {
+    const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch(() => []);
+    msgBufferRef.current.push(JSON.stringify({ type: 'RECORDINGS_LIST', recordings }));
+  }, [msgBufferRef]);
 
   const startPlayback = useCallback((data: Array<{ time: number; frame: GeneratedFrame }>) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
+    send({ type: 'START_PLAYBACK', data });
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.recording.playbackStarted', { count: data.length }) });
-  }, [backendWsRef, dispatch, t]);
+  }, [t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pausePlayback = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE_PLAYBACK' }));
+    send({ type: 'PAUSE_PLAYBACK' });
     dispatch({ type: 'PAUSE' });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resumePlayback = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME_PLAYBACK' }));
+    send({ type: 'RESUME_PLAYBACK' });
     dispatch({ type: 'RESUME' });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const seekPlayback = useCallback((index: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SEEK_PLAYBACK', index }));
-  }, [backendWsRef]);
+    send({ type: 'SEEK_PLAYBACK', index });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stepPlayback = useCallback((delta: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'STEP_PLAYBACK', delta }));
-  }, [backendWsRef]);
+    send({ type: 'STEP_PLAYBACK', delta });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── SIGNAL & TRIGGERS ────────────────────────
+  // ── SIGNAL & TRIGGERS ─────────────────────────────────────────────────────────
   const setSignalIntegrity = useCallback((integrity: Partial<SignalIntegrity>) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SET_SIGNAL_INTEGRITY', integrity }));
+    send({ type: 'SET_SIGNAL_INTEGRITY', integrity });
     dispatch({ type: 'SET_SIGNAL_INTEGRITY', integrity });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setTriggers = useCallback((triggers: Trigger[]) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SET_TRIGGERS', triggers }));
+    send({ type: 'SET_TRIGGERS', triggers });
     dispatch({ type: 'SET_TRIGGERS', triggers });
-  }, [backendWsRef, dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── DASHBOARD WIDGETS ────────────────────────
+  // ── DASHBOARD WIDGETS ─────────────────────────────────────────────────────────
   const addWidget = useCallback((type: WidgetType, fieldId: string) => {
     dispatch({
       type: 'ADD_WIDGET', widget: {
@@ -401,7 +414,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     dispatch({ type: 'UPDATE_LAYOUT', widgets });
   }, [dispatch]);
 
-  // ── VALIDATION ───────────────────────────────
+  // ── VALIDATION ────────────────────────────────────────────────────────────────
   const startValidation = useCallback(({ name, deviceId, operator, targets }: {
     name: string; deviceId: string; operator: string; targets: ValidationTarget[];
   }) => {
@@ -460,7 +473,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         resumePlayback,
         seekPlayback,
         stepPlayback,
-        getPorts: () => { backendWsRef.current?.send(JSON.stringify({ type: 'GET_PORTS' })); },
+        getPorts: () => {
+          invoke<Array<{ path: string }>>('list_serial_ports')
+            .then(ports => {
+              msgBufferRef.current.push(JSON.stringify({ type: 'PORTS_LIST', ports }));
+            })
+            .catch(console.error);
+        },
         selectExchange: (exchangeId) => dispatch({ type: 'SELECT_EXCHANGE', exchangeId }),
         setAnalyzerMode: (enabled) => dispatch({ type: 'SET_ANALYZER_MODE', enabled }),
         setDisplayFilter: (filter) => dispatch({ type: 'SET_DISPLAY_FILTER', filter }),
@@ -470,7 +489,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setDiffFrame: (index, frame) => dispatch({ type: 'SET_DIFF_FRAME', index, frame }),
         setTelemetryLayout: (profileId, layout) => dispatch({ type: 'SET_TELEMETRY_LAYOUT', profileId, layout }),
         setResponderRules: (rules: ResponderRule[]) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RESPONDER_RULES', rules }));
+          send({ type: 'SET_RESPONDER_RULES', rules });
           dispatch({ type: 'SET_RESPONDER_RULES', rules });
         },
         setSignalIntegrity,
@@ -484,54 +503,50 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         deleteValidationSession: (_id: string) => dispatch({ type: 'CANCEL_VALIDATION' }),
         sendRawData: (hex: string) => {
           const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
-          if (bytes.length > 0) {
-            backendWsRef.current?.send(JSON.stringify({ type: 'SEND_RAW_DATA', payload: bytes }));
+          if (bytes.length === 0) return;
 
-            const now = Date.now();
-            const currentProfile = stateRef.current.profileId
-              ? profilesRef.current.find(p => p.id === stateRef.current.profileId)
-              : null;
+          send({ type: 'INJECT_RAW_TX', bytes });
 
-            // Restore immediate local log for Automation Lab reliability
-            const txEntry: ConversationEntry = {
-              id: `local-tx-${now}-${Math.random()}`,
-              timestamp: now,
-              type: 'tx',
-              rawHex: hex
+          const now = Date.now();
+          const currentProfile = stateRef.current.profileId
+            ? profilesRef.current.find(p => p.id === stateRef.current.profileId)
+            : null;
+
+          const txEntry: ConversationEntry = {
+            id: `local-tx-${now}-${Math.random()}`,
+            timestamp: now,
+            type: 'tx',
+            rawHex: hex
+          };
+
+          const txExchange: Exchange = {
+            id: `local-ex-${now}-${Math.random()}`,
+            startTime: now,
+            tx: txEntry,
+            status: 'pending'
+          };
+
+          conversationBufferRef.current.push(txEntry);
+          exchangeBufferRef.current.push(txExchange);
+
+          if (currentProfile) {
+            const fields = parseFrame(currentProfile, bytes);
+            const frame: GeneratedFrame = {
+              uId: `raw-tx-${now}-${Math.random()}`,
+              frameNumber: 0,
+              timestampMs: now,
+              rawHex: hex,
+              rawBytes: bytes,
+              fields: fields || [],
+              errors: []
             };
-
-            const txExchange: Exchange = {
-              id: `local-ex-${now}-${Math.random()}`,
-              startTime: now,
-              tx: txEntry,
-              status: 'pending'
-            };
-
-            // Push to buffers immediately so SequenceRunner can see it
-            conversationBufferRef.current.push(txEntry);
-            exchangeBufferRef.current.push(txExchange);
-
-            if (currentProfile) {
-              const fields = parseFrame(currentProfile, bytes);
-              const frame: GeneratedFrame = {
-                uId: `raw-tx-${now}-${Math.random()}`,
-                frameNumber: 0,
-                timestampMs: now,
-                rawHex: hex,
-                rawBytes: bytes,
-                fields: fields || [],
-                errors: []
-              };
-
-              // Sync the Live Monitor (Top Left)
-              msgBufferRef.current.push(JSON.stringify({
-                type: 'TICK',
-                frame,
-                status: stateRef.current.status,
-                selectedProfileId: stateRef.current.profileId,
-                elapsedMs: stateRef.current.elapsedMs
-              }));
-            }
+            msgBufferRef.current.push(JSON.stringify({
+              type: 'TICK',
+              frame,
+              status: stateRef.current.status,
+              selectedProfileId: stateRef.current.profileId,
+              elapsedMs: stateRef.current.elapsedMs
+            }));
           }
         },
         automation: {
@@ -548,7 +563,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           }
         },
         setCustomWaveform: (waveform: number[] | null) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'SET_CUSTOM_WAVEFORM', waveform }));
+          send({ type: 'SET_CUSTOM_WAVEFORM', waveform });
           dispatch({ type: 'SET_CUSTOM_WAVEFORM', waveform });
         }
       }}

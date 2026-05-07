@@ -32,7 +32,7 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
   };
 
   return (
-    <div className="flex flex-col border-b border-gray-800 bg-blue-900/5">
+    <div className="flex flex-col flex-1 min-h-0 border-b border-gray-800 bg-blue-900/5">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800/60">
         <div className="flex items-center gap-2">
@@ -78,7 +78,7 @@ const RxMonitor = memo(({ lastRxFrame, selectedFrameId, onSelectFrame }: RxMonit
       </div>
 
       {/* Frame list */}
-      <div className="max-h-52 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         {rxHistory.length === 0 ? (
           <div className="px-4 py-3 text-gray-700 font-mono text-[10px] italic">
             {t('rxMonitor.waitingData')}

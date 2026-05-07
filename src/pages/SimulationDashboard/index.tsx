@@ -334,19 +334,17 @@ export default function SimulationDashboard() {
             }`}
           >
             <div className="w-72 xl:w-80 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-                <FrameMonitor 
-                  lastFrame={lastFrame}
-                  recentFrames={recentFrames}
-                  selectedFrameId={selectedFrame?.frameNumber}
-                  onSelectFrame={setSelectedFrame}
-                />
-                <RxMonitor
-                  lastRxFrame={lastRxFrame}
-                  selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
-                  onSelectFrame={setSelectedFrame}
-                />
-              </div>
+              <FrameMonitor
+                lastFrame={lastFrame}
+                recentFrames={recentFrames}
+                selectedFrameId={selectedFrame?.frameNumber}
+                onSelectFrame={setSelectedFrame}
+              />
+              <RxMonitor
+                lastRxFrame={lastRxFrame}
+                selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}
+                onSelectFrame={setSelectedFrame}
+              />
             </div>
           </div>
         )}

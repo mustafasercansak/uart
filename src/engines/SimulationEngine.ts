@@ -1,7 +1,7 @@
-import { generateFrame } from '../engines/FrameGenerator';
-import { tickScenarioEngine } from '../engines/ScenarioEngine';
-import { evaluateTriggers } from '../engines/TriggerEngine';
-import { VirtualPeripheralEngine, ScriptableDriver } from '../engines/VirtualPeripheralEngine';
+import { generateFrame } from './FrameGenerator';
+import { tickScenarioEngine } from './ScenarioEngine';
+import { evaluateTriggers } from './TriggerEngine';
+import { VirtualPeripheralEngine, ScriptableDriver } from './VirtualPeripheralEngine';
 import type { 
   SimulationState, 
   FrameProfile, 
@@ -18,15 +18,12 @@ import type {
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * The Backend Simulation Engine
- * Handles high-precision timing and frame generation in a separate process/thread.
- */
+/** Simulation engine — runs entirely in the browser via Tauri WebView. */
 export class SimulationEngine {
   private state: SimulationState;
   private profile: FrameProfile | null = null;
   private scenario: Scenario | null = null;
-  private interval: NodeJS.Timeout | null = null;
+  private interval: ReturnType<typeof setTimeout> | null = null;
   private frameCount = 0;
   private startTime = 0;
   private pausedAt = 0;
@@ -39,7 +36,7 @@ export class SimulationEngine {
   private recordingBuffer: Array<{ time: number; frame: GeneratedFrame }> = [];
   private playbackData: Array<{ time: number; frame: GeneratedFrame }> | null = null;
   private playbackIndex: number = 0;
-  private playbackTimer: NodeJS.Timeout | null = null;
+  private playbackTimer: ReturnType<typeof setTimeout> | null = null;
   private isPlaybackPaused: boolean = false;
   
   // Responder State

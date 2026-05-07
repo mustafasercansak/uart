@@ -962,7 +962,7 @@
     "spiBus": "SPI Bus"
   },
   "frameMonitor": {
-    "liveFrame": "Live Frame Monitor",
+    "liveFrame": "TX History",
     "recentFrames": "Recent Frames",
     "waitingData": "Waiting for data...",
     "slotARef": "Slot A (Reference)",

@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3, ShieldCheck, FileText, ClipboardCheck, Globe } from 'lucide-react';
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
+import { loadLastSettings, saveLastSettings } from '../../../lib/lastSettings';
 
 interface StatBarProps {
   status: SimulationState['status'];
@@ -96,13 +97,23 @@ const StatBar = memo(({
 }: StatBarProps) => {
   const { t, locale, setLocale } = useTranslation();
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
-  const [selectedPort, setSelectedPort] = React.useState('');
+  const [selectedPort, setSelectedPort] = React.useState(() => loadLastSettings().selectedPort);
+
+  const handlePortChange = (port: string) => {
+    setSelectedPort(port);
+    saveLastSettings({ selectedPort: port });
+  };
 
   React.useEffect(() => {
-    if (availablePorts.length > 0 && !selectedPort) {
-      setSelectedPort(availablePorts[0].path);
+    if (availablePorts.length === 0) return;
+    const saved = loadLastSettings().selectedPort;
+    const match = availablePorts.find(p => p.path === saved);
+    // Kaydedilmiş port varsa onu seç, yoksa ilkini seç
+    const best = match?.path ?? availablePorts[0].path;
+    if (!selectedPort || !availablePorts.find(p => p.path === selectedPort)) {
+      handlePortChange(best);
     }
-  }, [availablePorts, selectedPort]);
+  }, [availablePorts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = () => {
     const report = {
@@ -212,7 +223,7 @@ const StatBar = memo(({
               <select 
                 className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-20 focus:border-blue-500"
                 value={selectedPort}
-                onChange={(e) => setSelectedPort(e.target.value)}
+                onChange={(e) => handlePortChange(e.target.value)}
                 onFocus={onGetPorts}
                 disabled={status !== 'stopped'}
               >
