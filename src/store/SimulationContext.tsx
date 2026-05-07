@@ -34,6 +34,7 @@ import {
 } from './storage';
 import { usePeripheralStore } from './usePeripheralStore';
 import type { PeripheralState } from './usePeripheralStore';
+import { invoke } from "@tauri-apps/api/core";
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -43,9 +44,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     stateRef.current = state;
   }, [state]);
 
-  const msgBufferRef = useRef<string[]>([]);
+  const msgBufferRef = useRef<any[]>([]);
   const profilesRef = useRef<FrameProfile[]>([]);
-  const uiVisibleRef = useRef(false);
+  const uiVisibleRef = useRef(true);
   const conversationBufferRef = useRef<ConversationEntry[]>([]);
   const exchangeBufferRef = useRef<Exchange[]>([]);
   const pendingUiUpdateRef = useRef<Partial<SimulationState> | null>(null);
@@ -58,6 +59,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const waveformHistoryRef = useRef<Array<Record<string, number>>>([]);
 
   // ── BACKEND CONNECTION ───────────────────────
+  // Note: backendWsRef is now a legacy reference for compatibility
   const { backendWsRef } = useBackendConnection(dispatch, msgBufferRef);
 
   // ── UI UPDATE LOOP ───────────────────────────
@@ -152,9 +154,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   // ── PERIPHERAL SYNC ──────────────────────────
   const peripherals = usePeripheralStore((s: PeripheralState) => s.peripherals);
   React.useEffect(() => {
-    if (!backendWsRef.current || backendWsRef.current.readyState !== WebSocket.OPEN) return;
-    backendWsRef.current.send(JSON.stringify({ 
-      type: 'UPDATE_PERIPHERALS', 
+    invoke('update_peripherals', { 
       peripherals: peripherals.map((p: ScriptablePeripheral) => ({
         id: p.id,
         name: p.name,
@@ -163,50 +163,50 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         initialState: p.initialState,
         isActive: p.isActive
       }))
-    }));
-  }, [peripherals, backendWsRef]);
+    }).catch(console.error);
+  }, [peripherals]);
 
   // ── SIMULATION CONTROLS ──────────────────────
   const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
     waveformHistoryRef.current = [];
-    backendWsRef.current?.send(JSON.stringify({ type: 'START', profile, scenario, outputMode }));
+    invoke('start_simulation', { profile, scenario, outputMode }).catch(console.error);
     dispatch({ type: 'START', profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
-  }, [backendWsRef, dispatch, waveformHistoryRef]);
+  }, [dispatch, waveformHistoryRef]);
 
   const stop = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'STOP' }));
+    invoke('stop_simulation').catch(console.error);
     dispatch({ type: 'STOP' });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const pause = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE' }));
+    invoke('pause_simulation').catch(console.error);
     dispatch({ type: 'PAUSE' });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const resume = useCallback((profile: FrameProfile, scenario: Scenario | null) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME', profile, scenario }));
+    invoke('resume_simulation', { profile, scenario }).catch(console.error);
     dispatch({ type: 'RESUME' });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const overrideField = useCallback((fieldId: string, value: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_FIELD', fieldId, value }));
+    invoke('override_field', { fieldId, value }).catch(console.error);
     dispatch({ type: 'OVERRIDE_FIELD', fieldId, value });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const overrideBit = useCallback((bitKey: string, value: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'OVERRIDE_BIT', bitKey, value }));
+    invoke('override_bit', { bitKey, value }).catch(console.error);
     dispatch({ type: 'OVERRIDE_BIT', bitKey, value });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const injectError = useCallback((errorType: ErrorType) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'INJECT_ERROR', errorType }));
+    invoke('inject_error', { errorType }).catch(console.error);
     dispatch({ type: 'INJECT_ERROR', errorType });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const resetOverrides = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESET_OVERRIDES' }));
+    invoke('reset_overrides').catch(console.error);
     dispatch({ type: 'RESET_OVERRIDES' });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const clearExchanges = useCallback(() => {
     exchangeBufferRef.current = [];
@@ -215,12 +215,22 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   // ── SERIAL / NETWORK ─────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_SERIAL', config: { portName, baudRate } }));
-  }, [backendWsRef]);
+    try {
+      await invoke('connect_serial', { portName, baudRate });
+      dispatch({ type: 'SET_SERIAL_CONNECTED', connected: true });
+    } catch (err) {
+      console.error('Serial Connection Error:', err);
+    }
+  }, [dispatch]);
 
   const disconnectSerial = useCallback(async () => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_SERIAL' }));
-  }, [backendWsRef]);
+    try {
+      await invoke('disconnect_serial');
+      dispatch({ type: 'SET_SERIAL_CONNECTED', connected: false });
+    } catch (err) {
+      console.error('Serial Disconnection Error:', err);
+    }
+  }, [dispatch]);
 
   const connectNetwork = useCallback(async (url: string) => {
     if (url.startsWith('tcp://')) {
@@ -234,7 +244,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      backendWsRef.current?.send(JSON.stringify({ type: 'CONNECT_TCP', host, port }));
+      invoke('connect_tcp', { host, port }).catch((err) => {
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `TCP Connection Error: ${err}` });
+      });
       return;
     }
 
@@ -300,12 +312,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         reject(error);
       }
     });
-  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t, backendWsRef]);
+  }, [dispatch, fullLogRef, profilesRef, rxBufferRef, stateRef, t]);
 
   const disconnectNetwork = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'DISCONNECT_TCP' }));
+    invoke('disconnect_tcp').catch(console.error);
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-  }, [wsRef, backendWsRef]);
+  }, [wsRef]);
 
   // ── LOGGING ──────────────────────────────────
   const exportLogs = useCallback(() => {
@@ -326,60 +338,60 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   // ── RECORDING & PLAYBACK ─────────────────────
   const startRecording = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'BEGIN_RECORD' }));
+    invoke('begin_record').catch(console.error);
     dispatch({ type: 'SET_RECORDING', recording: true });
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.recording.started') });
-  }, [backendWsRef, dispatch, t]);
+  }, [dispatch, t]);
 
   const stopRecording = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'END_RECORD' }));
-  }, [backendWsRef]);
+    invoke('end_record').catch(console.error);
+  }, []);
 
   const saveRecording = useCallback((name: string, data: Array<{ time: number; frame: GeneratedFrame }>) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SAVE_RECORDING', name, data }));
-  }, [backendWsRef]);
+    invoke('save_recording', { name, data }).catch(console.error);
+  }, []);
 
   const deleteRecording = useCallback((id: string) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'DELETE_RECORDING', id }));
-  }, [backendWsRef]);
+    invoke('delete_recording', { id }).catch(console.error);
+  }, []);
 
   const refreshRecordings = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'LIST_RECORDINGS' }));
-  }, [backendWsRef]);
+    invoke('list_recordings').catch(console.error);
+  }, []);
 
   const startPlayback = useCallback((data: Array<{ time: number; frame: GeneratedFrame }>) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'START_PLAYBACK', data }));
+    invoke('start_playback', { data }).catch(console.error);
     dispatch({ type: 'ADD_LOG', entryType: 'info', text: t('simulation.recording.playbackStarted', { count: data.length }) });
-  }, [backendWsRef, dispatch, t]);
+  }, [dispatch, t]);
 
   const pausePlayback = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'PAUSE_PLAYBACK' }));
+    invoke('pause_playback').catch(console.error);
     dispatch({ type: 'PAUSE' });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const resumePlayback = useCallback(() => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'RESUME_PLAYBACK' }));
+    invoke('resume_playback').catch(console.error);
     dispatch({ type: 'RESUME' });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const seekPlayback = useCallback((index: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SEEK_PLAYBACK', index }));
-  }, [backendWsRef]);
+    invoke('seek_playback', { index }).catch(console.error);
+  }, []);
 
   const stepPlayback = useCallback((delta: number) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'STEP_PLAYBACK', delta }));
-  }, [backendWsRef]);
+    invoke('step_playback', { delta }).catch(console.error);
+  }, []);
 
   // ── SIGNAL & TRIGGERS ────────────────────────
   const setSignalIntegrity = useCallback((integrity: Partial<SignalIntegrity>) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SET_SIGNAL_INTEGRITY', integrity }));
+    invoke('set_signal_integrity', { integrity }).catch(console.error);
     dispatch({ type: 'SET_SIGNAL_INTEGRITY', integrity });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   const setTriggers = useCallback((triggers: Trigger[]) => {
-    backendWsRef.current?.send(JSON.stringify({ type: 'SET_TRIGGERS', triggers }));
+    invoke('set_triggers', { triggers }).catch(console.error);
     dispatch({ type: 'SET_TRIGGERS', triggers });
-  }, [backendWsRef, dispatch]);
+  }, [dispatch]);
 
   // ── DASHBOARD WIDGETS ────────────────────────
   const addWidget = useCallback((type: WidgetType, fieldId: string) => {
@@ -460,7 +472,14 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         resumePlayback,
         seekPlayback,
         stepPlayback,
-        getPorts: () => { backendWsRef.current?.send(JSON.stringify({ type: 'GET_PORTS' })); },
+        getPorts: async () => {
+          try {
+            const ports = await invoke<Array<{ path: string }>>('get_ports');
+            dispatch({ type: 'SET_AVAILABLE_PORTS', ports });
+          } catch (err) {
+            console.error('Failed to get ports:', err);
+          }
+        },
         selectExchange: (exchangeId) => dispatch({ type: 'SELECT_EXCHANGE', exchangeId }),
         setAnalyzerMode: (enabled) => dispatch({ type: 'SET_ANALYZER_MODE', enabled }),
         setDisplayFilter: (filter) => dispatch({ type: 'SET_DISPLAY_FILTER', filter }),
@@ -470,7 +489,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setDiffFrame: (index, frame) => dispatch({ type: 'SET_DIFF_FRAME', index, frame }),
         setTelemetryLayout: (profileId, layout) => dispatch({ type: 'SET_TELEMETRY_LAYOUT', profileId, layout }),
         setResponderRules: (rules: ResponderRule[]) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'UPDATE_RESPONDER_RULES', rules }));
+          invoke('update_responder_rules', { rules }).catch(console.error);
           dispatch({ type: 'SET_RESPONDER_RULES', rules });
         },
         setSignalIntegrity,
@@ -485,7 +504,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         sendRawData: (hex: string) => {
           const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
           if (bytes.length > 0) {
-            backendWsRef.current?.send(JSON.stringify({ type: 'SEND_RAW_DATA', payload: bytes }));
+            invoke('send_tcp', { data: bytes }).catch(console.error);
 
             const now = Date.now();
             const currentProfile = stateRef.current.profileId
@@ -548,7 +567,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           }
         },
         setCustomWaveform: (waveform: number[] | null) => {
-          backendWsRef.current?.send(JSON.stringify({ type: 'SET_CUSTOM_WAVEFORM', waveform }));
+          invoke('set_custom_waveform', { waveform }).catch(console.error);
           dispatch({ type: 'SET_CUSTOM_WAVEFORM', waveform });
         }
       }}

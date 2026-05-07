@@ -60,7 +60,7 @@ export function useUIUpdateLoop({
 
       for (const raw of rawMsgs) {
         try {
-          const parsed = JSON.parse(raw);
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
           const msgs = Array.isArray(parsed) ? parsed : [parsed];
 
           for (const msg of msgs) {
@@ -73,7 +73,9 @@ export function useUIUpdateLoop({
                 const frameWithUid = assignUid(msg.frame);
                 masterBatch.lastFrame = frameWithUid;
                 masterBatch.status = msg.status;
-                masterBatch.profileId = msg.selectedProfileId;
+                if (msg.selectedProfileId) {
+                  masterBatch.profileId = msg.selectedProfileId;
+                }
                 latestElapsed = msg.elapsedMs;
 
                 // Write directly to ref — no React state allocation, no re-render
@@ -153,7 +155,7 @@ export function useUIUpdateLoop({
                 if (profile) {
                   const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16));
                   const fields = parseFrame(profile, bytes);
-                  masterBatch.lastRxFrame = assignUid({
+                  const rxFrame = assignUid({
                     frameNumber: 0,
                     timestampMs: Date.now(),
                     rawHex: msg.hex,
@@ -161,6 +163,11 @@ export function useUIUpdateLoop({
                     fields: fields || [],
                     errors: []
                   });
+                  masterBatch.lastRxFrame = rxFrame;
+                  
+                  // Ensure RX frames are added to history
+                  const currentRecentRx = stateRef.current.recentRxFrames || [];
+                  masterBatch.recentRxFrames = [rxFrame, ...currentRecentRx].slice(0, 50);
                 }
                 break;
               }

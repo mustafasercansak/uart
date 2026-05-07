@@ -942,5 +942,11 @@
     "helperApi": "Yardımcı API",
     "noActivity": "Henüz aktivite yok... Logları görmek için simülasyonu başlatın.",
     "exampleScript": "// Örnek: Gelen veriye ACK (0x06) ile yanıt ver\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Cihaz veri aldı, ACK gönderiliyor\");\n}"
+  },
+  "statBar": {
+    "serialPort": "Seri Port",
+    "noPort": "Port Bulunamadı",
+    "unknown": "Bilinmeyen",
+    "net": "Ağ"
   }
 }

@@ -333,14 +333,16 @@ export default function SimulationDashboard() {
               isLeftPanelOpen ? 'w-72 xl:w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'
             }`}
           >
-            <div className="w-72 xl:w-80 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+            <div className="w-72 xl:w-80 h-full flex flex-col overflow-hidden">
+              <div className="flex-[3] min-h-0 overflow-y-auto custom-scrollbar">
                 <FrameMonitor 
                   lastFrame={lastFrame}
                   recentFrames={recentFrames}
                   selectedFrameId={selectedFrame?.frameNumber}
                   onSelectFrame={setSelectedFrame}
                 />
+              </div>
+              <div className="flex-[2] min-h-0 overflow-y-auto custom-scrollbar border-t border-gray-800/60">
                 <RxMonitor
                   lastRxFrame={lastRxFrame}
                   selectedFrameId={selectedFrame === lastRxFrame ? 0 : -1}

@@ -1003,6 +1003,12 @@
     "helperApi": "Helper API",
     "noActivity": "No activity yet... Run the simulation to see logs.",
     "exampleScript": "// Example: Respond with ACK (0x06) to any input\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Device received data, sending ACK\");\n}"
+  },
+  "statBar": {
+    "serialPort": "Serial Port",
+    "noPort": "No Port Found",
+    "unknown": "Unknown",
+    "net": "Network"
   }
 }
 

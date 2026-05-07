@@ -136,6 +136,7 @@ export type SimAction =
   | { type: 'DELETE_SEQUENCE'; id: string }
   | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
   | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
+  | { type: 'SET_AVAILABLE_PORTS'; ports: Array<{ path: string }> }
   | { type: 'CLEAR_EXCHANGES' }
   | { type: 'SET_CUSTOM_WAVEFORM'; waveform: number[] | null };
 
@@ -143,6 +144,8 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
   switch (action.type) {
     case 'SET_CUSTOM_WAVEFORM':
       return { ...state, customWaveform: action.waveform || undefined };
+    case 'SET_AVAILABLE_PORTS':
+      return { ...state, availablePorts: action.ports };
     case 'SET_PROFILE':
       return { ...state, profileId: action.profileId };
     case 'SET_SCENARIO':
