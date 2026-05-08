@@ -51,7 +51,7 @@ writeFileSync('README.md', readme);
 console.log(`✓ README.md → ${version}`);
 
 // CHANGELOG.md
-const today = now.toISOString().slice(0, 10);
+const today = new Date().toISOString().slice(0, 10);
 const changelog = readFileSync('CHANGELOG.md', 'utf8');
 const newEntry = `## [v${version}] — ${today}\n### 🚀 Release v${version}\n- Yeni sürüm yayınlandı.\n\n---\n\n`;
 const insertAt = changelog.indexOf('\n## [');
