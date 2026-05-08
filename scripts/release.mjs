@@ -44,8 +44,25 @@ conf.version = version;
 writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
 console.log(`✓ tauri.conf.json → ${version}`);
 
+// README.md
+let readme = readFileSync('README.md', 'utf8');
+readme = readme.replace(/v\d+\.\d+\.\d+/g, `v${version}`);
+writeFileSync('README.md', readme);
+console.log(`✓ README.md → ${version}`);
+
+// CHANGELOG.md
+const today = now.toISOString().slice(0, 10);
+const changelog = readFileSync('CHANGELOG.md', 'utf8');
+const newEntry = `## [v${version}] — ${today}\n### 🚀 Release v${version}\n- Yeni sürüm yayınlandı.\n\n---\n\n`;
+const insertAt = changelog.indexOf('\n## [');
+const updatedChangelog = insertAt === -1
+  ? changelog + '\n' + newEntry
+  : changelog.slice(0, insertAt + 1) + newEntry + changelog.slice(insertAt + 1);
+writeFileSync('CHANGELOG.md', updatedChangelog);
+console.log(`✓ CHANGELOG.md → ${version}`);
+
 // git
-execSync(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json ${counterFile}`);
+execSync(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json README.md CHANGELOG.md ${counterFile}`);
 execSync(`git commit -m "chore: release ${tag}"`);
 execSync(`git tag ${tag}`);
 execSync(`git push origin main ${tag}`);

@@ -1,4 +1,4 @@
-# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.4.0
+# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.5.0
 
 A high-performance, real-time UART telemetry platform designed for **embedded engineers** and **medical device developers**. Simulate complex sensor data (ECG, SpO₂, RESP, etc.) and stream it directly to your hardware via the **Web Serial API**.
 
@@ -6,7 +6,7 @@ A high-performance, real-time UART telemetry platform designed for **embedded en
 
 ---
 
-## 🚀 Key Features (v1.4.0)
+## 🚀 Key Features (v1.5.0)
 
 ### 🎨 Custom Waveform Designer
 Go beyond static signals. **Draw** your own waveforms by hand, generate them with **Math Formulas**, or use our **Clinical Preset Library** (ECG, PPG, Resp). Inject these custom signals directly into your UART stream in real-time.
@@ -29,9 +29,10 @@ Complete **English** and **Turkish** localization with a built-in compliance tes
 
 ## 🏃 Quick Start
 1. **Install**: `npm install`
-2. **Server**: `npm run server`
-3. **Frontend**: `npm run dev`
-4. **Action**: Open [http://localhost:5173](http://localhost:5173), select a profile, and hit **"Start Simulation"**.
+2. **Dev**: `npm run tauri:dev`
+3. **Release**: `npm run release -- 1.5`
+
+Or download the latest binary from [Releases](https://github.com/mustafasercansak/uart/releases/latest).
 
 ---
 

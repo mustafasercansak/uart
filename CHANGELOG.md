@@ -4,6 +4,32 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
+## [v1.5.0] — 2026-05-08
+### 🔄 Auto-Updater, CI/CD İyileştirmeleri & Release Otomasyonu
+
+#### ✨ Yeni Özellikler
+- **Auto-Updater**: `tauri-plugin-updater` entegrasyonu — uygulama açılışta GitHub Releases'tan güncelleme kontrol eder, yeni sürüm varsa sağ altta bildirim gösterir, tek tıkla indirir ve yeniden başlatır.
+- **Release Script** (`npm run release -- 1.5`): Tek komutla `package.json`, `Cargo.toml`, `tauri.conf.json`, `README.md` ve `CHANGELOG.md` versiyonlarını günceller, commit atar, tag oluşturur ve push eder.
+- **Dinamik Versiyon**: Sidebar'daki versiyon numarası artık `package.json`'dan otomatik okunur — hardcoded değil.
+
+#### 🔧 CI/CD İyileştirmeleri
+- GitHub Actions Node.js 24'e yükseltildi (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
+- Ubuntu runner `22.04` → `24.04` güncellendi.
+- `actions/checkout` ve `actions/setup-node` v5'e yükseltildi.
+- Tauri signing secret'ları workflow'a eklendi (`TAURI_SIGNING_PRIVATE_KEY`).
+
+#### 🛠 Teknik Düzeltmeler
+- **Vite 8 Worker Build Fix**: `esbuild ^0.28.0` bağımlılığı eklendi — Web Worker bundle'ı CI'da başarısız oluyordu.
+- **Build Target**: `safari13` → `safari16` — esbuild'in desteklemediği destructuring dönüşümü kaldırıldı.
+- **Rust Edition**: `Cargo.toml` edition `2024`'e güncellendi.
+- `tauri-plugin-process` eklendi (updater sonrası uygulama yeniden başlatma için).
+
+#### 📦 Bağımlılık Güncellemeleri
+- Tüm npm paketleri en son sürümlere güncellendi (`esbuild`, `vite`, `vitest`, `eslint`, `react`, `uuid`, `zustand` vb.).
+- Node.js minimum gereksinimi `>=24.0.0` olarak güncellendi.
+
+---
+
 ## [v1.4.0] — 2026-05-01
 ### 🚀 Custom Waveform Designer & High-Density UI Overhaul
 - **Custom Waveform Designer (Lab)**: 
