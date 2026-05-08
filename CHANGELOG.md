@@ -4,6 +4,12 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
+## [v1.5.7] — 2026-05-08
+### 🚀 Release v1.5.7
+- Yeni sürüm yayınlandı.
+
+---
+
 ## [v1.5.6] — 2026-05-08
 ### 🚀 Release v1.5.6
 - Yeni sürüm yayınlandı.
