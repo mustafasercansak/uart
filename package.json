@@ -1,10 +1,10 @@
 {
   "name": "uart",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.4",
   "type": "module",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "vite",
@@ -22,7 +22,9 @@
     "@tailwindcss/vite": "^4.2.4",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "^2",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "@types/react-grid-layout": "^2.1.0",
     "@types/three": "^0.184.1",
     "@types/uuid": "^11.0.0",

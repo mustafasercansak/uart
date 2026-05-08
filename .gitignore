@@ -31,3 +31,6 @@ src-tauri/gen/
 
 # Recordings (kullanıcı verisi, repoya girmemeli)
 recordings/
+
+# Tauri signing key (private - repoya girmesin)
+src-tauri/uart.key

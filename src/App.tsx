@@ -31,6 +31,7 @@ function AppRoutes() {
 }
 
 import { ThemeProvider } from 'next-themes';
+import { UpdateChecker } from './components/UpdateChecker/UpdateChecker';
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
         <SimulationProvider>
           <BrowserRouter>
             <AppRoutes />
+            <UpdateChecker />
           </BrowserRouter>
         </SimulationProvider>
       </LanguageProvider>
