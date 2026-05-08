@@ -79,7 +79,7 @@ export function Sidebar() {
           </button>
         )}
         <div className={`text-gray-700 font-mono transition-all ${collapsed ? 'text-[8px] text-center' : 'text-[10px]'}`}>
-          {collapsed ? 'v1' : 'v1.4.0'}
+          {collapsed ? 'v' : `v${__APP_VERSION__}`}
         </div>
       </div>
     </aside>
