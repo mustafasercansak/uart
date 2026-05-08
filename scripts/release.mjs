@@ -12,7 +12,14 @@ const counters = existsSync(counterFile)
   ? JSON.parse(readFileSync(counterFile, 'utf8'))
   : {};
 
-const patch = (counters[base] ?? -1) + 1;
+let patch = (counters[base] ?? -1) + 1;
+
+// Tag zaten varsa bir sonrakine geç
+const existingTags = execSync('git tag').toString().split('\n');
+while (existingTags.includes(`v${base}.${patch}`)) {
+  patch++;
+}
+
 counters[base] = patch;
 writeFileSync(counterFile, JSON.stringify(counters, null, 2) + '\n');
 
