@@ -25,9 +25,11 @@
 <a name="architecture"></a>
 ## 🏗️ Sistem Mimarisi
 
-UART Pro Lab, **Yüksek Eşzamanlı Gerçek Zamanlı Motor** üzerine kurulmuştur. Basit döngülere dayanan standart simülatörlerin aksine, motorumuz veri üretiminin UI thread'inden bağımsız olmasını sağlamak için **Node.js Worker Thread** mimarisini kullanır.
-- **Hassas Zamanlama**: Yüksek hızlı baud rate'leri (921.600 bps'ye kadar) jitter olmadan simüle etmek için gerekli olan nanosaniye hassasiyetindeki aralıklar için `process.hrtime()` kullanıyoruz.
-- **Sıfır-Kopya Tamponlar**: Gecikmeyi en aza indirmek için motor ve arayüz arasında veri aktarımı paylaşılan bellek veya yüksek hızlı WebSocket'ler kullanılarak yapılır.
+UART Pro Lab, **Tauri 2 + Web Worker** mimarisi üzerine kurulmuştur. Uygulama tamamen yerel (native) bir masaüstü uygulamasıdır; bir sunucuya ihtiyaç duymaz.
+
+- **Tauri (Rust) Katmanı**: Gerçek seri port (serialport crate) ve TCP haberleşmesi bu katmanda çalışır. Düşük gecikme ve doğrudan donanım erişimi sağlar.
+- **Web Worker Motoru**: Simülasyon motoru (`simulation.worker.ts`) ayrı bir browser thread'inde çalışır; UI hiçbir zaman bloke olmaz. Çökme durumunda motor otomatik olarak yeniden başlatılır (en fazla 5 kez).
+- **React UI Katmanı**: Vite + React 19 ile derlenir. Durum yönetimi `useReducer` + `Zustand` kombinasyonuyla sağlanır; yoğun veri (waveform geçmişi) React state dışında `useRef` içinde tutularak render döngüsü optimize edilir.
 
 ![Sistem Paneli](images/v1.2/dashboard_tr.png)
 

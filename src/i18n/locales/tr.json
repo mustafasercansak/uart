@@ -1,4 +1,4 @@
-{
+﻿{
   "nav": {
     "dashboard": "Gösterge Paneli",
     "profiles": "Profil Editörü",
@@ -942,5 +942,33 @@
     "helperApi": "Yardımcı API",
     "noActivity": "Henüz aktivite yok... Logları görmek için simülasyonu başlatın.",
     "exampleScript": "// Örnek: Gelen veriye ACK (0x06) ile yanıt ver\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Cihaz veri aldı, ACK gönderiliyor\");\n}"
+  }
+,
+  "templateBrowser": {
+    "title": "Şablon Kütüphanesi",
+    "subtitle": "Hazır sensör simülasyon şablonları",
+    "all": "Tümü",
+    "categories": {
+      "all": "Tümü",
+      "medical": "Tıbbi",
+      "medical_humanity": "Tıbbi (İnsanlık İçin)",
+      "environmental": "Çevresel",
+      "general": "Genel",
+      "industrial": "Endüstriyel",
+      "navigation": "Navigasyon"
+    },
+    "frameStructure": "Çerçeve Yapısı",
+    "interval": "{ms}ms aralık",
+    "scenarios": "{count} senaryo",
+    "created": "Simülasyona Uygulandı",
+    "applying": "Uygulanıyor...",
+    "useTemplate": "Bu Şablonu Kullan",
+    "goToProfiles": "Profillere git",
+    "colorCode": "Alan Tipi Renk Kodu",
+    "fixed": "Sabit",
+    "range": "Aralık",
+    "waveform": "Dalga Formu",
+    "checksum": "Sağlama",
+    "flags": "Bayraklar"
   }
 }

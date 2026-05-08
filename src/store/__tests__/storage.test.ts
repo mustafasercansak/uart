@@ -6,6 +6,7 @@ import {
   saveSequence, loadSequences, deleteSequence
 } from '../storage';
 import type { FrameProfile, Scenario } from '../../types';
+import type { AutomationSequence } from '../../types/automation';
 
 describe('storage.ts', () => {
     const mockProfile: FrameProfile = {
@@ -223,9 +224,9 @@ describe('storage.ts', () => {
 
     describe('Sequence Actions', () => {
         it('saves, loads and deletes sequences', () => {
-            const seq = { id: 'seq1', name: 'Seq 1', steps: [] } as any;
+            const seq = { id: 'seq1', name: 'Seq 1', steps: [] } as AutomationSequence;
             saveSequence(seq);
-            let loaded = loadSequences();
+            const loaded = loadSequences();
             expect(loaded).toContainEqual(seq);
 
             const updated = { ...seq, name: 'Updated' };

@@ -22,17 +22,22 @@ interface Point {
   y: number;
 }
 
+const WAVEFORM_STORAGE_KEY = 'uart_saved_waveforms';
+
 export default function WaveformDesigner() {
   const { t } = useTranslation();
   const { setCustomWaveform } = useSimulation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // ... rest of points, isDrawing state etc
   const [points, setPoints] = useState<Point[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [mode, setMode] = useState<'draw' | 'formula' | 'preset'>('draw');
+  const [mode, setMode] = useState<'draw' | 'formula' | 'preset' | 'saved'>('draw');
   const [formula, setFormula] = useState('sin(x/10) * 50 + 50');
-  const [resolution, setResolution] = useState(100);
+  const [resolution, _setResolution] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [savedWaveforms, setSavedWaveforms] = useState<Array<{ name: string; data: number[] }>>(() => {
+    try { return JSON.parse(localStorage.getItem(WAVEFORM_STORAGE_KEY) ?? '[]'); } catch { return []; }
+  });
 
   // Canvas drawing logic
   const draw = useCallback(() => {
@@ -146,39 +151,101 @@ export default function WaveformDesigner() {
       let y = 0.5; // default center
 
       switch (type) {
-        case 'ecg':
-          // Simplified ECG (P, QRS, T complex)
-          const phase = (t * 2) % 1; 
-          if (phase < 0.1) y = 0.5 - 0.05 * Math.sin(Math.PI * phase / 0.1); // P wave
-          else if (phase < 0.12) y = 0.5; // PR interval
-          else if (phase < 0.15) y = 0.5 + 0.1 * (phase - 0.12) / 0.03; // Q
-          else if (phase < 0.18) y = 0.5 - 0.4 * (phase - 0.15) / 0.03; // R
-          else if (phase < 0.21) y = 0.1 + 0.5 * (phase - 0.18) / 0.03; // S
-          else if (phase < 0.3) y = 0.5; // ST segment
-          else if (phase < 0.45) y = 0.5 - 0.1 * Math.sin(Math.PI * (phase - 0.3) / 0.15); // T wave
+        case 'ecg': {
+          const phase = (t * 2) % 1;
+          if (phase < 0.1) y = 0.5 - 0.05 * Math.sin(Math.PI * phase / 0.1);
+          else if (phase < 0.12) y = 0.5;
+          else if (phase < 0.15) y = 0.5 + 0.1 * (phase - 0.12) / 0.03;
+          else if (phase < 0.18) y = 0.5 - 0.4 * (phase - 0.15) / 0.03;
+          else if (phase < 0.21) y = 0.1 + 0.5 * (phase - 0.18) / 0.03;
+          else if (phase < 0.3) y = 0.5;
+          else if (phase < 0.45) y = 0.5 - 0.1 * Math.sin(Math.PI * (phase - 0.3) / 0.15);
           else y = 0.5;
           break;
+        }
         case 'ppg':
           // Photoplethysmogram (Heart pulse)
           y = 0.5 - (0.2 * Math.sin(Math.PI * t * 4) + 0.1 * Math.sin(Math.PI * t * 8));
           break;
-        case 'resp':
-          // Ventilator / Respiration (Asymmetric)
+        case 'resp': {
           const rPhase = (t * 2) % 1;
-          y = rPhase < 0.3 
-            ? 0.5 - 0.3 * Math.sin(Math.PI * rPhase / 0.3) 
+          y = rPhase < 0.3
+            ? 0.5 - 0.3 * Math.sin(Math.PI * rPhase / 0.3)
             : 0.5 - 0.3 * Math.exp(-3 * (rPhase - 0.3));
           break;
+        }
         case 'square':
           y = (t * 8) % 1 > 0.5 ? 0.2 : 0.8;
           break;
         case 'noise':
+          // eslint-disable-next-line react-hooks/purity
           y = 0.3 + Math.random() * 0.4;
           break;
       }
       newPoints.push({ x, y: y * height });
     }
     setPoints(newPoints);
+  };
+
+  const getNormalized = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || points.length === 0) return null;
+    return points.map(p => Math.max(0, Math.min(255, Math.round((1 - p.y / canvas.height) * 255))));
+  }, [points]);
+
+  const refreshSaved = useCallback(() => {
+    try {
+      setSavedWaveforms(JSON.parse(localStorage.getItem(WAVEFORM_STORAGE_KEY) ?? '[]'));
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleSave = () => {
+    const normalized = getNormalized();
+    if (!normalized) return;
+    const name = `waveform_${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    try {
+      const existing = JSON.parse(localStorage.getItem(WAVEFORM_STORAGE_KEY) ?? '[]') as Array<{ name: string; data: number[] }>;
+      existing.push({ name, data: normalized });
+      localStorage.setItem(WAVEFORM_STORAGE_KEY, JSON.stringify(existing));
+      setSaveMsg('Kaydedildi');
+      refreshSaved();
+    } catch {
+      setSaveMsg('Hata');
+    }
+    setTimeout(() => setSaveMsg(null), 2000);
+  };
+
+  const handleLoadSaved = (data: number[]) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const { width, height } = canvas;
+    const loaded: Point[] = data.map((v, i) => ({
+      x: (i / (data.length - 1)) * width,
+      y: (1 - v / 255) * height,
+    }));
+    setPoints(loaded);
+  };
+
+  const handleDeleteSaved = (index: number) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(WAVEFORM_STORAGE_KEY) ?? '[]') as Array<{ name: string; data: number[] }>;
+      existing.splice(index, 1);
+      localStorage.setItem(WAVEFORM_STORAGE_KEY, JSON.stringify(existing));
+      refreshSaved();
+    } catch { /* ignore */ }
+  };
+
+  const handleDownload = () => {
+    const normalized = getNormalized();
+    if (!normalized) return;
+    const payload = JSON.stringify({ waveform: normalized, samples: normalized.length, createdAt: new Date().toISOString() }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `waveform_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const clear = () => {
@@ -216,12 +283,24 @@ export default function WaveformDesigner() {
             >
               <Type size={14} />
             </button>
-            <button 
+            <button
               onClick={() => setMode('preset')}
               className={`p-1.5 rounded-md transition-all ${mode === 'preset' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
               title={t('waveformDesigner.presets')}
             >
               <Activity size={14} />
+            </button>
+            <button
+              onClick={() => { setMode('saved'); refreshSaved(); }}
+              className={`p-1.5 rounded-md transition-all relative ${mode === 'saved' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+              title="Kaydedilenler"
+            >
+              <Save size={14} />
+              {savedWaveforms.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full text-[7px] flex items-center justify-center text-black font-bold">
+                  {savedWaveforms.length}
+                </span>
+              )}
             </button>
           </div>
 
@@ -296,6 +375,31 @@ export default function WaveformDesigner() {
             </div>
           )}
 
+          {mode === 'saved' && (
+            <div className="glass-panel p-3 rounded-xl border-white/5 space-y-2 overflow-y-auto max-h-[350px] custom-scrollbar">
+              <label className="text-[9px] font-mono uppercase text-gray-500 tracking-tighter block mb-2">Kaydedilenler</label>
+              {savedWaveforms.length === 0 ? (
+                <div className="text-[9px] text-gray-700 italic text-center py-4">Henüz kayıt yok</div>
+              ) : savedWaveforms.map((w, i) => (
+                <div key={i} className="flex items-center gap-2 p-2 bg-gray-900/50 border border-white/5 rounded-lg hover:border-white/20 transition-all group">
+                  <button
+                    onClick={() => handleLoadSaved(w.data)}
+                    className="flex-1 text-left text-[10px] text-gray-300 group-hover:text-white truncate"
+                  >
+                    <div className="font-mono">{w.name}</div>
+                    <div className="text-[8px] text-gray-600">{w.data.length} sample</div>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSaved(i)}
+                    className="text-gray-700 hover:text-red-400 transition-colors shrink-0"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="glass-panel p-3 rounded-xl border-white/5 space-y-3 mt-auto">
              <button 
                onClick={handleInject}
@@ -305,10 +409,18 @@ export default function WaveformDesigner() {
                 <Play size={14} /> {t('waveformDesigner.inject')}
              </button>
              <div className="grid grid-cols-2 gap-2">
-                <button className="flex items-center justify-center gap-1.5 py-1.5 bg-gray-900 border border-white/5 rounded-lg text-[9px] text-gray-400 hover:text-white transition-all">
-                  <Save size={12} /> {t('common.save')}
+                <button
+                  onClick={handleSave}
+                  disabled={points.length === 0}
+                  className="flex items-center justify-center gap-1.5 py-1.5 bg-gray-900 border border-white/5 rounded-lg text-[9px] text-gray-400 hover:text-white transition-all disabled:opacity-40"
+                >
+                  <Save size={12} /> {saveMsg ?? t('common.save')}
                 </button>
-                <button className="flex items-center justify-center gap-1.5 py-1.5 bg-gray-900 border border-white/5 rounded-lg text-[9px] text-gray-400 hover:text-white transition-all">
+                <button
+                  onClick={handleDownload}
+                  disabled={points.length === 0}
+                  className="flex items-center justify-center gap-1.5 py-1.5 bg-gray-900 border border-white/5 rounded-lg text-[9px] text-gray-400 hover:text-white transition-all disabled:opacity-40"
+                >
                   <Download size={12} /> {t('profileEditor.exportJson')}
                 </button>
              </div>

@@ -5,6 +5,7 @@ import { listen, invoke } from '../lib/tauri-bridge';
 
 const MAX_RESTARTS = 5;
 const RESTART_DELAY_MS = 1500;
+const MAX_MSG_BUFFER = 2000;
 
 /**
  * Runs SimulationEngine inside a Web Worker.
@@ -26,9 +27,16 @@ export function useSimulationEngine(
     // ── Tauri hardware listeners (registered once, survive worker restarts) ──
     const unlisteners: Array<() => void> = [];
 
+    const pushMsg = (entry: object) => {
+      if (msgBufferRef.current.length >= MAX_MSG_BUFFER) {
+        msgBufferRef.current.splice(0, MAX_MSG_BUFFER / 2);
+      }
+      msgBufferRef.current.push(JSON.stringify(entry));
+    };
+
     listen('serial-data', (payload) => {
       const p = payload as { hex: string; bytes: number[] };
-      msgBufferRef.current.push(JSON.stringify({ type: 'RAW_RX_DATA', hex: p.hex }));
+      pushMsg({ type: 'RAW_RX_DATA', hex: p.hex });
       workerRef.current?.postMessage({ type: 'INCOMING_DATA', bytes: p.bytes });
     }).then(u => unlisteners.push(u));
 
@@ -36,12 +44,12 @@ export function useSimulationEngine(
       const p = payload as { connected: boolean; error?: string };
       serialConnectedRef.current = p.connected;
       workerRef.current?.postMessage({ type: 'SET_SERIAL_CONNECTED', connected: p.connected });
-      msgBufferRef.current.push(JSON.stringify({ type: 'SERIAL_STATUS', connected: p.connected, error: p.error }));
+      pushMsg({ type: 'SERIAL_STATUS', connected: p.connected, error: p.error });
     }).then(u => unlisteners.push(u));
 
     listen('tcp-data', (payload) => {
       const p = payload as { hex: string; bytes: number[] };
-      msgBufferRef.current.push(JSON.stringify({ type: 'RAW_RX_DATA', hex: p.hex }));
+      pushMsg({ type: 'RAW_RX_DATA', hex: p.hex });
       workerRef.current?.postMessage({ type: 'INCOMING_DATA', bytes: p.bytes });
     }).then(u => unlisteners.push(u));
 
@@ -49,7 +57,7 @@ export function useSimulationEngine(
       const p = payload as { connected: boolean; error?: string };
       networkConnectedRef.current = p.connected;
       workerRef.current?.postMessage({ type: 'SET_NETWORK_CONNECTED', connected: p.connected });
-      msgBufferRef.current.push(JSON.stringify({ type: 'NETWORK_STATUS', connected: p.connected, error: p.error }));
+      pushMsg({ type: 'NETWORK_STATUS', connected: p.connected, error: p.error });
     }).then(u => unlisteners.push(u));
 
     // ── Worker factory (called on start + each restart) ─────────────────────
@@ -64,6 +72,7 @@ export function useSimulationEngine(
 
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data;
+        if (!msg || typeof msg.type !== 'string') return;
 
         if (msg.type === '__WRITE_HARDWARE__') {
           if (serialConnectedRef.current) {
@@ -74,6 +83,9 @@ export function useSimulationEngine(
           return;
         }
 
+        if (msgBufferRef.current.length >= MAX_MSG_BUFFER) {
+          msgBufferRef.current.splice(0, MAX_MSG_BUFFER / 2);
+        }
         msgBufferRef.current.push(JSON.stringify(msg));
       };
 

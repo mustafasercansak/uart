@@ -59,10 +59,19 @@ export function Sidebar() {
       </nav>
 
       <div className="px-4 py-3 border-t border-gray-800 flex flex-col items-center gap-2">
+        {!collapsed && (
+          <div className="w-full flex items-center justify-between px-1 py-1 rounded-lg bg-gray-900/50 border border-gray-800 text-[10px] font-mono text-gray-600">
+            <span>Komut Paleti</span>
+            <div className="flex items-center gap-0.5">
+              <kbd className="bg-gray-800 px-1 rounded border border-gray-700">Ctrl</kbd>
+              <kbd className="bg-gray-800 px-1 rounded border border-gray-700">K</kbd>
+            </div>
+          </div>
+        )}
         {mounted && (
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className={`w-full flex items-center justify-center gap-2 text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800`}
+            className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             <span className="text-sm">{theme === 'dark' ? '☀️' : '🌙'}</span>
@@ -70,7 +79,7 @@ export function Sidebar() {
           </button>
         )}
         <div className={`text-gray-700 font-mono transition-all ${collapsed ? 'text-[8px] text-center' : 'text-[10px]'}`}>
-          {collapsed ? 'v1' : 'v1.0.0-STABLE'}
+          {collapsed ? 'v1' : 'v1.4.0'}
         </div>
       </div>
     </aside>

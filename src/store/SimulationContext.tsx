@@ -80,16 +80,23 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     try {
       const persisted = localStorage.getItem('uart_pro_state');
       const legacyLayouts = localStorage.getItem('uart_telemetry_layouts');
-      const parsed = persisted ? JSON.parse(persisted) : {};
-      const layouts = legacyLayouts ? JSON.parse(legacyLayouts) : (parsed.telemetryLayouts || {});
+      const raw = persisted ? JSON.parse(persisted) : {};
+      // Schema guard — only accept plain objects, reject corrupted blobs
+      const parsed: Record<string, unknown> = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      const layouts = (() => {
+        try { return legacyLayouts ? JSON.parse(legacyLayouts) : (parsed.telemetryLayouts ?? {}); }
+        catch { return {}; }
+      })();
       const last = loadLastSettings();
       dispatch({
         type: 'INIT_STATE', newState: {
-          watchlist: parsed.watchlist || [],
-          snapshots: parsed.snapshots || [],
-          analyzerMode: parsed.analyzerMode ?? true,
-          telemetryLayouts: layouts,
-          dashboardLayout: parsed.dashboardLayout || { widgets: [] },
+          watchlist: Array.isArray(parsed.watchlist) ? parsed.watchlist : [],
+          snapshots: Array.isArray(parsed.snapshots) ? parsed.snapshots : [],
+          analyzerMode: typeof parsed.analyzerMode === 'boolean' ? parsed.analyzerMode : true,
+          telemetryLayouts: layouts && typeof layouts === 'object' ? layouts : {},
+          dashboardLayout: parsed.dashboardLayout && typeof parsed.dashboardLayout === 'object' && !Array.isArray(parsed.dashboardLayout)
+            ? parsed.dashboardLayout as SimulationState['dashboardLayout']
+            : { widgets: [] },
           sequences: loadSequences(),
           profileId: last.profileId,
           scenarioId: last.scenarioId,
@@ -98,7 +105,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       });
       isInitializedRef.current = true;
     } catch (error) {
-      console.error('Failed to load persisted state', error);
+      console.error('Failed to load persisted state, using defaults', error);
       isInitializedRef.current = true;
     }
   }, []);

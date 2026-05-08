@@ -259,7 +259,7 @@ describe('ScenarioEngine', () => {
         const scenario: Scenario = {
             steps: [{ 
                 id: 'd1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
-                condition: { type: 'UNKNOWN' as any } 
+                condition: { type: 'UNKNOWN' as string }
             }]
         } as unknown as Scenario;
         // evaluateCondition default returns true
@@ -270,7 +270,7 @@ describe('ScenarioEngine', () => {
         const scenario: Scenario = {
             steps: [{ 
                 id: 'cv1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
-                condition: { type: 'elapsed_time', operator: 'INVALID' as any, value: 0 } 
+                condition: { type: 'elapsed_time', operator: 'INVALID' as string, value: 0 }
             }]
         } as unknown as Scenario;
         expect(tickScenarioEngine(scenario, mockProfile, mockState).executedSteps.length).toBe(0);

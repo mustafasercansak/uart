@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePeripheralStore } from '../../store/usePeripheralStore';
 import { useTranslation } from '../../i18n/context';
-import { Play, Save, Trash2, Plus, Code, Zap } from 'lucide-react';
+import { Play, Save, Trash2, Plus, Code, Zap, CheckCircle } from 'lucide-react';
 
 export default function PeripheralDesigner() {
   const { t } = useTranslation();
@@ -15,6 +15,20 @@ export default function PeripheralDesigner() {
   } = usePeripheralStore();
 
   const activePeripheral = peripherals.find(p => p.id === activePeripheralId);
+  const [deployed, setDeployed] = useState(false);
+
+  const handleDeploy = () => {
+    if (!activePeripheral) return;
+    try {
+      new Function('input', 'state', 'send', activePeripheral.script);
+    } catch (e) {
+      alert(`Sözdizimi hatası: ${(e as Error).message}`);
+      return;
+    }
+    updatePeripheral(activePeripheral.id, { isActive: true });
+    setDeployed(true);
+    setTimeout(() => setDeployed(false), 2500);
+  };
 
   const handleCreate = () => {
     addPeripheral({
@@ -82,12 +96,17 @@ export default function PeripheralDesigner() {
               >
                 <Trash2 size={18} />
               </button>
-              <button 
-                className="flex items-center gap-2 px-4 py-1.5 bg-green-600 hover:bg-green-500 text-black font-bold rounded-lg transition-all"
+              <button
+                onClick={handleDeploy}
+                className={`flex items-center gap-2 px-4 py-1.5 font-bold rounded-lg transition-all text-sm ${
+                  deployed
+                    ? 'bg-emerald-500 text-black'
+                    : 'bg-green-600 hover:bg-green-500 text-black'
+                }`}
                 title={t('designer.deploy')}
               >
-                <Save size={16} />
-                <span className="text-sm">{t('designer.deploy')}</span>
+                {deployed ? <CheckCircle size={16} /> : <Save size={16} />}
+                {deployed ? 'Dağıtıldı!' : t('designer.deploy')}
               </button>
             </div>
           </div>
@@ -124,7 +143,10 @@ export default function PeripheralDesigner() {
               <div className="p-4 border-b border-gray-800 h-1/2 flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('designer.deviceState')}</span>
-                  <button className="text-[9px] text-gray-700 hover:text-gray-500 uppercase">{t('designer.reset')}</button>
+                  <button
+                    onClick={() => updatePeripheral(activePeripheral.id, { initialState: { value: 0 }, lastExecution: undefined })}
+                    className="text-[9px] text-gray-700 hover:text-red-400 uppercase transition-colors"
+                  >{t('designer.reset')}</button>
                 </div>
                 <div className="flex-1 bg-gray-900/30 rounded-lg border border-gray-800 p-2 overflow-y-auto text-[11px] text-green-500/80">
                   <pre>{JSON.stringify(activePeripheral.initialState, null, 2)}</pre>

@@ -25,9 +25,11 @@ Welcome to the **UART Pro Lab Master Manual**. This document provides an exhaust
 <a name="architecture"></a>
 ## 🏗️ System Architecture
 
-The UART Pro Lab is built on a **High-Concurrency Real-Time Engine**. Unlike standard simulators that rely on simple loops, our engine uses a **Node.js Worker Thread** architecture to ensure that data generation is decoupled from the UI thread.
-- **Precision Timing**: We use `process.hrtime()` for nanosecond-precision intervals, essential for simulating high-speed baud rates (up to 921,600 bps) without jitter.
-- **Zero-Copy Buffers**: Data is transmitted between the engine and the UI using shared memory or high-speed WebSockets to minimize latency.
+UART Pro Lab is built on a **Tauri 2 + Web Worker** architecture. It runs as a fully native desktop application with no server dependency.
+
+- **Tauri (Rust) Layer**: Real serial port communication (via the `serialport` crate) and TCP networking run here, providing low-latency direct hardware access.
+- **Web Worker Engine**: The simulation engine (`simulation.worker.ts`) runs in a dedicated browser thread so the UI never blocks. On crash it automatically restarts (up to 5 times).
+- **React UI Layer**: Built with Vite + React 19. State is managed with `useReducer` + `Zustand`; high-frequency data (waveform history) is kept in `useRef` outside React state to prevent unnecessary re-renders.
 
 ![System Dashboard](images/v1.2/dashboard_tr.png)
 

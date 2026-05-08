@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useTranslation } from '../../i18n/context';
 import type {
@@ -63,8 +63,69 @@ export default function ProfileEditor() {
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const historyRef = useRef<FrameProfile[]>([]);
+  const historyIndexRef = useRef(-1);
+  const skipHistoryRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const syncUndoRedo = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  const pushHistory = useCallback((p: FrameProfile) => {
+    if (skipHistoryRef.current) return;
+    const snapshot = JSON.parse(JSON.stringify(p)) as FrameProfile;
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push(snapshot);
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+    syncUndoRedo();
+  }, [syncUndoRedo]);
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    skipHistoryRef.current = true;
+    setProfile(JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current])));
+    skipHistoryRef.current = false;
+    syncUndoRedo();
+  }, [syncUndoRedo]);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    skipHistoryRef.current = true;
+    setProfile(JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current])));
+    skipHistoryRef.current = false;
+    syncUndoRedo();
+  }, [syncUndoRedo]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
+
+  const setProfileWithHistory = useCallback((updater: FrameProfile | ((prev: FrameProfile | null) => FrameProfile | null)) => {
+    setProfile(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (next) pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
   const openProfile = (p: FrameProfile) => {
-    setProfile(JSON.parse(JSON.stringify(p)));
+    historyRef.current = [];
+    historyIndexRef.current = -1;
+    const copy = JSON.parse(JSON.stringify(p)) as FrameProfile;
+    pushHistory(copy);
+    setProfile(copy);
     setSelectedId(p.id);
     setSelectedFieldId(null);
   };
@@ -104,13 +165,13 @@ export default function ProfileEditor() {
   const addField = () => {
     if (!profile) return;
     const field = newField(profile.fields.length);
-    setProfile({ ...profile, fields: [...profile.fields, field] });
+    setProfileWithHistory({ ...profile, fields: [...profile.fields, field] });
     setSelectedFieldId(field.id);
   };
 
   const removeField = (id: string) => {
     if (!profile) return;
-    setProfile({ ...profile, fields: profile.fields.filter((f) => f.id !== id).map((f, i) => ({ ...f, order: i })) });
+    setProfileWithHistory({ ...profile, fields: profile.fields.filter((f) => f.id !== id).map((f, i) => ({ ...f, order: i })) });
     if (selectedFieldId === id) setSelectedFieldId(null);
   };
 
@@ -121,13 +182,12 @@ export default function ProfileEditor() {
     const newIdx = idx + dir;
     if (newIdx < 0 || newIdx >= fields.length) return;
     [fields[idx], fields[newIdx]] = [fields[newIdx], fields[idx]];
-    setProfile({ ...profile, fields: fields.map((f, i) => ({ ...f, order: i })) });
+    setProfileWithHistory({ ...profile, fields: fields.map((f, i) => ({ ...f, order: i })) });
   };
 
   const updateField = useCallback((updated: Field) => {
-    if (!profile) return;
-    setProfile((p) => p ? { ...p, fields: p.fields.map((f) => f.id === updated.id ? updated : f) } : p);
-  }, [profile]);
+    setProfileWithHistory((p) => p ? { ...p, fields: p.fields.map((f) => f.id === updated.id ? updated : f) } : p);
+  }, [setProfileWithHistory]);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,8 +267,20 @@ export default function ProfileEditor() {
               <input
                 className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm font-mono text-gray-200 outline-none focus:border-green-700"
                 value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                onChange={(e) => setProfileWithHistory({ ...profile, name: e.target.value })}
               />
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className="text-xs font-mono px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-30"
+                title="Geri Al (Ctrl+Z)"
+              >↩</button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                className="text-xs font-mono px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-30"
+                title="İleri Al (Ctrl+Y)"
+              >↪</button>
               <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
               <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
               <button onClick={save} className={`text-xs font-mono px-4 py-1.5 rounded border transition-colors ${saved ? 'bg-green-900/50 border-green-600 text-green-300' : 'bg-green-900/30 border-green-800/50 text-green-400 hover:bg-green-900/50'}`}>
@@ -221,7 +293,7 @@ export default function ProfileEditor() {
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.baudRate')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
-                  value={profile.baudRate} onChange={(e) => setProfile({ ...profile, baudRate: Number(e.target.value) })}>
+                  value={profile.baudRate} onChange={(e) => setProfileWithHistory({ ...profile, baudRate: Number(e.target.value) })}>
                   {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
@@ -230,26 +302,26 @@ export default function ProfileEditor() {
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.parity')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
-                  value={profile.parity} onChange={(e) => setProfile({ ...profile, parity: e.target.value as FrameProfile['parity'] })}>
+                  value={profile.parity} onChange={(e) => setProfileWithHistory({ ...profile, parity: e.target.value as FrameProfile['parity'] })}>
                   {['None', 'Even', 'Odd', 'Mark', 'Space'].map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.stopBit')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
-                  value={profile.stopBits} onChange={(e) => setProfile({ ...profile, stopBits: Number(e.target.value) as FrameProfile['stopBits'] })}>
+                  value={profile.stopBits} onChange={(e) => setProfileWithHistory({ ...profile, stopBits: Number(e.target.value) as FrameProfile['stopBits'] })}>
                   {[1, 1.5, 2].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.sendInterval')}</label>
                 <input type="number" min={1} className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-24"
-                  value={profile.sendIntervalMs} onChange={(e) => setProfile({ ...profile, sendIntervalMs: Number(e.target.value) })} />
+                  value={profile.sendIntervalMs} onChange={(e) => setProfileWithHistory({ ...profile, sendIntervalMs: Number(e.target.value) })} />
               </div>
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.description')}</label>
                 <input className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-48"
-                  value={profile.description} onChange={(e) => setProfile({ ...profile, description: e.target.value })} />
+                  value={profile.description} onChange={(e) => setProfileWithHistory({ ...profile, description: e.target.value })} />
               </div>
             </div>
 

@@ -136,7 +136,7 @@ export function CommandPalette() {
                 <input 
                   autoFocus
                   className="bg-transparent border-none outline-none text-white w-full font-mono text-sm placeholder:text-gray-500"
-                  placeholder="Seach commands, tools or diagnostics..."
+                  placeholder="Komut, araç veya tanılama ara..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                 />
@@ -149,40 +149,46 @@ export function CommandPalette() {
                 {filteredCommands.length === 0 ? (
                   <div className="px-4 py-12 text-center text-gray-500">
                     <Terminal size={32} className="mx-auto mb-3 opacity-20" />
-                    <p className="text-sm">No commands found for "{query}"</p>
+                    <p className="text-sm">"{query}" için komut bulunamadı</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 pb-2">
-                    {/* Groups by category would be better but let's keep it simple for now */}
-                    {filteredCommands.map((cmd, index) => (
-                      <div 
-                        key={cmd.id}
-                        onMouseEnter={() => setSelectedIndex(index)}
-                        onClick={() => {
-                          cmd.action();
-                          setIsOpen(false);
-                        }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
-                          index === selectedIndex ? 'bg-brand/20 border border-brand/30' : 'border border-transparent hover:bg-white/5'
-                        }`}
-                      >
-                        <div className={`p-2 rounded-md ${index === selectedIndex ? 'bg-brand/20 text-brand' : 'bg-gray-800 text-gray-400'}`}>
-                          {cmd.icon}
+                  <div className="pb-2">
+                    {Array.from(new Set(filteredCommands.map(c => c.category))).map(category => (
+                      <div key={category} className="mb-3">
+                        <div className="px-3 py-1 text-[9px] font-mono text-gray-600 uppercase tracking-widest">
+                          {category}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-white">{cmd.name}</span>
-                            {cmd.shortcut && (
-                                <span className="text-[10px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
-                                    {cmd.shortcut}
-                                </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 truncate">{cmd.description}</p>
-                        </div>
-                        {index === selectedIndex && (
-                          <ChevronRight size={14} className="text-brand animate-pulse" />
-                        )}
+                        {filteredCommands.filter(c => c.category === category).map((cmd) => {
+                          const index = filteredCommands.indexOf(cmd);
+                          return (
+                            <div
+                              key={cmd.id}
+                              onMouseEnter={() => setSelectedIndex(index)}
+                              onClick={() => { cmd.action(); setIsOpen(false); }}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
+                                index === selectedIndex ? 'bg-emerald-500/10 border border-emerald-500/20' : 'border border-transparent hover:bg-white/5'
+                              }`}
+                            >
+                              <div className={`p-2 rounded-md ${index === selectedIndex ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                                {cmd.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-white">{cmd.name}</span>
+                                  {cmd.shortcut && (
+                                    <span className="text-[10px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                      {cmd.shortcut}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-400 truncate">{cmd.description}</p>
+                              </div>
+                              {index === selectedIndex && (
+                                <ChevronRight size={14} className="text-emerald-400 animate-pulse" />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
@@ -191,10 +197,11 @@ export function CommandPalette() {
 
               <div className="px-4 py-2 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-gray-500">
                 <div className="flex gap-4">
-                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↑↓</kbd> Navigate</span>
-                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↵</kbd> Select</span>
+                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↑↓</kbd> Gezin</span>
+                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↵</kbd> Seç</span>
+                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">Esc</kbd> Kapat</span>
                 </div>
-                <div>Pro Suite v1.0.0-STABLE</div>
+                <div>UART Simulator v1.4.0</div>
               </div>
             </motion.div>
           </div>
