@@ -4,13 +4,19 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
+## [v1.5.21] — 2026-05-09
+### 🚀 Release v1.5.21
+- Yeni sürüm yayınlandı.
+
+---
+
 ## [v1.5.20] — 2026-05-09
 ### 🚀 Release v1.5.20
 - Yeni sürüm yayınlandı.
 
 ---
 
-## [v1.5.20] — 2026-05-09
+## [v1.5.19] — 2026-05-09
 ### 🚀 Release v1.5.20
 - **İnteraktif Yanıtlayıcı (Script Responder)**: Simülatör artık sadece veri üreten bir TX kaynağı değil, RX üzerinden gelen komutlara yanıt verebilen akıllı bir motor. `dynamic-script` kuralı ile gelen baytlar işlenip `sendString` veya `pause/stop` komutlarıyla reaksiyon gösterilebilir.
 - **İki Yönlü Timeline Terminali (Quick Send)**: Timeline ekranına eklenen Hızlı Gönderim barı sayesinde simülasyon akarken anlık olarak HEX veya ASCII komutlar (Örn: `deneme`, `pause`) enjekte edilebilir.
