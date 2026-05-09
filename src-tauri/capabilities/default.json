@@ -6,6 +6,11 @@
   "permissions": [
     "core:default",
     "fs:default",
-    "shell:default"
+    "shell:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-install",
+    "updater:allow-download-and-install",
+    "process:allow-restart"
   ]
 }

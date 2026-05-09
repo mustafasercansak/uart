@@ -76,6 +76,7 @@ jobs:
             - **macOS (Apple Silicon)**: `aarch64.dmg` dosyasını indirin
             - **macOS (Intel)**: `x86_64.dmg` dosyasını indirin
             - **Linux**: `.AppImage` veya `.deb` dosyasını indirin
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
