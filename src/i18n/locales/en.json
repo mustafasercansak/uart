@@ -7,7 +7,23 @@
     "templates": "Template Library",
     "subtitle": "Sensor Simulator",
     "expand": "Expand",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "system": "System & Version"
+  },
+  "system": {
+    "title": "Software & Updates",
+    "version": "Software Version",
+    "checkUpdate": "Check for Updates",
+    "checking": "Checking for updates...",
+    "upToDate": "You are running the latest version.",
+    "updateAvailable": "New version available: {version}",
+    "downloading": "Downloading: {progress}%",
+    "install": "Update Now",
+    "changelog": "What's New",
+    "error": "Update check failed.",
+    "relaunching": "Relaunching application...",
+    "about": "About",
+    "developer": "Developer"
   },
   "common": {
     "log": "Log",
@@ -26,7 +42,8 @@
     "delete": "Delete",
     "min": "Min",
     "max": "Max",
-    "tcp": "TCP"
+    "tcp": "TCP",
+    "retry": "Retry"
   },
   "rxMonitor": {
     "title": "RX History",

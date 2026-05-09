@@ -1,0 +1,11 @@
+{
+  "version": "1.5.8",
+  "notes": "System update and new professional icon integration.",
+  "pub_date": "2026-05-09T04:26:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "BURAYA_BUILD_SIRASINDA_ALDIGINIZ_IMZAYI_YAPISTIRIN",
+      "url": "https://github.com/mustafasercansak/uart/releases/download/v1.5.8/UART.Simulator_1.5.8_x64-setup.exe"
+    }
+  }
+}
