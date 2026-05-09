@@ -27,7 +27,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHJzaWduIGVuY3J5cHRlZCBzZWNyZXQga2V5ClJXUlRZMEl5L2RGcUNrbkV4MlEzY0dRb2ljRlFjSm5tODFkTUZsLzhFTjdveHFSWlZzVUFBQkFBQUFBQUFBQUFBQUlBQUFBQTRZaHROQmpYQ1dLWWxWR2lwN215TCsydEhkTXpZazMzUnRSY2lNcy8rT0JLdnNTYUZuUHU0YTNRWkZYbUw1RU93aGRUOUVKcjB3UFlkbVQ1RkdBOWs0ZCtPU2UzSzEvODYxUXQzN1JZanN0QUFYMUZiTjVudTBxKzhpZ01tMVN1MjZVQVhScVN3Mm89Cg==",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ5QjFFRTE4N0RGNDY3M0IKUldRN1ovUjlHTzZ4U1MvMHllZjFKb0pwRUpqbWJQNjJnWnMzZ0ZVbzJEenpGcWlDbTdEUDZVL2EK",
       "endpoints": [
         "https://github.com/mustafasercansak/uart/releases/latest/download/latest.json"
       ]

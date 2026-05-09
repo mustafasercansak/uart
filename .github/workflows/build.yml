@@ -3,7 +3,7 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -15,35 +15,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-2025
-            args: ''
+          - platform: windows-latest
+            args: ""
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
+            args: "--target aarch64-apple-darwin"
           - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
+            args: "--target x86_64-apple-darwin"
           - platform: ubuntu-24.04
-            args: ''
+            args: ""
 
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install macOS Rust targets
+        if: startsWith(matrix.platform, 'macos')
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
+          key: ${{ matrix.platform }}-${{ matrix.args }}
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-24.04'
@@ -70,7 +73,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: 1
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'UART Simulator ${{ github.ref_name }}'
+          releaseName: "UART Simulator ${{ github.ref_name }}"
           releaseBody: |
             ## UART Simulator ${{ github.ref_name }}
 
