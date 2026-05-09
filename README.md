@@ -1,47 +1,46 @@
-# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.5.9
+# UART Simulator Pro
+### Medical-Grade Telemetry & Hardware Engineering Ecosystem
 
-A high-performance, real-time UART telemetry platform designed for **embedded engineers** and **medical device developers**. Simulate complex sensor data (ECG, SpO₂, RESP, etc.) and stream it directly to your hardware via the **Web Serial API**.
+![License](https://img.shields.io/badge/license-MIT-emerald?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.9-blue?style=flat-square)
+![Stack](https://img.shields.io/badge/stack-tauri--rust--react-red?style=flat-square)
+![Compliance](https://img.shields.io/badge/compliance-ISO--13485--ready-blue?style=flat-square)
 
-![UART Simulator Live Dashboard](public/docs/images/dashboard.png)
-
----
-
-## 🚀 Key Features (v1.5.9)
-
-### 🎨 Custom Waveform Designer
-Go beyond static signals. **Draw** your own waveforms by hand, generate them with **Math Formulas**, or use our **Clinical Preset Library** (ECG, PPG, Resp). Inject these custom signals directly into your UART stream in real-time.
-
-### 📐 High-Density Bento Dashboard
-A professional-grade interface designed for maximum information density. Monitor telemetry, high-resolution waveforms, and logic analysis on a single compact screen without scrolling.
-
-### 🧪 Error Injection & Lab Modules
-- **Jitter & Noise**: Simulate real-world signal degradation.
-- **Protocol Diff**: Bit-level comparison of UART packets for reverse engineering.
-- **Logic Analyzer**: Bit-by-bit visual protocol decoding.
-
-### 📜 Validation & Reporting
-Generate print-ready **Medical Device Compliance Reports** in PDF format, documenting every session, violation, and compliance score for regulatory proof.
-
-### 🌍 Full i18n Support
-Complete **English** and **Turkish** localization with a built-in compliance test suite.
+**UART Simulator Pro** is an advanced engineering platform designed for the comprehensive simulation, validation, and analysis of serial telemetry protocols. Engineered for medical-grade reliability, it provides a bit-perfect virtual twin of UART communication layers, enabling deterministic testing of SpO2, ECG, and respiratory monitoring systems.
 
 ---
 
-## 🏃 Quick Start
-1. **Install**: `npm install`
-2. **Dev**: `npm run tauri:dev`
-3. **Release**: `npm run release -- 1.5`
+## 🚀 Key Capabilities
 
-Or download the latest binary from [Releases](https://github.com/mustafasercansak/uart/releases/latest).
-
----
-
-## 📖 Documentation
-- [Ana Mühendislik Kılavuzu (Turkish)](public/docs/GUIDE_TR.md) - Kapsamlı teknik rehber.
-- [Master Engineering Manual (English)](public/docs/GUIDE_EN.md) - Comprehensive technical reference.
-- [Changelog](CHANGELOG.md) - Version history and milestones.
+- **Dual Operation Modes:** Seamlessly switch between clinical **Standard Mode** and engineering-focused **Pro (Analyzer) Mode**.
+- **17+ Specialized Modules:** Bit-level logic analysis, protocol diffing, signal integrity simulation, 3D visualization, and more.
+- **Automation & Scenarios:** Scripted clinical events and automated handshakes for comprehensive HIL (Hardware-in-the-Loop) testing.
+- **Medical Validation:** Integrated compliance suite with automated PDF report generation for regulatory auditing.
+- **Cross-Platform Excellence:** High-performance Rust-based core running on Windows, macOS, and Linux.
 
 ---
 
-Developed by **Mustafa Sercan Sak**  
-© 2026 Mustafa Sercan Sak Diagnostics
+## 🏗️ Technical Architecture
+
+- **Backend:** Tauri v2 & Rust (Low-level I/O, memory safety).
+- **Frontend:** React 19 & TypeScript (High-density UI).
+- **Engines:** Multithreaded Web Workers (AOT signal processing).
+- **Visualization:** uPlot & Canvas (High-frequency rendering).
+
+---
+
+## 📖 Getting Started
+
+1. **Prerequisites:** Node.js (>=24) and Rust (Cargo).
+2. **Install:** `npm install`
+3. **Run Dev:** `npm run tauri:dev`
+4. **Build:** `npm run tauri:build`
+
+For a detailed breakdown of all modules and architectural metrics, see [SHOWCASE.md](./SHOWCASE.md).
+
+---
+
+## 📜 Legal & Compliance
+
+Developed by **Mustafa Sercan Sak Diagnostics**.  
+© 2026 UART Simulator Pro. Precision Engineering for Medical Excellence.

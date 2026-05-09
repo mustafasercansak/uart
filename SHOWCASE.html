@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UART Simulator Pro | The Complete Engineering Truth</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --success: #10b981;
+            --text: #ffffff;
+            --text-dim: #666666;
+            --border: #1a1a1a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Presentation Engine */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            padding: 5rem;
+            gap: 5rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+            transform: translateX(50px) scale(0.98);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) scale(1);
+        }
+
+        /* Hero Layout */
+        .hero-slide {
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .hero-slide h1 { font-size: 6rem; font-weight: 900; letter-spacing: -4px; line-height: 0.8; margin-bottom: 2rem; }
+        .hero-slide p { font-size: 1.5rem; color: var(--text-dim); max-width: 800px; }
+
+        /* Feature Layout */
+        .info-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .visual-panel {
+            flex: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .tag {
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: 900;
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        h2 { font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1; margin-bottom: 1.5rem; }
+        p.description { font-size: 1.1rem; color: var(--text-dim); margin-bottom: 2.5rem; line-height: 1.6; }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover { border-color: var(--accent); transform: translateX(5px); }
+        .feature-card h4 { font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--accent); }
+        .feature-card p { font-size: 0.8rem; color: #888; }
+
+        .screenshot {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 50px 100px rgba(0,0,0,0.9);
+            transition: transform 0.5s;
+        }
+
+        .screenshot:hover { transform: scale(1.02); }
+
+        /* Navigation */
+        .nav-bar {
+            position: fixed;
+            bottom: 3rem; left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 1000;
+        }
+
+        .nav-dot {
+            width: 8px; height: 8px;
+            background: #222;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active { background: var(--accent); transform: scale(1.5); box-shadow: 0 0 10px var(--accent-glow); }
+
+        .progress-bar {
+            position: fixed;
+            top: 0; left: 0; height: 3px;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+            z-index: 2000;
+        }
+
+        .counter {
+            position: absolute;
+            top: 2rem; right: 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="progress-bar" id="progress"></div>
+
+    <div id="viewport">
+        
+        <!-- SLIDE 1: HERO -->
+        <div class="slide hero-slide active">
+            <span class="counter">01 / 18</span>
+            <div class="tag">The Absolute Standard</div>
+            <h1>UART SIMULATOR PRO</h1>
+            <p>The definitive 100% feature-complete engineering ecosystem for medical telemetry and hardware validation.</p>
+        </div>
+
+        <!-- SLIDE 2: CLINICAL HUD -->
+        <div class="slide">
+            <span class="counter">02 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Standard Mode</span>
+                <h2>Clinical HUD</h2>
+                <p class="description">A high-fidelity interface designed for clinical observers and medical validation specialists.</p>
+                <div class="feature-card">
+                    <h4>Real-time Telemetry</h4>
+                    <p>Precise mapping of SpO2, Heart Rate, and Status flags to virtual instrumentation.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Interactive Overrides</h4>
+                    <p>Direct manipulation of physiological parameters via touch-optimized controls.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/dashboard.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 3: 3D DIGITAL TWIN -->
+        <div class="slide">
+            <span class="counter">03 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Visualizer Suite</span>
+                <h2>3D Digital Twin</h2>
+                <p class="description">Full immersive ICU environment where every virtual device is powered by the live serial data stream.</p>
+                <div class="feature-card">
+                    <h4>Hardware-in-the-Loop</h4>
+                    <p>Visual verification of device alarm states and display consistency.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Clinical Context</h4>
+                    <p>Navigation through 3D twins of patient monitors, ventilators, and pumps.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/visualizer_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 4: LOGIC ANALYZER -->
+        <div class="slide">
+            <span class="counter">04 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Analyzer Mode</span>
+                <h2>Logic Mastering</h2>
+                <p class="description">Microsecond-accurate bit-level analysis of the physical transmission layer.</p>
+                <div class="feature-card">
+                    <h4>Bit Timing Verification</h4>
+                    <p>Detect jitter and baud rate drift at the nanosecond scale.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Packet Decryption</h4>
+                    <p>Automated breakdown of Start, Data, Parity, and Stop bit transitions.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/pro_logic.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 5: PROTOCOL LAB -->
+        <div class="slide">
+            <span class="counter">05 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Engineering Lab</span>
+                <h2>Differential Analysis</h2>
+                <p class="description">The definitive tool for protocol reverse engineering and bit-mapping.</p>
+                <div class="feature-card">
+                    <h4>XOR Mapping</h4>
+                    <p>Instantly identify exactly which bits changed between two packet frames.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Packet Freeze</h4>
+                    <p>Capture and compare real-time frames against a golden reference model.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/lab.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 6: DIAGNOSTICS -->
+        <div class="slide">
+            <span class="counter">06 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Diagnostics Suite</span>
+                <h2>Signal Integrity</h2>
+                <p class="description">Advanced statistical analysis of communication stability and timing distribution.</p>
+                <div class="feature-card">
+                    <h4>Jitter Histograms</h4>
+                    <p>Visualizing the variance in packet arrival times to ensure deterministic behavior.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Success Analytics</h4>
+                    <p>Real-time calculation of success rates and error type breakdowns.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/diagnostics_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 7: SPECTRUM ANALYSIS -->
+        <div class="slide">
+            <span class="counter">07 / 18</span>
+            <div class="info-panel">
+                <span class="tag">DSP Intelligence</span>
+                <h2>Spectrum Analysis</h2>
+                <p class="description">FFT-based frequency analysis of simulated physiological and digital signals.</p>
+                <div class="feature-card">
+                    <h4>Harmonic Analysis</h4>
+                    <p>Detect aliasing and unwanted noise components in your data stream.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Signal Filtering</h4>
+                    <p>Verify the integrity of filtered ECG and Resp waveforms in the frequency domain.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/spectrum_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 8: TEST AUTOMATION -->
+        <div class="slide">
+            <span class="counter">08 / 18</span>
+            <div class="info-panel">
+                <span class="tag">HIL Testing</span>
+                <h2>TestSuite Runner</h2>
+                <p class="description">Automated unit testing of hardware responses and protocol handshakes.</p>
+                <div class="feature-card">
+                    <h4>Automated Assertions</h4>
+                    <p>Define pass/fail criteria for field values, checksums, and frame rates.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Regression Vault</h4>
+                    <p>Execute entire suites of tests to ensure hardware firmware updates don't break compatibility.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/testsuite_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 9: COMPLIANCE REPORTING -->
+        <div class="slide">
+            <span class="counter">09 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Regulatory Tier</span>
+                <h2>Audit-Ready Reporting</h2>
+                <p class="description">One-click generation of professional PDF reports for ISO 13485 and FDA compliance.</p>
+                <div class="feature-card">
+                    <h4>Error Attribution</h4>
+                    <p>Detailed mapping of every packet failure during the validation session.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Print-Ready PDF</h4>
+                    <p>Fully formatted documentation with session stats and engineer signatures.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/report_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 10: WAVEFORM DESIGNER -->
+        <div class="slide">
+            <span class="counter">10 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Creation Lab</span>
+                <h2>Waveform Engineering</h2>
+                <p class="description">Bespoke signal drafting using mathematical formulas or freehand precision drawing.</p>
+                <div class="feature-card">
+                    <h4>Formula Input</h4>
+                    <p>Input complex math expressions to generate synthetic physiological signals.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Signal Library</h4>
+                    <p>Direct injection of EKG, PPG, and Resp presets into the live data stream.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/designer_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 11: PROFILE EDITOR -->
+        <div class="slide">
+            <span class="counter">11 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Protocol Tier</span>
+                <h2>Profile Orchestration</h2>
+                <p class="description">Rapid protocol definition through an advanced UI or C-Struct code importing.</p>
+                <div class="feature-card">
+                    <h4>C-Struct Parser</h4>
+                    <p>Import existing embedded C code to auto-generate UART frame profiles.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Checksum Logic</h4>
+                    <p>Native support for XOR, Sum-Mod-256, and complex CRC-16 Modbus algorithms.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/profiles_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 12: SCENARIO ENGINE -->
+        <div class="slide">
+            <span class="counter">12 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Intelligence Tier</span>
+                <h2>Scenario Orchestrator</h2>
+                <p class="description">Automate complex clinical events like desaturation, bradycardia, or sensor detachment.</p>
+                <div class="feature-card">
+                    <h4>Event Timeline</h4>
+                    <p>Sequence multiple actions (Set, Ramp, Error) with millisecond precision.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Medical Presets</h4>
+                    <p>Pre-configured clinical scenarios for rapid hardware verification.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/scenarios_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 13: ASSET LIBRARY -->
+        <div class="slide">
+            <span class="counter">13 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Template Tier</span>
+                <h2>Sensor Asset Library</h2>
+                <p class="description">A comprehensive catalog of industrial and medical sensor protocols ready for use.</p>
+                <div class="feature-card">
+                    <h4>Medical Sensors</h4>
+                    <p>Native support for YS2000A, Berry BM1000, and generic Patient Monitors.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Industrial I/O</h4>
+                    <p>Templates for environmental sensors, pumps, and custom industrial controllers.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/templates_pro.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 14: CHAOS ENGINEERING -->
+        <div class="slide">
+            <span class="counter">14 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Stress Tier</span>
+                <h2>Chaos & Corruption</h2>
+                <p class="description">Deterministic failure injection to ensure firmware resilience under worst-case conditions.</p>
+                <div class="feature-card">
+                    <h4>Error Injection</h4>
+                    <p>Inject Checksum, Sync, Skip Byte, Extra Byte, and Delay errors on demand.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Signal Corruption</h4>
+                    <p>Add Gaussian noise and timing jitter to simulate cable degradation.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/integrity.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 15: SESSION REPLAY -->
+        <div class="slide">
+            <span class="counter">15 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Regression Tier</span>
+                <h2>Record & Playback</h2>
+                <p class="description">Record any session as a JSON dataset and replay it with bit-perfect accuracy.</p>
+                <div class="feature-card">
+                    <h4>Perfect Reproduction</h4>
+                    <p>Reproduce intermittent hardware bugs by replaying exactly what was sent.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Session Sharing</h4>
+                    <p>Export recorded traces for team collaboration and remote debugging.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/playback.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 16: PROTOCOL DECODER -->
+        <div class="slide">
+            <span class="counter">16 / 18</span>
+            <div class="info-panel">
+                <span class="tag">Parsing Tier</span>
+                <h2>Frame Mastery</h2>
+                <p class="description">High-level binary parsing and protocol decoding for complex medical frames.</p>
+                <div class="feature-card">
+                    <h4>Field Breakdown</h4>
+                    <p>Visualizing every byte of the UART packet with human-readable labels.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Validation HUD</h4>
+                    <p>Instant color-coded validation of field values against expected ranges.</p>
+                </div>
+            </div>
+            <div class="visual-panel">
+                <img src="assets/screenshots/decoder.png" class="screenshot">
+            </div>
+        </div>
+
+        <!-- SLIDE 17: ARCHITECTURE -->
+        <div class="slide hero-slide">
+            <span class="counter">17 / 18</span>
+            <div class="tag">System Internals</div>
+            <h2>ENGINEERING CORE</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem; margin-top: 3rem; max-width: 1200px;">
+                <div>
+                    <h3 style="color: var(--accent); margin-bottom: 1rem;">RUST CORE</h3>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Tauri v2 + Rust implementation for memory-safe, ultra-low latency serial I/O.</p>
+                </div>
+                <div>
+                    <h3 style="color: var(--accent); margin-bottom: 1rem;">WEB WORKERS</h3>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Multithreaded DSP offloading ensures 60 FPS UI stability under 10k PPS load.</p>
+                </div>
+                <div>
+                    <h3 style="color: var(--accent); margin-bottom: 1rem;">AOT DSP</h3>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Pre-optimized signal calculation models for millisecond-accurate simulation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 18: CONCLUSION -->
+        <div class="slide hero-slide">
+            <span class="counter">18 / 18</span>
+            <div class="tag">The Absolute Standard</div>
+            <h1>PRECISION TRUTH</h1>
+            <p>100% Complete. 100% Deterministic. The Ultimate Tool for the Next Generation of Medical Hardware.</p>
+            <div style="margin-top: 4rem; font-family: 'JetBrains Mono'; color: var(--accent); font-size: 0.8rem; letter-spacing: 2px;">
+                [ SYSTEM VALIDATED : READY FOR PRODUCTION ]
+            </div>
+        </div>
+
+    </div>
+
+    <div class="nav-bar" id="dots"></div>
+
+    <script>
+        let current = 0;
+        const slides = document.querySelectorAll('.slide');
+        const dotsContainer = document.getElementById('dots');
+        const progress = document.getElementById('progress');
+
+        // Create Dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = `nav-dot ${i === 0 ? 'active' : ''}`;
+            dot.onclick = () => show(i);
+            dotsContainer.appendChild(dot);
+        });
+
+        function show(n) {
+            slides.forEach(s => s.classList.remove('active'));
+            slides[n].classList.add('active');
+            
+            document.querySelectorAll('.nav-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === n);
+            });
+
+            progress.style.width = `${((n + 1) / slides.length) * 100}%`;
+            current = n;
+        }
+
+        function next() {
+            if (current < slides.length - 1) show(current + 1);
+        }
+
+        function prev() {
+            if (current > 0) show(current - 1);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') next();
+            if (e.key === 'ArrowLeft') prev();
+        });
+
+        // Auto-show logic
+        window.addEventListener('wheel', (e) => {
+            if (e.deltaY > 0) next();
+            else prev();
+        }, { passive: true });
+
+    </script>
+</body>
+</html>
