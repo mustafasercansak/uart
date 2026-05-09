@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from '../../i18n/context';
 import { useTheme } from 'next-themes';
+import { Moon, Sun, RefreshCw } from 'lucide-react';
 
-export function Sidebar() {
+interface SidebarProps {
+  onOpenSystem?: () => void;
+}
+
+import logo from '../../assets/logo.png';
+
+export function Sidebar({ onOpenSystem }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(true);
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -25,9 +32,14 @@ export function Sidebar() {
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-56'} bg-gray-950 border-r border-gray-800 flex flex-col h-full shrink-0 transition-all duration-300 relative`}>
       <div className={`px-4 py-5 border-b border-gray-800 flex items-center justify-between transition-all ${collapsed ? 'flex-col gap-4 px-2' : ''}`}>
-        <div className="flex flex-col">
-          <div className={`text-green-400 font-mono font-bold text-sm tracking-widest ${collapsed ? 'text-[10px] text-center' : ''}`}>UART</div>
-          {!collapsed && <div className="text-gray-600 font-mono text-[9px] mt-0.5 uppercase tracking-tighter">{t('nav.subtitle')}</div>}
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="UART Logo" className={`${collapsed ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg shadow-lg shadow-cyan-500/20`} />
+          {!collapsed && (
+            <div className="flex flex-col">
+              <div className="text-white font-mono font-bold text-sm tracking-widest">UART</div>
+              <div className="text-cyan-500 font-mono text-[9px] mt-0.5 uppercase tracking-tighter font-black">{t('nav.subtitle')}</div>
+            </div>
+          )}
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -58,7 +70,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-4 py-3 border-t border-gray-800 flex flex-col items-center gap-2">
+      <div className={`${collapsed ? 'px-2' : 'px-4'} py-3 border-t border-gray-800 flex flex-col items-center gap-2`}>
         {!collapsed && (
           <div className="w-full flex items-center justify-between px-1 py-1 rounded-lg bg-gray-900/50 border border-gray-800 text-[10px] font-mono text-gray-600">
             <span>Komut Paleti</span>
@@ -69,18 +81,30 @@ export function Sidebar() {
           </div>
         )}
         {mounted && (
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800"
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            <span className="text-sm">{theme === 'dark' ? '☀️' : '🌙'}</span>
-            {!collapsed && <span className="text-xs font-mono">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
-          </button>
+          <div className="w-full flex items-center gap-1">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800 flex items-center justify-center gap-2 ${collapsed ? 'w-full' : 'flex-1'}`}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {!collapsed && <span className="text-[10px] font-mono uppercase tracking-widest">{theme === 'dark' ? 'Light' : 'Dark'}</span>}
+            </button>
+          </div>
         )}
-        <div className={`text-gray-700 font-mono transition-all ${collapsed ? 'text-[8px] text-center' : 'text-[10px]'}`}>
-          {collapsed ? 'v' : `v${__APP_VERSION__}`}
-        </div>
+        <button 
+          onClick={onOpenSystem}
+          className={`flex items-center gap-2 text-gray-500 hover:text-cyan-400 font-mono transition-all group ${collapsed ? 'text-[8px] mt-1 justify-center' : 'text-[10px] w-full px-2 py-1.5 rounded-lg bg-gray-900/30 border border-gray-800/50 hover:bg-gray-900/80 hover:border-cyan-500/30'}`}
+          title={collapsed ? `v${__APP_VERSION__} - ${t('system.checkUpdate')}` : ''}
+        >
+          <RefreshCw size={collapsed ? 8 : 10} className="opacity-40 group-hover:opacity-100 group-hover:animate-spin" />
+          <span>{collapsed ? 'v' : `v${__APP_VERSION__}`}</span>
+          {!collapsed && (
+            <span className="ml-auto text-[8px] font-black opacity-30 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-cyan-500">
+              {t('system.checkUpdate')}
+            </span>
+          )}
+        </button>
       </div>
     </aside>
   );

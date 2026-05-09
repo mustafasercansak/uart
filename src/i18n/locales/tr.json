@@ -7,7 +7,8 @@
     "templates": "Şablon Kütüphanesi",
     "subtitle": "Sensör Simülatörü",
     "expand": "Genişlet",
-    "collapse": "Daralt"
+    "collapse": "Daralt",
+    "system": "Sistem & Sürüm"
   },
   "common": {
     "log": "Günlük",
@@ -26,7 +27,8 @@
     "delete": "Sil",
     "min": "Min",
     "max": "Max",
-    "tcp": "TCP"
+    "tcp": "TCP",
+    "retry": "Yeniden Dene"
   },
   "rxMonitor": {
     "title": "RX Geçmişi",
@@ -942,8 +944,7 @@
     "helperApi": "Yardımcı API",
     "noActivity": "Henüz aktivite yok... Logları görmek için simülasyonu başlatın.",
     "exampleScript": "// Örnek: Gelen veriye ACK (0x06) ile yanıt ver\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Cihaz veri aldı, ACK gönderiliyor\");\n}"
-  }
-,
+  },
   "templateBrowser": {
     "title": "Şablon Kütüphanesi",
     "subtitle": "Hazır sensör simülasyon şablonları",
@@ -970,5 +971,20 @@
     "waveform": "Dalga Formu",
     "checksum": "Sağlama",
     "flags": "Bayraklar"
+  },
+  "system": {
+    "title": "Yazılım & Güncellemeler",
+    "version": "Yazılım Sürümü",
+    "checkUpdate": "Güncellemeleri Denetle",
+    "checking": "Güncellemeler kontrol ediliyor...",
+    "upToDate": "Yazılım güncel. En son sürümü kullanıyorsunuz.",
+    "updateAvailable": "Yeni sürüm bulundu: {version}",
+    "downloading": "İndiriliyor: %{progress}",
+    "install": "Şimdi Güncelle",
+    "changelog": "Yenilikler",
+    "error": "Güncelleme kontrolü başarısız oldu.",
+    "relaunching": "Uygulama yeniden başlatılıyor...",
+    "about": "Hakkında",
+    "developer": "Geliştirici"
   }
 }
