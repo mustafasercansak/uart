@@ -33,6 +33,7 @@ export function SystemModal({ isOpen, onClose }: Props) {
       }
     } catch (err) {
       console.error(err);
+      alert(`Update Error: ${err}`); // Hatayı direkt ekranda görmek için
       setStatus('error');
     } finally {
       setChecking(false);

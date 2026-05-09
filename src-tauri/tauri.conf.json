@@ -27,7 +27,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdBNUM0MTkzOTY2QzJFRUQKUldUdExteVdrMEZjZWlld2E1T0pNV0pCMmxlSGgxZ2pBQ0xmZUJrZFJaZXljYmxKcjBOZzVlcnQK",
+      "pubkey": "RWTtLmyWk0Fceiewa5OJMWJB2leHh1gjACLfeBkdRZeycblJr0Ng5er",
       "endpoints": [
         "https://github.com/mustafasercansak/uart/releases/latest/download/latest.json"
       ]
