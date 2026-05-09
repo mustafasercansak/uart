@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UART Simulator Pro | The Complete Engineering Truth</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg: #000000;
@@ -17,7 +20,12 @@
             --border: #1a1a1a;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             background-color: var(--bg);
             color: var(--text);
@@ -35,7 +43,10 @@
 
         .slide {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             padding: 5rem;
             gap: 5rem;
@@ -59,8 +70,19 @@
             text-align: center;
         }
 
-        .hero-slide h1 { font-size: 6rem; font-weight: 900; letter-spacing: -4px; line-height: 0.8; margin-bottom: 2rem; }
-        .hero-slide p { font-size: 1.5rem; color: var(--text-dim); max-width: 800px; }
+        .hero-slide h1 {
+            font-size: 6rem;
+            font-weight: 900;
+            letter-spacing: -4px;
+            line-height: 0.8;
+            margin-bottom: 2rem;
+        }
+
+        .hero-slide p {
+            font-size: 1.5rem;
+            color: var(--text-dim);
+            max-width: 800px;
+        }
 
         /* Feature Layout */
         .info-panel {
@@ -88,8 +110,20 @@
             display: block;
         }
 
-        h2 { font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1; margin-bottom: 1.5rem; }
-        p.description { font-size: 1.1rem; color: var(--text-dim); margin-bottom: 2.5rem; line-height: 1.6; }
+        h2 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 1.5rem;
+        }
+
+        p.description {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+        }
 
         .feature-card {
             background: var(--surface);
@@ -100,24 +134,39 @@
             transition: all 0.3s;
         }
 
-        .feature-card:hover { border-color: var(--accent); transform: translateX(5px); }
-        .feature-card h4 { font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--accent); }
-        .feature-card p { font-size: 0.8rem; color: #888; }
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        .feature-card h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            color: var(--accent);
+        }
+
+        .feature-card p {
+            font-size: 0.8rem;
+            color: #888;
+        }
 
         .screenshot {
             width: 100%;
             border-radius: 16px;
             border: 1px solid var(--border);
-            box-shadow: 0 50px 100px rgba(0,0,0,0.9);
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.9);
             transition: transform 0.5s;
         }
 
-        .screenshot:hover { transform: scale(1.02); }
+        .screenshot:hover {
+            transform: scale(1.02);
+        }
 
         /* Navigation */
         .nav-bar {
             position: fixed;
-            bottom: 3rem; left: 50%;
+            bottom: 3rem;
+            left: 50%;
             transform: translateX(-50%);
             display: flex;
             gap: 1rem;
@@ -125,18 +174,25 @@
         }
 
         .nav-dot {
-            width: 8px; height: 8px;
+            width: 8px;
+            height: 8px;
             background: #222;
             border-radius: 50%;
             cursor: pointer;
             transition: all 0.3s;
         }
 
-        .nav-dot.active { background: var(--accent); transform: scale(1.5); box-shadow: 0 0 10px var(--accent-glow); }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.5);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
 
         .progress-bar {
             position: fixed;
-            top: 0; left: 0; height: 3px;
+            top: 0;
+            left: 0;
+            height: 3px;
             background: var(--accent);
             width: 0%;
             transition: width 0.3s;
@@ -145,26 +201,28 @@
 
         .counter {
             position: absolute;
-            top: 2rem; right: 2rem;
+            top: 2rem;
+            right: 2rem;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.8rem;
             color: var(--text-dim);
         }
-
     </style>
 </head>
+
 <body>
 
     <div class="progress-bar" id="progress"></div>
 
     <div id="viewport">
-        
+
         <!-- SLIDE 1: HERO -->
         <div class="slide hero-slide active">
             <span class="counter">01 / 18</span>
             <div class="tag">The Absolute Standard</div>
             <h1>UART SIMULATOR PRO</h1>
-            <p>The definitive 100% feature-complete engineering ecosystem for medical telemetry and hardware validation.</p>
+            <p>The definitive 100% feature-complete engineering ecosystem for medical telemetry and hardware validation.
+            </p>
         </div>
 
         <!-- SLIDE 2: CLINICAL HUD -->
@@ -173,7 +231,8 @@
             <div class="info-panel">
                 <span class="tag">Standard Mode</span>
                 <h2>Clinical HUD</h2>
-                <p class="description">A high-fidelity interface designed for clinical observers and medical validation specialists.</p>
+                <p class="description">A high-fidelity interface designed for clinical observers and medical validation
+                    specialists.</p>
                 <div class="feature-card">
                     <h4>Real-time Telemetry</h4>
                     <p>Precise mapping of SpO2, Heart Rate, and Status flags to virtual instrumentation.</p>
@@ -194,7 +253,8 @@
             <div class="info-panel">
                 <span class="tag">Visualizer Suite</span>
                 <h2>3D Digital Twin</h2>
-                <p class="description">Full immersive ICU environment where every virtual device is powered by the live serial data stream.</p>
+                <p class="description">Full immersive ICU environment where every virtual device is powered by the live
+                    serial data stream.</p>
                 <div class="feature-card">
                     <h4>Hardware-in-the-Loop</h4>
                     <p>Visual verification of device alarm states and display consistency.</p>
@@ -257,7 +317,8 @@
             <div class="info-panel">
                 <span class="tag">Diagnostics Suite</span>
                 <h2>Signal Integrity</h2>
-                <p class="description">Advanced statistical analysis of communication stability and timing distribution.</p>
+                <p class="description">Advanced statistical analysis of communication stability and timing distribution.
+                </p>
                 <div class="feature-card">
                     <h4>Jitter Histograms</h4>
                     <p>Visualizing the variance in packet arrival times to ensure deterministic behavior.</p>
@@ -320,7 +381,8 @@
             <div class="info-panel">
                 <span class="tag">Regulatory Tier</span>
                 <h2>Audit-Ready Reporting</h2>
-                <p class="description">One-click generation of professional PDF reports for ISO 13485 and FDA compliance.</p>
+                <p class="description">One-click generation of professional PDF reports for ISO 13485 and FDA
+                    compliance.</p>
                 <div class="feature-card">
                     <h4>Error Attribution</h4>
                     <p>Detailed mapping of every packet failure during the validation session.</p>
@@ -341,7 +403,8 @@
             <div class="info-panel">
                 <span class="tag">Creation Lab</span>
                 <h2>Waveform Engineering</h2>
-                <p class="description">Bespoke signal drafting using mathematical formulas or freehand precision drawing.</p>
+                <p class="description">Bespoke signal drafting using mathematical formulas or freehand precision
+                    drawing.</p>
                 <div class="feature-card">
                     <h4>Formula Input</h4>
                     <p>Input complex math expressions to generate synthetic physiological signals.</p>
@@ -383,7 +446,8 @@
             <div class="info-panel">
                 <span class="tag">Intelligence Tier</span>
                 <h2>Scenario Orchestrator</h2>
-                <p class="description">Automate complex clinical events like desaturation, bradycardia, or sensor detachment.</p>
+                <p class="description">Automate complex clinical events like desaturation, bradycardia, or sensor
+                    detachment.</p>
                 <div class="feature-card">
                     <h4>Event Timeline</h4>
                     <p>Sequence multiple actions (Set, Ramp, Error) with millisecond precision.</p>
@@ -404,7 +468,8 @@
             <div class="info-panel">
                 <span class="tag">Template Tier</span>
                 <h2>Sensor Asset Library</h2>
-                <p class="description">A comprehensive catalog of industrial and medical sensor protocols ready for use.</p>
+                <p class="description">A comprehensive catalog of industrial and medical sensor protocols ready for use.
+                </p>
                 <div class="feature-card">
                     <h4>Medical Sensors</h4>
                     <p>Native support for YS2000A, Berry BM1000, and generic Patient Monitors.</p>
@@ -425,7 +490,8 @@
             <div class="info-panel">
                 <span class="tag">Stress Tier</span>
                 <h2>Chaos & Corruption</h2>
-                <p class="description">Deterministic failure injection to ensure firmware resilience under worst-case conditions.</p>
+                <p class="description">Deterministic failure injection to ensure firmware resilience under worst-case
+                    conditions.</p>
                 <div class="feature-card">
                     <h4>Error Injection</h4>
                     <p>Inject Checksum, Sync, Skip Byte, Extra Byte, and Delay errors on demand.</p>
@@ -487,18 +553,22 @@
             <span class="counter">17 / 18</span>
             <div class="tag">System Internals</div>
             <h2>ENGINEERING CORE</h2>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem; margin-top: 3rem; max-width: 1200px;">
+            <div
+                style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem; margin-top: 3rem; max-width: 1200px;">
                 <div>
                     <h3 style="color: var(--accent); margin-bottom: 1rem;">RUST CORE</h3>
-                    <p style="color: var(--text-dim); font-size: 0.9rem;">Tauri v2 + Rust implementation for memory-safe, ultra-low latency serial I/O.</p>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Tauri v2 + Rust implementation for
+                        memory-safe, ultra-low latency serial I/O.</p>
                 </div>
                 <div>
                     <h3 style="color: var(--accent); margin-bottom: 1rem;">WEB WORKERS</h3>
-                    <p style="color: var(--text-dim); font-size: 0.9rem;">Multithreaded DSP offloading ensures 60 FPS UI stability under 10k PPS load.</p>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Multithreaded DSP offloading ensures 60 FPS UI
+                        stability under 10k PPS load.</p>
                 </div>
                 <div>
                     <h3 style="color: var(--accent); margin-bottom: 1rem;">AOT DSP</h3>
-                    <p style="color: var(--text-dim); font-size: 0.9rem;">Pre-optimized signal calculation models for millisecond-accurate simulation.</p>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Pre-optimized signal calculation models for
+                        millisecond-accurate simulation.</p>
                 </div>
             </div>
         </div>
@@ -509,8 +579,23 @@
             <div class="tag">The Absolute Standard</div>
             <h1>PRECISION TRUTH</h1>
             <p>100% Complete. 100% Deterministic. The Ultimate Tool for the Next Generation of Medical Hardware.</p>
-            <div style="margin-top: 4rem; font-family: 'JetBrains Mono'; color: var(--accent); font-size: 0.8rem; letter-spacing: 2px;">
+            <div
+                style="margin-top: 4rem; font-family: 'JetBrains Mono'; color: var(--accent); font-size: 0.8rem; letter-spacing: 2px;">
                 [ SYSTEM VALIDATED : READY FOR PRODUCTION ]
+            </div>
+            <div style="margin-top: 3rem; display: flex; gap: 1rem; align-items: center;">
+                <a href="https://www.linkedin.com/in/mustafa-sercan-sak-30190684/" target="_blank"
+                    style="text-decoration: none; color: var(--text-dim); display: flex; align-items: center; gap: 0.75rem; border: 1px solid var(--border); padding: 0.75rem 1.5rem; border-radius: 8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(255,255,255,0.02); font-weight: 700; font-size: 0.9rem;"
+                    onmouseover="this.style.color='#fff'; this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 15px rgba(59, 130, 246, 0.3)';"
+                    onmouseout="this.style.color='var(--text-dim)'; this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                        <rect x="2" y="9" width="4" height="12"></rect>
+                        <circle cx="4" cy="4" r="2"></circle>
+                    </svg>
+                    Mustafa Sercan Sak
+                </a>
             </div>
         </div>
 
@@ -535,7 +620,7 @@
         function show(n) {
             slides.forEach(s => s.classList.remove('active'));
             slides[n].classList.add('active');
-            
+
             document.querySelectorAll('.nav-dot').forEach((d, i) => {
                 d.classList.toggle('active', i === n);
             });
@@ -565,4 +650,5 @@
 
     </script>
 </body>
+
 </html>

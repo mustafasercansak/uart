@@ -57,10 +57,9 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
             title={collapsed ? item.label : ''}
             end={item.path === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${
-                isActive
-                  ? 'bg-green-900/20 text-green-400 border border-green-800/40'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
+              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${isActive
+                ? 'bg-green-900/20 text-green-400 border border-green-800/40'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
               } ${collapsed ? 'justify-center px-0' : ''}`
             }
           >
@@ -81,7 +80,7 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
           </div>
         )}
         {mounted && (
-          <div className="w-full flex items-center gap-1">
+          <div className={`w-full flex items-center gap-1 ${collapsed ? 'flex-col' : ''}`}>
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className={`text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800 flex items-center justify-center gap-2 ${collapsed ? 'w-full' : 'flex-1'}`}
@@ -90,9 +89,31 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               {!collapsed && <span className="text-[10px] font-mono uppercase tracking-widest">{theme === 'dark' ? 'Light' : 'Dark'}</span>}
             </button>
+            <a
+              href="https://www.linkedin.com/in/mustafa-sercan-sak-30190684/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-gray-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-blue-900/20 transition-all border border-transparent hover:border-blue-800/50 flex items-center justify-center ${collapsed ? 'w-full' : 'w-9'}`}
+              title="Developer: Mustafa Sercan Sak (LinkedIn)"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                <rect x="2" y="9" width="4" height="12"></rect>
+                <circle cx="4" cy="4" r="2"></circle>
+              </svg>
+            </a>
           </div>
         )}
-        <button 
+        <button
           onClick={onOpenSystem}
           className={`flex items-center gap-2 text-gray-500 hover:text-cyan-400 font-mono transition-all group ${collapsed ? 'text-[8px] mt-1 justify-center' : 'text-[10px] w-full px-2 py-1.5 rounded-lg bg-gray-900/30 border border-gray-800/50 hover:bg-gray-900/80 hover:border-cyan-500/30'}`}
           title={collapsed ? `v${__APP_VERSION__} - ${t('system.checkUpdate')}` : ''}
