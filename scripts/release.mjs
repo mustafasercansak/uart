@@ -62,7 +62,7 @@ writeFileSync('CHANGELOG.md', updatedChangelog);
 console.log(`✓ CHANGELOG.md → ${version}`);
 
 // git
-execSync(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json README.md CHANGELOG.md ${counterFile}`);
+execSync(`git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json README.md CHANGELOG.md ${counterFile}`);
 execSync(`git commit -m "chore: release ${tag}"`);
 execSync(`git tag ${tag}`);
 execSync(`git push origin main ${tag}`);
