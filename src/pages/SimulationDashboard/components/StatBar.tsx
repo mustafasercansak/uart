@@ -3,6 +3,7 @@ import { Terminal, Activity, FileDown, Circle, Square, HelpCircle, Plus, Edit3, 
 import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 import { loadLastSettings, saveLastSettings } from '../../../lib/lastSettings';
+import { useNavigate } from 'react-router-dom';
 
 interface StatBarProps {
   status: SimulationState['status'];
@@ -96,8 +97,11 @@ const StatBar = memo(({
   onViewReport
 }: StatBarProps) => {
   const { t, locale, setLocale } = useTranslation();
+  const navigate = useNavigate();
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [selectedPort, setSelectedPort] = React.useState(() => loadLastSettings().selectedPort);
+  const [tcpHost, setTcpHost] = React.useState('127.0.0.1');
+  const [tcpPort, setTcpPort] = React.useState('5000');
 
   const handlePortChange = (port: string) => {
     setSelectedPort(port);
@@ -150,9 +154,9 @@ const StatBar = memo(({
       <div className="flex items-center gap-1.5 pr-2 border-r border-white/5 h-5">
         <div className={`w-1.5 h-1.5 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
         <button 
-          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork('tcp://127.0.0.1:5000')}
+          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork(outputMode === 'tcp-server' ? `tcp-server://${tcpPort}` : `tcp://${tcpHost}:${tcpPort}`)}
           className={`text-[8px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
-          {t('common.engine')}: {networkConnected ? t('common.online') : t('common.offline')}
+          {outputMode === 'tcp-server' ? 'TCP SERVER' : t('common.engine')}: {networkConnected ? (outputMode === 'tcp-server' ? 'LISTENING' : t('common.online')) : t('common.offline')}
         </button>
       </div>
 
@@ -206,7 +210,8 @@ const StatBar = memo(({
         >
           <option value="log">{t('common.log')}</option>
           <option value="serial">{t('statBar.serialPort')}</option>
-          <option value="tcp">TCP</option>
+          <option value="tcp">{t('statBar.tcpClient')}</option>
+          <option value="tcp-server">{t('statBar.tcpServer')}</option>
         </select>
         
         {selectedProfile && (
@@ -220,19 +225,20 @@ const StatBar = memo(({
         <div className="flex items-center gap-1 border-l border-gray-800/50 pl-2">
           {!serialConnected ? (
             <>
-              <select 
-                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-20 focus:border-blue-500"
+              <input 
+                type="text"
+                list="serial-ports-list"
+                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-24 focus:border-blue-500"
                 value={selectedPort}
                 onChange={(e) => handlePortChange(e.target.value)}
                 onFocus={onGetPorts}
                 disabled={status !== 'stopped'}
-              >
-                {availablePorts.length === 0 ? (
-                    <option value="">{t('statBar.noPort')}</option>
-                ) : (
-                    availablePorts.map(p => <option key={p.path} value={p.path}>{p.path}</option>)
-                )}
-              </select>
+                placeholder="COM1 / /dev/tty"
+                title={t('statBar.typeOrSelect')}
+              />
+              <datalist id="serial-ports-list">
+                {availablePorts.map(p => <option key={p.path} value={p.path} />)}
+              </datalist>
               <button 
                 onClick={() => onConnectSerial(selectedPort)} 
                 disabled={!selectedProfileId || status !== 'stopped' || !selectedPort}
@@ -244,6 +250,49 @@ const StatBar = memo(({
           ) : (
             <button 
               onClick={onDisconnectSerial} 
+              disabled={status !== 'stopped'}
+              className="px-1.5 py-0.5 bg-rose-700 hover:bg-rose-600 text-white text-[8.5px] font-mono rounded font-bold"
+            >
+              {t('dashboard.disconnect')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {(outputMode === 'tcp' || outputMode === 'tcp-server') && (
+        <div className="flex items-center gap-1 border-l border-gray-800/50 pl-2">
+          {!networkConnected ? (
+            <>
+              {outputMode === 'tcp' && (
+                <input 
+                  type="text" 
+                  value={tcpHost}
+                  onChange={(e) => setTcpHost(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-20 focus:border-blue-500"
+                  placeholder="127.0.0.1"
+                  disabled={status !== 'stopped'}
+                />
+              )}
+              {outputMode === 'tcp' && <span className="text-[8.5px] text-gray-500 font-mono">:</span>}
+              <input 
+                type="text" 
+                value={tcpPort}
+                onChange={(e) => setTcpPort(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-12 focus:border-blue-500"
+                placeholder="5000"
+                disabled={status !== 'stopped'}
+              />
+              <button 
+                onClick={() => onConnectNetwork(outputMode === 'tcp-server' ? `tcp-server://${tcpPort}` : `tcp://${tcpHost}:${tcpPort}`)}
+                disabled={status !== 'stopped' || !tcpPort || (outputMode === 'tcp' && !tcpHost)}
+                className="px-1.5 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 text-white text-[8.5px] font-mono rounded font-bold transition-all"
+              >
+                {outputMode === 'tcp-server' ? 'DİNLE' : t('dashboard.connect')}
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={onDisconnectNetwork} 
               disabled={status !== 'stopped'}
               className="px-1.5 py-0.5 bg-rose-700 hover:bg-rose-600 text-white text-[8.5px] font-mono rounded font-bold"
             >
@@ -331,7 +380,7 @@ const StatBar = memo(({
           </button>
 
           <button 
-            onClick={() => window.open('/help', '_blank')}
+            onClick={() => navigate('/help')}
             className="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-all border border-transparent hover:border-gray-700"
           >
             <HelpCircle size={11} />

@@ -60,7 +60,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const waveformHistoryRef = useRef<Array<Record<string, number>>>([]);
 
   // ── ENGINE (Web Worker) ──────────────────────────────────────────────────────
-  const { workerRef } = useSimulationEngine(dispatch, msgBufferRef);
+  const { workerRef } = useSimulationEngine(dispatch, msgBufferRef, stateRef);
   const send = (msg: unknown) => workerRef.current?.postMessage(msg);
 
   // ── UI UPDATE LOOP (unchanged) ───────────────────────────────────────────────
@@ -236,6 +236,21 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const connectNetwork = useCallback(async (url: string) => {
+    if (url.startsWith('tcp-server://')) {
+      const portPart = url.replace('tcp-server://', '');
+      const port = Number.parseInt(portPart || '5000', 10);
+
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('simulation.network.invalidPort', { port: portPart ?? '' }) });
+        return;
+      }
+
+      await invoke('start_tcp_server', { port }).catch((e: unknown) => {
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `TCP Sunucu hatası: ${e}` });
+      });
+      return;
+    }
+
     if (url.startsWith('tcp://')) {
       const target = url.replace('tcp://', '');
       const [hostPart, portPart] = target.split(':');
@@ -318,6 +333,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   const disconnectNetwork = useCallback(() => {
     invoke('disconnect_tcp').catch(console.error);
+    invoke('stop_tcp_server').catch(console.error);
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
   }, []);
 
@@ -513,48 +529,6 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           if (bytes.length === 0) return;
 
           send({ type: 'INJECT_RAW_TX', bytes });
-
-          const now = Date.now();
-          const currentProfile = stateRef.current.profileId
-            ? profilesRef.current.find(p => p.id === stateRef.current.profileId)
-            : null;
-
-          const txEntry: ConversationEntry = {
-            id: `local-tx-${now}-${Math.random()}`,
-            timestamp: now,
-            type: 'tx',
-            rawHex: hex
-          };
-
-          const txExchange: Exchange = {
-            id: `local-ex-${now}-${Math.random()}`,
-            startTime: now,
-            tx: txEntry,
-            status: 'pending'
-          };
-
-          conversationBufferRef.current.push(txEntry);
-          exchangeBufferRef.current.push(txExchange);
-
-          if (currentProfile) {
-            const fields = parseFrame(currentProfile, bytes);
-            const frame: GeneratedFrame = {
-              uId: `raw-tx-${now}-${Math.random()}`,
-              frameNumber: 0,
-              timestampMs: now,
-              rawHex: hex,
-              rawBytes: bytes,
-              fields: fields || [],
-              errors: []
-            };
-            msgBufferRef.current.push(JSON.stringify({
-              type: 'TICK',
-              frame,
-              status: stateRef.current.status,
-              selectedProfileId: stateRef.current.profileId,
-              elapsedMs: stateRef.current.elapsedMs
-            }));
-          }
         },
         automation: {
           saveSequence: (seq: AutomationSequence) => {

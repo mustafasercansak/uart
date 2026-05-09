@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { ArrowRight, ArrowLeft, Clock, WifiOff, Trash2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Clock, WifiOff, Trash2, Send, Type, Hash } from 'lucide-react';
 import type { GeneratedFrame, Exchange } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
@@ -7,12 +7,50 @@ interface TimelineProps {
   exchanges: Exchange[];
   onSelectFrame: (frame: GeneratedFrame) => void;
   onClear?: () => void;
-  hasRealDevice?: boolean; // serial veya network bağlı mı?
+  hasRealDevice?: boolean;
+  onSendFrame?: (bytes: number[]) => void;
 }
 
-const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = false }: TimelineProps) => {
+const toAscii = (hexStr: string) => {
+  if (!hexStr) return '';
+  return hexStr.split(' ').map(h => {
+    const charCode = parseInt(h, 16);
+    if (charCode >= 32 && charCode <= 126) return String.fromCharCode(charCode);
+    if (charCode === 10) return '↵';
+    if (charCode === 13) return '␍';
+    if (charCode === 9) return '⇥';
+    return '·';
+  }).join('');
+};
+
+const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = false, onSendFrame }: TimelineProps) => {
   const { t } = useTranslation();
   const displayExchanges = exchanges.slice(-50);
+  const [inputText, setInputText] = React.useState('');
+  const [inputType, setInputType] = React.useState<'ascii' | 'hex'>('ascii');
+
+  const handleSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!inputText.trim() || !onSendFrame) return;
+
+    let bytes: number[] = [];
+    if (inputType === 'ascii') {
+      let text = inputText;
+      text = text.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
+      // Otomatik CRLF ekle (Standart terminal davranışı)
+      if (!text.endsWith('\n') && !text.endsWith('\r')) {
+        text += '\r\n';
+      }
+      bytes = Array.from(new TextEncoder().encode(text));
+    } else {
+      bytes = inputText.split(/[\s,]+/).filter(h => /^[0-9A-Fa-f]{1,2}$/.test(h)).map(h => parseInt(h, 16));
+    }
+    
+    if (bytes.length > 0) {
+      onSendFrame(bytes);
+      setInputText('');
+    }
+  };
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-gray-950/20">
@@ -95,6 +133,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                     >
                       <div className="text-[8px] font-mono font-black text-blue-400 mb-1 uppercase tracking-tighter opacity-60">{t('timeline.txOut')}</div>
                       <div className="text-[10px] font-mono text-blue-100 break-all leading-tight">{ex.tx.rawHex}</div>
+                      <div className="text-[9px] font-mono text-blue-400/60 break-all leading-tight mt-1 tracking-widest">{toAscii(ex.tx.rawHex)}</div>
                       {hasRealDevice && (
                         <div className="absolute top-1/2 -right-8 -translate-y-1/2 text-blue-500 opacity-0 group-hover/btn:opacity-100 transition-opacity">
                           <ArrowRight size={18} />
@@ -132,6 +171,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                           )}
                         </div>
                         <div className="text-[10px] font-mono text-emerald-100 break-all leading-tight">{ex.rx.rawHex}</div>
+                        <div className="text-[9px] font-mono text-emerald-500/60 break-all leading-tight mt-1 tracking-widest">{toAscii(ex.rx.rawHex)}</div>
                         <div className="absolute top-1/2 -left-8 -translate-y-1/2 text-emerald-500 opacity-0 group-hover/btn:opacity-100 transition-opacity">
                           <ArrowLeft size={18} />
                         </div>
@@ -151,6 +191,36 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
           </div>
         )}
       </div>
+
+      {/* Quick Send Bar */}
+      {onSendFrame && (
+        <form onSubmit={handleSend} className="shrink-0 p-3 bg-gray-900/60 border-t border-gray-800/50 flex gap-2 items-center">
+          <button 
+            type="button"
+            onClick={() => setInputType(t => t === 'ascii' ? 'hex' : 'ascii')}
+            className="flex items-center justify-center w-10 h-10 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg transition-colors"
+            title={inputType === 'ascii' ? 'ASCII Mode' : 'HEX Mode'}
+          >
+            {inputType === 'ascii' ? <Type size={16} /> : <Hash size={16} />}
+          </button>
+          
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={inputType === 'ascii' ? "Mesaj yazın (ASCII)..." : "A1 B2 C3 (HEX)..."}
+            className="flex-1 h-10 bg-black/50 border border-gray-700 rounded-lg px-4 font-mono text-sm text-gray-200 outline-none focus:border-blue-500 transition-colors"
+          />
+          
+          <button 
+            type="submit"
+            disabled={!inputText.trim()}
+            className="flex items-center gap-2 px-4 h-10 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-colors"
+          >
+            <Send size={14} /> Gönder
+          </button>
+        </form>
+      )}
     </div>
   );
 });

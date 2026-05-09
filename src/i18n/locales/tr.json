@@ -1,4 +1,4 @@
-﻿{
+{
   "nav": {
     "dashboard": "Gösterge Paneli",
     "profiles": "Profil Editörü",
@@ -29,6 +29,14 @@
     "max": "Max",
     "tcp": "TCP",
     "retry": "Yeniden Dene"
+  },
+  "statBar": {
+    "serialPort": "Seri Port (COM)",
+    "tcpClient": "TCP İstemci",
+    "tcpServer": "TCP Sunucu (Sanal Port)",
+    "noPort": "Port Bulunamadı",
+    "unknown": "Bilinmeyen",
+    "typeOrSelect": "Port numarasını yazın veya listeden seçin"
   },
   "rxMonitor": {
     "title": "RX Geçmişi",

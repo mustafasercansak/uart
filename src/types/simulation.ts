@@ -6,7 +6,7 @@ import type { ValidationSession } from './validation';
 import { AutomationSequence } from './automation';
 
 export type SimulationStatus = 'stopped' | 'running' | 'paused';
-export type OutputMode = 'serial' | 'tcp' | 'log';
+export type OutputMode = 'serial' | 'tcp' | 'tcp-server' | 'log';
 
 export interface BitTransition {
   t: number;

@@ -124,7 +124,7 @@ export default function SimulationDashboard() {
     deleteRecording, refreshRecordings,
     setSignalIntegrity, setTriggers,
     startValidation, stopValidation,
-    clearExchanges
+    clearExchanges, sendRawData
   } = useSimulation();
 
   const { 
@@ -478,6 +478,7 @@ export default function SimulationDashboard() {
                     onSendFrame: (bytes: number[]) => {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);
+                      sendRawData(hex);
                     }
                   }}
                 />

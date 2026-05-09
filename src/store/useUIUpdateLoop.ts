@@ -185,7 +185,7 @@ export function useUIUpdateLoop({
                 } else {
                   pushLog({
                     time: formatNow(),
-                    text: msg.connected ? 'TCP bağlantısı kuruldu.' : 'TCP bağlantısı kapatıldı.',
+                    text: msg.customMessage || (msg.connected ? 'TCP bağlantısı kuruldu.' : 'TCP bağlantısı kapatıldı.'),
                     type: 'info',
                   });
                 }

@@ -139,6 +139,7 @@ export default function TabContent({
           onSelectFrame={() => {}}
           onClear={hooks.clearExchanges}
           hasRealDevice={state.serialConnected || state.networkConnected}
+          onSendFrame={hooks.onSendFrame}
         />
       );
     case 'diagnostics':

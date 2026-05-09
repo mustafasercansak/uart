@@ -123,7 +123,7 @@ export class SimulationEngine {
     this.onRawResponse?.(bytes);
 
     // Virtual Loopback: If not connected to hardware, feed it back to RX
-    if (!this.state.serialConnected) {
+    if (!this.state.serialConnected && !this.state.networkConnected) {
         console.log(`\x1b[33m[LOOPBACK]\x1b[0m ${bytes.length} bytes looped back to RX.`);
         // Small delay to simulate propagation
         setTimeout(() => {
@@ -305,6 +305,18 @@ export class SimulationEngine {
             } else if (result) {
                if (result.sendHex) {
                  this.executeActions([{ type: 'send_raw', payload: result.sendHex }], matchEntry.id);
+               }
+               if (result.sendString) {
+                 const hexStr = Array.from(String(result.sendString))
+                    .map(c => c.charCodeAt(0).toString(16).padStart(2, '0'))
+                    .join(' ');
+                 this.executeActions([{ type: 'send_raw', payload: hexStr }], matchEntry.id);
+               }
+               if (result.command === 'pause') {
+                 this.executeActions([{ type: 'pause' }], matchEntry.id);
+               }
+               if (result.command === 'stop') {
+                 this.executeActions([{ type: 'stop' }], matchEntry.id);
                }
                if (result.setFields) {
                  Object.entries(result.setFields as Record<string, number>).forEach(([fid, val]) => {
@@ -581,6 +593,9 @@ export class SimulationEngine {
         rawHex: frame.rawHex
     };
     this.addLog(txEntry);
+
+    // Send the generated frame bytes to the hardware output pipeline (TCP/Serial)
+    this.onRawResponse?.(frame.rawBytes);
 
     // Start/Update Exchange
     const txExchange: Exchange = {

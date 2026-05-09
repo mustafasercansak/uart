@@ -13,7 +13,8 @@ const MAX_MSG_BUFFER = 2000;
  */
 export function useSimulationEngine(
   dispatch: React.Dispatch<SimAction>,
-  msgBufferRef: React.MutableRefObject<string[]>
+  msgBufferRef: React.MutableRefObject<string[]>,
+  stateRef: React.MutableRefObject<{ outputMode: string }>
 ) {
   const workerRef = useRef<Worker | null>(null);
   const serialConnectedRef = useRef(false);
@@ -60,6 +61,25 @@ export function useSimulationEngine(
       pushMsg({ type: 'NETWORK_STATUS', connected: p.connected, error: p.error });
     }).then(u => unlisteners.push(u));
 
+    listen('tcp-server-data', (payload) => {
+      const p = payload as { hex: string; bytes: number[] };
+      pushMsg({ type: 'RAW_RX_DATA', hex: p.hex });
+      workerRef.current?.postMessage({ type: 'INCOMING_DATA', bytes: p.bytes });
+    }).then(u => unlisteners.push(u));
+
+    listen('tcp-server-status', (payload) => {
+      const p = payload as { status: string; port?: number; client?: string; error?: string };
+      const connected = p.status === 'connected' || p.status === 'listening';
+      networkConnectedRef.current = connected;
+      workerRef.current?.postMessage({ type: 'SET_NETWORK_CONNECTED', connected });
+      
+      const msgText = p.status === 'connected' ? `TCP İstemci bağlandı: ${p.client}` 
+                    : p.status === 'listening' ? `TCP Sunucu dinliyor (Port: ${p.port})`
+                    : `TCP Sunucu durduruldu`;
+                    
+      pushMsg({ type: 'NETWORK_STATUS', connected, error: p.error, customMessage: msgText });
+    }).then(u => unlisteners.push(u));
+
     // ── Worker factory (called on start + each restart) ─────────────────────
     const startWorker = () => {
       if (!isMountedRef.current) return;
@@ -78,7 +98,11 @@ export function useSimulationEngine(
           if (serialConnectedRef.current) {
             invoke('write_serial', { bytes: msg.bytes }).catch(console.error);
           } else if (networkConnectedRef.current) {
-            invoke('write_tcp', { bytes: msg.bytes }).catch(console.error);
+            if (stateRef.current.outputMode === 'tcp-server') {
+              invoke('write_tcp_server', { bytes: msg.bytes }).catch(console.error);
+            } else {
+              invoke('write_tcp', { bytes: msg.bytes }).catch(console.error);
+            }
           }
           return;
         }

@@ -171,6 +171,7 @@ function normalizeField(raw: unknown, index: number): Field | null {
     order: Number.isFinite(src.order) ? Number(src.order) : index,
     byteWidth,
     endianness: src.endianness === 'little' ? 'little' : 'big',
+    isAscii: src.isAscii === true,
     type: src.type ?? 'fixed',
     typeConfig: src.typeConfig ?? { value: 0 },
     widgetConfig: src.widgetConfig,

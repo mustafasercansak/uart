@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Play, Pause, Trash2, Calendar, Database, Clock, RefreshCw, Layers, ChevronLeft, ChevronRight, FastForward } from 'lucide-react';
+import { Play, Pause, Trash2, Calendar, Database, Clock, RefreshCw, Layers, ChevronLeft, ChevronRight, FastForward, FileDown, FileSpreadsheet } from 'lucide-react';
 import type { RecordingMetadata, SimulationStatus } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
+import { generateVcd, downloadVcd } from '../../../lib/VcdExporter';
+import { generateCsv, downloadCsv } from '../../../lib/CsvExporter';
+import { loadProfiles } from '../../../store/storage';
 
 interface PlaybackPanelProps {
   recordings: RecordingMetadata[];
@@ -164,6 +167,34 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                   >
                     <Play size={14} fill="currentColor" />
                     {t('playback.play')}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const profile = loadProfiles()[0]; // Use first available profile as fallback
+                      if (profile && rec.data) {
+                        const frames = rec.data.map(d => d.frame);
+                        const csv = generateCsv(frames, profile);
+                        downloadCsv(csv, `${rec.name.replace(/\s+/g, '_')}_${rec.id.substring(0,4)}.csv`);
+                      }
+                    }}
+                    className="p-2 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl border border-emerald-500/20 transition-all"
+                    title="Export as CSV (Data Science / Excel)"
+                  >
+                    <FileSpreadsheet size={14} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const profile = loadProfiles()[0]; // Use first available profile as fallback
+                      if (profile && rec.data) {
+                        const frames = rec.data.map(d => d.frame);
+                        const vcd = generateVcd(frames, profile);
+                        downloadVcd(vcd, `${rec.name.replace(/\s+/g, '_')}_${rec.id.substring(0,4)}.vcd`);
+                      }
+                    }}
+                    className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-xl border border-blue-500/20 transition-all"
+                    title="Export Logic Analyzer VCD"
+                  >
+                    <FileDown size={14} />
                   </button>
                   <button 
                     onClick={() => onDelete(rec.id)}

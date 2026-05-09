@@ -19,6 +19,11 @@ struct TcpState {
     write_stream: Mutex<Option<TcpStream>>,
 }
 
+struct TcpServerState {
+    stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    active_stream: Arc<Mutex<Option<TcpStream>>>,
+}
+
 fn recordings_dir() -> PathBuf {
     let home = dirs_next::document_dir()
         .or_else(dirs_next::home_dir)
@@ -289,6 +294,112 @@ fn write_tcp(bytes: Vec<u8>, state: tauri::State<'_, TcpState>) -> Result<(), St
     }
 }
 
+// ── TCP SERVER COMMANDS (VIRTUAL COM BRIDGE) ──────────────────────────────────
+
+#[tauri::command]
+fn start_tcp_server(
+    port: u16,
+    state: tauri::State<'_, TcpServerState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    // Mevcut sunucuyu durdur
+    {
+        let mut tx = state.stop_tx.lock().unwrap();
+        if let Some(sender) = tx.take() {
+            let _ = sender.send(());
+        }
+    }
+
+    let listener = std::net::TcpListener::bind(format!("0.0.0.0:{}", port)).map_err(|e| e.to_string())?;
+    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+
+    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    {
+        let mut tx = state.stop_tx.lock().unwrap();
+        *tx = Some(stop_tx);
+    }
+
+    let active_stream_arc = state.active_stream.clone();
+    let app_clone = app.clone();
+
+    app_clone.emit("tcp-server-status", serde_json::json!({ "status": "listening", "port": port })).ok();
+
+    thread::spawn(move || {
+        let mut buf = vec![0u8; 1024];
+        loop {
+            if stop_rx.try_recv().is_ok() {
+                let mut ws = active_stream_arc.lock().unwrap();
+                *ws = None;
+                break;
+            }
+
+            // Yeni bağlantı bekle (eğer mevcut yoksa)
+            match listener.accept() {
+                Ok((stream, addr)) => {
+                    stream.set_nonblocking(true).ok();
+                    let mut ws = active_stream_arc.lock().unwrap();
+                    *ws = Some(stream.try_clone().unwrap()); 
+                    app_clone.emit("tcp-server-status", serde_json::json!({ "status": "connected", "client": addr.to_string() })).ok();
+                }
+                Err(_) => {}
+            }
+
+            // Aktif bağlantıdan veri oku
+            let mut disconnected = false;
+            {
+                let mut ws = active_stream_arc.lock().unwrap();
+                if let Some(stream) = ws.as_mut() {
+                    match stream.read(&mut buf) {
+                        Ok(0) => {
+                            disconnected = true; // İstemci koptu
+                        }
+                        Ok(n) => {
+                            let bytes = buf[..n].to_vec();
+                            let hex = bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ");
+                            app_clone.emit("tcp-server-data", serde_json::json!({ "hex": hex, "bytes": bytes })).ok();
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+                        Err(_) => {
+                            disconnected = true;
+                        }
+                    }
+                }
+            }
+
+            if disconnected {
+                let mut ws = active_stream_arc.lock().unwrap();
+                *ws = None;
+                app_clone.emit("tcp-server-status", serde_json::json!({ "status": "listening", "port": port })).ok();
+            }
+
+            thread::sleep(Duration::from_millis(20));
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_tcp_server(state: tauri::State<'_, TcpServerState>, app: AppHandle) -> Result<(), String> {
+    let mut tx = state.stop_tx.lock().unwrap();
+    if let Some(sender) = tx.take() {
+        let _ = sender.send(());
+    }
+    let mut ws = state.active_stream.lock().unwrap();
+    *ws = None;
+    app.emit("tcp-server-status", serde_json::json!({ "status": "stopped" })).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn write_tcp_server(bytes: Vec<u8>, state: tauri::State<'_, TcpServerState>) -> Result<(), String> {
+    let mut ws = state.active_stream.lock().unwrap();
+    if let Some(stream) = ws.as_mut() {
+        stream.write_all(&bytes).map_err(|e| e.to_string())
+    } else {
+        Err("Bağlı bir istemci (client) yok".to_string())
+    }
+}
+
 // ── RECORDING FILE COMMANDS ───────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize)]
@@ -405,6 +516,10 @@ pub fn run() {
             stop_tx: Mutex::new(None),
             write_stream: Mutex::new(None),
         })
+        .manage(TcpServerState {
+            stop_tx: Mutex::new(None),
+            active_stream: Arc::new(Mutex::new(None)),
+        })
         .invoke_handler(tauri::generate_handler![
             list_serial_ports,
             connect_serial,
@@ -413,6 +528,9 @@ pub fn run() {
             connect_tcp,
             disconnect_tcp,
             write_tcp,
+            start_tcp_server,
+            stop_tcp_server,
+            write_tcp_server,
             list_recordings,
             save_recording,
             load_recording,

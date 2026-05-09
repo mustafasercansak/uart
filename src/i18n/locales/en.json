@@ -45,6 +45,14 @@
     "tcp": "TCP",
     "retry": "Retry"
   },
+  "statBar": {
+    "serialPort": "Serial Port (COM)",
+    "tcpClient": "TCP Client",
+    "tcpServer": "TCP Server (Virtual Port)",
+    "noPort": "No Port Found",
+    "unknown": "Unknown",
+    "typeOrSelect": "Type port name or select from list"
+  },
   "rxMonitor": {
     "title": "RX History",
     "slotA": "Slot A",
