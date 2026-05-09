@@ -4,9 +4,22 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
-## [v1.5.19] — 2026-05-09
-### 🚀 Release v1.5.19
+## [v1.5.20] — 2026-05-09
+### 🚀 Release v1.5.20
 - Yeni sürüm yayınlandı.
+
+---
+
+## [v1.5.20] — 2026-05-09
+### 🚀 Release v1.5.20
+- **İnteraktif Yanıtlayıcı (Script Responder)**: Simülatör artık sadece veri üreten bir TX kaynağı değil, RX üzerinden gelen komutlara yanıt verebilen akıllı bir motor. `dynamic-script` kuralı ile gelen baytlar işlenip `sendString` veya `pause/stop` komutlarıyla reaksiyon gösterilebilir.
+- **İki Yönlü Timeline Terminali (Quick Send)**: Timeline ekranına eklenen Hızlı Gönderim barı sayesinde simülasyon akarken anlık olarak HEX veya ASCII komutlar (Örn: `deneme`, `pause`) enjekte edilebilir.
+- **UTF-8 ve Loopback Optimizasyonu**: PuTTY gibi harici terminallere gönderilen paketlerde Türkçe karakterlerin (`ı`, `ş` vb.) çökmeden sorunsuz iletilmesi için TextEncoder altyapısı kuruldu. ASCII gönderimlerde otomatik `CRLF` (Satır Sonu) desteği eklendi.
+- **VCD Export Desteği**: Telemetri kayıtlarının Logic Analyzer (ör: PulseView) yazılımlarında bit bazında incelenebilmesi için IEEE 1364 VCD formatında dışa aktarım motoru eklendi.
+- **CSV Data Science Dışa Aktarımı**: Geliştiriciler ve veri bilimciler için telemetri kayıtlarının Excel ve Python tabanlı araçlarda kolayca açılabilmesi için "CSV Formatında Kaydet" (FileSpreadsheet) özelliği eklendi.
+- **ASCII Metin Aktarımı**: NMEA 0183 gibi metin tabanlı profillerde PuTTY vb. programlarda verilerin okunabilmesi için sinyal jeneratörüne `isAscii` desteği eklendi.
+- **İkon ve Çeviri Onarımları**: Windows'ta desteklenmeyen yeni nesil emojiler standart sembollerle (💓, ⚕️) değiştirildi ve eksik dil anahtarları onarıldı.
+- **Tauri Yönlendirme Optimizasyonu**: Uygulama içi sekme yönlendirmeleri `window.open` yerine React Router `navigate` kullanılarak stabilize edildi.
 
 ---
 
