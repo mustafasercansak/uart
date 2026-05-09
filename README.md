@@ -42,5 +42,5 @@ For a detailed breakdown of all modules and architectural metrics, see [SHOWCASE
 
 ## 📜 Legal & Compliance
 
-Developed by **Mustafa Sercan Sak Diagnostics**.  
+Developed by **Mustafa Sercan Sak** ([Connect on LinkedIn](https://www.linkedin.com/in/mustafa-sercan-sak-30190684/)).  
 © 2026 UART Simulator Pro. Precision Engineering for Medical Excellence.
