@@ -24,6 +24,8 @@ import {
   FileDown,
   Hammer,
   GraduationCap,
+  ArrowLeftRight,
+  MessageSquare,
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios, saveProfile as persistProfile } from '../../store/storage';
@@ -160,7 +162,7 @@ export default function SimulationDashboard() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
 
-  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn';
+  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn' | 'exchange' | 'conversation' | 'profile-compare';
   const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>('waveforms');
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -209,6 +211,9 @@ export default function SimulationDashboard() {
     { id: 'report', icon: FileDown, label: 'dashboard.report', color: 'bg-rose-600', shadow: 'shadow-rose-900/40' },
     { id: 'builder', icon: Hammer, label: 'dashboard.builder', color: 'bg-amber-600', shadow: 'shadow-amber-900/40' },
     { id: 'learn', icon: GraduationCap, label: 'dashboard.learn', color: 'bg-pink-600', shadow: 'shadow-pink-900/40' },
+    { id: 'exchange', icon: ArrowLeftRight, label: 'dashboard.exchange', color: 'bg-teal-600', shadow: 'shadow-teal-900/40' },
+    { id: 'conversation', icon: MessageSquare, label: 'dashboard.conversation', color: 'bg-cyan-600', shadow: 'shadow-cyan-900/40' },
+    { id: 'profile-compare', icon: GitCompare, label: 'dashboard.profileCompare', color: 'bg-violet-600', shadow: 'shadow-violet-900/40' },
   ];
 
   const handleSaveProfile = (profile: FrameProfile) => {
@@ -475,6 +480,7 @@ export default function SimulationDashboard() {
                     setResponderRules,
                     setTriggers,
                     clearExchanges,
+                    selectExchange,
                     onSendFrame: (bytes: number[]) => {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Play, Pause, Trash2, Calendar, Database, Clock, RefreshCw, Layers, ChevronLeft, ChevronRight, FastForward, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Play, Pause, Trash2, Calendar, Database, Clock, RefreshCw, Layers, ChevronLeft, ChevronRight, FastForward, FileDown, FileSpreadsheet, BookMarked } from 'lucide-react';
 import type { RecordingMetadata, SimulationStatus } from '../../../types';
+import type { Scenario } from '../../../types/scenario';
 import { useTranslation } from '../../../i18n/context';
 import { generateVcd, downloadVcd } from '../../../lib/VcdExporter';
 import { generateCsv, downloadCsv } from '../../../lib/CsvExporter';
-import { loadProfiles } from '../../../store/storage';
+import { loadProfiles, saveScenario } from '../../../store/storage';
 
 interface PlaybackPanelProps {
   recordings: RecordingMetadata[];
@@ -35,7 +36,45 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
 }) => {
   const { t, language } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [savedScenarios, setSavedScenarios] = useState<Record<string, boolean>>({});
   const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+
+  const handleSaveAsScenario = (rec: RecordingMetadata) => {
+    if (!rec.data || rec.data.length === 0) return;
+    const profiles = loadProfiles();
+    const profile = profiles[0];
+    if (!profile) return;
+
+    const t0 = rec.data[0].time;
+    const steps = rec.data.flatMap((d, i) => {
+      if (i === 0) return [];
+      return d.frame.fields.map(f => ({
+        id: `${d.frame.frameNumber}-${f.name}`,
+        atMs: d.time - t0,
+        target: `field:${f.name}` as const,
+        action: 'set' as const,
+        actionConfig: { value: f.decimal },
+        description: `${f.name} = ${f.decimal}`,
+      }));
+    });
+
+    const scenario: Scenario = {
+      id: `rec-${rec.id}`,
+      name: rec.name,
+      description: `${t('playback.scenarioFromRecording')} (${rec.frameCount} ${t('report.avgFrame')})`,
+      profileId: profile.id,
+      loop: false,
+      durationMs: rec.durationMs,
+      steps,
+      category: 'custom',
+      createdAt: new Date(rec.createdAt).toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveScenario(scenario);
+    setSavedScenarios(prev => ({ ...prev, [rec.id]: true }));
+    setTimeout(() => setSavedScenarios(prev => ({ ...prev, [rec.id]: false })), 2000);
+  };
 
   useEffect(() => {
     onRefresh();
@@ -196,7 +235,14 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                   >
                     <FileDown size={14} />
                   </button>
-                  <button 
+                  <button
+                    onClick={() => handleSaveAsScenario(rec)}
+                    className={`p-2 rounded-xl border transition-all ${savedScenarios[rec.id] ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-purple-600/10 hover:bg-purple-600 text-purple-400 hover:text-white border-purple-500/20'}`}
+                    title={savedScenarios[rec.id] ? t('playback.scenarioSaved') : t('playback.saveAsScenario')}
+                  >
+                    <BookMarked size={14} />
+                  </button>
+                  <button
                     onClick={() => onDelete(rec.id)}
                     className="p-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl border border-red-500/20 transition-all"
                   >

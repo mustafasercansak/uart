@@ -21,9 +21,18 @@ const CHART_COLORS_EXTENDED = [
   '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#3b82f6', '#ef4444',
 ];
 
+const ERROR_COLORS: Record<string, string> = {
+  corrupt_checksum: '#ef4444',
+  wrong_sync: '#f97316',
+  skip_bytes: '#eab308',
+  extra_bytes: '#a855f7',
+  delay_frame: '#06b6d4',
+};
+
 function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
-  const { waveformHistoryRef } = useSimulation();
+  const { waveformHistoryRef, state } = useSimulation();
   const waveformHistory = waveformHistoryRef.current;
+  const errorInjectionHistory = state.errorInjectionHistory ?? [];
   const { t } = useTranslation();
   const [enabledCharts, setEnabledCharts] = useState<Record<string, boolean>>({});
   const [gridMode, setGridMode] = useState(false);
@@ -111,15 +120,42 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
                     {cv}
                   </div>
                   <div className="absolute inset-0 pt-6 px-0">
-                    <CanvasWaveform 
-                      dataKey={f.name} 
+                    <CanvasWaveform
+                      dataKey={f.name}
                       waveformHistoryRef={waveformHistoryRef}
-                      color={color} 
+                      color={color}
                       showCursors={showCursors}
                       cursorA={cursorA}
                       cursorB={cursorB}
                       onCursorMove={(type, idx) => type === 'A' ? setCursorA(idx) : setCursorB(idx)}
                     />
+                    {/* Error injection markers */}
+                    {errorInjectionHistory.length > 0 && waveformHistory.length > 1 && (() => {
+                      const minT = waveformHistory[0].t;
+                      const maxT = waveformHistory[waveformHistory.length - 1].t;
+                      const range = maxT - minT;
+                      if (range <= 0) return null;
+                      return errorInjectionHistory
+                        .filter(e => e.timestamp >= minT && e.timestamp <= maxT)
+                        .map((e, idx) => {
+                          const pct = ((e.timestamp - minT) / range) * 100;
+                          const markerColor = ERROR_COLORS[e.type] ?? '#ffffff';
+                          return (
+                            <div
+                              key={idx}
+                              className="absolute top-0 bottom-0 w-px pointer-events-none group/marker z-10"
+                              style={{ left: `${pct}%`, backgroundColor: markerColor, opacity: 0.7 }}
+                            >
+                              <div
+                                className="absolute bottom-full mb-0.5 left-1/2 -translate-x-1/2 text-[7px] font-mono px-1 py-px rounded whitespace-nowrap opacity-0 group-hover/marker:opacity-100 transition-opacity pointer-events-none"
+                                style={{ backgroundColor: markerColor, color: '#000' }}
+                              >
+                                {e.type.replace(/_/g, ' ')}
+                              </div>
+                            </div>
+                          );
+                        });
+                    })()}
                   </div>
                 </div>
               );

@@ -107,6 +107,7 @@ export interface SimulationState {
   activeRamps: Record<string, ActiveRamp>;
   activePulses: Record<string, ActivePulse>;
   pendingErrors: ErrorType[];
+  errorInjectionHistory: Array<{ timestamp: number; type: ErrorType }>;
   conversationLogs: ConversationEntry[];
   exchanges: Exchange[];
   selectedExchangeId: string | null;

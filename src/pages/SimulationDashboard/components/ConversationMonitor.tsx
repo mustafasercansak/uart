@@ -1,7 +1,9 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useMemo } from 'react';
 import { ArrowRight, Zap, Send, LogIn } from 'lucide-react';
 import type { ConversationEntry } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
+
+type FilterType = 'all' | 'rx' | 'tx' | 'match';
 
 interface ConversationMonitorProps {
   entries: ConversationEntry[];
@@ -9,22 +11,53 @@ interface ConversationMonitorProps {
 
 const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
   const { t } = useTranslation();
+  const [filter, setFilter] = useState<FilterType>('all');
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return entries;
+    return entries.filter(e => e.type === filter);
+  }, [entries, filter]);
+
+  const counts = useMemo(() => ({
+    rx: entries.filter(e => e.type === 'rx').length,
+    tx: entries.filter(e => e.type === 'tx').length,
+    match: entries.filter(e => e.type === 'match').length,
+  }), [entries]);
+
+  const filterButtons: { key: FilterType; label: string; color: string; activeColor: string }[] = [
+    { key: 'all', label: `${t('conversationMonitor.filterAll')} (${entries.length})`, color: 'border-gray-700 text-gray-500', activeColor: 'border-gray-400 text-gray-200 bg-gray-800' },
+    { key: 'rx', label: `RX (${counts.rx})`, color: 'border-blue-900 text-blue-700', activeColor: 'border-blue-500 text-blue-300 bg-blue-950/40' },
+    { key: 'tx', label: `TX (${counts.tx})`, color: 'border-emerald-900 text-emerald-700', activeColor: 'border-emerald-500 text-emerald-300 bg-emerald-950/40' },
+    { key: 'match', label: `${t('conversationMonitor.filterMatch')} (${counts.match})`, color: 'border-yellow-900 text-yellow-700', activeColor: 'border-yellow-500 text-yellow-300 bg-yellow-950/40' },
+  ];
+
   return (
     <div className="flex flex-col h-full bg-gray-950 border-t border-gray-800/50">
-      <div className="p-3 border-b border-gray-800 bg-gray-900/50 flex items-center gap-2">
-        <Zap size={14} className="text-yellow-500" />
-        <span className="text-xs font-mono uppercase tracking-widest text-gray-400">{t('conversationMonitor.title')}</span>
+      <div className="p-3 border-b border-gray-800 bg-gray-900/50 flex items-center gap-3 flex-wrap">
+        <Zap size={14} className="text-yellow-500 shrink-0" />
+        <span className="text-xs font-mono uppercase tracking-widest text-gray-400 shrink-0">{t('conversationMonitor.title')}</span>
+        <div className="flex items-center gap-1 ml-auto flex-wrap">
+          {filterButtons.map(btn => (
+            <button
+              key={btn.key}
+              onClick={() => setFilter(btn.key)}
+              className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded border transition-all ${filter === btn.key ? btn.activeColor : btn.color}`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-        {entries.length === 0 && (
+        {filtered.length === 0 && (
           <div className="text-center py-10 opacity-30">
             <Activity size={40} className="mx-auto mb-2" />
-            <p className="text-[10px] font-mono">{t('conversationMonitor.waitingTraffic')}</p>
+            <p className="text-[10px] font-mono">{entries.length === 0 ? t('conversationMonitor.waitingTraffic') : t('conversationMonitor.noMatchFilter')}</p>
           </div>
         )}
-        
-        {entries.map((entry) => (
+
+        {filtered.map((entry) => (
           <div key={entry.id} className="animate-in slide-in-from-left-2 duration-300">
             {entry.type === 'rx' && (
               <div className="flex items-start gap-3">

@@ -12,6 +12,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { GeneratedFrame, FrameProfile } from '../../../types';
+import type { Exchange } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 // ─────────────────────────────────────────────
@@ -25,7 +26,10 @@ type AssertionType =
   | 'checksum_valid'
   | 'frame_rate_min'
   | 'byte_count_equals'
-  | 'hex_contains';
+  | 'hex_contains'
+  | 'rx_ack_always'
+  | 'latency_max'
+  | 'rx_hex_contains';
 
 interface TestCase {
   id: string;
@@ -38,6 +42,7 @@ interface TestCase {
   minFPS?: number;
   expectedByteCount?: number;
   hexPattern?: string;
+  maxLatencyMs?: number;
   enabled: boolean;
 }
 
@@ -59,7 +64,8 @@ function runTest(
   tc: TestCase,
   frames: GeneratedFrame[],
   profile: FrameProfile | null,
-  t: (key: string, data?: Record<string, unknown>) => string
+  t: (key: string, data?: Record<string, unknown>) => string,
+  exchanges: Exchange[] = []
 ): TestResult {
   const base: TestResult = {
     caseId: tc.id,
@@ -222,6 +228,42 @@ function runTest(
       };
     }
 
+    case 'rx_ack_always': {
+      if (exchanges.length === 0) return { ...base, status: 'skip', message: t('testSuite.messages.noExchanges') };
+      const doneExchanges = exchanges.filter(e => e.status === 'done' || e.rx);
+      const noAck = exchanges.filter(e => e.tx && !e.rx);
+      if (noAck.length === 0) {
+        return { ...base, status: 'pass', message: t('testSuite.messages.allAcked', { count: doneExchanges.length }), testedCount: exchanges.length };
+      }
+      return { ...base, status: 'fail', message: t('testSuite.messages.missingAck', { count: noAck.length, total: exchanges.length }), testedCount: exchanges.length, failedFrames: [] };
+    }
+
+    case 'latency_max': {
+      if (exchanges.length === 0) return { ...base, status: 'skip', message: t('testSuite.messages.noExchanges') };
+      const maxMs = tc.maxLatencyMs ?? 500;
+      const withLatency = exchanges.filter(e => e.latencyMs !== undefined);
+      if (withLatency.length === 0) return { ...base, status: 'skip', message: t('testSuite.messages.noLatencyData') };
+      const slow = withLatency.filter(e => (e.latencyMs ?? 0) > maxMs);
+      if (slow.length === 0) {
+        const avg = Math.round(withLatency.reduce((s, e) => s + (e.latencyMs ?? 0), 0) / withLatency.length);
+        return { ...base, status: 'pass', message: t('testSuite.messages.latencyOk', { avg: avg.toString(), max: maxMs.toString() }), testedCount: withLatency.length };
+      }
+      const worst = Math.round(Math.max(...slow.map(e => e.latencyMs ?? 0)));
+      return { ...base, status: 'fail', message: t('testSuite.messages.latencyFail', { count: slow.length, worst: worst.toString(), max: maxMs.toString() }), testedCount: withLatency.length, failedFrames: [] };
+    }
+
+    case 'rx_hex_contains': {
+      if (!tc.hexPattern) return { ...base, status: 'skip', message: t('testSuite.messages.noHexPattern') };
+      const pattern = tc.hexPattern.replace(/\s+/g, '').toUpperCase();
+      const rxEntries = exchanges.filter(e => e.rx?.rawHex);
+      if (rxEntries.length === 0) return { ...base, status: 'skip', message: t('testSuite.messages.noRxData') };
+      const matched = rxEntries.filter(e => e.rx!.rawHex.replace(/\s+/g, '').toUpperCase().includes(pattern));
+      if (matched.length > 0) {
+        return { ...base, status: 'pass', message: t('testSuite.messages.rxHexOk', { count: matched.length, pattern: tc.hexPattern }), testedCount: rxEntries.length };
+      }
+      return { ...base, status: 'fail', message: t('testSuite.messages.rxHexFail', { pattern: tc.hexPattern, total: rxEntries.length }), testedCount: rxEntries.length, failedFrames: [] };
+    }
+
     default:
       return { ...base, status: 'skip', message: t('testSuite.messages.unknown') };
   }
@@ -309,6 +351,9 @@ function TestCaseForm({
           <option value="frame_rate_min">{t('testSuite.assertions.frame_rate_min')}</option>
           <option value="byte_count_equals">{t('testSuite.assertions.byte_count_equals')}</option>
           <option value="hex_contains">{t('testSuite.assertions.hex_contains')}</option>
+          <option value="rx_ack_always">{t('testSuite.assertions.rx_ack_always')}</option>
+          <option value="latency_max">{t('testSuite.assertions.latency_max')}</option>
+          <option value="rx_hex_contains">{t('testSuite.assertions.rx_hex_contains')}</option>
         </select>
 
         {/* Field name (for field assertions) */}
@@ -382,12 +427,23 @@ function TestCaseForm({
         )}
 
         {/* Hex pattern */}
-        {tc.assertion === 'hex_contains' && (
+        {(tc.assertion === 'hex_contains' || tc.assertion === 'rx_hex_contains') && (
           <input
             value={tc.hexPattern ?? ''}
             onChange={(e) => onUpdate(tc.id, { hexPattern: e.target.value })}
             placeholder={t('testSuite.hexExample')}
             className="w-36 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] font-mono rounded px-2 py-1"
+          />
+        )}
+
+        {/* Max latency */}
+        {tc.assertion === 'latency_max' && (
+          <input
+            type="number"
+            value={tc.maxLatencyMs ?? ''}
+            onChange={(e) => onUpdate(tc.id, { maxLatencyMs: Number(e.target.value) })}
+            placeholder={t('testSuite.maxLatencyMs')}
+            className="w-28 bg-gray-900 border border-gray-700 text-gray-300 text-[10px] rounded px-2 py-1"
           />
         )}
       </div>
@@ -422,13 +478,14 @@ function TestCaseForm({
 interface TestSuiteRunnerProps {
   frames: GeneratedFrame[];
   profile: FrameProfile | null;
+  exchanges?: Exchange[];
 }
 
 function makeId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProps) {
+export default function TestSuiteRunner({ frames, profile, exchanges = [] }: TestSuiteRunnerProps) {
   const { t } = useTranslation();
   const [tests, setTests] = useState<TestCase[]>(() => [
     {
@@ -481,7 +538,7 @@ export default function TestSuiteRunner({ frames, profile }: TestSuiteRunnerProp
       if (runId.current !== currentRunId) break;
       // Small delay to show progress
       await new Promise((r) => setTimeout(r, 40));
-      newResults.push(runTest(tc, frames, profile, t));
+      newResults.push(runTest(tc, frames, profile, t, exchanges));
       setResults([...newResults]);
     }
 

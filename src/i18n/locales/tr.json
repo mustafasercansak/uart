@@ -95,6 +95,9 @@
     "testsuite": "Test Paketi",
     "builder": "Oluşturucu",
     "learn": "Öğrenme Modu",
+    "exchange": "Alışveriş Monitörü",
+    "conversation": "Konuşma Monitörü",
+    "profileCompare": "Profil Karşılaştır",
     "viewReport": "RAPORU GÖRÜNTÜLE",
     "widgetActive": "{count} WIDGET AKTİF",
     "resetLayout": "YERLEŞİMİ SIFIRLA",
@@ -328,8 +331,12 @@
       "checksum_valid": "Checksum geçerli",
       "frame_rate_min": "Minimum FPS",
       "byte_count_equals": "Paket boyutu eşit",
-      "hex_contains": "Hex pattern içeriyor"
+      "hex_contains": "Hex pattern içeriyor",
+      "rx_ack_always": "RX: Her TX yanıt aldı mı",
+      "latency_max": "RX: Gecikme sınırı",
+      "rx_hex_contains": "RX: Hex pattern içeriyor"
     },
+    "maxLatencyMs": "Maks ms",
     "messages": {
       "disabled": "Test devre dışı",
       "noFrames": "Frame yok",
@@ -351,6 +358,15 @@
       "noHexPattern": "Hex pattern belirtilmedi",
       "hexOk": "Tüm frame'ler '{pattern}' içeriyor ✓",
       "hexError": "{count} frame '{pattern}' içermiyor",
+      "noExchanges": "Exchange verisi yok",
+      "allAcked": "{count} exchange, hepsi yanıt aldı ✓",
+      "missingAck": "{count}/{total} exchange yanıtsız kaldı",
+      "noLatencyData": "Gecikme verisi yok",
+      "latencyOk": "Ort. gecikme {avg}ms < {max}ms ✓",
+      "latencyFail": "{count} exchange {max}ms üstünde (en kötü: {worst}ms)",
+      "noRxData": "RX verisi yok",
+      "rxHexOk": "{count} RX paketinde '{pattern}' bulundu ✓",
+      "rxHexFail": "{total} RX paketinin hiçbirinde '{pattern}' bulunamadı",
       "unknown": "Bilinmeyen assertion"
     }
   },
@@ -573,12 +589,47 @@
     "txOut": "TX ÇIKIŞ",
     "rxIn": "RX GİRİŞ"
   },
+  "profileCompare": {
+    "title": "Profil Karşılaştırma",
+    "profileA": "Profil A",
+    "profileB": "Profil B",
+    "field": "Alan",
+    "fieldsA": "{count} alan",
+    "fieldsB": "{count} alan",
+    "sameProfile": "⚠ Aynı profil seçili",
+    "structureDiff": "Yapı Karşılaştırması",
+    "frameSize": "Frame Boyutu & Alan Dağılımı",
+    "noProfiles": "Karşılaştırmak için en az bir profil oluşturun",
+    "selectTwo": "Karşılaştırmak için iki profil seçin"
+  },
+  "playback": {
+    "activePlayer": "Aktif Oynatıcı",
+    "activeSub": "Kayıtlı frame'ler yeniden oynatılıyor",
+    "stepBack": "Geri",
+    "stepForward": "İleri",
+    "packetIndex": "Paket #{index}",
+    "packetTotal": "{count} paket",
+    "library": "Kayıt Arşivi",
+    "librarySub": "Kaydedilmiş simülasyonlar",
+    "refreshList": "Listeyi yenile",
+    "play": "Oynat",
+    "packetCount": "Paket Sayısı",
+    "totalDuration": "Toplam Süre",
+    "noRecordings": "Kayıt Yok",
+    "recHelp": "Simülasyonu başlatıp KAYIT butonuna basın",
+    "saveAsScenario": "Senaryo olarak kaydet",
+    "scenarioSaved": "Senaryo kaydedildi!",
+    "scenarioFromRecording": "Kayıttan oluşturulan senaryo"
+  },
   "conversationMonitor": {
     "title": "Canlı Karşılaşma Günlüğü",
     "waitingTraffic": "Trafik bekleniyor...",
     "incoming": "Gelen Paket",
     "ruleTriggered": "Kural Tetiklendi",
-    "autoResponse": "Otomatik Yanıt"
+    "autoResponse": "Otomatik Yanıt",
+    "filterAll": "Tümü",
+    "filterMatch": "Eşleşme",
+    "noMatchFilter": "Bu filtreye uyan kayıt yok"
   },
   "exchangeMonitor": {
     "title": "Gelişmiş Karşılaştırma Analizi",
