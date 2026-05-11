@@ -543,7 +543,7 @@ export default function TestSuiteRunner({ frames, profile, exchanges = [] }: Tes
     }
 
     setRunning(false);
-  }, [tests, frames, profile, t]);
+  }, [tests, frames, profile, t, exchanges]);
 
   const resetResults = useCallback(() => {
     setResults([]);
