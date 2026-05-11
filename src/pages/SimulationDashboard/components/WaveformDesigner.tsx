@@ -24,14 +24,43 @@ interface Point {
 
 const WAVEFORM_STORAGE_KEY = 'uart_saved_waveforms';
 
+const FORMULA_SNIPPETS = [
+  { label: 'sin', insert: 'sin(x)', desc: 'Sinüs' },
+  { label: 'cos', insert: 'cos(x)', desc: 'Kosinüs' },
+  { label: 'tan', insert: 'tan(x)', desc: 'Tanjant' },
+  { label: 'abs', insert: 'abs(x)', desc: 'Mutlak değer' },
+  { label: 'sqrt', insert: 'sqrt(x)', desc: 'Karekök' },
+  { label: 'pow', insert: 'pow(x,2)', desc: 'Üs alma' },
+  { label: 'log', insert: 'log(x)', desc: 'Doğal log' },
+  { label: 'floor', insert: 'floor(x)', desc: 'Aşağı yuvarla' },
+  { label: 'PI', insert: 'PI', desc: 'π = 3.14159…' },
+  { label: 'x%1', insert: '(x % 1)', desc: 'Modulo (kırık kısım)' },
+];
+
+const FORMULA_EXAMPLES = [
+  { formula: 'sin(x)', desc: 'Temel sinüs dalgası' },
+  { formula: 'abs(sin(x))', desc: 'Tam dalga doğrulayıcı' },
+  { formula: 'sin(x) * cos(x / 2)', desc: 'Modüle sinüs' },
+  { formula: '(x % (2 * PI)) / (2 * PI)', desc: 'Testere dişi' },
+  { formula: 'sin(x) > 0 ? 1 : 0', desc: 'Kare dalga' },
+  { formula: 'sin(x) + sin(3*x)/3 + sin(5*x)/5', desc: 'Fourier kare dalga' },
+  { formula: 'sin(x * (1 + x / 20))', desc: 'Frekans artışı (chirp)' },
+  { formula: 'exp(-x / 10) * sin(x)', desc: 'Sönümlü titreşim' },
+];
+
 export default function WaveformDesigner() {
   const { t } = useTranslation();
   const { setCustomWaveform } = useSimulation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const formulaTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [points, setPoints] = useState<Point[]>([]);
+  const setPointsRef = useRef(setPoints);
+  setPointsRef.current = setPoints;
+  const prevSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mode, setMode] = useState<'draw' | 'formula' | 'preset' | 'saved'>('draw');
-  const [formula, setFormula] = useState('sin(x/10) * 50 + 50');
+  const [formula, setFormula] = useState('sin(x) * 0.5 + 0.5');
   const [resolution, _setResolution] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -82,6 +111,34 @@ export default function WaveformDesigner() {
     draw();
   }, [draw]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const newW = Math.round(entry.contentRect.width);
+      const newH = Math.round(entry.contentRect.height);
+      if (newW <= 0 || newH <= 0) return;
+
+      const prev = prevSizeRef.current;
+      if (prev && (prev.width !== newW || prev.height !== newH)) {
+        setPointsRef.current(pts => pts.map(p => ({
+          x: (p.x / prev.width) * newW,
+          y: (p.y / prev.height) * newH,
+        })));
+      }
+
+      canvas.width = newW;
+      canvas.height = newH;
+      prevSizeRef.current = { width: newW, height: newH };
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode !== 'draw') return;
     setIsDrawing(true);
@@ -102,26 +159,59 @@ export default function WaveformDesigner() {
     setIsDrawing(false);
   };
 
+  const insertSnippet = (snippet: string) => {
+    const el = formulaTextareaRef.current;
+    if (!el) { setFormula(prev => prev + snippet); return; }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const newVal = formula.slice(0, start) + snippet + formula.slice(end);
+    setFormula(newVal);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + snippet.length, start + snippet.length);
+    });
+  };
+
   const applyFormula = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const { width, height } = canvas;
     const newPoints: Point[] = [];
-    
+
     try {
-      // Create a function from formula string
-      const fn = new Function('x', `return ${formula}`);
-      
-      for (let x = 0; x < width; x += width / resolution) {
-        const normalizedX = (x / width) * 2 * Math.PI * 2; // 2 cycles
-        const yVal = fn(normalizedX);
-        // Map yVal to canvas (assume formula output -50 to 50 or similar)
-        const canvasY = height / 2 - (yVal * (height / 2.5));
+      // Expose Math functions so users can write sin(x) instead of Math.sin(x)
+      const fn = new Function(
+        'x', 'sin', 'cos', 'tan', 'abs', 'sqrt', 'pow', 'floor', 'ceil', 'round', 'log', 'exp', 'PI', 'E', 'min', 'max',
+        `return ${formula}`
+      );
+
+      const rawValues: number[] = [];
+      for (let i = 0; i < resolution; i++) {
+        const x = (i / resolution) * 2 * Math.PI * 2; // 0 → 4π (2 cycles)
+        const y = fn(
+          x,
+          Math.sin, Math.cos, Math.tan, Math.abs, Math.sqrt, Math.pow,
+          Math.floor, Math.ceil, Math.round, Math.log, Math.exp,
+          Math.PI, Math.E, Math.min, Math.max
+        );
+        rawValues.push(isFinite(y) ? y : 0);
+      }
+
+      // Auto-normalize so any formula output fits the canvas
+      const minY = Math.min(...rawValues);
+      const maxY = Math.max(...rawValues);
+      const range = maxY - minY || 1;
+
+      for (let i = 0; i < resolution; i++) {
+        const x = (i / resolution) * width;
+        const normalized = (rawValues[i] - minY) / range; // 0–1
+        const canvasY = height - normalized * height * 0.9 - height * 0.05; // 5% padding
         newPoints.push({ x, y: canvasY });
       }
+
       setPoints(newPoints);
     } catch (e) {
-      console.error("Formula error:", e);
+      console.error('Formula error:', e);
     }
   };
 
@@ -322,16 +412,56 @@ export default function WaveformDesigner() {
           {mode === 'formula' && (
             <div className="glass-panel p-3 rounded-xl border-white/5 space-y-3">
               <label className="text-[9px] font-mono uppercase text-gray-500 tracking-tighter">{t('waveformDesigner.expression')}</label>
-              <textarea 
+              <textarea
+                ref={formulaTextareaRef}
                 value={formula}
                 onChange={(e) => setFormula(e.target.value)}
-                className="w-full h-24 bg-gray-950 border border-white/5 rounded-lg p-2 font-mono text-[10px] text-blue-400 outline-none focus:border-blue-500/50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); applyFormula(); }
+                }}
+                className="w-full h-20 bg-gray-950 border border-white/5 rounded-lg p-2 font-mono text-[10px] text-blue-400 outline-none focus:border-blue-500/50 resize-none"
+                spellCheck={false}
               />
-              <button 
+
+              {/* Function chips */}
+              <div>
+                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">Fonksiyonlar</div>
+                <div className="flex flex-wrap gap-1">
+                  {FORMULA_SNIPPETS.map(s => (
+                    <button
+                      key={s.insert}
+                      onClick={() => insertSnippet(s.insert)}
+                      title={s.desc}
+                      className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-blue-900/50 bg-blue-950/30 text-blue-400 hover:bg-blue-800/40 hover:text-blue-200 transition-all"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick examples */}
+              <div>
+                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">Hazır Formüller</div>
+                <div className="space-y-1">
+                  {FORMULA_EXAMPLES.map(ex => (
+                    <button
+                      key={ex.formula}
+                      onClick={() => { setFormula(ex.formula); setTimeout(applyFormula, 0); }}
+                      className="w-full text-left px-2 py-1.5 rounded border border-gray-800/50 bg-gray-900/40 hover:bg-gray-800/60 transition-all group"
+                    >
+                      <div className="text-[9px] font-mono text-blue-300 group-hover:text-blue-200">{ex.formula}</div>
+                      <div className="text-[8px] text-gray-600 group-hover:text-gray-500 mt-0.5">{ex.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
                 onClick={applyFormula}
                 className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase rounded-lg transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
               >
-                <Zap size={12} /> {t('dashboard.apply')}
+                <Zap size={12} /> {t('dashboard.apply')} <span className="text-blue-300 font-normal normal-case text-[9px]">Ctrl+Enter</span>
               </button>
             </div>
           )}
@@ -428,21 +558,19 @@ export default function WaveformDesigner() {
         </div>
 
         {/* Canvas Area */}
-        <div className="flex-1 glass-panel rounded-2xl border-white/5 relative overflow-hidden bg-gray-950/50 group">
+        <div ref={containerRef} className="flex-1 glass-panel rounded-2xl border-white/5 relative overflow-hidden bg-gray-950/50 group">
           <div className="absolute top-4 left-4 z-10 flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
             <Grid3X3 size={12} className="text-gray-600" />
             <span className="text-[9px] font-mono text-gray-600 uppercase tracking-tighter">Resolution: {points.length} samples</span>
           </div>
-          
-          <canvas 
+
+          <canvas
             ref={canvasRef}
-            width={800}
-            height={400}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className={`w-full h-full cursor-crosshair ${mode === 'draw' ? 'touch-none' : ''}`}
+            className={`block w-full h-full cursor-crosshair ${mode === 'draw' ? 'touch-none' : ''}`}
           />
 
           {points.length === 0 && (

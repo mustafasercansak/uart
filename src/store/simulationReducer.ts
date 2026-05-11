@@ -46,6 +46,7 @@ export const INITIAL_STATE: SimulationState = {
   activeRamps: {},
   activePulses: {},
   pendingErrors: [],
+  errorInjectionHistory: [],
   isRecording: false,
   conversationLogs: [],
   exchanges: [],
@@ -231,7 +232,11 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
     case 'OVERRIDE_BIT':
       return { ...state, bitOverrides: { ...state.bitOverrides, [action.bitKey]: action.value } };
     case 'INJECT_ERROR':
-      return { ...state, pendingErrors: [...state.pendingErrors, action.errorType] };
+      return {
+        ...state,
+        pendingErrors: [...state.pendingErrors, action.errorType],
+        errorInjectionHistory: [...state.errorInjectionHistory, { timestamp: Date.now(), type: action.errorType }].slice(-200),
+      };
     case 'CONSUME_ERROR':
       return { ...state, pendingErrors: state.pendingErrors.slice(1) };
     case 'RESET_OVERRIDES':

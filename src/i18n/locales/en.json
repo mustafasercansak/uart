@@ -110,6 +110,9 @@
     "testsuite": "Test Suite",
     "builder": "Builder",
     "learn": "Learn Mode",
+    "exchange": "Exchange Monitor",
+    "conversation": "Conversation Monitor",
+    "profileCompare": "Profile Compare",
     "viewReport": "VIEW REPORT",
     "widgetActive": "{count} WIDGET ACTIVE",
     "resetLayout": "RESET LAYOUT",
@@ -343,8 +346,12 @@
       "checksum_valid": "Checksum valid",
       "frame_rate_min": "Minimum FPS",
       "byte_count_equals": "Frame size equals",
-      "hex_contains": "Hex pattern contains"
+      "hex_contains": "Hex pattern contains",
+      "rx_ack_always": "RX: Every TX got a response",
+      "latency_max": "RX: Latency limit",
+      "rx_hex_contains": "RX: Hex pattern contains"
     },
+    "maxLatencyMs": "Max ms",
     "messages": {
       "disabled": "Test disabled",
       "noFrames": "No frames",
@@ -366,6 +373,15 @@
       "noHexPattern": "Hex pattern not specified",
       "hexOk": "All frames contain '{pattern}' ✓",
       "hexError": "{count} frames do not contain '{pattern}'",
+      "noExchanges": "No exchange data",
+      "allAcked": "{count} exchanges, all acknowledged ✓",
+      "missingAck": "{count}/{total} exchanges received no response",
+      "noLatencyData": "No latency data available",
+      "latencyOk": "Avg latency {avg}ms < {max}ms ✓",
+      "latencyFail": "{count} exchanges exceeded {max}ms (worst: {worst}ms)",
+      "noRxData": "No RX data",
+      "rxHexOk": "Found '{pattern}' in {count} RX packets ✓",
+      "rxHexFail": "'{pattern}' not found in any of {total} RX packets",
       "unknown": "Unknown assertion"
     }
   },
@@ -593,12 +609,47 @@
     "txOut": "TX OUT",
     "rxIn": "RX IN"
   },
+  "profileCompare": {
+    "title": "Profile Comparison",
+    "profileA": "Profile A",
+    "profileB": "Profile B",
+    "field": "Field",
+    "fieldsA": "{count} fields",
+    "fieldsB": "{count} fields",
+    "sameProfile": "⚠ Same profile selected",
+    "structureDiff": "Structure Comparison",
+    "frameSize": "Frame Size & Field Layout",
+    "noProfiles": "Create at least one profile to compare",
+    "selectTwo": "Select two profiles to compare"
+  },
+  "playback": {
+    "activePlayer": "Active Player",
+    "activeSub": "Replaying recorded frames",
+    "stepBack": "Step Back",
+    "stepForward": "Step Forward",
+    "packetIndex": "Packet #{index}",
+    "packetTotal": "{count} packets",
+    "library": "Recording Library",
+    "librarySub": "Saved simulations",
+    "refreshList": "Refresh list",
+    "play": "Play",
+    "packetCount": "Packet Count",
+    "totalDuration": "Total Duration",
+    "noRecordings": "No Recordings",
+    "recHelp": "Start simulation and press the RECORD button",
+    "saveAsScenario": "Save as scenario",
+    "scenarioSaved": "Scenario saved!",
+    "scenarioFromRecording": "Scenario from recording"
+  },
   "conversationMonitor": {
     "title": "Live Encounter Log",
     "waitingTraffic": "Waiting for traffic...",
     "incoming": "Incoming Packet",
     "ruleTriggered": "Rule Triggered",
-    "autoResponse": "Auto Response"
+    "autoResponse": "Auto Response",
+    "filterAll": "All",
+    "filterMatch": "Match",
+    "noMatchFilter": "No entries match this filter"
   },
   "exchangeMonitor": {
     "title": "Advanced Comparison Analysis",

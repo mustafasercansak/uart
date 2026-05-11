@@ -74,6 +74,7 @@ export function useUIUpdateLoop({
                 masterBatch.lastFrame = frameWithUid;
                 masterBatch.status = msg.status;
                 masterBatch.profileId = msg.selectedProfileId;
+                masterBatch.pendingErrors = msg.pendingErrors;
                 latestElapsed = msg.elapsedMs;
 
                 // Write directly to ref — no React state allocation, no re-render

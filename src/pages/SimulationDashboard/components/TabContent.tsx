@@ -17,6 +17,9 @@ import ProtocolDecoderPanel from './ProtocolDecoderPanel';
 import TestSuiteRunner from './TestSuiteRunner';
 import ErrorReportPanel from './ErrorReportPanel';
 import FrameBuilder from './FrameBuilder';
+import ExchangeMonitor from './ExchangeMonitor';
+import ConversationMonitor from './ConversationMonitor';
+import ProfileCompare from './ProfileCompare';
 import WaveformDesigner from './WaveformDesigner';
 import { GeneratedFrame, FrameProfile, SimulationState } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
@@ -43,6 +46,7 @@ interface TabContentProps {
     setTriggers: (triggers: import('../../../types').Trigger[]) => void;
     clearExchanges: () => void;
     onSendFrame?: (bytes: number[]) => void;
+    selectExchange?: (id: string | null) => void;
   };
   elapsedMs?: number;
   frameCount?: number;
@@ -188,6 +192,7 @@ export default function TabContent({
         <TestSuiteRunner
           frames={recentFrames}
           profile={selectedProfile}
+          exchanges={exchanges}
         />
       );
     case 'report':
@@ -234,6 +239,27 @@ export default function TabContent({
         <LearningMode
           lastFrame={lastFrame}
           activeProfile={selectedProfile}
+        />
+      );
+    case 'exchange':
+      return (
+        <ExchangeMonitor
+          exchanges={exchanges}
+          isLoopbackMode={!(state.serialConnected || state.networkConnected)}
+          selectedId={state.selectedExchangeId ?? undefined}
+          onSelect={(id) => hooks.selectExchange?.(id)}
+        />
+      );
+    case 'conversation':
+      return (
+        <ConversationMonitor
+          entries={state.conversationLogs}
+        />
+      );
+    case 'profile-compare':
+      return (
+        <ProfileCompare
+          profiles={profiles}
         />
       );
     default:
