@@ -27,6 +27,7 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
     { path: '/scenarios', label: t('nav.scenarios'), icon: '⏱' },
     { path: '/designer', label: t('nav.designer'), icon: '🔌' },
     { path: '/templates', label: t('nav.templates'), icon: '📦' },
+    { path: '/protocols', label: t('nav.protocols'), icon: '⬡' },
   ];
 
   return (

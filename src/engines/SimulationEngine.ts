@@ -354,14 +354,15 @@ export class SimulationEngine {
       setTimeout(() => {
         switch (action.type) {
           case 'send_raw': {
-            const bytes = this.parsePattern(action.payload, 'hex');
-            console.log(`\x1b[32m[RESP]\x1b[0m Yanıt gönderiliyor: ${action.payload}`);
-            
+            const rawPayload = action.payload ?? '';
+            const bytes = this.parsePattern(rawPayload, 'hex');
+            console.log(`\x1b[32m[RESP]\x1b[0m Yanıt gönderiliyor: ${rawPayload}`);
+
             const txEntry: ConversationEntry = {
                 id: uuidv4(),
                 timestamp: Date.now(),
                 type: 'tx',
-                rawHex: action.payload,
+                rawHex: rawPayload,
                 linkedId: matchId
             };
             this.addLog(txEntry);
@@ -378,10 +379,10 @@ export class SimulationEngine {
             break;
           }
           case 'inject_error':
-            this.injectError(action.payload as import('../types').ErrorType);
+            this.injectError((action.payload ?? '') as import('../types').ErrorType);
             break;
           case 'set_field': {
-            const [fieldId, value] = action.payload.split(':');
+            const [fieldId, value] = (action.payload ?? '').split(':');
             this.state.fieldOverrides[fieldId] = parseFloat(value);
             break;
           }

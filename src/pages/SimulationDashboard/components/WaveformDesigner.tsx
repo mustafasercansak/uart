@@ -24,28 +24,28 @@ interface Point {
 
 const WAVEFORM_STORAGE_KEY = 'uart_saved_waveforms';
 
-const FORMULA_SNIPPETS = [
-  { label: 'sin', insert: 'sin(x)', desc: 'Sinüs' },
-  { label: 'cos', insert: 'cos(x)', desc: 'Kosinüs' },
-  { label: 'tan', insert: 'tan(x)', desc: 'Tanjant' },
-  { label: 'abs', insert: 'abs(x)', desc: 'Mutlak değer' },
-  { label: 'sqrt', insert: 'sqrt(x)', desc: 'Karekök' },
-  { label: 'pow', insert: 'pow(x,2)', desc: 'Üs alma' },
-  { label: 'log', insert: 'log(x)', desc: 'Doğal log' },
-  { label: 'floor', insert: 'floor(x)', desc: 'Aşağı yuvarla' },
-  { label: 'PI', insert: 'PI', desc: 'π = 3.14159…' },
-  { label: 'x%1', insert: '(x % 1)', desc: 'Modulo (kırık kısım)' },
+const FORMULA_SNIPPET_KEYS = [
+  { label: 'sin', insert: 'sin(x)', descKey: 'waveformDesigner.snippets.sin' },
+  { label: 'cos', insert: 'cos(x)', descKey: 'waveformDesigner.snippets.cos' },
+  { label: 'tan', insert: 'tan(x)', descKey: 'waveformDesigner.snippets.tan' },
+  { label: 'abs', insert: 'abs(x)', descKey: 'waveformDesigner.snippets.abs' },
+  { label: 'sqrt', insert: 'sqrt(x)', descKey: 'waveformDesigner.snippets.sqrt' },
+  { label: 'pow', insert: 'pow(x,2)', descKey: 'waveformDesigner.snippets.pow' },
+  { label: 'log', insert: 'log(x)', descKey: 'waveformDesigner.snippets.log' },
+  { label: 'floor', insert: 'floor(x)', descKey: 'waveformDesigner.snippets.floor' },
+  { label: 'PI', insert: 'PI', descKey: 'waveformDesigner.snippets.pi' },
+  { label: 'x%1', insert: '(x % 1)', descKey: 'waveformDesigner.snippets.modulo' },
 ];
 
-const FORMULA_EXAMPLES = [
-  { formula: 'sin(x)', desc: 'Temel sinüs dalgası' },
-  { formula: 'abs(sin(x))', desc: 'Tam dalga doğrulayıcı' },
-  { formula: 'sin(x) * cos(x / 2)', desc: 'Modüle sinüs' },
-  { formula: '(x % (2 * PI)) / (2 * PI)', desc: 'Testere dişi' },
-  { formula: 'sin(x) > 0 ? 1 : 0', desc: 'Kare dalga' },
-  { formula: 'sin(x) + sin(3*x)/3 + sin(5*x)/5', desc: 'Fourier kare dalga' },
-  { formula: 'sin(x * (1 + x / 20))', desc: 'Frekans artışı (chirp)' },
-  { formula: 'exp(-x / 10) * sin(x)', desc: 'Sönümlü titreşim' },
+const FORMULA_EXAMPLE_KEYS = [
+  { formula: 'sin(x)', descKey: 'waveformDesigner.examples.basicSine' },
+  { formula: 'abs(sin(x))', descKey: 'waveformDesigner.examples.fullWave' },
+  { formula: 'sin(x) * cos(x / 2)', descKey: 'waveformDesigner.examples.modSine' },
+  { formula: '(x % (2 * PI)) / (2 * PI)', descKey: 'waveformDesigner.examples.sawtooth' },
+  { formula: 'sin(x) > 0 ? 1 : 0', descKey: 'waveformDesigner.examples.square' },
+  { formula: 'sin(x) + sin(3*x)/3 + sin(5*x)/5', descKey: 'waveformDesigner.examples.fourier' },
+  { formula: 'sin(x * (1 + x / 20))', descKey: 'waveformDesigner.examples.chirp' },
+  { formula: 'exp(-x / 10) * sin(x)', descKey: 'waveformDesigner.examples.damped' },
 ];
 
 export default function WaveformDesigner() {
@@ -297,10 +297,10 @@ export default function WaveformDesigner() {
       const existing = JSON.parse(localStorage.getItem(WAVEFORM_STORAGE_KEY) ?? '[]') as Array<{ name: string; data: number[] }>;
       existing.push({ name, data: normalized });
       localStorage.setItem(WAVEFORM_STORAGE_KEY, JSON.stringify(existing));
-      setSaveMsg('Kaydedildi');
+      setSaveMsg(t('waveformDesigner.saved'));
       refreshSaved();
     } catch {
-      setSaveMsg('Hata');
+      setSaveMsg(t('waveformDesigner.saveError'));
     }
     setTimeout(() => setSaveMsg(null), 2000);
   };
@@ -383,7 +383,7 @@ export default function WaveformDesigner() {
             <button
               onClick={() => { setMode('saved'); refreshSaved(); }}
               className={`p-1.5 rounded-md transition-all relative ${mode === 'saved' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-              title="Kaydedilenler"
+              title={t('waveformDesigner.savedWaveforms')}
             >
               <Save size={14} />
               {savedWaveforms.length > 0 && (
@@ -425,13 +425,13 @@ export default function WaveformDesigner() {
 
               {/* Function chips */}
               <div>
-                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">Fonksiyonlar</div>
+                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">{t('waveformDesigner.functionChips')}</div>
                 <div className="flex flex-wrap gap-1">
-                  {FORMULA_SNIPPETS.map(s => (
+                  {FORMULA_SNIPPET_KEYS.map(s => (
                     <button
                       key={s.insert}
                       onClick={() => insertSnippet(s.insert)}
-                      title={s.desc}
+                      title={t(s.descKey)}
                       className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-blue-900/50 bg-blue-950/30 text-blue-400 hover:bg-blue-800/40 hover:text-blue-200 transition-all"
                     >
                       {s.label}
@@ -442,16 +442,16 @@ export default function WaveformDesigner() {
 
               {/* Quick examples */}
               <div>
-                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">Hazır Formüller</div>
+                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">{t('waveformDesigner.quickFormulas')}</div>
                 <div className="space-y-1">
-                  {FORMULA_EXAMPLES.map(ex => (
+                  {FORMULA_EXAMPLE_KEYS.map(ex => (
                     <button
                       key={ex.formula}
                       onClick={() => { setFormula(ex.formula); setTimeout(applyFormula, 0); }}
                       className="w-full text-left px-2 py-1.5 rounded border border-gray-800/50 bg-gray-900/40 hover:bg-gray-800/60 transition-all group"
                     >
                       <div className="text-[9px] font-mono text-blue-300 group-hover:text-blue-200">{ex.formula}</div>
-                      <div className="text-[8px] text-gray-600 group-hover:text-gray-500 mt-0.5">{ex.desc}</div>
+                      <div className="text-[8px] text-gray-600 group-hover:text-gray-500 mt-0.5">{t(ex.descKey)}</div>
                     </button>
                   ))}
                 </div>
@@ -507,9 +507,9 @@ export default function WaveformDesigner() {
 
           {mode === 'saved' && (
             <div className="glass-panel p-3 rounded-xl border-white/5 space-y-2 overflow-y-auto max-h-[350px] custom-scrollbar">
-              <label className="text-[9px] font-mono uppercase text-gray-500 tracking-tighter block mb-2">Kaydedilenler</label>
+              <label className="text-[9px] font-mono uppercase text-gray-500 tracking-tighter block mb-2">{t('waveformDesigner.savedWaveforms')}</label>
               {savedWaveforms.length === 0 ? (
-                <div className="text-[9px] text-gray-700 italic text-center py-4">Henüz kayıt yok</div>
+                <div className="text-[9px] text-gray-700 italic text-center py-4">{t('waveformDesigner.noSaved')}</div>
               ) : savedWaveforms.map((w, i) => (
                 <div key={i} className="flex items-center gap-2 p-2 bg-gray-900/50 border border-white/5 rounded-lg hover:border-white/20 transition-all group">
                   <button

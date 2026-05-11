@@ -1,6 +1,6 @@
 export interface ResponderAction {
-  type: 'send_raw' | 'set_field' | 'inject_error';
-  payload: string;
+  type: 'send_raw' | 'set_field' | 'inject_error' | 'pause' | 'stop';
+  payload?: string;
   delayMs?: number;
 }
 
