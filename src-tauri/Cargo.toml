@@ -1,6 +1,6 @@
 [package]
 name = "uart"
-version = "1.5.23"
+version = "1.5.24"
 edition = "2024"
 
 [lib]

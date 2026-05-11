@@ -4,6 +4,12 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
+## [v1.5.24] — 2026-05-11
+### 🚀 Release v1.5.24
+- Yeni sürüm yayınlandı.
+
+---
+
 ## [v1.5.23] — 2026-05-09
 ### 🚀 Release v1.5.23
 - **Otomatik Güncelleme Sistemi (Auto-Updater)**: Tauri v2 altyapısı kullanılarak kesintisiz güncelleme desteği eklendi. Uygulama artık yeni sürümleri arka planda kontrol edip kullanıcıya sunabiliyor.
