@@ -79,7 +79,8 @@ const IGNORE_VALUES = new Set([
     'Hanning', 'Hamming', 'CCITT', 'Modbus', 'RTU', 'NMEA', 'Big Endian', 'Little Endian',
     'Courier New', 'Arial', 'Roboto', 'Inter', 'monospace', 'sans-serif',
     'borderRadius', 'fontSize', 'fontWeight', 'lineHeight', 'padding', 'margin',
-    'transparent', 'inherit', 'initial', 'unset', 'auto'
+    'transparent', 'inherit', 'initial', 'unset', 'auto',
+    'ms', 'Hz', 'MHz', 'kHz', 'BPM', 'mmHg', 'cmH2O', 'mL', 'mL/h', 'L/min', 'sec', 'min', 'sa', 'dk', 'sn'
 ]);
 
 interface HardcodedString {
@@ -118,7 +119,7 @@ function scanFile(filePath: string): HardcodedString[] {
                 !IGNORE_VALUES.has(text) &&
                 !IGNORE_VALUES.has(text.toLowerCase()) &&
                 !/^[0-9\s.,:;/%-]+$/.test(text) &&
-                !/^[0-9.]+(ms|Hz|BPM|MB\/s|s|h|m|sa|dk|sn|%|V|A|W)$/.test(text)) {
+                !/^[0-9.]+(ms|Hz|BPM|MB\/s|s|h|m|sa|dk|sn|%|V|A|W|px|rem|vh|vw|mmHg|cmH2O|mL|mL\/h|L\/min)$/.test(text)) {
                 
                 // Filter out code-like fragments often found in JSX text by mistake (e.g. inside brackets)
                 const isCodeLikeText = text.includes('&&') || text.includes('||') || text.includes('==') || 
