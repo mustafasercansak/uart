@@ -34,7 +34,16 @@ const VISIBLE_ATTRIBUTES = [
     'helperText',
     'caption',
     'tooltip',
-    'description'
+    'description',
+    'aria-label',
+    'aria-placeholder',
+    'aria-description',
+    'headerName',
+    'header',
+    'footer',
+    'buttonText',
+    'confirmText',
+    'cancelText'
 ];
 
 // Common MUI/Technical values to ignore
@@ -275,7 +284,9 @@ describe('I18n Compliance', () => {
         // For now, let's just log them and not fail if it's the first run, 
         // OR fail it to be strict. The user asked to "detect" them.
         // Threshold-based compliance: fail if new hardcoded strings are added
-        const BASELINE = 145;
-        expect(allFindings.length, `Found ${allFindings.length} hardcoded strings. Baseline is ${BASELINE}. Please translate new strings.`).toBeLessThanOrEqual(BASELINE);
+        // Fail on ANY hardcoded string found. 
+        // We set it to 0 to ensure 100% compliance.
+        const BASELINE = 0;
+        expect(allFindings.length, `Found ${allFindings.length} hardcoded strings. Please translate them using the t() function.`).toBeLessThanOrEqual(BASELINE);
     });
 });
