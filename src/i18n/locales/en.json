@@ -664,6 +664,28 @@
     "mirroringData": "Mirroring data...",
     "waitingDevice": "Waiting for device..."
   },
+  "helpModal": {
+    "title": "System Help & Documentation",
+    "subtitle": "UART Simulator usage details and technical references",
+    "loading": "Preparing Document...",
+    "docVersion": "Documentation Version: v1.3",
+    "loadError": "Error loading document.",
+    "userGuide": "User Guide",
+    "quickHelp": "Quick Help",
+    "readme": "README"
+  },
+  "diffLab": {
+    "title": "Protocol Comparison Lab",
+    "description": "Select two packets to compare. You can add packets here by clicking 'Compare' in the history list or snapshots.",
+    "analysisTitle": "Differential Analysis",
+    "reset": "RESET",
+    "referencePacket": "Reference Packet (A)",
+    "testPacket": "Test Packet (B)",
+    "bitChangeMap": "Bit-Level Change Map (B)",
+    "tip": "Tip: Highlighted areas show value changes between packets. The bit-level map shows changes in packet (B) relative to (A).",
+    "bitTooltip": "Byte {byteIdx}, Bit {bitIdx}",
+    "byteDetail": "Byte {index} ({name}) Detail:"
+  },
   "visualAnalyzer": {
     "title": "Visual Protocol Stream Analyzer",
     "waitingData": "NO ACTIVE DATA FLOW DETECTED",
