@@ -417,6 +417,11 @@
     "hexPlaceholder": "Hex yapıştır: AA 01 03 00 00 veya AA,01,03,00,00",
     "load": "Yükle",
     "history": "Gönderim Geçmişi",
+    "insertAfter": "Sonrasına bayt ekle",
+    "delete": "Sil",
+    "copy": "Kopyala",
+    "resend": "Tekrar Gönder",
+    "noCalculation": "Hesaplama Yok",
     "resendNote": "Geçmişten tekrar gönderildi",
     "hex": "Hex:",
     "checksum": "Sağlama:",
@@ -431,6 +436,26 @@
     "header": "Başlık",
     "frameBuilder": "Paket Oluşturucu",
     "waveformDesigner": "Dalga Formu Tasarımcısı"
+  },
+  "visualAnalyzer": {
+    "title": "Görsel Protokol Akış Analizörü",
+    "waitingData": "AKTİF VERİ AKIŞI TESPİT EDİLMEDİ",
+    "byteDetail": "Bayt {index} ({name}) Detayı:",
+    "bit": "Bit {index}"
+  },
+  "waveformCharts": {
+    "signalMonitor": "Sinyal Monitörü · Dalga Formları",
+    "dataChannels": "Veri Kanalları",
+    "listView": "Liste görünümü",
+    "gridView": "Izgara görünümü (Sürükle & Bırak)",
+    "labCursors": "LAB İMLEÇLERİ",
+    "measurement": "Ölçüm (Lab)",
+    "deltaT": "Δt:",
+    "frequency": "Frekans (Yaklaşık)",
+    "resetCursors": "İmleçleri Sıfırla",
+    "openChannels": "Yukarıdan kanalları açın — ızgaraya eklenecektir",
+    "cursorsToggle": "Lab Ölçüm İmleçlerini Aç/Kapat",
+    "live": "CANLI"
   },
   "waveformDesigner": {
     "title": "Dalga Formu Tasarımcısı",
@@ -653,6 +678,37 @@
     "userGuide": "Kullanım Kılavuzu",
     "quickHelp": "Hızlı Yardım",
     "readme": "BENİ OKU"
+  },
+  "helpPage": {
+    "backToSystem": "Sisteme Geri Dön",
+    "archiveTitle": "Dokümantasyon Arşivi",
+    "archiveSubtitle": "Resmi UART Simülatörü Bilgi Bankası",
+    "systemVersion": "Sistem Sürümü:",
+    "guideSelection": "Kılavuz Seçimi",
+    "techNote": "Teknik Not",
+    "techNoteText": "Dokümantasyon portalı her sürümle birlikte güncellenir.",
+    "loadingText": "Bilgi Paketi Çözülüyor",
+    "scrollTop": "EN ÜSTE ÇIK ↑",
+    "loadError": "# Hata\nDoküman yüklenirken bir sorun oluştu.",
+    "masterTitle": "Mühendislik El Kitabı (v1.3)",
+    "readmeTitle": "Teknik Referans",
+    "masterLang": "Çift Dilli",
+    "readmeLang": "Geliştirici",
+    "developer": "Mustafa Sercan Sak",
+    "date": "16 Nisan 2026"
+  },
+  "telemetryPanel": {
+    "waitingData": "Veri akışı bekleniyor...",
+    "startSimulation": "Simülasyonu başlatın veya harici cihaz bağlayın",
+    "dashboardReady": "Panel Hazır",
+    "noWidgets": "Henüz widget eklenmedi.",
+    "pinFromSidebar": "Profil kenar çubuğundan alanları sabitleyebilir veya canlı akıştaki Dissector aracını kullanabilirsiniz.",
+    "applyTemplate": "Akıllı Yerleşimi Uygula",
+    "loadWidgets": "{name} widget'larını yükle",
+    "pinInstructions": "KENAR ÇUBUĞUNDAN VEYA DISSECTOR'DAN ALANLARI SABİTLEYİN",
+    "autoSave": "Otomatik Kayıt Aktif",
+    "monitor": "Monitör",
+    "designerMode": "Tasarımcı Modu"
   },
   "diffLab": {
     "title": "Protokol Karşılaştırma Laboratuvarı",
