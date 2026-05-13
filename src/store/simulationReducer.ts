@@ -85,6 +85,22 @@ export const INITIAL_STATE: SimulationState = {
   activeSequenceId: null
 };
 
+/**
+ * Merges a raw persisted object with INITIAL_STATE so that any fields added
+ * after the user last saved (e.g. signalIntegrity) always have safe defaults.
+ */
+export function validateAndMigrateState(raw: Record<string, unknown>): Partial<SimulationState> {
+  const result: Partial<SimulationState> = {};
+  for (const key of Object.keys(INITIAL_STATE) as Array<keyof SimulationState>) {
+    if (key in raw && raw[key] !== undefined && raw[key] !== null) {
+      (result as Record<string, unknown>)[key] = raw[key];
+    } else {
+      (result as Record<string, unknown>)[key] = INITIAL_STATE[key];
+    }
+  }
+  return result;
+}
+
 export type SimAction =
   | { type: 'START'; profileId: string; scenarioId: string | null; outputMode: OutputMode }
   | { type: 'STOP' }
