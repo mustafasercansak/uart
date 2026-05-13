@@ -22,7 +22,7 @@ import type {
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
-import { reducer, INITIAL_STATE } from './simulationReducer';
+import { reducer, INITIAL_STATE, validateAndMigrateState } from './simulationReducer';
 import { useSimulationEngine } from './useSimulationEngine';
 import { useUIUpdateLoop } from './useUIUpdateLoop';
 import { invoke } from '../lib/tauri-bridge';
@@ -88,19 +88,14 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         catch { return {}; }
       })();
       const last = loadLastSettings();
+      const migrated = validateAndMigrateState({ ...parsed, telemetryLayouts: layouts });
       dispatch({
         type: 'INIT_STATE', newState: {
-          watchlist: Array.isArray(parsed.watchlist) ? parsed.watchlist : [],
-          snapshots: Array.isArray(parsed.snapshots) ? parsed.snapshots : [],
-          analyzerMode: typeof parsed.analyzerMode === 'boolean' ? parsed.analyzerMode : true,
-          telemetryLayouts: layouts && typeof layouts === 'object' ? layouts : {},
-          dashboardLayout: parsed.dashboardLayout && typeof parsed.dashboardLayout === 'object' && !Array.isArray(parsed.dashboardLayout)
-            ? parsed.dashboardLayout as SimulationState['dashboardLayout']
-            : { widgets: [] },
+          ...migrated,
           sequences: loadSequences(),
           profileId: last.profileId,
           scenarioId: last.scenarioId,
-          outputMode: (last.outputMode as SimulationState['outputMode']) || 'log',
+          outputMode: (last.outputMode as SimulationState['outputMode']) || migrated.outputMode || 'log',
         }
       });
       isInitializedRef.current = true;
@@ -116,10 +111,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       watchlist: state.watchlist,
       snapshots: state.snapshots,
       analyzerMode: state.analyzerMode,
-      dashboardLayout: state.dashboardLayout
+      dashboardLayout: state.dashboardLayout,
+      signalIntegrity: state.signalIntegrity,
     };
     localStorage.setItem('uart_pro_state', JSON.stringify(toPersist));
-  }, [state.watchlist, state.snapshots, state.analyzerMode, state.dashboardLayout]);
+  }, [state.watchlist, state.snapshots, state.analyzerMode, state.dashboardLayout, state.signalIntegrity]);
 
   // ── MEDICAL VALIDATION MONITORING ────────────────────────────────────────────
   React.useEffect(() => {

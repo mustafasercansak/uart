@@ -581,11 +581,12 @@ export class SimulationEngine {
       scenarioUpdates = result.updates;
     }
 
-    // Update internal state
+    // Update internal state — preserve required fields that scenarios must not clobber
     this.state = {
       ...this.state,
       ...scenarioUpdates,
       frameCount: this.frameCount,
+      signalIntegrity: this.state.signalIntegrity,
     };
 
     // Generate frame

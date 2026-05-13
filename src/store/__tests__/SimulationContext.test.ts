@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reducer, INITIAL_STATE, SimAction } from '../simulationReducer';
+import { reducer, INITIAL_STATE, validateAndMigrateState, SimAction } from '../simulationReducer';
 
 describe('SimulationContext Reducer', () => {
     it('handles START action', () => {
@@ -68,5 +68,38 @@ describe('SimulationContext Reducer', () => {
     it('handles INJECT_ERROR by queueing', () => {
         const state = reducer(INITIAL_STATE, { type: 'INJECT_ERROR', errorType: 'corrupt_checksum' });
         expect(state.pendingErrors).toEqual(['corrupt_checksum']);
+    });
+});
+
+describe('validateAndMigrateState', () => {
+    it('fills missing fields with INITIAL_STATE defaults', () => {
+        const result = validateAndMigrateState({});
+        expect(result.signalIntegrity).toEqual(INITIAL_STATE.signalIntegrity);
+        expect(result.status).toBe(INITIAL_STATE.status);
+        expect(result.dashboardLayout).toEqual(INITIAL_STATE.dashboardLayout);
+    });
+
+    it('preserves existing valid fields', () => {
+        const result = validateAndMigrateState({
+            signalIntegrity: { noiseLevel: 0.5, jitterMs: 10, bitFlipsEnabled: true },
+            analyzerMode: false,
+        });
+        expect(result.signalIntegrity).toEqual({ noiseLevel: 0.5, jitterMs: 10, bitFlipsEnabled: true });
+        expect(result.analyzerMode).toBe(false);
+    });
+
+    it('replaces null/undefined fields with defaults', () => {
+        const result = validateAndMigrateState({ signalIntegrity: null, analyzerMode: undefined });
+        expect(result.signalIntegrity).toEqual(INITIAL_STATE.signalIntegrity);
+        expect(result.analyzerMode).toBe(INITIAL_STATE.analyzerMode);
+    });
+
+    it('INIT_STATE with missing signalIntegrity does not crash reducer', () => {
+        const stateWithoutSignal = reducer(INITIAL_STATE, {
+            type: 'INIT_STATE',
+            newState: validateAndMigrateState({ analyzerMode: false }),
+        });
+        expect(stateWithoutSignal.signalIntegrity).toEqual(INITIAL_STATE.signalIntegrity);
+        expect(stateWithoutSignal.analyzerMode).toBe(false);
     });
 });
