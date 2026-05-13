@@ -23,7 +23,7 @@
     "url": "https://github.com/mustafasercansak/uart/issues"
   },
   "private": true,
-  "version": "1.5.23",
+  "version": "1.5.25",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"

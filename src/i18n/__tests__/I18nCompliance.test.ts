@@ -21,8 +21,33 @@ function getFiles(dir: string, extension: string): string[] {
     return results;
 }
 
+function getSourceFiles(dir: string): string[] {
+    let results: string[] = [];
+    const list = fs.readdirSync(dir);
+
+    list.forEach((file: string) => {
+        const fullPath = path.resolve(dir, file);
+        const stat = fs.statSync(fullPath);
+
+        if (stat && stat.isDirectory()) {
+            if (!fullPath.includes('node_modules') && !fullPath.includes('__tests__') && !fullPath.includes('dist')) {
+                results = results.concat(getSourceFiles(fullPath));
+            }
+            return;
+        }
+
+        if (/\.(ts|tsx|js|jsx)$/.test(fullPath)) {
+            results.push(fullPath);
+        }
+    });
+
+    return results;
+}
+
 const PROJECT_ROOT = path.resolve(process.cwd());
 const SRC_DIR = path.join(PROJECT_ROOT, 'src');
+const TR_PATH = path.resolve('src/i18n/locales/tr.json');
+const tr = JSON.parse(fs.readFileSync(TR_PATH, 'utf8')) as Record<string, unknown>;
 
 // Common attributes that often contain user-visible text
 const VISIBLE_ATTRIBUTES = [
@@ -266,6 +291,39 @@ function scanFile(filePath: string): HardcodedString[] {
     return findings;
 }
 
+function collectStaticTranslationKeys(filePath: string): string[] {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const keys = new Set<string>();
+    const keyPattern = /\bt\(\s*(['"`])([^'"`$]+)\1/g;
+
+    let match: RegExpExecArray | null;
+    while ((match = keyPattern.exec(content)) !== null) {
+        const key = match[2].trim();
+        if (key) {
+            keys.add(key);
+        }
+    }
+
+    return Array.from(keys);
+}
+
+function flattenTranslationKeys(obj: Record<string, unknown>, prefix = ''): string[] {
+    return Object.keys(obj).flatMap((key) => {
+        const value = obj[key];
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+
+        if (Array.isArray(value)) {
+            return [fullKey];
+        }
+
+        if (typeof value === 'object' && value !== null) {
+            return flattenTranslationKeys(value as Record<string, unknown>, fullKey);
+        }
+
+        return [fullKey];
+    });
+}
+
 describe('I18n Compliance', () => {
     it('should not have hardcoded strings in components', () => {
         const tsxFiles = getFiles(SRC_DIR, '.tsx');
@@ -307,5 +365,23 @@ describe('I18n Compliance', () => {
         // We set it to 0 to ensure 100% compliance.
         const BASELINE = 0;
         expect(allFindings.length, `Found ${allFindings.length} hardcoded strings. Please translate them using the t() function.`).toBeLessThanOrEqual(BASELINE);
+    });
+
+    it('should provide every static translation key used in src', () => {
+        const sourceFiles = getSourceFiles(SRC_DIR);
+        const usedKeys = new Set<string>();
+
+        sourceFiles.forEach((file) => {
+            collectStaticTranslationKeys(file).forEach((key) => usedKeys.add(key));
+        });
+
+        const trKeys = new Set(flattenTranslationKeys(tr));
+        const missingInTr = Array.from(usedKeys).filter((key) => !trKeys.has(key));
+
+        const errorMessage = missingInTr.length > 0
+            ? `Missing in tr.json:\n  - ${missingInTr.join('\n  - ')}`
+            : '';
+
+        expect(errorMessage, errorMessage).toBe('');
     });
 });

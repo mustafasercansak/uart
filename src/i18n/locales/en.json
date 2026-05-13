@@ -85,7 +85,8 @@
     "statusStarted": "Started",
     "statusProgress": "Progress",
     "statusFinished": "Finished",
-    "hz": "Hz"
+    "hz": "Hz",
+    "injection": "Inject Error"
   },
   "statBar": {
     "serialPort": "Serial Port (COM)",
@@ -373,7 +374,8 @@
     "reflectIn": "Reflect In",
     "reflectOut": "Reflect Out",
     "bitLabel": "Bit {index}",
-    "jsEs6": "JS / ES6+"
+    "jsEs6": "JS / ES6+",
+    "bit0": "Bit 0"
   },
   "validation": {
     "sessionActive": "VALIDATION SESSION ACTIVE",
@@ -727,7 +729,8 @@
     "newScenarioName": "New Scenario",
     "unnamed": "Unnamed",
     "copyOf": "(Copy)",
-    "targetPlaceholder": "e.g: field:SpO2"
+    "targetPlaceholder": "e.g: field:SpO2",
+    "templates": "Templates"
   },
   "profileCompare": {
     "title": "Profile Comparison",
@@ -1300,6 +1303,56 @@
     "frameCount_plural": "{count} frames",
     "modbusRtu": "Modbus RTU",
     "nmea0183": "NMEA 0183"
+  },
+  "logic": {
+    "waiting": "Waiting for signal\u2026",
+    "start": "START",
+    "stop": "STOP",
+    "parity": "PARITY",
+    "deltaT": "\u0394T",
+    "freq": "Freq",
+    "title": "Logic Analyzer",
+    "zoom": "Zoom",
+    "clearCursors": "Clear Cursors",
+    "running": "Running",
+    "paused": "Paused",
+    "txLine": "UART TX",
+    "scrollInstr": "Scroll: drag / wheel",
+    "zoomInstr": "Zoom: Ctrl+wheel",
+    "measureInstr": "Measure: click to place cursor",
+    "noData": "No data \u2014 start simulation",
+    "ms": "{t} ms",
+    "resetCursors": "Reset Cursors",
+    "liveSync": "Live Sync",
+    "staticView": "Static View",
+    "uartTx": "UART TX",
+    "controls": {
+      "scroll": "Scroll: drag / wheel",
+      "zoom": "Zoom: Ctrl+wheel",
+      "measure": "Measure: click to place cursor"
+    },
+    "baud": "Baud:"
+  },
+  "triggerManager": {
+    "newTrigger": "New Trigger",
+    "unnamed": "Unnamed Trigger",
+    "title": "Trigger Manager",
+    "noRules": "No trigger rules defined.",
+    "ruleName": "Rule Name",
+    "condition": "Condition",
+    "conditionPlaceholder": "e.g. BPM > 150",
+    "action": "Action",
+    "save": "Save",
+    "cancel": "Cancel",
+    "active": "ACTIVE",
+    "criticalMonitor": "Critical Monitor",
+    "actionLabels": {
+      "stop_simulation": "Stop Simulation",
+      "start_recording": "Start Recording",
+      "log_warning": "Log Warning",
+      "inject_error": "Inject Error",
+      "set_field": "Set Field Value"
+    }
   }
 }
 

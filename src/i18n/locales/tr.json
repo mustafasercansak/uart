@@ -85,7 +85,8 @@
     "statusStarted": "Başlatıldı",
     "statusProgress": "İşleniyor",
     "statusFinished": "Tamamlandı",
-    "hz": "Hz"
+    "hz": "Hz",
+    "injection": "Hata Enjekte Et"
   },
   "statBar": {
     "serialPort": "Seri Port (COM)",
@@ -373,7 +374,8 @@
     "reflectIn": "Girişi Yansıt (Reflect In)",
     "reflectOut": "Çıkışı Yansıt (Reflect Out)",
     "bitLabel": "Bit {index}",
-    "jsEs6": "JS / ES6+"
+    "jsEs6": "JS / ES6+",
+    "bit0": "Bit 0"
   },
   "validation": {
     "startTitle": "Validasyon Oturumu Başlat",
@@ -747,7 +749,8 @@
     "newScenarioName": "Yeni Senaryo",
     "unnamed": "İsimsiz",
     "copyOf": "(Kopya)",
-    "targetPlaceholder": "örn: field:SpO2"
+    "targetPlaceholder": "örn: field:SpO2",
+    "templates": "Şablonlar"
   },
   "profileCompare": {
     "title": "Profil Karşılaştırma",
@@ -1291,14 +1294,64 @@
     "unknown": "Bilinmiyor",
     "auto": "Otomatik",
     "last": "Son",
-    "decodeError": "Çözümleme hatası",
-    "noMatch": "{protocol} eşleşmesi bulunamadı",
-    "noFrames": "Çözümlenecek frame yok",
+    "decodeError": "\u00c7\u00f6z\u00fcmleme hatas\u0131",
+    "noMatch": "{protocol} e\u015fle\u015fmesi bulunamad\u0131",
+    "noFrames": "\u00c7\u00f6z\u00fcmlenecek frame yok",
     "crcOk": "CRC TAMAM",
     "crcError": "CRC HATASI",
     "frameCount": "{count} frame",
     "frameCount_plural": "{count} frame",
     "modbusRtu": "Modbus RTU",
     "nmea0183": "NMEA 0183"
+  },
+  "logic": {
+    "waiting": "Sinyal bekleniyor\u2026",
+    "start": "BA\u015eLA",
+    "stop": "DUR",
+    "parity": "PAR\u0130TE",
+    "deltaT": "\u0394T",
+    "freq": "Frekans",
+    "title": "Lojik Anal\u0131z\u00f6r",
+    "zoom": "Yak\u0131nla\u015ft\u0131r",
+    "clearCursors": "\u0130mle\u00e7leri Temizle",
+    "running": "\u00c7al\u0131\u015f\u0131yor",
+    "paused": "Durduruldu",
+    "txLine": "UART TX",
+    "scrollInstr": "Kayd\u0131r: s\u00fcr\u00fckle / tekerlek",
+    "zoomInstr": "Yak\u0131nla\u015ft\u0131r: Ctrl+tekerlek",
+    "measureInstr": "\u00d6l\u00e7: imle\u00e7 yerle\u015ftirmek i\u00e7in t\u0131kla",
+    "noData": "Veri yok \u2014 sim\u00fclayon ba\u015flat\u0131n",
+    "ms": "{t} ms",
+    "resetCursors": "\u0130mle\u00e7leri S\u0131f\u0131rla",
+    "liveSync": "Canl\u0131 Senkron",
+    "staticView": "Statik G\u00f6r\u00fcn\u00fcm",
+    "uartTx": "UART TX",
+    "controls": {
+      "scroll": "Kayd\u0131r: s\u00fcr\u00fckle / tekerlek",
+      "zoom": "Yak\u0131nla\u015ft\u0131r: Ctrl+tekerlek",
+      "measure": "\u00d6l\u00e7: imle\u00e7 yerle\u015ftirmek i\u00e7in t\u0131kla"
+    },
+    "baud": "Baud:"
+  },
+  "triggerManager": {
+    "newTrigger": "Yeni Tetikleyici",
+    "unnamed": "\u0130simsiz Tetikleyici",
+    "title": "Tetikleyici Y\u00f6neticisi",
+    "noRules": "Hen\u00fcz tetikleyici kural\u0131 yok.",
+    "ruleName": "Kural Ad\u0131",
+    "condition": "Ko\u015ful",
+    "conditionPlaceholder": "\u00f6rn. BPM > 150",
+    "action": "Eylem",
+    "save": "Kaydet",
+    "cancel": "\u0130ptal",
+    "active": "AKT\u0130F",
+    "criticalMonitor": "Kritik \u0130zleme",
+    "actionLabels": {
+      "stop_simulation": "Sim\u00fclasyonu Durdur",
+      "start_recording": "Kayd\u0131 Ba\u015flat",
+      "log_warning": "Uyar\u0131 Kaydet",
+      "inject_error": "Hata Enjekte Et",
+      "set_field": "Alan De\u011feri Ata"
+    }
   }
 }

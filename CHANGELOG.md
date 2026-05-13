@@ -4,6 +4,28 @@ Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (
 
 ---
 
+## [v1.5.25] — 2026-05-13
+### 🚀 Release v1.5.25
+- **I18n Compliance Test Suite**: Tüm kaynak dosyaları tarayıp `t('...')` çeviri anahtarlarını kontrol eden otomatik test eklendi. Eksik çeviriler geliştirme ve CI aşamalarında artık hemen yakalanıyor.
+- **44 Eksik Çeviri Anahtarı Tamamlanması**: Logic Analyzer ve Trigger Manager bileşenleri için:
+  - `logic.*` bloğu (19 anahtar): Waiting for signal, START, STOP, PARITY, ΔT, Freq, Logic Analyzer, Zoom, Clear Cursors, Running, Paused, UART TX, scroll/zoom/measure instructions, No data, Reset Cursors, Live Sync, Static View, Baud
+  - `triggerManager.*` bloğu (14 anahtar): New Trigger, Unnamed Trigger, Trigger Manager, No Rules, Rule Name, Condition, Action, Save, Cancel, ACTIVE, Critical Monitor ve action labels (Stop Simulation, Start Recording, Log Warning, Inject Error, Set Field Value)
+  - İzole anahtarlar: `common.injection`, `profileEditor.bit0`, `scenarioEditor.templates`
+- **Yerelleştirme Altyapısı**: I18n uygunluk testleri (I18nCompliance, LocaleParity) artık tüm eksik çevirileri ve dil parity kontrolleri otomatik yapıyor.
+
+---
+
+## [v1.5.24] — 2026-05-11
+### 🚀 Release v1.5.24
+- **Konuşma ve Veri Alış-Verişi İzleme**: ConversationMonitor ve ExchangeMonitor bileşenleri eklenerek gerçek zamanlı iletişim günlükleri ve veri akışı görselleştirildi.
+- **Playback Panel İyileştirmeleri**: Kaydedilen simülasyonlar artık senaryo olarak kaydedilerek farklı test senaryolarında yeniden kullanılabilir hale geldi.
+- **Profil Karşılaştırma (ProfileCompare)**: İki frame profilini karşılaştıran yeni araç — alan yapıları, boyutları ve farkları highlight ediyor.
+- **Test Suite Geliştirmeleri**: Exchange acknowledgment ve latency kontrolleri gibi yeni assertion türleri eklendi.
+- **WaveformDesigner Enhancements**: Dalga formu oluşturmayı kolaylaştıran formül snippet'leri ve örnekler eklendi.
+- **Hata Enjeksiyon Geçmişi**: Simülasyon durumuna hata enjeksiyon tarihi takibi eklenerek debugging kolaylaştırıldı.
+
+---
+
 ## [v1.5.23] — 2026-05-09
 ### 🚀 Release v1.5.23
 - **Otomatik Güncelleme Sistemi (Auto-Updater)**: Tauri v2 altyapısı kullanılarak kesintisiz güncelleme desteği eklendi. Uygulama artık yeni sürümleri arka planda kontrol edip kullanıcıya sunabiliyor.
