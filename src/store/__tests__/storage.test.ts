@@ -224,7 +224,7 @@ describe('storage.ts', () => {
 
     describe('Sequence Actions', () => {
         it('saves, loads and deletes sequences', () => {
-            const seq = { id: 'seq1', name: 'Seq 1', steps: [] } as AutomationSequence;
+            const seq = { id: 'seq1', name: 'Seq 1', steps: [] } as unknown as AutomationSequence;
             saveSequence(seq);
             const loaded = loadSequences();
             expect(loaded).toContainEqual(seq);

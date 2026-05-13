@@ -24,32 +24,32 @@ interface Point {
 
 const WAVEFORM_STORAGE_KEY = 'uart_saved_waveforms';
 
-const FORMULA_SNIPPETS = [
-  { label: 'sin', insert: 'sin(x)', desc: 'Sinüs' },
-  { label: 'cos', insert: 'cos(x)', desc: 'Kosinüs' },
-  { label: 'tan', insert: 'tan(x)', desc: 'Tanjant' },
-  { label: 'abs', insert: 'abs(x)', desc: 'Mutlak değer' },
-  { label: 'sqrt', insert: 'sqrt(x)', desc: 'Karekök' },
-  { label: 'pow', insert: 'pow(x,2)', desc: 'Üs alma' },
-  { label: 'log', insert: 'log(x)', desc: 'Doğal log' },
-  { label: 'floor', insert: 'floor(x)', desc: 'Aşağı yuvarla' },
-  { label: 'PI', insert: 'PI', desc: 'π = 3.14159…' },
-  { label: 'x%1', insert: '(x % 1)', desc: 'Modulo (kırık kısım)' },
-];
-
-const FORMULA_EXAMPLES = [
-  { formula: 'sin(x)', desc: 'Temel sinüs dalgası' },
-  { formula: 'abs(sin(x))', desc: 'Tam dalga doğrulayıcı' },
-  { formula: 'sin(x) * cos(x / 2)', desc: 'Modüle sinüs' },
-  { formula: '(x % (2 * PI)) / (2 * PI)', desc: 'Testere dişi' },
-  { formula: 'sin(x) > 0 ? 1 : 0', desc: 'Kare dalga' },
-  { formula: 'sin(x) + sin(3*x)/3 + sin(5*x)/5', desc: 'Fourier kare dalga' },
-  { formula: 'sin(x * (1 + x / 20))', desc: 'Frekans artışı (chirp)' },
-  { formula: 'exp(-x / 10) * sin(x)', desc: 'Sönümlü titreşim' },
-];
-
 export default function WaveformDesigner() {
   const { t } = useTranslation();
+
+  const FORMULA_SNIPPETS = [
+    { label: 'sin', insert: 'sin(x)', desc: t('waveformDesigner.formulaLabels.sin') },
+    { label: 'cos', insert: 'cos(x)', desc: t('waveformDesigner.formulaLabels.cos') },
+    { label: 'tan', insert: 'tan(x)', desc: t('waveformDesigner.formulaLabels.tan') },
+    { label: 'abs', insert: 'abs(x)', desc: t('waveformDesigner.formulaLabels.abs') },
+    { label: 'sqrt', insert: 'sqrt(x)', desc: t('waveformDesigner.formulaLabels.sqrt') },
+    { label: 'pow', insert: 'pow(x,2)', desc: t('waveformDesigner.formulaLabels.pow') },
+    { label: 'log', insert: 'log(x)', desc: t('waveformDesigner.formulaLabels.log') },
+    { label: 'floor', insert: 'floor(x)', desc: t('waveformDesigner.formulaLabels.floor') },
+    { label: 'PI', insert: 'PI', desc: t('waveformDesigner.formulaLabels.pi') },
+    { label: 'x%1', insert: '(x % 1)', desc: t('waveformDesigner.formulaLabels.mod') },
+  ];
+
+  const FORMULA_EXAMPLES = [
+    { formula: 'sin(x)', desc: t('waveformDesigner.exampleLabels.basic') },
+    { formula: 'abs(sin(x))', desc: t('waveformDesigner.exampleLabels.rectified') },
+    { formula: 'sin(x) * cos(x / 2)', desc: t('waveformDesigner.exampleLabels.modulated') },
+    { formula: '(x % (2 * PI)) / (2 * PI)', desc: t('waveformDesigner.exampleLabels.sawtooth') },
+    { formula: 'sin(x) > 0 ? 1 : 0', desc: t('waveformDesigner.exampleLabels.square') },
+    { formula: 'sin(x) + sin(3*x)/3 + sin(5*x)/5', desc: t('waveformDesigner.exampleLabels.fourier') },
+    { formula: 'sin(x * (1 + x / 20))', desc: t('waveformDesigner.exampleLabels.chirp') },
+    { formula: 'exp(-x / 10) * sin(x)', desc: t('waveformDesigner.exampleLabels.damped') },
+  ];
   const { setCustomWaveform } = useSimulation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -292,15 +292,15 @@ export default function WaveformDesigner() {
   const handleSave = () => {
     const normalized = getNormalized();
     if (!normalized) return;
-    const name = `waveform_${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    const name = `waveform_${new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
     try {
       const existing = JSON.parse(localStorage.getItem(WAVEFORM_STORAGE_KEY) ?? '[]') as Array<{ name: string; data: number[] }>;
       existing.push({ name, data: normalized });
       localStorage.setItem(WAVEFORM_STORAGE_KEY, JSON.stringify(existing));
-      setSaveMsg('Kaydedildi');
+      setSaveMsg(t('waveformDesigner.saved'));
       refreshSaved();
     } catch {
-      setSaveMsg('Hata');
+      setSaveMsg(t('waveformDesigner.error'));
     }
     setTimeout(() => setSaveMsg(null), 2000);
   };
@@ -383,7 +383,7 @@ export default function WaveformDesigner() {
             <button
               onClick={() => { setMode('saved'); refreshSaved(); }}
               className={`p-1.5 rounded-md transition-all relative ${mode === 'saved' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-              title="Kaydedilenler"
+              title={t('waveformDesigner.savedTitle')}
             >
               <Save size={14} />
               {savedWaveforms.length > 0 && (
@@ -425,7 +425,7 @@ export default function WaveformDesigner() {
 
               {/* Function chips */}
               <div>
-                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">Fonksiyonlar</div>
+                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">{t('waveformDesigner.functions')}</div>
                 <div className="flex flex-wrap gap-1">
                   {FORMULA_SNIPPETS.map(s => (
                     <button
@@ -442,7 +442,7 @@ export default function WaveformDesigner() {
 
               {/* Quick examples */}
               <div>
-                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">Hazır Formüller</div>
+                <div className="text-[8px] font-mono text-gray-600 uppercase tracking-widest mb-1.5">{t('waveformDesigner.presetsTitle')}</div>
                 <div className="space-y-1">
                   {FORMULA_EXAMPLES.map(ex => (
                     <button
@@ -461,7 +461,7 @@ export default function WaveformDesigner() {
                 onClick={applyFormula}
                 className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase rounded-lg transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
               >
-                <Zap size={12} /> {t('dashboard.apply')} <span className="text-blue-300 font-normal normal-case text-[9px]">Ctrl+Enter</span>
+                <Zap size={12} /> {t('dashboard.apply')} <span className="text-blue-300 font-normal normal-case text-[9px]">{t('waveformDesigner.ctrlEnter')}</span>
               </button>
             </div>
           )}
@@ -474,7 +474,7 @@ export default function WaveformDesigner() {
               </div>
               <input type="range" className="w-full accent-emerald-500" />
               <div className="p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-[9px] text-gray-400 italic">
-                Tip: Click and drag on the canvas to draw your custom signal.
+                {t('waveformDesigner.drawTip')}
               </div>
             </div>
           )}
@@ -507,9 +507,9 @@ export default function WaveformDesigner() {
 
           {mode === 'saved' && (
             <div className="glass-panel p-3 rounded-xl border-white/5 space-y-2 overflow-y-auto max-h-[350px] custom-scrollbar">
-              <label className="text-[9px] font-mono uppercase text-gray-500 tracking-tighter block mb-2">Kaydedilenler</label>
+              <label className="text-[9px] font-mono uppercase text-gray-500 tracking-tighter block mb-2">{t('waveformDesigner.savedTitle')}</label>
               {savedWaveforms.length === 0 ? (
-                <div className="text-[9px] text-gray-700 italic text-center py-4">Henüz kayıt yok</div>
+                <div className="text-[9px] text-gray-700 italic text-center py-4">{t('waveformDesigner.noSaved')}</div>
               ) : savedWaveforms.map((w, i) => (
                 <div key={i} className="flex items-center gap-2 p-2 bg-gray-900/50 border border-white/5 rounded-lg hover:border-white/20 transition-all group">
                   <button
@@ -517,7 +517,7 @@ export default function WaveformDesigner() {
                     className="flex-1 text-left text-[10px] text-gray-300 group-hover:text-white truncate"
                   >
                     <div className="font-mono">{w.name}</div>
-                    <div className="text-[8px] text-gray-600">{w.data.length} sample</div>
+                    <div className="text-[8px] text-gray-600">{w.data.length} {t('waveformDesigner.sample')}</div>
                   </button>
                   <button
                     onClick={() => handleDeleteSaved(i)}
@@ -561,7 +561,7 @@ export default function WaveformDesigner() {
         <div ref={containerRef} className="flex-1 glass-panel rounded-2xl border-white/5 relative overflow-hidden bg-gray-950/50 group">
           <div className="absolute top-4 left-4 z-10 flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
             <Grid3X3 size={12} className="text-gray-600" />
-            <span className="text-[9px] font-mono text-gray-600 uppercase tracking-tighter">Resolution: {points.length} samples</span>
+            <span className="text-[9px] font-mono text-gray-600 uppercase tracking-tighter">{t('waveformDesigner.resolution')}: {points.length} {t('waveformDesigner.samples')}</span>
           </div>
 
           <canvas

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const EN_PATH = path.resolve('src/i18n/locales/en.json');
 const TR_PATH = path.resolve('src/i18n/locales/tr.json');

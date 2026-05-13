@@ -51,7 +51,7 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
   const addField = () => {
     const newField: Field = {
       id: uuidv4(),
-      name: `Field_${edited.fields.length + 1}`,
+      name: t('profileEditor.newFieldDefault', { index: edited.fields.length + 1 }),
       order: edited.fields.length,
       byteWidth: 1,
       endianness: 'big',
@@ -212,9 +212,9 @@ const ProfileEditorModal: React.FC<ProfileEditorModalProps> = ({ profile, onSave
                         </span>
                       </div>
                       <div className="text-[9px] text-gray-600 mt-1 uppercase flex gap-2">
-                         <span>{field.byteWidth} Byte</span>
+                         <span>{field.byteWidth} {t('common.byte')}</span>
                          <span>•</span>
-                         <span>{field.endianness}</span>
+                         <span>{field.endianness === 'big' ? t('profileEditor.bigEndian') : t('profileEditor.littleEndian')}</span>
                       </div>
                     </div>
                     <button 

@@ -156,7 +156,7 @@ const StatBar = memo(({
         <button 
           onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork(outputMode === 'tcp-server' ? `tcp-server://${tcpPort}` : `tcp://${tcpHost}:${tcpPort}`)}
           className={`text-[8px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
-          {outputMode === 'tcp-server' ? 'TCP SERVER' : t('common.engine')}: {networkConnected ? (outputMode === 'tcp-server' ? 'LISTENING' : t('common.online')) : t('common.offline')}
+          {outputMode === 'tcp-server' ? t('statBar.tcpServerMode') : t('common.engine')}: {networkConnected ? (outputMode === 'tcp-server' ? t('statBar.tcpListening') : t('common.online')) : t('common.offline')}
         </button>
       </div>
 
@@ -233,7 +233,7 @@ const StatBar = memo(({
                 onChange={(e) => handlePortChange(e.target.value)}
                 onFocus={onGetPorts}
                 disabled={status !== 'stopped'}
-                placeholder="COM1 / /dev/tty"
+                placeholder={t('statBar.examplePort')}
                 title={t('statBar.typeOrSelect')}
               />
               <datalist id="serial-ports-list">
@@ -287,7 +287,7 @@ const StatBar = memo(({
                 disabled={status !== 'stopped' || !tcpPort || (outputMode === 'tcp' && !tcpHost)}
                 className="px-1.5 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 text-white text-[8.5px] font-mono rounded font-bold transition-all"
               >
-                {outputMode === 'tcp-server' ? 'DİNLE' : t('dashboard.connect')}
+                {outputMode === 'tcp-server' ? t('statBar.tcpListen') : t('dashboard.connect')}
               </button>
             </>
           ) : (

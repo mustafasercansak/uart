@@ -78,7 +78,7 @@ const HelpPage: React.FC = () => {
             </div>
          </div>
          <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-emerald-500/5 border border-emerald-500/10 px-4 py-2 rounded-xl">
-            {t('helpPage.systemVersion')} <span className="text-emerald-400 font-black">v1.4.0-STABLE</span>
+            {t('helpPage.systemVersion')} <span className="text-emerald-400 font-black">{t('nav.versionLabel', { version: '1.4.0-STABLE' })}</span>
          </div>
       </header>
 
@@ -137,10 +137,10 @@ const HelpPage: React.FC = () => {
                         p: ({ node: _node, ...props }) => <div className="paragraph" {...props} />,
                         img: ({ node: _node, ...props }) => (
                           <span className="flex flex-col items-center my-20 group">
-                             <img {...props} alt={props.alt || 'Görsel'} className="hover:scale-[1.01] transition-transform duration-1000 cursor-zoom-in" />
+                             <img {...props} alt={props.alt || t('helpPage.systemImage')} className="hover:scale-[1.01] transition-transform duration-1000 cursor-zoom-in" />
                              {props.alt && (
                                 <span className="mt-8 text-[11px] font-mono text-gray-500 uppercase tracking-[0.3em] bg-white/5 px-6 py-2 rounded-full border border-white/10">
-                                   Sistem Görüntüsü: {props.alt}
+                                   {t('helpPage.systemImage')}: {props.alt}
                                 </span>
                              )}
                           </span>

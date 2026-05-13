@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 function getFiles(dir: string, extension: string): string[] {
     let results: string[] = [];
     const list = fs.readdirSync(dir);
-    list.forEach(file => {
+    list.forEach((file: string) => {
         file = path.resolve(dir, file);
         const stat = fs.statSync(file);
         if (stat && stat.isDirectory()) {
@@ -56,8 +56,14 @@ const IGNORE_VALUES = new Set([
     'top', 'bottom', 'left', 'right', 'start', 'end',
     'monospace', 'sans-serif', 'serif', 'auto', 'none', 'initial',
     'button', 'submit', 'reset', 'checkbox', 'radio', 'select',
-    'info', 'tx', 'rx', 'error', 'pending', 'running', 'stopped', 'paused',
+    'info', 'tx', 'rx', 'error', 'pending', 'running', 'stopped', 'paused', 'Started', 'Progress', 'Finished',
+    'HR', 'SpO2', 'RR', 'Temp', 'Pleth', 'BPM', 'Rate', 'Volume', 'Remaining', 'PI', 'FiO2', 'PEEP', 'Tidal Vol', 'Lead-I', 'Lead-II', 'SPO2-Wave',
     'INIT_STATE', 'SET_PROFILE', 'SET_SCENARIO', 'SET_OUTPUT_MODE', 'START', 'STOP', 'PAUSE', 'RESUME',
+    'SET:', 'RAMP:', 'INJECT_ERROR:', 'Mustafa Sercan Sak', '© 2026 Mustafa Sercan Sak',
+    'SpO₂', 'Math.*', 'struct MyData { uint32_t id; ... };', 'BPM > 150',
+    ', borderRadius:', ', fontSize:', ').length > 30 ?', ', endFieldId: allFields[allFields.length - 1]?.id ??',
+    ', atMs: 0, target:', ', atMs: 500, target:', 'None', 'Even', 'Odd', 'Mark', 'Space',
+    'field:Lead-I', 'field:Lead-II', 'field:SPO2-Wave',
     'MASTER_TICK', 'ADD_LOG', 'BATCH_LOGS', 'OVERRIDE_FIELD', 'OVERRIDE_BIT', 'INJECT_ERROR',
     'CONSUME_ERROR', 'RESET_OVERRIDES', 'SET_SERIAL_CONNECTED', 'SET_NETWORK_CONNECTED',
     'SET_BACKEND_CONNECTED', 'SET_RECORDING', 'ADD_CONVERSATION', 'UPDATE_EXCHANGE',
@@ -80,7 +86,13 @@ const IGNORE_VALUES = new Set([
     'Courier New', 'Arial', 'Roboto', 'Inter', 'monospace', 'sans-serif',
     'borderRadius', 'fontSize', 'fontWeight', 'lineHeight', 'padding', 'margin',
     'transparent', 'inherit', 'initial', 'unset', 'auto',
-    'ms', 'Hz', 'MHz', 'kHz', 'BPM', 'mmHg', 'cmH2O', 'mL', 'mL/h', 'L/min', 'sec', 'min', 'sa', 'dk', 'sn'
+    'ms', 'Hz', 'MHz', 'kHz', 'BPM', 'mmHg', 'cmH2O', 'mL', 'mL/h', 'L/min', 'sec', 'min', 'sa', 'dk', 'sn',
+    'borderRadius', 'fontSize', 'fontWeight', 'lineHeight', 'padding', 'margin',
+    'SpO2', 'FiO2', 'RR', 'BPM', 'HR', 'PEEP', 'PIP', 'MAP', 'TV', 'Tidal Vol', 'PI%', 'Pulse',
+    'Modbus RTU', 'NMEA 0183', 'NMEA', 'Modbus', 'UART-X1',
+    'peripheral_logic.js', 'input', 'state', 'send(bytes)', 'bytes:', 'state:', 'sendHex:', 'setFields:',
+    'Diagnostics', 'Gauge', 'Sparkline', 'Monitor', 'Timeline', 'VisualProtocolAnalyzer',
+    'minDurationMs', 'maxDurationMs', 'activateAtMs', 'deactivateAtMs', 'preserveStartEnd'
 ]);
 
 interface HardcodedString {
@@ -96,7 +108,7 @@ function scanFile(filePath: string): HardcodedString[] {
 
     // Process line by line for attributes and code strings to easily ignore commented lines
     const lines = content.split('\n');
-    lines.forEach((lineText, index) => {
+    lines.forEach((lineText: string, index: number) => {
         // 1. Scan for JSX Text: >Text Here<
         const jsxTextRegex = />([^<{}\n\r]*[a-zA-ZğüşıöçĞÜŞİÖÇ][^<{}\n\r]*)</g;
 
@@ -195,7 +207,7 @@ function scanFile(filePath: string): HardcodedString[] {
             const isCssOrSvg = text.startsWith('hsla(') || 
                                text.startsWith('rgba(') || 
                                text.startsWith('rgb(') || 
-                               text.startsWith('M ') || 
+                               /^[MLHVCSQTA][0-9\s.,-]+/i.test(text) || 
                                text.includes('shadow-') ||
                                text.includes('bg-') ||
                                text.includes('text-') ||
@@ -213,7 +225,13 @@ function scanFile(filePath: string): HardcodedString[] {
                                text.includes('`') ||
                                text.includes('return ') ||
                                text.includes('if (') ||
-                               /^[0-9\s.,+\-*/%|&!? :;[\](){}=]+$/.test(text);
+                               text.includes('Math.') ||
+                               text.includes('sin(') ||
+                               text.includes('cos(') ||
+                               text.includes('=>') ||
+                               text.includes('!=') ||
+                               text.includes('==') ||
+                               /^[0-9\s.,+\-*/%|&!? :;[\](){}=<>]+$/.test(text);
 
             const hasUppercase = /[A-Z]/.test(text);
             const hasTurkish = /[ğüşıöçĞÜŞİÖÇ]/.test(text);

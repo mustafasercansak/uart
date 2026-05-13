@@ -471,7 +471,7 @@ function StepEditor({ step, _profile, onChange }: { step: ScenarioStep; _profile
 
       <div className="space-y-2">
         <label className="text-[10px] text-gray-600 font-mono uppercase tracking-widest font-bold">{t('scenarioEditor.target')}</label>
-        <input className={inputCls} value={step.target} onChange={(e) => update({ target: e.target.value })} placeholder="örn: field:SpO2" />
+        <input className={inputCls} value={step.target} onChange={(e) => update({ target: e.target.value })} placeholder={t('scenarioEditor.fieldPlaceholder')} />
       </div>
 
       <div className="space-y-2">

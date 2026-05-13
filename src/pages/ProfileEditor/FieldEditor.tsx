@@ -39,9 +39,9 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       ramp: { from: 0, to: 255, durationMs: 5000, curve: 'linear' },
       waveform: { shape: 'sine', frequency: 1.0, amplitude: 100, offset: 128, noiseLevel: 5 },
       checksum: { algorithm: 'xor', scope: { startFieldId: allFields[0]?.id ?? '', endFieldId: allFields[allFields.length - 1]?.id ?? '' } },
-      flags: { bits: [{ index: 0, name: 'Bit 0', defaultValue: 0, behavior: 'fixed', behaviorConfig: {} }] },
-      computed: { expression: "fields['Veri'] * 2", clampMin: 0, clampMax: 255 },
-      script: { code: "// t: elapsed ms, i: frame count, f: named values\nreturn Math.sin(t/1000) * 100 + 128;" },
+      flags: { bits: [{ index: 0, name: t('profileEditor.bit0'), defaultValue: 0, behavior: 'fixed', behaviorConfig: {} }] },
+      computed: { expression: t('profileEditor.exampleExpression'), clampMin: 0, clampMax: 255 },
+      script: { code: t('profileEditor.scriptHeader') + "\nreturn Math.sin(t/1000) * 100 + 128;" },
     };
     onChange({ ...field, type, typeConfig: defaultConfigs[type] as Field['typeConfig'] });
   };
@@ -66,8 +66,8 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
           <div>
             <label className={labelCls}>{t('profileEditor.byteOrder')}</label>
             <select className={inputCls} value={field.endianness} onChange={(e) => update({ endianness: e.target.value as Field['endianness'] })}>
-              <option value="big">Big Endian</option>
-              <option value="little">Little Endian</option>
+              <option value="big">{t('profileEditor.bigEndian')}</option>
+              <option value="little">{t('profileEditor.littleEndian')}</option>
             </select>
           </div>
         </div>
@@ -112,7 +112,7 @@ function FixedEditor({ config, onChange }: { config: FixedConfig; onChange: (p: 
           if (!isNaN(v)) onChange({ value: v & 0xff });
         }}
       />
-      <div className="text-gray-600 text-xs mt-1 font-mono">Decimal: {config.value}</div>
+      <div className="text-gray-600 text-xs mt-1 font-mono">{t('profileEditor.decimal')}: {config.value}</div>
     </div>
   );
 }
@@ -123,11 +123,11 @@ function RangeEditor({ config, onChange }: { config: RangeConfig; onChange: (p: 
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Min</label>
+          <label className={labelCls}>{t('profileEditor.min')}</label>
           <input type="number" className={inputCls} value={config.min} onChange={(e) => onChange({ min: Number(e.target.value) })} />
         </div>
         <div>
-          <label className={labelCls}>Max</label>
+          <label className={labelCls}>{t('profileEditor.max')}</label>
           <input type="number" className={inputCls} value={config.max} onChange={(e) => onChange({ max: Number(e.target.value) })} />
         </div>
       </div>
@@ -176,9 +176,9 @@ function RampEditor({ config, onChange }: { config: RampConfig; onChange: (p: Pa
         <label className={labelCls}>{t('profileEditor.curve')}</label>
         <select className={inputCls} value={config.curve} onChange={(e) => onChange({ curve: e.target.value as RampConfig['curve'] })}>
           <option value="linear">{t('profileEditor.linear')}</option>
-          <option value="ease-in">Ease In</option>
-          <option value="ease-out">Ease Out</option>
-          <option value="ease-in-out">Ease In-Out</option>
+          <option value="ease-in">{t('profileEditor.easeIn')}</option>
+          <option value="ease-out">{t('profileEditor.easeOut')}</option>
+          <option value="ease-in-out">{t('profileEditor.easeInOut')}</option>
         </select>
       </div>
     </div>
@@ -249,10 +249,10 @@ function ChecksumEditor({ config, allFields, field, onChange }: {
         <select className={inputCls} value={config.algorithm} onChange={(e) => onChange({ algorithm: e.target.value as ChecksumAlgorithm })}>
           <option value="xor">XOR</option>
           <option value="sum_mod256">{t('profileEditor.sumMod256')}</option>
-          <option value="crc8">CRC-8</option>
-          <option value="crc16_ccitt">CRC-16 CCITT</option>
-          <option value="crc16_modbus">CRC-16 Modbus</option>
-          <option value="crc32">CRC-32</option>
+          <option value="crc8">{t('profileEditor.crc8')}</option>
+          <option value="crc16_ccitt">{t('profileEditor.crc16CCITT')}</option>
+          <option value="crc16_modbus">{t('profileEditor.crc16Modbus')}</option>
+          <option value="crc32">{t('profileEditor.crc32')}</option>
           <option value="custom">{t('profileEditor.custom')}</option>
         </select>
       </div>
@@ -281,7 +281,7 @@ function ChecksumEditor({ config, allFields, field, onChange }: {
               />
             </div>
             <div>
-              <label className={labelCls}>Polynomial (hex)</label>
+              <label className={labelCls}>{t('profileEditor.polynomialHex')}</label>
               <input className={inputCls}
                 value={`0x${(config.polynomial ?? 0x1021).toString(16).toUpperCase().padStart(4, '0')}`}
                 onChange={(e) => { const v = parseInt(e.target.value, 16); if (!isNaN(v)) onChange({ polynomial: v }); }}
@@ -291,11 +291,11 @@ function ChecksumEditor({ config, allFields, field, onChange }: {
           <div className="flex gap-4">
             <label className="flex items-center gap-1 text-xs font-mono text-gray-400 cursor-pointer">
               <input type="checkbox" checked={config.reflectIn ?? false} onChange={(e) => onChange({ reflectIn: e.target.checked })} className="accent-green-500" />
-              Reflect In
+              {t('profileEditor.reflectIn')}
             </label>
             <label className="flex items-center gap-1 text-xs font-mono text-gray-400 cursor-pointer">
               <input type="checkbox" checked={config.reflectOut ?? false} onChange={(e) => onChange({ reflectOut: e.target.checked })} className="accent-green-500" />
-              Reflect Out
+              {t('profileEditor.reflectOut')}
             </label>
           </div>
         </div>
@@ -315,7 +315,7 @@ function FlagsEditor({ config, onChange, byteWidth }: {
   const addBit = () => {
     const usedIndices = new Set(config.bits.map((b) => b.index));
     const nextIdx = Array.from({ length: maxBits }, (_, i) => i).find((i) => !usedIndices.has(i)) ?? 0;
-    const newBit: FlagBit = { index: nextIdx, name: `Bit ${nextIdx}`, defaultValue: 0, behavior: 'fixed', behaviorConfig: {} };
+    const newBit: FlagBit = { index: nextIdx, name: t('profileEditor.bitLabel', { index: nextIdx }), defaultValue: 0, behavior: 'fixed', behaviorConfig: {} };
     onChange({ bits: [...config.bits, newBit] });
   };
 
@@ -329,7 +329,7 @@ function FlagsEditor({ config, onChange, byteWidth }: {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-gray-500 text-xs font-mono">{t('profileEditor.bitCapacity').replace('{max}', String(maxBits))}</span>
-        <button onClick={addBit} className="text-xs px-2 py-0.5 bg-green-900/30 border border-green-800/50 text-green-400 rounded hover:bg-green-900/50">+ Bit</button>
+        <button onClick={addBit} className="text-xs px-2 py-0.5 bg-green-900/30 border border-green-800/50 text-green-400 rounded hover:bg-green-900/50">{t('profileEditor.addBit')}</button>
       </div>
       {config.bits.sort((a, b) => a.index - b.index).map((bit, idx) => (
         <div key={idx} className="bg-gray-900 rounded border border-gray-700 p-2 space-y-1.5">
@@ -389,14 +389,14 @@ function FlagsEditor({ config, onChange, byteWidth }: {
                   />
                 </div>
                 <div>
-                  <label className="text-gray-600 text-[10px] font-mono">Min ms</label>
+                  <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.minMs')}</label>
                   <input type="number" className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                     value={cfg['minDurationMs'] ?? 500}
                     onChange={(e) => updateBit(idx, { behaviorConfig: { ...cfg, minDurationMs: Number(e.target.value) } as FlagBit['behaviorConfig'] })}
                   />
                 </div>
                 <div>
-                  <label className="text-gray-600 text-[10px] font-mono">Max ms</label>
+                  <label className="text-gray-600 text-[10px] font-mono">{t('profileEditor.maxMs')}</label>
                   <input type="number" className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-xs font-mono text-gray-200 w-full"
                     value={cfg['maxDurationMs'] ?? 2000}
                     onChange={(e) => updateBit(idx, { behaviorConfig: { ...cfg, maxDurationMs: Number(e.target.value) } as FlagBit['behaviorConfig'] })}
@@ -446,7 +446,7 @@ function ComputedEditor({ config, onChange, allFields }: {
           className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-full h-20 resize-none"
           value={config.expression}
           onChange={(e) => onChange({ expression: e.target.value })}
-          placeholder="fields['Alan1'] * 2 + 10"
+          placeholder={t('profileEditor.exampleExpression')}
         />
         <div className="text-gray-600 text-[10px] mt-1 font-mono">
           {t('profileEditor.availableFields')}: {allFields.filter((f) => f.type !== 'computed').map((f) => `fields['${f.name}']`).join(', ')}
@@ -476,10 +476,10 @@ function ScriptEditor({ config, onChange }: { config: ScriptConfig; onChange: (p
           value={config.code}
           onChange={(e) => onChange({ code: e.target.value })}
           spellCheck={false}
-          placeholder="// t: ms, i: frame, f: fields"
+          placeholder={t('profileEditor.scriptHeader')}
         />
         <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          <span className="text-[10px] text-gray-600 font-mono">JS / ES6+</span>
+          <span className="text-[10px] text-gray-600 font-mono">{t('profileEditor.jsEs6')}</span>
         </div>
       </div>
       <div className="bg-blue-900/10 border border-blue-900/30 rounded p-2">

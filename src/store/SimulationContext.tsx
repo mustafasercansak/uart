@@ -340,7 +340,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   // ── LOGGING ───────────────────────────────────────────────────────────────────
   const exportLogs = useCallback(() => {
     if (fullLogRef.current.length === 0) return;
-    const headers = ['Time', 'Type', 'Text'];
+    const headers = [t('common.time'), t('common.type'), t('common.text')];
     const rows = fullLogRef.current.map(l => [l.time, l.type, `"${l.text.replace(/"/g, '""')}"`]);
     const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

@@ -96,9 +96,9 @@ function FrameDecodeCard({
 
   const protocolLabel =
     detected === 'modbus_rtu'
-      ? 'Modbus RTU'
+      ? t('protocolDecoder.modbusRtu')
       : detected === 'nmea'
-      ? 'NMEA 0183'
+      ? t('protocolDecoder.nmea0183')
       : profile ? profile.name : t('protocolDecoder.unknown');
 
   return (
@@ -124,12 +124,12 @@ function FrameDecodeCard({
           </span>
           {isCRCOk === true && (
             <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-              <CheckCircle size={11} /> CRC OK
+              <CheckCircle size={11} /> {t('protocolDecoder.crcOk')}
             </span>
           )}
           {isCRCOk === false && (
             <span className="flex items-center gap-1 text-[10px] text-red-400">
-              <AlertTriangle size={11} /> CRC HATA
+              <AlertTriangle size={11} /> {t('protocolDecoder.crcError')}
             </span>
           )}
           {!isValid && (
@@ -216,7 +216,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
           >
             {[5, 10, 20, 50, 100].map((n) => (
               <option key={n} value={n}>
-                {n} frame
+                {t('protocolDecoder.frameCount', { count: n })}
               </option>
             ))}
           </select>

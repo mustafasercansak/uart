@@ -8,7 +8,23 @@
     "subtitle": "Sensor Simulator",
     "expand": "Expand",
     "collapse": "Collapse",
-    "system": "System & Version"
+    "system": "System & Version",
+    "commandPalette": "Command Palette",
+    "switchToLight": "Switch to Light Mode",
+    "switchToDark": "Switch to Dark Mode",
+    "light": "Light",
+    "dark": "Dark",
+    "developer": "Developer: Mustafa Sercan Sak (LinkedIn)",
+    "logoAlt": "UART Logo",
+    "gotoDashboard": "Go to simulation dashboard",
+    "manageProfiles": "Manage frame structures",
+    "manageScenarios": "Manage simulation scenarios",
+    "documentation": "Documentation",
+    "viewHelp": "View help and guides",
+    "togglePro": "Toggle Pro Mode",
+    "toggleProDesc": "Switch between Standard and Diagnostic mode",
+    "searchPlaceholder": "Search commands, tools or diagnostics...",
+    "versionLabel": "UART Simulator v{version}"
   },
   "system": {
     "title": "Software & Updates",
@@ -23,7 +39,10 @@
     "error": "Update check failed.",
     "relaunching": "Relaunching application...",
     "about": "About",
-    "developer": "Developer"
+    "developer": "Developer",
+    "core": "UART Simulator Core",
+    "sourceCode": "Source Code",
+    "stable": "Stable"
   },
   "common": {
     "log": "Log",
@@ -43,7 +62,30 @@
     "min": "Min",
     "max": "Max",
     "tcp": "TCP",
-    "retry": "Retry"
+    "retry": "Retry",
+    "time": "Time",
+    "type": "Type",
+    "text": "Text",
+    "navigation": "Navigation",
+    "configuration": "Configuration",
+    "navigate": "Navigate",
+    "select": "Select",
+    "close": "Close",
+    "unexpectedError": "Unexpected Error",
+    "unknownError": "Unknown error",
+    "reloadPage": "Reload Page",
+    "new": "NEW",
+    "undo": "Undo",
+    "redo": "Redo",
+    "byte": "byte",
+    "bytes": "bytes",
+    "noResultsFound": "No results found",
+    "ctrl": "Ctrl",
+    "esc": "Esc",
+    "statusStarted": "Started",
+    "statusProgress": "Progress",
+    "statusFinished": "Finished",
+    "hz": "Hz"
   },
   "statBar": {
     "serialPort": "Serial Port (COM)",
@@ -51,7 +93,11 @@
     "tcpServer": "TCP Server (Virtual Port)",
     "noPort": "No Port Found",
     "unknown": "Unknown",
-    "typeOrSelect": "Type port name or select from list"
+    "typeOrSelect": "Type port name or select from list",
+    "tcpListening": "LISTENING",
+    "tcpServerMode": "TCP SERVER",
+    "tcpListen": "LISTEN",
+    "examplePort": "COM1 / /dev/tty"
   },
   "rxMonitor": {
     "title": "RX History",
@@ -105,7 +151,8 @@
     "testing": "Testing",
     "spectrum": "Spectrum",
     "triggers": "Triggers",
-    "visualizer": "3D Visualizer",
+    "visualizer": "Visualizer",
+    "vcdExport": "Export Logic Analyzer VCD",
     "decoder": "Decoder",
     "testsuite": "Test Suite",
     "builder": "Builder",
@@ -164,6 +211,21 @@
     "minMax": "Min: {min}ms / Max: {max}ms",
     "successRate": "Success Rate",
     "cleanFrames": "{count} Clean Frames"
+  },
+  "timeline": {
+    "txSystem": "Master (TX)",
+    "rxDevice": "Device (RX)",
+    "noRealDevice": "Simulated Link",
+    "lastFrames": "Last {count} Frames",
+    "clear": "Clear",
+    "txOut": "TX OUT",
+    "rxIn": "RX IN",
+    "waitingComm": "Waiting for communication traffic...",
+    "asciiMode": "ASCII Mode",
+    "hexMode": "HEX Mode",
+    "asciiPlaceholder": "Type message (ASCII)...",
+    "hexPlaceholder": "A1 B2 C3 (HEX)...",
+    "send": "Send"
   },
   "profileEditor": {
     "title": "Profile Editor",
@@ -255,6 +317,19 @@
     "varI": "- Frame count",
     "varF": "- Previous fields",
     "varMath": "- All JS math functions",
+    "easeIn": "Ease In",
+    "easeOut": "Ease Out",
+    "easeInOut": "Ease In-Out",
+    "minMs": "Min ms",
+    "maxMs": "Max ms",
+    "polynomialHex": "Polynomial (hex)",
+    "addBit": "+ Bit",
+    "exampleExpression": "fields['Field1'] * 2 + 10",
+    "scriptHeader": "// t: ms, i: frame, f: fields",
+    "crc8": "CRC-8",
+    "crc16CCITT": "CRC-16 CCITT",
+    "crc16Modbus": "CRC-16 Modbus",
+    "crc32": "CRC-32",
     "noProfileYet": "No profiles yet",
     "selectOrCreate": "Select a profile or create a new one",
     "newProfile": "+ New Profile",
@@ -265,6 +340,11 @@
     "exportJson": "↓ Export",
     "saved": "✓ Saved",
     "parity": "Parity",
+    "even": "Even",
+    "odd": "Odd",
+    "mark": "Mark",
+    "space": "Space",
+    "none": "None",
     "stopBit": "Stop Bit",
     "sendInterval": "Send Interval (ms)",
     "description": "Description",
@@ -277,7 +357,23 @@
     "framePreview": "FRAME PREVIEW",
     "noFieldsYet": "No fields — start by adding a field",
     "bpsStats": "{n} fields",
-    "duplicate": "Are you sure you want to delete this profile?"
+    "duplicate": "Are you sure you want to delete this profile?",
+    "newFieldDefault": "Field {index}",
+    "copySuffix": "(Copy)",
+    "undoTitle": "Undo (Ctrl+Z)",
+    "redoTitle": "Redo (Ctrl+Y)",
+    "newProfileDefault": "New Profile",
+    "sync": "Sync",
+    "data": "Data",
+    "bigEndian": "Big Endian",
+    "littleEndian": "Little Endian",
+    "decimal": "Decimal",
+    "min": "Min",
+    "max": "Max",
+    "reflectIn": "Reflect In",
+    "reflectOut": "Reflect Out",
+    "bitLabel": "Bit {index}",
+    "jsEs6": "JS / ES6+"
   },
   "validation": {
     "sessionActive": "VALIDATION SESSION ACTIVE",
@@ -474,7 +570,40 @@
       "squareDesc": "Digital Switching",
       "noise": "White Noise",
       "noiseDesc": "Signal Interference"
-    }
+    },
+    "savedTitle": "Saved Waveforms",
+    "functions": "Functions",
+    "presetsTitle": "Preset Formulas",
+    "noSaved": "No recordings yet",
+    "ctrlEnter": "Ctrl+Enter",
+    "saved": "Saved",
+    "error": "Error",
+    "drawTip": "Tip: Click and drag on the canvas to draw your custom signal.",
+    "formulaLabels": {
+      "sin": "Sine",
+      "cos": "Cosine",
+      "tan": "Tangent",
+      "abs": "Absolute value",
+      "sqrt": "Square root",
+      "pow": "Power",
+      "log": "Natural log",
+      "floor": "Floor (Round down)",
+      "pi": "π = 3.14159…",
+      "mod": "Modulo (fractional part)"
+    },
+    "exampleLabels": {
+      "basic": "Basic sine wave",
+      "rectified": "Full-wave rectifier",
+      "modulated": "Modulated sine",
+      "sawtooth": "Sawtooth wave",
+      "square": "Square wave",
+      "fourier": "Fourier square wave",
+      "chirp": "Frequency chirp",
+      "damped": "Damped oscillation"
+    },
+    "resolution": "Resolution",
+    "samples": "samples",
+    "sample": "sample"
   },
   "errors": {
     "checksum": "Corrupt Checksum",
@@ -556,6 +685,7 @@
     "actionInjectError": "Simulates communication/protocol errors.",
     "quote": "Automation is the key to rigorous validation.",
     "openDocs": "Open Automation Documentation",
+    "fieldPlaceholder": "e.g. field:SpO2",
     "libraryTemplates": "Library Templates",
     "categoryLabel": {
       "custom": "Custom",
@@ -599,16 +729,6 @@
     "copyOf": "(Copy)",
     "targetPlaceholder": "e.g: field:SpO2"
   },
-  "timeline": {
-    "txSystem": "TX (System)",
-    "rxDevice": "RX (Device)",
-    "noRealDevice": "No real device — TX only",
-    "lastFrames": "Last {count} frames",
-    "waitingComm": "Waiting for communication",
-    "clear": "CLEAR",
-    "txOut": "TX OUT",
-    "rxIn": "RX IN"
-  },
   "profileCompare": {
     "title": "Profile Comparison",
     "profileA": "Profile A",
@@ -639,7 +759,9 @@
     "recHelp": "Start simulation and press the RECORD button",
     "saveAsScenario": "Save as scenario",
     "scenarioSaved": "Scenario saved!",
-    "scenarioFromRecording": "Scenario from recording"
+    "scenarioFromRecording": "Scenario from recording",
+    "csvExportTitle": "Export as CSV (Data Science / Excel)",
+    "vcdExportTitle": "Export Logic Analyzer VCD"
   },
   "conversationMonitor": {
     "title": "Live Encounter Log",
@@ -706,33 +828,6 @@
     "cursorsToggle": "Toggle Lab Measurement Cursors",
     "live": "LIVE"
   },
-  "templateBrowser": {
-    "title": "Template Library",
-    "subtitle": "Pre-configured sensor simulation templates",
-    "all": "All",
-    "categories": {
-      "all": "All",
-      "medical": "Medical",
-      "medical_humanity": "Medical (For Humanity)",
-      "environmental": "Environmental",
-      "general": "General",
-      "industrial": "Industrial",
-      "navigation": "Navigation"
-    },
-    "frameStructure": "Frame Structure",
-    "interval": "{ms}ms interval",
-    "scenarios": "{count} scenarios",
-    "created": "Applied to Simulation",
-    "applying": "Applying...",
-    "useTemplate": "Use This Template",
-    "goToProfiles": "Go to Profiles",
-    "colorCode": "Field Type Color Coding",
-    "fixed": "Fixed",
-    "range": "Range",
-    "waveform": "Waveform",
-    "checksum": "Checksum",
-    "flags": "Flags"
-  },
   "helpPage": {
     "backToSystem": "Back to System",
     "archiveTitle": "Documentation Archive",
@@ -749,7 +844,8 @@
     "masterLang": "Bilingual",
     "readmeLang": "Developer",
     "developer": "Mustafa Sercan Sak",
-    "date": "April 16, 2026"
+    "date": "April 16, 2026",
+    "systemImage": "System Image"
   },
   "telemetryPanel": {
     "waitingData": "Waiting for data stream...",
@@ -943,7 +1039,8 @@
       "outOfLimits": "{field} out of limits: {value} {unit} (Expected: {min}-{max})",
       "sessionStarted": "Validation session started: {name}",
       "sessionStartedLog": "VALIDATION STARTED: {name}",
-      "sessionCompleted": "VALIDATION COMPLETED. Score: {score}%"
+      "sessionCompleted": "VALIDATION COMPLETED. Score: {score}%",
+      "licensed": "Licensed for Development"
     },
     "network": {
       "invalidPort": "Invalid TCP port: {port}",
@@ -1066,7 +1163,8 @@
     "slotARef": "Slot A (Reference)",
     "slotBTest": "Slot B (Test)",
     "hex": "HEX:",
-    "addToDashboard": "Add to Dashboard ({name})"
+    "addToDashboard": "Add to Dashboard ({name})",
+    "clearHistory": "Clear TX history"
   },
   "visualizer": {
     "booting": "CLINICAL SYNC ENGINE v7.0",
@@ -1081,10 +1179,68 @@
     "fixed": "Fixed",
     "throughput": "Throughput",
     "jitter": "Jitter",
-    "hr": "Heart Rate",
-    "spo2": "O2 Saturation",
+    "hr": "HR",
+    "spo2": "SpO2",
     "rr": "RR",
-    "temp": "Temp"
+    "temp": "Temp",
+    "fio2": "FiO2",
+    "peep": "PEEP",
+    "tidalVol": "Tidal Vol",
+    "rate": "Rate",
+    "volume": "Volume",
+    "remaining": "Remaining",
+    "pi": "PI",
+    "pleth": "Pleth",
+    "hrUnit": "BPM",
+    "spo2Unit": "SpO2%",
+    "rrUnit": "RR b/min",
+    "ivUnit": "mL / hr",
+    "fio2Label": "FiO2",
+    "peepLabel": "PEEP",
+    "tidalVolLabel": "Tidal Vol",
+    "piLabel": "PI%",
+    "devices": {
+      "patient_monitor": {
+        "label": "Patient Monitor",
+        "description": "Continuously measures and displays vital signs: ECG, SpO₂, respiratory rate, and temperature.",
+        "how": "ECG electrodes send millivolt signals that are amplified and digitized. Each parameter is packed into a UART frame at 9600 baud and transmitted every 100 ms."
+      },
+      "ventilator": {
+        "label": "Ventilator",
+        "description": "Delivers controlled breaths to patients who cannot breathe independently, regulating pressure, volume, and oxygen concentration.",
+        "how": "A pneumatic sensor measures airway pressure 250 times per second. Flow and volume data are serialised as 16-bit integers in each UART frame alongside alarm flags."
+      },
+      "iv_pump": {
+        "label": "IV Pump",
+        "description": "Precisely delivers fluids and medications through an intravenous line at a programmed rate.",
+        "how": "A stepper motor drives the peristaltic mechanism. The controller reports flow rate, volume infused, and remaining volume over RS-232 (UART) every 500 ms."
+      },
+      "pulse_oximeter": {
+        "label": "Pulse Oximeter",
+        "description": "Non-invasively measures blood oxygen saturation and pulse rate using infrared light through a finger clip.",
+        "how": "Red (660 nm) and infrared (940 nm) LEDs shine through the finger. A photodetector captures the plethysmography waveform. SpO₂ is derived from the ratio of absorbed light and sent over UART at 115200 baud."
+      }
+    },
+    "overview": "OVERVIEW",
+    "bindProfiles": "BIND PROFILES",
+    "bindingTitle": "PROFILE BINDING",
+    "bindingDesc": "Assign profiles to devices",
+    "bindingHelp": "When a device is bound to a profile, it dims when a different profile is running — so you always know which simulation drives which twin.",
+    "anyProfile": "— Any profile (always active) —",
+    "unbind": "UNBIND",
+    "deviceTwin": "DEVICE TWIN",
+    "whatIsIt": "WHAT IS IT?",
+    "howUsed": "HOW UART IS USED",
+    "lastFrame": "LAST FRAME",
+    "alarm": "⚠ VITAL SIGN ALARM",
+    "alarmCheck": "Check BPM or SpO₂ values",
+    "backOverview": "← BACK TO OVERVIEW",
+    "suiteTitle": "ICU DIGITAL TWIN SUITE",
+    "digitalTwinSuite": "ICU DIGITAL TWIN SUITE",
+    "activeDevices": "{count} ACTIVE DEVICES · UART SIMULATION",
+    "initializing": "Initialising {name}...",
+    "stable": "STABLE",
+    "running": "RUNNING"
   },
   "designer": {
     "title": "Peripheral Designer",
@@ -1101,6 +1257,112 @@
     "helperApi": "Helper API",
     "noActivity": "No activity yet... Run the simulation to see logs.",
     "exampleScript": "// Example: Respond with ACK (0x06) to any input\nif (input.length > 0) {\n  send(0x06);\n  console.log(\"Device received data, sending ACK\");\n}"
+  },
+  "templateBrowser": {
+    "title": "Template Library",
+    "subtitle": "Pre-configured sensor simulation templates",
+    "all": "All",
+    "categories": {
+      "all": "All",
+      "medical": "Medical",
+      "medical_humanity": "Medical (For Humanity)",
+      "environmental": "Environmental",
+      "general": "General",
+      "industrial": "Industrial",
+      "navigation": "Navigation"
+    },
+    "frameStructure": "Frame Structure",
+    "interval": "{ms}ms interval",
+    "scenarios": "{count} scenarios",
+    "created": "Applied to Simulation",
+    "applying": "Applying...",
+    "useTemplate": "Use This Template",
+    "goToProfiles": "Go to Profiles",
+    "colorCode": "Field Type Color Coding",
+    "fixed": "Fixed",
+    "range": "Range",
+    "waveform": "Waveform",
+    "checksum": "Checksum",
+    "flags": "Flags"
+  },
+  "protocolDecoder": {
+    "title": "Protocol Decoder",
+    "unknown": "Unknown",
+    "auto": "Auto",
+    "last": "Last",
+    "decodeError": "Decode error",
+    "noMatch": "No {protocol} match",
+    "noFrames": "No frames to decode",
+    "crcOk": "CRC OK",
+    "crcError": "CRC Error",
+    "frameCount": "{count} frame",
+    "frameCount_plural": "{count} frames",
+    "modbusRtu": "Modbus RTU",
+    "nmea0183": "NMEA 0183"
+  },
+  "visualizer": {
+    "suiteTitle": "ICU DIGITAL TWIN SUITE",
+    "activeDevices": "{count} ACTIVE DEVICES — UART SIMULATION",
+    "overview": "OVERVIEW",
+    "bindProfiles": "BIND PROFILES",
+    "bindingTitle": "DEVICE MAPPING",
+    "bindingDesc": "Link simulation profiles to 3D twins",
+    "bindingHelp": "Each 3D device can be bound to a specific simulation profile. This allows you to run multiple independent simulations and see them reflected in the digital twin room.",
+    "unbind": "Unbind",
+    "anyProfile": "Any Profile",
+    "running": "RUNNING",
+    "deviceTwin": "DEVICE TWIN",
+    "whatIsIt": "What is it?",
+    "howUsed": "How is it used?",
+    "lastFrame": "Last Frame (RAW)",
+    "alarm": "ALARM",
+    "stable": "STABLE",
+    "alarmCheck": "Check patient status immediately",
+    "backOverview": "BACK TO OVERVIEW",
+    "digitalTwinSuite": "DIGITAL TWIN SUITE",
+    "initializing": "Initializing {name}...",
+    "hr": "HR",
+    "hrUnit": "BPM",
+    "spo2": "SpO2",
+    "spo2Unit": "% SpO2",
+    "rr": "RR",
+    "rrUnit": "RPM",
+    "temp": "TEMP",
+    "fio2": "FiO2",
+    "fio2Label": "FiO2 (%)",
+    "peep": "PEEP",
+    "peepLabel": "PEEP (cmH2O)",
+    "tidalVol": "Tidal Vol",
+    "rate": "Rate",
+    "volume": "Volume",
+    "remaining": "Remaining",
+    "ivUnit": "mL/h",
+    "pi": "PI",
+    "piLabel": "PI (%)",
+    "pleth": "Pleth",
+    "sample": "pts",
+    "devices": {
+      "patient_monitor": {
+        "label": "Patient Monitor",
+        "description": "Multi-parameter bedside monitor displaying vital signs such as ECG, heart rate, and SpO2.",
+        "how": "Used for continuous tracking of clinical status and early detection of arrhythmias."
+      },
+      "ventilator": {
+        "label": "Ventilator",
+        "description": "Advanced life support machine providing controlled mechanical ventilation.",
+        "how": "Simulates airway pressure and respiratory cycles based on incoming flow data."
+      },
+      "iv_pump": {
+        "label": "IV Pump",
+        "description": "Volumetric infusion pump for precise delivery of fluids and medications.",
+        "how": "Tracks volumetric flow rates and remaining bag volume in real-time."
+      },
+      "pulse_oximeter": {
+        "label": "Pulse Oximeter",
+        "description": "Standalone SPO2 monitor for peripheral oxygen saturation measurement.",
+        "how": "Provides PPG waveforms and PI (Perfusion Index) measurements."
+      }
+    }
   }
 }
 

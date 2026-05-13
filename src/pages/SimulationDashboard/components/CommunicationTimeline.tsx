@@ -199,7 +199,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
             type="button"
             onClick={() => setInputType(t => t === 'ascii' ? 'hex' : 'ascii')}
             className="flex items-center justify-center w-10 h-10 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg transition-colors"
-            title={inputType === 'ascii' ? 'ASCII Mode' : 'HEX Mode'}
+            title={inputType === 'ascii' ? t('timeline.asciiMode') : t('timeline.hexMode')}
           >
             {inputType === 'ascii' ? <Type size={16} /> : <Hash size={16} />}
           </button>
@@ -208,7 +208,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={inputType === 'ascii' ? "Mesaj yazın (ASCII)..." : "A1 B2 C3 (HEX)..."}
+            placeholder={inputType === 'ascii' ? t('timeline.asciiPlaceholder') : t('timeline.hexPlaceholder')}
             className="flex-1 h-10 bg-black/50 border border-gray-700 rounded-lg px-4 font-mono text-sm text-gray-200 outline-none focus:border-blue-500 transition-colors"
           />
           
@@ -217,7 +217,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
             disabled={!inputText.trim()}
             className="flex items-center gap-2 px-4 h-10 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-colors"
           >
-            <Send size={14} /> Gönder
+            <Send size={14} /> {t('timeline.send')}
           </button>
         </form>
       )}

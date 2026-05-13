@@ -69,7 +69,7 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
             <button
               onClick={clearHistory}
               className="p-1 hover:bg-red-900/30 text-gray-600 hover:text-red-400 rounded transition-colors"
-              title="TX geçmişini temizle"
+              title={t('frameMonitor.clearHistory')}
             >
               <Trash2 size={11} />
             </button>
@@ -103,7 +103,7 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[9px] font-mono text-gray-600 shrink-0">
-                      {new Date(frame.timestampMs).toLocaleTimeString('tr-TR', {
+                      {new Date(frame.timestampMs).toLocaleTimeString(undefined, {
                         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
                       })}
                     </span>
@@ -112,7 +112,7 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
                     </span>
                     {isLatest && (
                       <span className="text-[8px] font-mono text-green-400 animate-pulse ml-auto shrink-0">
-                        YENİ
+                        {t('common.new')}
                       </span>
                     )}
                     {frame.errors.length > 0 && (

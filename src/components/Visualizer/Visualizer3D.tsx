@@ -361,7 +361,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
                         </div>
                         <div className="flex justify-between pt-1">
                             <span className="text-gray-500 uppercase">{t('visualizer.throughput')}:</span>
-                            <span className="text-cyan-400 font-black">3.4 MB/s</span>
+                            <span className="text-cyan-400 font-black">{t('visualizer.throughput', { value: 3.4 })}</span>
                         </div>
                         <div className="flex justify-between pt-1">
                             <span className="text-gray-500 uppercase">{t('visualizer.jitter')}:</span>

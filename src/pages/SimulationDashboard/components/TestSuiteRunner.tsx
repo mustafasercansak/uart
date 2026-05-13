@@ -16,7 +16,7 @@ import type { Exchange } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 // ─────────────────────────────────────────────
-// TİPLER
+// TYPES
 // ─────────────────────────────────────────────
 
 type AssertionType =
@@ -192,15 +192,13 @@ function runTest(
         return { 
           ...base, 
           status: 'pass', 
-          message: t('testSuite.messages.sizeOk').replace('{expected}', expected.toString()) 
+          message: t('testSuite.messages.sizeOk', { expected: expected.toString() }) 
         };
       }
       return {
         ...base,
         status: 'fail',
-        message: t('testSuite.messages.sizeError')
-          .replace('{count}', failed.length.toString())
-          .replace('{expected}', expected.toString()),
+        message: t('testSuite.messages.sizeError', { count: failed.length, expected: expected.toString() }),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
@@ -215,15 +213,13 @@ function runTest(
         return { 
           ...base, 
           status: 'pass', 
-          message: t('testSuite.messages.hexOk').replace('{pattern}', tc.hexPattern) 
+          message: t('testSuite.messages.hexOk', { pattern: tc.hexPattern }) 
         };
       }
       return {
         ...base,
         status: 'fail',
-        message: t('testSuite.messages.hexError')
-          .replace('{count}', failed.length.toString())
-          .replace('{pattern}', tc.hexPattern),
+        message: t('testSuite.messages.hexError', { count: failed.length, pattern: tc.hexPattern }),
         failedFrames: failed.map((f) => f.frameNumber),
       };
     }
@@ -472,7 +468,7 @@ function TestCaseForm({
 }
 
 // ─────────────────────────────────────────────
-// ANA BİLEŞEN
+// MAIN COMPONENT
 // ─────────────────────────────────────────────
 
 interface TestSuiteRunnerProps {

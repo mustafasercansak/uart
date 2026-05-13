@@ -138,7 +138,7 @@ describe('ExportEngine', () => {
         });
 
         it('covers computeErrorStats edge cases (duration=0)', () => {
-            const frames = [{ timestampMs: 1000, rawBytes: [0], errors: [] }] as GeneratedFrame[];
+            const frames = [{ timestampMs: 1000, rawBytes: [0], errors: [] }] as unknown as GeneratedFrame[];
             const stats = computeErrorStats(frames);
             expect(stats.durationMs).toBe(1); // Fallback to 1
             expect(stats.framesPerSecond).toBe(1000);

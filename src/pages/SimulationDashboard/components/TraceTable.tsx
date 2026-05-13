@@ -116,7 +116,7 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
                          {ex.tx ? t('trace.source.tx') : t('trace.source.rx')}
                        </span>
                     </td>
-                    <td className="p-3 text-gray-500">{(ex.tx?.rawHex.split(' ').length || ex.rx?.rawHex.split(' ').length || 0)}B</td>
+                    <td className="p-3 text-gray-500">{(ex.tx?.rawHex.split(' ').length || ex.rx?.rawHex.split(' ').length || 0)}{t('common.byte').charAt(0).toUpperCase()}</td>
                     {/* Status Dot */}
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center">

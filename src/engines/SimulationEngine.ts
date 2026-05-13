@@ -313,10 +313,10 @@ export class SimulationEngine {
                  this.executeActions([{ type: 'send_raw', payload: hexStr }], matchEntry.id);
                }
                if (result.command === 'pause') {
-                 this.executeActions([{ type: 'pause' }], matchEntry.id);
+                 this.executeActions([{ type: 'pause', payload: '' }], matchEntry.id);
                }
                if (result.command === 'stop') {
-                 this.executeActions([{ type: 'stop' }], matchEntry.id);
+                 this.executeActions([{ type: 'stop', payload: '' }], matchEntry.id);
                }
                if (result.setFields) {
                  Object.entries(result.setFields as Record<string, number>).forEach(([fid, val]) => {
@@ -385,6 +385,12 @@ export class SimulationEngine {
             this.state.fieldOverrides[fieldId] = parseFloat(value);
             break;
           }
+          case 'pause':
+            this.pause();
+            break;
+          case 'stop':
+            this.stop();
+            break;
         }
       }, action.delayMs || 0);
     }
