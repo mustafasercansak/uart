@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import type { GeneratedFrame, FrameProfile } from '../../types';
+import { useTranslation } from '../../i18n/context';
 
 const DEVICE_BINDINGS_KEY = 'uart_device_bindings';
 
@@ -21,56 +22,7 @@ interface DeviceConfig {
   fieldMap: Record<string, string[]>; // display label -> candidate field names
 }
 
-const DEVICES: DeviceConfig[] = [
-  {
-    id: 'patient_monitor',
-    type: 'patient_monitor',
-    label: 'Patient Monitor',
-    position: [4.5, 0, 1],
-    rotY: -0.5,
-    glowHex: 0x10b981,
-    glowCss: '#10b981',
-    description: 'Continuously measures and displays vital signs: ECG, SpO₂, respiratory rate, and temperature.',
-    how: 'ECG electrodes send millivolt signals that are amplified and digitized. Each parameter is packed into a UART frame at 9600 baud and transmitted every 100 ms.',
-    fieldMap: { HR: ['bpm', 'hr', 'heartrate'], 'SpO2': ['spo2', 'oxygen'], RR: ['rr', 'resp'], Temp: ['temp', 'temperature'] },
-  },
-  {
-    id: 'ventilator',
-    type: 'ventilator',
-    label: 'Ventilator',
-    position: [-4.5, 0, 1.5],
-    rotY: 0.5,
-    glowHex: 0x3b82f6,
-    glowCss: '#3b82f6',
-    description: 'Delivers controlled breaths to patients who cannot breathe independently, regulating pressure, volume, and oxygen concentration.',
-    how: 'A pneumatic sensor measures airway pressure 250 times per second. Flow and volume data are serialised as 16-bit integers in each UART frame alongside alarm flags.',
-    fieldMap: { RR: ['rr', 'resp'], 'FiO2': ['fio2', 'fi02'], PEEP: ['peep'], 'Tidal Vol': ['tidalvol', 'tv'] },
-  },
-  {
-    id: 'iv_pump',
-    type: 'iv_pump',
-    label: 'IV Pump',
-    position: [-4, 0, -3.5],
-    rotY: 0.8,
-    glowHex: 0xf59e0b,
-    glowCss: '#f59e0b',
-    description: 'Precisely delivers fluids and medications through an intravenous line at a programmed rate.',
-    how: 'A stepper motor drives the peristaltic mechanism. The controller reports flow rate, volume infused, and remaining volume over RS-232 (UART) every 500 ms.',
-    fieldMap: { Rate: ['flowrate', 'rate', 'infusionrate'], Volume: ['volume', 'vol'], Remaining: ['remaining', 'rem'] },
-  },
-  {
-    id: 'pulse_ox',
-    type: 'pulse_oximeter',
-    label: 'Pulse Oximeter',
-    position: [3.5, 0, -4],
-    rotY: -0.8,
-    glowHex: 0xec4899,
-    glowCss: '#ec4899',
-    description: 'Non-invasively measures blood oxygen saturation and pulse rate using infrared light through a finger clip.',
-    how: 'Red (660 nm) and infrared (940 nm) LEDs shine through the finger. A photodetector captures the plethysmography waveform. SpO₂ is derived from the ratio of absorbed light and sent over UART at 115200 baud.',
-    fieldMap: { 'SpO2': ['spo2', 'oxygen'], PI: ['pi', 'perfusion'], Pleth: ['pleth', 'ppg', 'spo2wave'] },
-  },
-];
+// Removed static DEVICES constant, now defined inside component with t() support
 
 // ─── Live Data ────────────────────────────────────────────────────────────────
 
@@ -153,54 +105,54 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.fillText(text, x, y);
 }
 
-function drawMonitorScreen(ctx: CanvasRenderingContext2D, d: LiveData) {
+function drawMonitorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
   clearScreen(ctx, '#010810');
   drawWave(ctx, d.ecgHistory, '#10b981', 220, 180);
   drawWave(ctx, d.plethHistory, '#06b6d4', 420, 120, 255);
 
-  drawLabel(ctx, d.isAlarm ? '⚠ ALARM' : 'STABLE', 30, 40, d.isAlarm ? '#ef4444' : '#ffffff30', 20);
-  drawLabel(ctx, 'PATIENT MONITOR', 200, 40, '#ffffff20', 16);
+  drawLabel(ctx, d.isAlarm ? t('visualizer.alarm') : t('visualizer.stable'), 30, 40, d.isAlarm ? '#ef4444' : '#ffffff30', 20);
+  drawLabel(ctx, t('visualizer.devices.patient_monitor.label').toUpperCase(), 200, 40, '#ffffff20', 16);
 
   ctx.fillStyle = d.isAlarm && d.bpm > 0 ? '#ef4444' : '#10b981';
   ctx.font = 'bold 100px monospace';
   ctx.fillText(d.bpm ? `${d.bpm}` : '--', 30, 490);
-  drawLabel(ctx, 'BPM', 30, 512, '#ffffff40', 22);
+  drawLabel(ctx, t('visualizer.hrUnit'), 30, 512, '#ffffff40', 22);
 
   ctx.fillStyle = d.isAlarm && d.spo2 < 90 ? '#ef4444' : '#06b6d4';
   ctx.font = 'bold 100px monospace';
   ctx.fillText(d.spo2 ? `${d.spo2}` : '--', 300, 490);
-  drawLabel(ctx, 'SpO₂%', 300, 512, '#ffffff40', 22);
+  drawLabel(ctx, t('visualizer.spo2Unit'), 300, 512, '#ffffff40', 22);
 }
 
-function drawVentilatorScreen(ctx: CanvasRenderingContext2D, d: LiveData) {
+function drawVentilatorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
   clearScreen(ctx, '#020c1a');
   drawWave(ctx, d.breathHistory, '#3b82f6', 260, 160, 255);
 
-  drawLabel(ctx, 'VENTILATOR', 30, 40, '#3b82f640', 20);
+  drawLabel(ctx, t('visualizer.devices.ventilator.label').toUpperCase(), 30, 40, '#3b82f640', 20);
 
   ctx.fillStyle = '#3b82f6';
   ctx.font = 'bold 90px monospace';
   ctx.fillText(d.rr ? `${d.rr}` : '--', 30, 420);
-  drawLabel(ctx, 'RR b/min', 30, 448, '#ffffff40', 20);
+  drawLabel(ctx, t('visualizer.rrUnit'), 30, 448, '#ffffff40', 20);
 
   ctx.fillStyle = '#93c5fd';
   ctx.font = 'bold 90px monospace';
   ctx.fillText(d.fio2 ? `${d.fio2}%` : '--', 270, 420);
-  drawLabel(ctx, 'FiO₂', 290, 448, '#ffffff40', 20);
+  drawLabel(ctx, t('visualizer.fio2Label'), 290, 448, '#ffffff40', 20);
 
   ctx.fillStyle = '#60a5fa';
   ctx.font = 'bold 50px monospace';
-  ctx.fillText(d.peep ? `PEEP ${d.peep}` : 'PEEP --', 30, 510);
+  ctx.fillText(d.peep ? `${t('visualizer.peepLabel')} ${d.peep}` : `${t('visualizer.peepLabel')} --`, 30, 510);
 }
 
-function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData) {
+function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
   clearScreen(ctx, '#1a0e00');
-  drawLabel(ctx, 'IV INFUSION PUMP', 30, 40, '#f59e0b40', 18);
+  drawLabel(ctx, t('visualizer.devices.iv_pump.label').toUpperCase(), 30, 40, '#f59e0b40', 18);
 
   ctx.fillStyle = '#f59e0b';
   ctx.font = 'bold 110px monospace';
   ctx.fillText(d.flowrate ? `${d.flowrate}` : '--', 30, 250);
-  drawLabel(ctx, 'mL / hr', 30, 280, '#ffffff50', 22);
+  drawLabel(ctx, t('visualizer.ivUnit'), 30, 280, '#ffffff50', 22);
 
   // Progress bar
   const pct = d.volume > 0 && d.remaining >= 0 ? Math.min(1, d.remaining / d.volume) : 0;
@@ -209,7 +161,7 @@ function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData) {
   ctx.fillStyle = pct < 0.2 ? '#ef4444' : '#f59e0b';
   ctx.fillRect(30, 320, 450 * pct, 28);
 
-  drawLabel(ctx, d.volume ? `${d.remaining ?? '--'} / ${d.volume} mL` : '-- / -- mL', 30, 390, '#ffffff50', 22);
+  drawLabel(ctx, d.volume ? `${d.remaining ?? '--'} / ${d.volume} ${t('visualizer.ivUnit').split('/')[0].trim()}` : `-- / -- ${t('visualizer.ivUnit').split('/')[0].trim()}`, 30, 390, '#ffffff50', 22);
 
   // Animated drip dot
   const dropY = 430 + ((d.ivPhase % 1) * 60);
@@ -219,11 +171,11 @@ function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData) {
   ctx.fill();
 }
 
-function drawPulseOxScreen(ctx: CanvasRenderingContext2D, d: LiveData, beat: number) {
+function drawPulseOxScreen(ctx: CanvasRenderingContext2D, d: LiveData, beat: number, t: any) {
   clearScreen(ctx, '#180014');
   drawWave(ctx, d.plethHistory, `rgba(236,72,153,${0.6 + beat * 0.4})`, 260, 160, 255);
 
-  drawLabel(ctx, 'PULSE OXIMETER', 30, 40, '#ec489940', 18);
+  drawLabel(ctx, t('visualizer.devices.pulse_oximeter.label').toUpperCase(), 30, 40, '#ec489940', 18);
 
   // Beating heart indicator
   const r = 18 + beat * 10;
@@ -233,12 +185,12 @@ function drawPulseOxScreen(ctx: CanvasRenderingContext2D, d: LiveData, beat: num
   ctx.fillStyle = d.spo2 < 90 && d.spo2 > 0 ? '#ef4444' : '#ec4899';
   ctx.font = 'bold 110px monospace';
   ctx.fillText(d.spo2 ? `${d.spo2}%` : '--', 30, 430);
-  drawLabel(ctx, 'SpO₂', 30, 460, '#ffffff40', 22);
+  drawLabel(ctx, t('visualizer.spo2Unit'), 30, 460, '#ffffff40', 22);
 
   ctx.fillStyle = '#f9a8d4';
   ctx.font = 'bold 60px monospace';
   ctx.fillText(d.pi ? d.pi.toFixed(1) : '--', 30, 510);
-  drawLabel(ctx, 'PI%', 140, 510, '#ffffff40', 22);
+  drawLabel(ctx, t('visualizer.piLabel'), 140, 510, '#ffffff40', 22);
 }
 
 // ─── 3D Model Builders ────────────────────────────────────────────────────────
@@ -542,6 +494,59 @@ interface Props {
 }
 
 export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles = [] }: Props) {
+  const { t } = useTranslation();
+
+  const DEVICES: DeviceConfig[] = [
+    {
+      id: 'patient_monitor',
+      type: 'patient_monitor',
+      label: t('visualizer.devices.patient_monitor.label'),
+      position: [4.5, 0, 1],
+      rotY: -0.5,
+      glowHex: 0x10b981,
+      glowCss: '#10b981',
+      description: t('visualizer.devices.patient_monitor.description'),
+      how: t('visualizer.devices.patient_monitor.how'),
+      fieldMap: { [t('visualizer.hr')]: ['bpm', 'hr', 'heartrate'], [t('visualizer.spo2')]: ['spo2', 'oxygen'], [t('visualizer.rr')]: ['rr', 'resp'], [t('visualizer.temp')]: ['temp', 'temperature'] },
+    },
+    {
+      id: 'ventilator',
+      type: 'ventilator',
+      label: t('visualizer.devices.ventilator.label'),
+      position: [-4.5, 0, 1.5],
+      rotY: 0.5,
+      glowHex: 0x3b82f6,
+      glowCss: '#3b82f6',
+      description: t('visualizer.devices.ventilator.description'),
+      how: t('visualizer.devices.ventilator.how'),
+      fieldMap: { [t('visualizer.rr')]: ['rr', 'resp'], [t('visualizer.fio2')]: ['fio2', 'fi02'], [t('visualizer.peep')]: ['peep'], [t('visualizer.tidalVol')]: ['tidalvol', 'tv'] },
+    },
+    {
+      id: 'iv_pump',
+      type: 'iv_pump',
+      label: t('visualizer.devices.iv_pump.label'),
+      position: [-4, 0, -3.5],
+      rotY: 0.8,
+      glowHex: 0xf59e0b,
+      glowCss: '#f59e0b',
+      description: t('visualizer.devices.iv_pump.description'),
+      how: t('visualizer.devices.iv_pump.how'),
+      fieldMap: { [t('visualizer.rate')]: ['flowrate', 'rate', 'infusionrate'], [t('visualizer.volume')]: ['volume', 'vol'], [t('visualizer.remaining')]: ['remaining', 'rem'] },
+    },
+    {
+      id: 'pulse_ox',
+      type: 'pulse_oximeter',
+      label: t('visualizer.devices.pulse_oximeter.label'),
+      position: [3.5, 0, -4],
+      rotY: -0.8,
+      glowHex: 0xec4899,
+      glowCss: '#ec4899',
+      description: t('visualizer.devices.pulse_oximeter.description'),
+      how: t('visualizer.devices.pulse_oximeter.how'),
+      fieldMap: { [t('visualizer.spo2')]: ['spo2', 'oxygen'], [t('visualizer.pi')]: ['pi', 'perfusion'], [t('visualizer.pleth')]: ['pleth', 'ppg', 'spo2wave'] },
+    },
+  ];
+
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneCtx | null>(null);
   const liveRef = useRef<LiveData>(makeLiveData());
@@ -721,22 +726,22 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
       const shouldDraw = (id: string) => now - lastDrawMs[id] >= (id === sel ? SELECTED_INTERVAL : IDLE_INTERVAL);
 
       if (shouldDraw('patient_monitor')) {
-        drawMonitorScreen(ctx.devices['patient_monitor'].ctx, d);
+        drawMonitorScreen(ctx.devices['patient_monitor'].ctx, d, t);
         ctx.devices['patient_monitor'].texture.needsUpdate = true;
         lastDrawMs['patient_monitor'] = now;
       }
       if (shouldDraw('ventilator')) {
-        drawVentilatorScreen(ctx.devices['ventilator'].ctx, d);
+        drawVentilatorScreen(ctx.devices['ventilator'].ctx, d, t);
         ctx.devices['ventilator'].texture.needsUpdate = true;
         lastDrawMs['ventilator'] = now;
       }
       if (shouldDraw('iv_pump')) {
-        drawIVPumpScreen(ctx.devices['iv_pump'].ctx, d);
+        drawIVPumpScreen(ctx.devices['iv_pump'].ctx, d, t);
         ctx.devices['iv_pump'].texture.needsUpdate = true;
         lastDrawMs['iv_pump'] = now;
       }
       if (shouldDraw('pulse_ox')) {
-        drawPulseOxScreen(ctx.devices['pulse_ox'].ctx, d, beat);
+        drawPulseOxScreen(ctx.devices['pulse_ox'].ctx, d, beat, t);
         ctx.devices['pulse_ox'].texture.needsUpdate = true;
         lastDrawMs['pulse_ox'] = now;
       }
@@ -928,9 +933,9 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
         <div>
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${displayData.isAlarm ? 'bg-red-500 animate-ping' : 'bg-emerald-500 shadow-[0_0_12px_#10b981]'}`} />
-            <span className="text-white font-black text-lg tracking-widest">ICU DIGITAL TWIN SUITE</span>
+            <span className="text-white font-black text-lg tracking-widest">{t('visualizer.suiteTitle')}</span>
           </div>
-          <div className="text-[10px] text-gray-500 tracking-widest mt-1 pl-6">4 ACTIVE DEVICES · UART SIMULATION</div>
+          <div className="text-[10px] text-gray-500 tracking-widest mt-1 pl-6">{t('visualizer.activeDevices', { count: 4 })}</div>
         </div>
         <div className="text-right">
           <div className="text-white font-black text-xl tabular-nums">{new Date().toLocaleTimeString()}</div>
@@ -951,7 +956,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
             selected === null ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-500 hover:border-white/20'
           }`}
         >
-          OVERVIEW
+          {t('visualizer.overview')}
         </button>
         {DEVICES.map(cfg => (
           <button
@@ -972,7 +977,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
         onClick={() => setShowConfig(c => !c)}
         className="absolute top-14 left-4 pointer-events-auto px-3 py-1.5 text-[10px] font-black tracking-widest rounded-lg border border-white/10 bg-black/40 text-gray-400 hover:border-white/20 hover:text-white transition-all"
       >
-        ⚙ BIND PROFILES
+        ⚙ {t('visualizer.bindProfiles')}
       </button>
 
       {/* ── Profile binding config panel ── */}
@@ -981,13 +986,13 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
           <div className="rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-black tracking-widest text-gray-500">PROFILE BINDING</div>
-                <div className="text-white font-black text-sm mt-0.5">Assign profiles to devices</div>
+                <div className="text-[10px] font-black tracking-widest text-gray-500">{t('visualizer.bindingTitle')}</div>
+                <div className="text-white font-black text-sm mt-0.5">{t('visualizer.bindingDesc')}</div>
               </div>
               <button onClick={() => setShowConfig(false)} className="text-gray-600 hover:text-white text-lg">✕</button>
             </div>
             <p className="text-gray-500 text-[11px] leading-relaxed">
-              When a device is bound to a profile, it dims when a different profile is running — so you always know which simulation drives which twin.
+              {t('visualizer.bindingHelp')}
             </p>
             {DEVICES.map(cfg => (
               <div key={cfg.id} className="space-y-1">
@@ -999,7 +1004,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
                       onClick={() => saveBinding(cfg.id, '')}
                       className="ml-auto text-[9px] text-gray-600 hover:text-red-400 transition-colors"
                     >
-                      UNBIND
+                      {t('visualizer.unbind')}
                     </button>
                   )}
                 </div>
@@ -1008,11 +1013,11 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
                   onChange={e => saveBinding(cfg.id, e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] text-gray-300 font-mono outline-none focus:border-white/20"
                 >
-                  <option value="">— Any profile (always active) —</option>
+                  <option value="">{t('visualizer.anyProfile')}</option>
                   {profiles.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.name}
-                      {p.id === activeProfileId ? ' ▶ RUNNING' : ''}
+                      {p.id === activeProfileId ? ` ▶ ${t('visualizer.running')}` : ''}
                     </option>
                   ))}
                 </select>
@@ -1033,7 +1038,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: selectedCfg.glowCss }} />
-                <span className="text-[11px] tracking-widest text-gray-400 font-black">DEVICE TWIN</span>
+                <span className="text-[11px] tracking-widest text-gray-400 font-black">{t('visualizer.deviceTwin')}</span>
               </div>
               <h2 className="text-white font-black text-lg leading-tight">{selectedCfg.label}</h2>
             </div>
@@ -1065,20 +1070,20 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
 
             {/* Description */}
             <div>
-              <div className="text-[10px] font-black tracking-widest text-gray-500 mb-2">WHAT IS IT?</div>
+              <div className="text-[10px] font-black tracking-widest text-gray-500 mb-2">{t('visualizer.whatIsIt')}</div>
               <p className="text-gray-300 text-xs leading-relaxed">{selectedCfg.description}</p>
             </div>
 
             {/* How it works */}
             <div>
-              <div className="text-[10px] font-black tracking-widest text-gray-500 mb-2">HOW UART IS USED</div>
+              <div className="text-[10px] font-black tracking-widest text-gray-500 mb-2">{t('visualizer.howUsed')}</div>
               <p className="text-gray-400 text-xs leading-relaxed">{selectedCfg.how}</p>
             </div>
 
             {/* UART frame info */}
             {lastFrame && (
               <div className="bg-black/60 rounded-xl p-3 border border-white/5">
-                <div className="text-[10px] font-black tracking-widest text-gray-500 mb-2">LAST FRAME</div>
+                <div className="text-[10px] font-black tracking-widest text-gray-500 mb-2">{t('visualizer.lastFrame')}</div>
                 <div className="text-[10px] font-mono text-cyan-400 break-all leading-relaxed">{lastFrame.rawHex}</div>
               </div>
             )}
@@ -1086,8 +1091,8 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
             {/* Alarm indicator */}
             {displayData.isAlarm && selectedCfg.id === 'patient_monitor' && (
               <div className="bg-red-950/60 border border-red-500/40 rounded-xl p-3 text-center">
-                <div className="text-red-400 font-black text-sm animate-pulse">⚠ VITAL SIGN ALARM</div>
-                <div className="text-red-500/70 text-[10px] mt-1">Check BPM or SpO₂ values</div>
+                <div className="text-red-400 font-black text-sm animate-pulse">{t('visualizer.alarm')}</div>
+                <div className="text-red-500/70 text-[10px] mt-1">{t('visualizer.alarmCheck')}</div>
               </div>
             )}
 
@@ -1095,7 +1100,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
               onClick={() => setSelected(null)}
               className="mt-auto py-2 rounded-xl text-[11px] font-black tracking-widest text-gray-500 border border-white/10 hover:border-white/20 hover:text-white transition-all"
             >
-              ← BACK TO OVERVIEW
+              {t('visualizer.backOverview')}
             </button>
           </div>
         </div>
@@ -1105,13 +1110,13 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
       {isBooting && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/98 z-50">
           <div className="text-cyan-400 font-black tracking-[0.6em] text-lg animate-pulse mb-8">
-            ICU DIGITAL TWIN SUITE
+            {t('visualizer.digitalTwinSuite')}
           </div>
           <div className="flex flex-col gap-2 text-left w-56">
             {DEVICES.map((d, i) => (
               <div key={d.id} className="flex items-center gap-3 text-[11px] font-mono" style={{ animationDelay: `${i * 200}ms` }}>
                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: d.glowCss }} />
-                <span className="text-gray-400">Initialising {d.label}...</span>
+                <span className="text-gray-400">{t('visualizer.initializing', { name: d.label })}</span>
               </div>
             ))}
           </div>

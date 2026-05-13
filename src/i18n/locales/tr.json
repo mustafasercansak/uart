@@ -8,7 +8,41 @@
     "subtitle": "Sensör Simülatörü",
     "expand": "Genişlet",
     "collapse": "Daralt",
-    "system": "Sistem & Sürüm"
+    "system": "Sistem & Sürüm",
+    "commandPalette": "Komut Paleti",
+    "switchToLight": "Aydınlık Moda Geç",
+    "switchToDark": "Karanlık Moda Geç",
+    "light": "Aydınlık",
+    "dark": "Karanlık",
+    "developer": "Geliştirici: Mustafa Sercan Sak (LinkedIn)",
+    "logoAlt": "UART Logosu",
+    "gotoDashboard": "Simülasyon paneline git",
+    "manageProfiles": "Paket yapılarını yönet",
+    "manageScenarios": "Simülasyon senaryolarını yönet",
+    "documentation": "Dokümantasyon",
+    "viewHelp": "Yardım ve kılavuzları görüntüle",
+    "togglePro": "Pro Modu Aç/Kapat",
+    "toggleProDesc": "Standart ve Tanılama modu arasında geçiş yap",
+    "searchPlaceholder": "Komut, araç veya tanılama ara...",
+    "versionLabel": "UART Simulator v{version}"
+  },
+  "system": {
+    "title": "Yazılım & Güncellemeler",
+    "version": "Yazılım Sürümü",
+    "checkUpdate": "Güncellemeleri Kontrol Et",
+    "checking": "Güncellemeler kontrol ediliyor...",
+    "upToDate": "En son sürümü kullanıyorsunuz.",
+    "updateAvailable": "Yeni sürüm mevcut: {version}",
+    "downloading": "İndiriliyor: %{progress}",
+    "install": "Şimdi Güncelle",
+    "changelog": "Yenilikler",
+    "error": "Güncelleme kontrolü başarısız oldu.",
+    "relaunching": "Uygulama yeniden başlatılıyor...",
+    "about": "Hakkında",
+    "developer": "Geliştirici",
+    "core": "UART Simülatör Çekirdeği",
+    "sourceCode": "Kaynak Kodu",
+    "stable": "Kararlı"
   },
   "common": {
     "log": "Günlük",
@@ -28,7 +62,30 @@
     "min": "Min",
     "max": "Max",
     "tcp": "TCP",
-    "retry": "Yeniden Dene"
+    "retry": "Yeniden Dene",
+    "time": "Zaman",
+    "type": "Tip",
+    "text": "Metin",
+    "navigation": "Gezinme",
+    "configuration": "Yapılandırma",
+    "navigate": "Gezin",
+    "select": "Seç",
+    "close": "Kapat",
+    "unexpectedError": "Beklenmeyen Hata",
+    "unknownError": "Bilinmeyen hata",
+    "reloadPage": "Sayfayı Yenile",
+    "new": "YENİ",
+    "undo": "Geri Al",
+    "redo": "İleri Al",
+    "byte": "byte",
+    "bytes": "byte",
+    "noResultsFound": "Sonuç bulunamadı",
+    "ctrl": "Ctrl",
+    "esc": "Esc",
+    "statusStarted": "Başlatıldı",
+    "statusProgress": "İşleniyor",
+    "statusFinished": "Tamamlandı",
+    "hz": "Hz"
   },
   "statBar": {
     "serialPort": "Seri Port (COM)",
@@ -36,7 +93,11 @@
     "tcpServer": "TCP Sunucu (Sanal Port)",
     "noPort": "Port Bulunamadı",
     "unknown": "Bilinmeyen",
-    "typeOrSelect": "Port numarasını yazın veya listeden seçin"
+    "typeOrSelect": "Port numarasını yazın veya listeden seçin",
+    "tcpListening": "DİNLENİYOR",
+    "tcpServerMode": "TCP SUNUCU",
+    "tcpListen": "DİNLE",
+    "examplePort": "COM1 / /dev/tty"
   },
   "rxMonitor": {
     "title": "RX Geçmişi",
@@ -90,7 +151,8 @@
     "testing": "Testler",
     "spectrum": "Spektrum",
     "triggers": "Tetikleyiciler",
-    "visualizer": "3D Görsel",
+    "visualizer": "Görselleştirici",
+    "vcdExport": "Mantık Analizörü VCD Dışa Aktar",
     "decoder": "Çözücü",
     "testsuite": "Test Paketi",
     "builder": "Oluşturucu",
@@ -149,6 +211,21 @@
     "minMax": "Min: {min}ms / Max: {max}ms",
     "successRate": "Başarı Oranı",
     "cleanFrames": "{count} Hatasız Paket"
+  },
+  "timeline": {
+    "txSystem": "Master (TX)",
+    "rxDevice": "Cihaz (RX)",
+    "noRealDevice": "Simüle Edilmiş Bağlantı",
+    "lastFrames": "Son {count} Paket",
+    "clear": "Temizle",
+    "txOut": "TX ÇIKIŞ",
+    "rxIn": "RX GİRİŞ",
+    "waitingComm": "İletişim trafiği bekleniyor...",
+    "asciiMode": "ASCII Modu",
+    "hexMode": "HEX Modu",
+    "asciiPlaceholder": "Mesaj yazın (ASCII)...",
+    "hexPlaceholder": "A1 B2 C3 (HEX)...",
+    "send": "Gönder"
   },
   "profileEditor": {
     "title": "Profil Düzenleyici",
@@ -240,6 +317,19 @@
     "varI": "- Frame sayısı",
     "varF": "- Önceki alanlar",
     "varMath": "- Tüm JS math fonksiyonları",
+    "easeIn": "Yavaş Başla",
+    "easeOut": "Yavaş Bitir",
+    "easeInOut": "Yavaş Başla-Bitir",
+    "minMs": "Min ms",
+    "maxMs": "Max ms",
+    "polynomialHex": "Polinom (hex)",
+    "addBit": "+ Bit",
+    "exampleExpression": "fields['Alan1'] * 2 + 10",
+    "scriptHeader": "// t: ms, i: frame, f: fields",
+    "crc8": "CRC-8",
+    "crc16CCITT": "CRC-16 CCITT",
+    "crc16Modbus": "CRC-16 Modbus",
+    "crc32": "CRC-32",
     "noProfileYet": "Henüz profil yok",
     "selectOrCreate": "Profil seçin veya yeni oluşturun",
     "newProfile": "+ Yeni Profil",
@@ -250,6 +340,11 @@
     "exportJson": "↓ Dışa Aktar",
     "saved": "✓ Kaydedildi",
     "parity": "Parite",
+    "even": "Çift (Even)",
+    "odd": "Tek (Odd)",
+    "mark": "İşaret (Mark)",
+    "space": "Boşluk (Space)",
+    "none": "Yok (None)",
     "stopBit": "Stop Bit",
     "sendInterval": "Gönderim Aralığı (ms)",
     "description": "Açıklama",
@@ -262,7 +357,23 @@
     "framePreview": "FRAME ÖNİZLEME",
     "noFieldsYet": "Alan yok — alan ekleyerek başlayın",
     "bpsStats": "{n} alan",
-    "duplicate": "Bu profili silmek istediğinize emin misiniz?"
+    "duplicate": "Bu profili silmek istediğinize emin misiniz?",
+    "newFieldDefault": "Alan {index}",
+    "copySuffix": "(Kopya)",
+    "undoTitle": "Geri Al (Ctrl+Z)",
+    "redoTitle": "İleri Al (Ctrl+Y)",
+    "newProfileDefault": "Yeni Profil",
+    "sync": "Sync",
+    "data": "Veri",
+    "bigEndian": "Big Endian (Motorola)",
+    "littleEndian": "Little Endian",
+    "decimal": "Desimal",
+    "min": "Min",
+    "max": "Maks",
+    "reflectIn": "Girişi Yansıt (Reflect In)",
+    "reflectOut": "Çıkışı Yansıt (Reflect Out)",
+    "bitLabel": "Bit {index}",
+    "jsEs6": "JS / ES6+"
   },
   "validation": {
     "startTitle": "Validasyon Oturumu Başlat",
@@ -479,7 +590,40 @@
       "squareDesc": "Dijital Anahtarlama",
       "noise": "Beyaz Gürültü",
       "noiseDesc": "Sinyal Girişimi"
-    }
+    },
+    "savedTitle": "Kaydedilenler",
+    "functions": "Fonksiyonlar",
+    "presetsTitle": "Hazır Formüller",
+    "noSaved": "Henüz kayıt yok",
+    "ctrlEnter": "Ctrl+Enter",
+    "saved": "Kaydedildi",
+    "error": "Hata",
+    "drawTip": "İpucu: Kendi sinyalinizi çizmek için kanvas üzerine tıklayıp sürükleyin.",
+    "formulaLabels": {
+      "sin": "Sinüs",
+      "cos": "Kosinüs",
+      "tan": "Tanjant",
+      "abs": "Mutlak değer",
+      "sqrt": "Karekök",
+      "pow": "Üs alma",
+      "log": "Doğal log",
+      "floor": "Aşağı yuvarla",
+      "pi": "π = 3.14159…",
+      "mod": "Modulo (kırık kısım)"
+    },
+    "exampleLabels": {
+      "basic": "Temel sinüs dalgası",
+      "rectified": "Tam dalga doğrulayıcı",
+      "modulated": "Modüle sinüs",
+      "sawtooth": "Testere dişi",
+      "square": "Kare dalga",
+      "fourier": "Fourier kare dalga",
+      "chirp": "Frekans artışı (chirp)",
+      "damped": "Sönümlü titreşim"
+    },
+    "resolution": "Çözünürlük",
+    "samples": "örnek",
+    "sample": "örnek"
   },
   "errors": {
     "checksum": "Checksum Boz",
@@ -561,6 +705,7 @@
     "actionInjectError": "İletişim/protokol hatalarını simüle eder.",
     "quote": "Otomasyon, titiz doğrulamanın anahtarıdır.",
     "openDocs": "Otomasyon Dokümantasyonunu Aç",
+    "fieldPlaceholder": "örn: field:SpO2",
     "libraryTemplates": "Kütüphane Şablonları",
     "categoryLabel": {
       "custom": "Özel",
@@ -604,16 +749,6 @@
     "copyOf": "(Kopya)",
     "targetPlaceholder": "örn: field:SpO2"
   },
-  "timeline": {
-    "txSystem": "TX (Sistem)",
-    "rxDevice": "RX (Cihaz)",
-    "noRealDevice": "Gerçek cihaz yok — sadece TX",
-    "lastFrames": "Son {count} paket",
-    "waitingComm": "İletişim bekleniyor",
-    "clear": "TEMİZLE",
-    "txOut": "TX ÇIKIŞ",
-    "rxIn": "RX GİRİŞ"
-  },
   "profileCompare": {
     "title": "Profil Karşılaştırma",
     "profileA": "Profil A",
@@ -644,7 +779,9 @@
     "recHelp": "Simülasyonu başlatıp KAYIT butonuna basın",
     "saveAsScenario": "Senaryo olarak kaydet",
     "scenarioSaved": "Senaryo kaydedildi!",
-    "scenarioFromRecording": "Kayıttan oluşturulan senaryo"
+    "scenarioFromRecording": "Kayıttan oluşturulan senaryo",
+    "csvExportTitle": "CSV Olarak Aktar (Veri Bilimi / Excel)",
+    "vcdExportTitle": "Mantık Analizörü VCD Aktar"
   },
   "conversationMonitor": {
     "title": "Canlı Karşılaşma Günlüğü",
@@ -695,7 +832,8 @@
     "masterLang": "Çift Dilli",
     "readmeLang": "Geliştirici",
     "developer": "Mustafa Sercan Sak",
-    "date": "16 Nisan 2026"
+    "date": "16 Nisan 2026",
+    "systemImage": "Sistem Görüntüsü"
   },
   "telemetryPanel": {
     "waitingData": "Veri akışı bekleniyor...",
@@ -901,7 +1039,8 @@
       "outOfLimits": "{field} limit dışı: {value} {unit} (Beklenen: {min}-{max})",
       "sessionStarted": "Validasyon seansı başlatıldı: {name}",
       "sessionStartedLog": "VALIDASYON BAŞLATILDI: {name}",
-      "sessionCompleted": "VALIDASYON TAMAMLANDI. Skor: {score}%"
+      "sessionCompleted": "VALIDASYON TAMAMLANDI. Skor: %{score}",
+      "licensed": "Geliştirme İçin Lisanslanmıştır"
     },
     "network": {
       "invalidPort": "Geçersiz TCP portu: {port}",
@@ -1024,7 +1163,8 @@
     "slotARef": "Slot A (Referans)",
     "slotBTest": "Slot B (Test)",
     "hex": "HEX:",
-    "addToDashboard": "Pano'ya ekle ({name})"
+    "addToDashboard": "Pano'ya ekle ({name})",
+    "clearHistory": "TX geçmişini temizle"
   },
   "visualizer": {
     "booting": "CLINICAL SYNC ENGINE v7.0",
@@ -1039,10 +1179,68 @@
     "fixed": "Sabit",
     "throughput": "Veri Akışı",
     "jitter": "Jitter",
-    "hr": "Kalp Atış Hızı",
-    "spo2": "O2 Saturasyonu",
-    "rr": "RR",
-    "temp": "Sıcaklık"
+    "hr": "KAH",
+    "spo2": "SpO2",
+    "rr": "SH",
+    "temp": "Sıcaklık",
+    "fio2": "FiO2",
+    "peep": "PEEP",
+    "tidalVol": "Tidal Vol",
+    "rate": "Hız",
+    "volume": "Hacim",
+    "remaining": "Kalan",
+    "pi": "PI",
+    "pleth": "Plet",
+    "hrUnit": "BPM",
+    "spo2Unit": "SpO2%",
+    "rrUnit": "RR b/dak",
+    "ivUnit": "mL / sa",
+    "fio2Label": "FiO2",
+    "peepLabel": "PEEP",
+    "tidalVolLabel": "Tidal Vol",
+    "piLabel": "PI%",
+    "devices": {
+      "patient_monitor": {
+        "label": "Hasta Monitörü",
+        "description": "Hayati belirtileri sürekli olarak ölçer ve görüntüler: EKG, SpO₂, solunum hızı ve sıcaklık.",
+        "how": "EKG elektrotları, yükseltilen ve dijitalleştirilen milivolt sinyalleri gönderir. Her parametre 9600 baud hızında bir UART paketine yerleştirilir ve her 100 ms'de bir iletilir."
+      },
+      "ventilator": {
+        "label": "Ventilatör",
+        "description": "Kendi başına nefes alamayan hastalara basınç, hacim ve oksijen konsantrasyonunu düzenleyerek kontrollü nefes verir.",
+        "how": "Pnömatik bir sensör hava yolu basıncını saniyede 250 kez ölçer. Akış ve hacim verileri, her UART paketinde alarm bayraklarıyla birlikte 16 bitlik tam sayılar olarak serileştirilir."
+      },
+      "iv_pump": {
+        "label": "IV Pompa",
+        "description": "Sıvıları ve ilaçları programlanmış bir hızda intravenöz hat üzerinden hassas bir şekilde iletir.",
+        "how": "Bir step motor peristaltik mekanizmayı sürer. Kontrolör akış hızını, verilen hacmi ve kalan hacmi her 500 ms'de bir RS-232 (UART) üzerinden bildirir."
+      },
+      "pulse_oximeter": {
+        "label": "Nabız Oksimetresi",
+        "description": "Bir parmak klipsi aracılığıyla kızılötesi ışık kullanarak kandaki oksijen doygunluğunu ve nabız hızını non-invaziv olarak ölçer.",
+        "how": "Kırmızı (660 nm) ve kızılötesi (940 nm) LED'ler parmağın içinden parlar. Bir fotodedektör pletismografi dalga formunu yakalar. SpO₂, emilen ışığın oranından türetilir ve 115200 baud hızında UART üzerinden gönderilir."
+      }
+    },
+    "overview": "GENEL BAKIŞ",
+    "bindProfiles": "PROFİLLERİ BAĞLA",
+    "bindingTitle": "PROFİL BAĞLAMA",
+    "bindingDesc": "Cihazlara profil atayın",
+    "bindingHelp": "Bir cihaz bir profile bağlandığında, farklı bir profil çalışırken kararır; böylece hangi simülasyonun hangi ikizi sürdüğünü her zaman bilirsiniz.",
+    "anyProfile": "— Herhangi bir profil (her zaman aktif) —",
+    "unbind": "BAĞI KOPAR",
+    "deviceTwin": "CİHAZ İKİZİ",
+    "whatIsIt": "NEDİR BU?",
+    "howUsed": "UART NASIL KULLANILIR?",
+    "lastFrame": "SON PAKET",
+    "alarm": "⚠ HAYATİ BELİRTİ ALARMI",
+    "alarmCheck": "BPM veya SpO₂ değerlerini kontrol edin",
+    "backOverview": "← GENEL BAKIŞA DÖN",
+    "suiteTitle": "ICU DİJİTAL İKİZ SÜİTİ",
+    "digitalTwinSuite": "YBÜ DİJİTAL İKİZ SETİ",
+    "activeDevices": "{count} AKTİF CİHAZ · UART SİMÜLASYONU",
+    "initializing": "{name} başlatılıyor...",
+    "stable": "STABİL",
+    "running": "ÇALIŞIYOR"
   },
   "designer": {
     "title": "Sanal Cihaz Tasarımcısı",
@@ -1087,19 +1285,83 @@
     "checksum": "Sağlama",
     "flags": "Bayraklar"
   },
-  "system": {
-    "title": "Yazılım & Güncellemeler",
-    "version": "Yazılım Sürümü",
-    "checkUpdate": "Güncellemeleri Denetle",
-    "checking": "Güncellemeler kontrol ediliyor...",
-    "upToDate": "Yazılım güncel. En son sürümü kullanıyorsunuz.",
-    "updateAvailable": "Yeni sürüm bulundu: {version}",
-    "downloading": "İndiriliyor: %{progress}",
-    "install": "Şimdi Güncelle",
-    "changelog": "Yenilikler",
-    "error": "Güncelleme kontrolü başarısız oldu.",
-    "relaunching": "Uygulama yeniden başlatılıyor...",
-    "about": "Hakkında",
-    "developer": "Geliştirici"
+  "protocolDecoder": {
+    "title": "Protokol Dekoder",
+    "unknown": "Bilinmiyor",
+    "auto": "Otomatik",
+    "last": "Son",
+    "decodeError": "Çözümleme hatası",
+    "noMatch": "{protocol} eşleşmesi bulunamadı",
+    "noFrames": "Çözümlenecek frame yok",
+    "crcOk": "CRC TAMAM",
+    "crcError": "CRC HATASI",
+    "frameCount": "{count} frame",
+    "frameCount_plural": "{count} frame",
+    "modbusRtu": "Modbus RTU",
+    "nmea0183": "NMEA 0183"
+  },
+  "visualizer": {
+    "suiteTitle": "YOĞUN BAKIM DİJİTAL İKİZ SÜİTİ",
+    "activeDevices": "{count} AKTİF CİHAZ — UART SİMÜLASYONU",
+    "overview": "GENEL BAKIŞ",
+    "bindProfiles": "PROFİLLERİ BAĞLA",
+    "bindingTitle": "CİHAZ EŞLEME",
+    "bindingDesc": "Simülasyon profillerini 3D ikizlere bağlayın",
+    "bindingHelp": "Her 3D cihaz belirli bir simülasyon profiline bağlanabilir. Bu, birden fazla bağımsız simülasyon yürütmenize ve bunların dijital ikiz odasına yansımasını görmenize olanak tanır.",
+    "unbind": "Bağı Kes",
+    "anyProfile": "Herhangi Bir Profil",
+    "running": "ÇALIŞIYOR",
+    "deviceTwin": "CİHAZ İKİZİ",
+    "whatIsIt": "Nedir?",
+    "howUsed": "Nasıl Kullanılır?",
+    "lastFrame": "Son Paket (HAM)",
+    "alarm": "ALARM",
+    "stable": "STABİL",
+    "alarmCheck": "Hasta durumunu derhal kontrol edin",
+    "backOverview": "GENEL BAKIŞA DÖN",
+    "digitalTwinSuite": "DİJİTAL İKİZ SÜİTİ",
+    "initializing": "{name} başlatılıyor...",
+    "hr": "Nabız",
+    "hrUnit": "BPM",
+    "spo2": "SpO2",
+    "spo2Unit": "% SpO2",
+    "rr": "SS",
+    "rrUnit": "RPM",
+    "temp": "ATEŞ",
+    "fio2": "FiO2",
+    "fio2Label": "FiO2 (%)",
+    "peep": "PEEP",
+    "peepLabel": "PEEP (cmH2O)",
+    "tidalVol": "Tidal Hacim",
+    "rate": "Hız",
+    "volume": "Hacim",
+    "remaining": "Kalan",
+    "ivUnit": "mL/sa",
+    "pi": "PI",
+    "piLabel": "PI (%)",
+    "pleth": "Plet",
+    "sample": "örnek",
+    "devices": {
+      "patient_monitor": {
+        "label": "Hasta Monitörü",
+        "description": "EKG, kalp hızı ve SpO2 gibi hayati bulguları gösteren çok parametreli başucu monitörü.",
+        "how": "Klinik durumun sürekli takibi ve aritmilerin erken tespiti için kullanılır."
+      },
+      "ventilator": {
+        "label": "Ventilatör",
+        "description": "Kontrollü mekanik ventilasyon sağlayan gelişmiş yaşam destek makinesi.",
+        "how": "Gelen akış verilerine göre havayolu basıncını ve solunum döngülerini simüle eder."
+      },
+      "iv_pump": {
+        "label": "IV Pompa",
+        "description": "Sıvıların ve ilaçların hassas iletimi için hacimsel infüzyon pompası.",
+        "how": "Hacimsel akış hızlarını ve kalan torba hacmini gerçek zamanlı olarak takip eder."
+      },
+      "pulse_oximeter": {
+        "label": "Nabız Oksimetresi",
+        "description": "Periferik oksijen satürasyonu ölçümü için bağımsız SPO2 monitörü.",
+        "how": "PPG dalga formları ve PI (Perfüzyon İndeksi) ölçümleri sağlar."
+      }
+    }
   }
 }

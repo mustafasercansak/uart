@@ -186,8 +186,8 @@ const LogicAnalyzer = memo(() => {
       ctx.fillStyle = '#f8fafc';
       ctx.font = '10px ui-monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(`${t('logic.deltaT')}: ${deltaT.toFixed(3)} ms`, width - 150, 25);
-      ctx.fillText(`${t('logic.freq')}: ${freq.toFixed(1)} Hz`, width - 150, 42);
+      ctx.fillText(`${t('logic.deltaT')}: ${deltaT.toFixed(3)} ${t('time.ms')}`, width - 150, 25);
+      ctx.fillText(`${t('logic.freq')}: ${freq.toFixed(1)} ${t('common.hz')}`, width - 150, 42);
     }
 
     // This function now just performs a single static draw of the current state.

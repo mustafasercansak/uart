@@ -217,7 +217,7 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                       }
                     }}
                     className="p-2 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl border border-emerald-500/20 transition-all"
-                    title="Export as CSV (Data Science / Excel)"
+                    title={t('playback.csvExportTitle')}
                   >
                     <FileSpreadsheet size={14} />
                   </button>
@@ -231,7 +231,7 @@ const PlaybackPanel: React.FC<PlaybackPanelProps> = ({
                       }
                     }}
                     className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-xl border border-blue-500/20 transition-all"
-                    title="Export Logic Analyzer VCD"
+                    title={t('playback.vcdExportTitle')}
                   >
                     <FileDown size={14} />
                   </button>

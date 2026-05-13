@@ -15,7 +15,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { useTranslation } from '../../i18n/context';
 import { useSimulation } from '../../hooks/useSimulation';
 
 interface Command {
@@ -39,37 +39,38 @@ export function CommandPalette() {
     injectError, setAnalyzerMode
   } = useSimulation();
 
+  const { t } = useTranslation();
+
   const commands: Command[] = [
     // Navigation
-    { id: 'nav-dash', name: 'Dashboard', description: 'Go to simulation dashboard', category: 'Navigation', icon: <Layout size={16} />, action: () => navigate('/') },
-    { id: 'nav-profiles', name: 'Profile Editor', description: 'Manage frame structures', category: 'Navigation', icon: <Settings size={16} />, action: () => navigate('/profiles') },
-    { id: 'nav-scenarios', name: 'Scenario Editor', description: 'Manage simulation scenarios', category: 'Navigation', icon: <Activity size={16} />, action: () => navigate('/scenarios') },
-    { id: 'nav-help', name: 'Documentation', description: 'View help and guides', category: 'Navigation', icon: <HelpCircle size={16} />, action: () => navigate('/help') },
+    { id: 'nav-dash', name: t('nav.dashboard'), description: t('nav.gotoDashboard'), category: t('common.navigation'), icon: <Layout size={16} />, action: () => navigate('/') },
+    { id: 'nav-profiles', name: t('nav.profiles'), description: t('nav.manageProfiles'), category: t('common.navigation'), icon: <Settings size={16} />, action: () => navigate('/profiles') },
+    { id: 'nav-scenarios', name: t('nav.scenarios'), description: t('nav.manageScenarios'), category: t('common.navigation'), icon: <Activity size={16} />, action: () => navigate('/scenarios') },
+    { id: 'nav-help', name: t('nav.documentation'), description: t('nav.viewHelp'), category: t('common.navigation'), icon: <HelpCircle size={16} />, action: () => navigate('/help') },
     
     // Actions
-    { id: 'act-start', name: 'Start Simulation', description: 'Broadcast UART data', category: 'Simulation', icon: <Play size={16} className="text-emerald-400" />, action: () => {
+    { id: 'act-start', name: t('common.start'), description: t('common.start'), category: t('common.engine'), icon: <Play size={16} className="text-emerald-400" />, action: () => {
         const stored = localStorage.getItem('uart_profiles');
         let profiles = [];
         if (stored) { try { profiles = JSON.parse(stored); } catch(_e) { /* Ignore parse errors */ } }
         const profile = profiles.find((p: { id: string }) => p.id === state.profileId) || profiles[0];
         if (profile) start(profile, null, state.outputMode);
     }, shortcut: 'S' },
-    { id: 'act-pause', name: 'Pause Simulation', description: 'Freeze all data streams', category: 'Simulation', icon: <Pause size={16} className="text-amber-400" />, action: () => pause(), shortcut: 'P' },
-    { id: 'act-resume', name: 'Resume Simulation', description: 'Continue transmission', category: 'Simulation', icon: <Play size={16} className="text-emerald-400" />, action: () => {
+    { id: 'act-pause', name: t('common.pause'), description: t('common.pause'), category: t('common.engine'), icon: <Pause size={16} className="text-amber-400" />, action: () => pause(), shortcut: 'P' },
+    { id: 'act-resume', name: t('common.resume'), description: t('common.resume'), category: t('common.engine'), icon: <Play size={16} className="text-emerald-400" />, action: () => {
         const stored = localStorage.getItem('uart_profiles');
         let profiles = [];
         if (stored) { try { profiles = JSON.parse(stored); } catch(_e) { /* Ignore parse errors */ } }
         const profile = profiles.find((p: { id: string }) => p.id === state.profileId);
         if (profile) resume(profile, null);
     } },
-    { id: 'act-stop', name: 'Stop Simulation', description: 'Cease all transmission', category: 'Simulation', icon: <Square size={16} className="text-rose-400" />, action: () => stop(), shortcut: 'Esc' },
+    { id: 'act-stop', name: t('common.stop'), description: t('common.stop'), category: t('common.engine'), icon: <Square size={16} className="text-rose-400" />, action: () => stop(), shortcut: 'Esc' },
     
     // Config
-    { id: 'cfg-pro', name: 'Toggle Pro Mode', description: 'Switch between Standard and Diagnostic mode', category: 'Configuration', icon: <Terminal size={16} />, action: () => setAnalyzerMode(!state.analyzerMode) },
+    { id: 'cfg-pro', name: t('nav.togglePro'), description: t('nav.toggleProDesc'), category: t('common.configuration'), icon: <Terminal size={16} />, action: () => setAnalyzerMode(!state.analyzerMode) },
 
     // Faults
-    { id: 'flt-checksum', name: 'Inject Checksum Error', description: 'Corrupt the next packet CRC', category: 'Fault Injection', icon: <Zap size={16} className="text-rose-500" />, action: () => injectError('corrupt_checksum') },
-    { id: 'flt-sync', name: 'Inject Sync Break', description: 'Corrupt start/stop bytes', category: 'Fault Injection', icon: <AlertOctagon size={16} className="text-orange-500" />, action: () => injectError('wrong_sync') },
+    { id: 'flt-checksum', name: t('common.injection'), description: t('common.injection'), category: t('common.engine'), icon: <Zap size={16} className="text-rose-500" />, action: () => injectError('corrupt_checksum') },
   ];
 
   const filteredCommands = commands.filter(cmd => 
@@ -136,7 +137,7 @@ export function CommandPalette() {
                 <input 
                   autoFocus
                   className="bg-transparent border-none outline-none text-white w-full font-mono text-sm placeholder:text-gray-500"
-                  placeholder="Komut, araç veya tanılama ara..."
+                  placeholder={t('nav.searchPlaceholder')}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                 />
@@ -149,7 +150,7 @@ export function CommandPalette() {
                 {filteredCommands.length === 0 ? (
                   <div className="px-4 py-12 text-center text-gray-500">
                     <Terminal size={32} className="mx-auto mb-3 opacity-20" />
-                    <p className="text-sm">"{query}" için komut bulunamadı</p>
+                    <p className="text-sm">{t('common.noResultsFound')} ("{query}")</p>
                   </div>
                 ) : (
                   <div className="pb-2">
@@ -197,11 +198,11 @@ export function CommandPalette() {
 
               <div className="px-4 py-2 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-gray-500">
                 <div className="flex gap-4">
-                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↑↓</kbd> Gezin</span>
-                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↵</kbd> Seç</span>
-                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">Esc</kbd> Kapat</span>
+                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↑↓</kbd> {t('common.navigate')}</span>
+                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↵</kbd> {t('common.select')}</span>
+                  <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">{t('common.esc')}</kbd> {t('common.close')}</span>
                 </div>
-                <div>UART Simulator v1.4.0</div>
+                <div>{t('nav.versionLabel', { version: '1.4.0' })}</div>
               </div>
             </motion.div>
           </div>

@@ -33,7 +33,7 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
     <aside className={`${collapsed ? 'w-16' : 'w-56'} bg-gray-950 border-r border-gray-800 flex flex-col h-full shrink-0 transition-all duration-300 relative`}>
       <div className={`px-4 py-5 border-b border-gray-800 flex items-center justify-between transition-all ${collapsed ? 'flex-col gap-4 px-2' : ''}`}>
         <div className="flex items-center gap-3">
-          <img src={logo} alt="UART Logo" className={`${collapsed ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg shadow-lg shadow-cyan-500/20`} />
+          <img src={logo} alt={t('nav.logoAlt')} className={`${collapsed ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg shadow-lg shadow-cyan-500/20`} />
           {!collapsed && (
             <div className="flex flex-col">
               <div className="text-white font-mono font-bold text-sm tracking-widest">UART</div>
@@ -72,9 +72,9 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
       <div className={`${collapsed ? 'px-2' : 'px-4'} py-3 border-t border-gray-800 flex flex-col items-center gap-2`}>
         {!collapsed && (
           <div className="w-full flex items-center justify-between px-1 py-1 rounded-lg bg-gray-900/50 border border-gray-800 text-[10px] font-mono text-gray-600">
-            <span>Komut Paleti</span>
+            <span>{t('nav.commandPalette')}</span>
             <div className="flex items-center gap-0.5">
-              <kbd className="bg-gray-800 px-1 rounded border border-gray-700">Ctrl</kbd>
+              <kbd className="bg-gray-800 px-1 rounded border border-gray-700">{t('common.ctrl')}</kbd>
               <kbd className="bg-gray-800 px-1 rounded border border-gray-700">K</kbd>
             </div>
           </div>
@@ -84,17 +84,17 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className={`text-gray-500 hover:text-green-400 p-1.5 rounded-lg hover:bg-gray-900 transition-all border border-transparent hover:border-gray-800 flex items-center justify-center gap-2 ${collapsed ? 'w-full' : 'flex-1'}`}
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              title={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              {!collapsed && <span className="text-[10px] font-mono uppercase tracking-widest">{theme === 'dark' ? 'Light' : 'Dark'}</span>}
+              {!collapsed && <span className="text-[10px] font-mono uppercase tracking-widest">{theme === 'dark' ? t('nav.light') : t('nav.dark')}</span>}
             </button>
             <a
               href="https://www.linkedin.com/in/mustafa-sercan-sak-30190684/"
               target="_blank"
               rel="noopener noreferrer"
               className={`text-gray-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-blue-900/20 transition-all border border-transparent hover:border-blue-800/50 flex items-center justify-center ${collapsed ? 'w-full' : 'w-9'}`}
-              title="Developer: Mustafa Sercan Sak (LinkedIn)"
+              title={t('nav.developer')}
             >
               <svg
                 width="16"

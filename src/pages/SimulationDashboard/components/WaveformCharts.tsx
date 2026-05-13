@@ -239,14 +239,14 @@ function WaveformCharts({ selectedProfile }: WaveformChartsProps) {
                 <span className="text-[9px] font-mono text-blue-400 uppercase font-black tracking-widest">{t('waveformCharts.measurement')}</span>
                 <div className="flex items-center gap-2 mt-1">
                   <Ruler size={14} className="text-blue-500" />
-                  <span className="text-sm font-mono font-bold text-white">Δt: {deltaT.toFixed(2)}ms</span>
+                  <span className="text-sm font-mono font-bold text-white">Δt: {deltaT.toFixed(2)}{t('time.ms')}</span>
                 </div>
               </div>
               <div className="w-[1px] h-8 bg-blue-500/20" />
               <div className="flex flex-col">
                 <span className="text-[9px] font-mono text-gray-500 uppercase">{t('waveformCharts.frequency')}</span>
                 <span className="text-xs font-mono font-bold text-gray-300">
-                  {frequency > 0 ? frequency.toFixed(1) + ' Hz' : '---'}
+                  {frequency > 0 ? frequency.toFixed(1) + ' ' + t('common.hz') : '---'}
                 </span>
               </div>
            </div>

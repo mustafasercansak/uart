@@ -74,10 +74,10 @@ export function SystemModal({ isOpen, onClose }: Props) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="UART Logo" className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/10" />
+            <img src={logo} alt={t('nav.logoAlt')} className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/10" />
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">{t('system.title')}</h3>
-              <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">UART Simulator Core</p>
+              <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">{t('system.core')}</p>
             </div>
           </div>
           <button 
@@ -98,7 +98,7 @@ export function SystemModal({ isOpen, onClose }: Props) {
               <div className="text-xl font-mono font-bold text-white">v{__APP_VERSION__}</div>
             </div>
             <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-[10px] font-bold text-green-400 uppercase tracking-widest">
-              Stable
+              {t('system.stable')}
             </div>
           </div>
 
@@ -205,7 +205,7 @@ export function SystemModal({ isOpen, onClose }: Props) {
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-gray-500">
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Source Code</span>
+                <span>{t('system.sourceCode')}</span>
               </div>
               <a 
                 href="https://github.com/mustafasercansak/uart" 
@@ -222,7 +222,7 @@ export function SystemModal({ isOpen, onClose }: Props) {
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-900/30 text-center">
           <p className="text-[10px] text-gray-600 font-mono">
-            &copy; {new Date().getFullYear()} UART Simulator &bull; Licensed for Development
+            &copy; {new Date().getFullYear()} UART Simulator &bull; {t('simulation.validation.licensed')}
           </p>
         </div>
       </div>

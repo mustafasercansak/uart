@@ -23,7 +23,7 @@ export function FramePreview({ fields }: Props) {
     <div className="p-3 bg-gray-950">
       <div className="flex items-center justify-between mb-2">
         <span className="text-gray-500 text-xs font-mono">{t('profileEditor.framePreview')}</span>
-        <span className="text-gray-600 text-xs font-mono">{totalBytes} byte</span>
+        <span className="text-gray-600 text-xs font-mono">{totalBytes} {totalBytes === 1 ? t('common.byte') : t('common.bytes')}</span>
       </div>
       <div className="flex flex-wrap gap-1">
         {fields.map((field) => (

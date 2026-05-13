@@ -1,5 +1,27 @@
 {
   "name": "uart",
+  "author": {
+    "name": "Mustafa Sercan Sak",
+    "url": "https://www.linkedin.com/in/mustafa-sercan-sak-30190684/"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mustafasercansak/uart"
+  },
+  "description": "UART based medical device data simulator for SpO2 monitoring and signal visualization.",
+  "keywords": [
+    "uart",
+    "simulator",
+    "tauri",
+    "spo2",
+    "medical-device",
+    "serialport",
+    "real-time-data"
+  ],
+  "bugs": {
+    "url": "https://github.com/mustafasercansak/uart/issues"
+  },
   "private": true,
   "version": "1.5.23",
   "type": "module",

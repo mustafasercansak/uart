@@ -172,7 +172,7 @@ const ControlPanel = memo(({
           <div>
              <div className="flex justify-between text-[9px] font-mono mb-0.5">
               <span className="text-gray-500">{t('controls.jitter')}</span>
-              <span className="text-blue-500 font-bold">{signalIntegrity.jitterMs.toFixed(1)}ms</span>
+              <span className="text-blue-500 font-bold">{signalIntegrity.jitterMs.toFixed(1)}{t('time.ms')}</span>
             </div>
             <input
               type="range" min="0" max="50" step="0.5"

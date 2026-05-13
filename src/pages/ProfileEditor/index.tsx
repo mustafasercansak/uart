@@ -18,10 +18,10 @@ import { loadProfiles, saveProfile, deleteProfile, exportAsJson, importFromJson 
 import { FramePreview } from './FramePreview';
 import { FieldEditor } from './FieldEditor';
 
-function newField(order: number): Field {
+function newField(order: number, t: any): Field {
   return {
     id: uuidv4(),
-    name: `Alan ${order + 1}`,
+    name: t('profileEditor.newFieldDefault', { index: order + 1 }),
     order,
     byteWidth: 1,
     endianness: 'big',
@@ -30,14 +30,14 @@ function newField(order: number): Field {
   };
 }
 
-function newProfile(): FrameProfile {
+function newProfile(t: any): FrameProfile {
   const now = new Date().toISOString();
   const syncId = uuidv4();
   const dataId = uuidv4();
   const csId = uuidv4();
   return {
     id: uuidv4(),
-    name: 'Yeni Profil',
+    name: t('profileEditor.newProfileDefault'),
     description: '',
     baudRate: 9600,
     dataBits: 8,
@@ -48,9 +48,9 @@ function newProfile(): FrameProfile {
     createdAt: now,
     updatedAt: now,
     fields: [
-      { id: syncId, name: 'Sync', order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0xAA } as FixedConfig },
-      { id: dataId, name: 'Veri', order: 1, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 0, max: 255, distribution: 'uniform' } as RangeConfig },
-      { id: csId, name: 'Checksum', order: 2, byteWidth: 1, endianness: 'big', type: 'checksum', typeConfig: { algorithm: 'xor', scope: { startFieldId: syncId, endFieldId: dataId } } as ChecksumConfig },
+      { id: syncId, name: t('profileEditor.sync'), order: 0, byteWidth: 1, endianness: 'big', type: 'fixed', typeConfig: { value: 0xAA } as FixedConfig },
+      { id: dataId, name: t('profileEditor.data'), order: 1, byteWidth: 1, endianness: 'big', type: 'range', typeConfig: { min: 0, max: 255, distribution: 'uniform' } as RangeConfig },
+      { id: csId, name: t('profileEditor.checksum'), order: 2, byteWidth: 1, endianness: 'big', type: 'checksum', typeConfig: { algorithm: 'xor', scope: { startFieldId: syncId, endFieldId: dataId } } as ChecksumConfig },
     ],
   };
 }
@@ -131,7 +131,7 @@ export default function ProfileEditor() {
   };
 
   const createNew = () => {
-    const p = newProfile();
+    const p = newProfile(t);
     setProfile(p);
     setSelectedId(p.id);
     setSelectedFieldId(null);
@@ -156,7 +156,7 @@ export default function ProfileEditor() {
   const duplicate = () => {
     if (!profile) return;
     const now = new Date().toISOString();
-    const dup: FrameProfile = { ...profile, id: uuidv4(), name: `${profile.name} (Kopya)`, createdAt: now, updatedAt: now };
+    const dup: FrameProfile = { ...profile, id: uuidv4(), name: `${profile.name} ${t('profileEditor.copySuffix')}`, createdAt: now, updatedAt: now };
     saveProfile(dup);
     setProfiles(loadProfiles());
     openProfile(dup);
@@ -164,7 +164,7 @@ export default function ProfileEditor() {
 
   const addField = () => {
     if (!profile) return;
-    const field = newField(profile.fields.length);
+    const field = newField(profile.fields.length, t);
     setProfileWithHistory({ ...profile, fields: [...profile.fields, field] });
     setSelectedFieldId(field.id);
   };
@@ -273,13 +273,13 @@ export default function ProfileEditor() {
                 onClick={undo}
                 disabled={!canUndo}
                 className="text-xs font-mono px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-30"
-                title="Geri Al (Ctrl+Z)"
+                title={t('profileEditor.undoTitle')}
               >↩</button>
               <button
                 onClick={redo}
                 disabled={!canRedo}
                 className="text-xs font-mono px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-30"
-                title="İleri Al (Ctrl+Y)"
+                title={t('profileEditor.redoTitle')}
               >↪</button>
               <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
               <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
@@ -303,7 +303,11 @@ export default function ProfileEditor() {
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.parity')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
                   value={profile.parity} onChange={(e) => setProfileWithHistory({ ...profile, parity: e.target.value as FrameProfile['parity'] })}>
-                  {['None', 'Even', 'Odd', 'Mark', 'Space'].map((p) => <option key={p} value={p}>{p}</option>)}
+                  {['None', 'Even', 'Odd', 'Mark', 'Space'].map((p) => (
+                    <option key={p} value={p}>
+                      {t(`profileEditor.${p.toLowerCase()}`)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -370,7 +374,7 @@ export default function ProfileEditor() {
                         </span>
                       </div>
                       <div className="col-span-1 text-center text-gray-400">{field.byteWidth}</div>
-                      <div className="col-span-2 text-gray-500">{field.endianness}</div>
+                      <div className="col-span-2 text-gray-500">{field.endianness === 'big' ? t('profileEditor.bigEndian') : t('profileEditor.littleEndian')}</div>
                       <div className="col-span-3 flex gap-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => moveField(field.id, -1)} disabled={idx === 0} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↑</button>
                         <button onClick={() => moveField(field.id, 1)} disabled={idx === sortedFields.length - 1} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↓</button>

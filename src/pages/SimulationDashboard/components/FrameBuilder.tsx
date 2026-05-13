@@ -229,7 +229,7 @@ function SentFrameRow({
         {new Date(frame.timestamp).toLocaleTimeString(locale, { hour12: false })}
       </span>
       <span className="flex-1 text-gray-300 truncate">{frame.hex}</span>
-      <span className="text-gray-600 shrink-0">{frame.bytes.length}B</span>
+      <span className="text-gray-600 shrink-0">{frame.bytes.length}{t('common.byte').charAt(0).toUpperCase()}</span>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={copy}
@@ -458,7 +458,7 @@ export default function FrameBuilder({ profile, onSendFrame }: Props) {
         <div className="flex items-center gap-3 px-3 py-2 bg-gray-950/60 rounded-lg border border-gray-800/40 text-[11px]">
           <span className="text-gray-500 shrink-0">{t('builder.hex')}</span>
           <span className="flex-1 text-emerald-300 font-bold break-all">{hexString || '—'}</span>
-          <span className="text-gray-600 shrink-0">{bytes.length} byte</span>
+          <span className="text-gray-600 shrink-0">{bytes.length} {t('common.byte')}</span>
         </div>
 
         {/* Checksum calculator */}

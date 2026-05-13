@@ -431,7 +431,7 @@ describe('simulationReducer', () => {
       });
 
       it('handles SAVE_SEQUENCE: adds new sequence', () => {
-        const sequence = { id: 'seq-1', name: 'Test Sequence', steps: [] } as AutomationSequence;
+        const sequence = { id: 'seq-1', name: 'Test Sequence', steps: [] } as unknown as AutomationSequence;
         const action = { type: 'SAVE_SEQUENCE' as const, sequence };
         const newState = reducer(INITIAL_STATE, action);
         expect(newState.sequences.length).toBe(1);
