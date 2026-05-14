@@ -21,6 +21,7 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
   - `StatBar.tsx` — Statements: **42.85% → 95.91%**, Lines: **40.9% → 97.72%** (Start/Stop/Pause/Resume, validation sessions, recording, TCP inputs, port selection, export)
   - 13 failing tests fixed: locale setup (`uart_locale=en`) and removal of the destructive `document.body.appendChild` mock
 - **Localization**: `helpPage.tableOfContents` key added to TR/EN locale files.
+- **Waveform Sliding Window Fix**: `CanvasWaveform` was compressing the entire simulation history into a fixed-width canvas — the longer the simulation ran, the more data was squeezed in, making waveform frequency appear to increase over time. Fixed by switching to a sliding window that always renders only the last N points (proportional to canvas width), so waveforms scroll at a constant visual speed regardless of session length.
 
 ---
 

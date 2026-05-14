@@ -81,21 +81,18 @@ export default function CanvasWaveform({
       const history = waveformHistoryRef.current;
       if (history.length > 0) {
         const dk = dataKeyRef.current;
-        const maxPoints = Math.max(120, Math.floor(sizeRef.current.width * 0.75));
-        const step = history.length > maxPoints ? Math.ceil(history.length / maxPoints) : 1;
+        // Fixed sliding window: always show the last N points so the waveform
+        // scrolls at a constant visual speed regardless of how long the
+        // simulation has been running. Without this, the chart would compress
+        // all history into the same width, making the frequency appear to
+        // increase over time.
+        const windowSize = Math.max(120, Math.floor(sizeRef.current.width * 0.75));
+        const start = Math.max(0, history.length - windowSize);
         const x: number[] = [];
         const y: number[] = [];
-
-        for (let i = 0; i < history.length; i += step) {
+        for (let i = start; i < history.length; i++) {
           x.push(history[i].t ?? i);
           y.push(history[i][dk] ?? 0);
-        }
-        // Always include last point so right edge stays current
-        const last = history[history.length - 1];
-        const lastX = last.t ?? history.length - 1;
-        if (x.length === 0 || x[x.length - 1] !== lastX) {
-          x.push(lastX);
-          y.push(last[dk] ?? 0);
         }
         u.setData([x, y]);
       }
