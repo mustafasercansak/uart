@@ -84,7 +84,7 @@ export class SimulationEngine {
   public setResponderRules(rules: ResponderRule[]) {
     this.responderRules = rules;
     this.lastMatchTime = {};
-    console.log(`\x1b[34m[RESP]\x1b[0m ${rules.length} adet yanıt kuralı yüklendi.`);
+    if (import.meta.env.DEV) console.log(`\x1b[34m[RESP]\x1b[0m ${rules.length} adet yanıt kuralı yüklendi.`);
   }
 
   public updatePeripherals(peripherals: ScriptablePeripheral[]) {
@@ -96,7 +96,7 @@ export class SimulationEngine {
         ));
       }
     });
-    console.log(`\x1b[34m[PERIPH]\x1b[0m ${peripherals.filter(p => p.isActive).length} adet aktif sanal cihaz güncellendi.`);
+    if (import.meta.env.DEV) console.log(`\x1b[34m[PERIPH]\x1b[0m ${peripherals.filter(p => p.isActive).length} adet aktif sanal cihaz güncellendi.`);
   }
 
   public injectRawTX(bytes: number[]) {
@@ -124,7 +124,7 @@ export class SimulationEngine {
 
     // Virtual Loopback: If not connected to hardware, feed it back to RX
     if (!this.state.serialConnected && !this.state.networkConnected) {
-        console.log(`\x1b[33m[LOOPBACK]\x1b[0m ${bytes.length} bytes looped back to RX.`);
+        if (import.meta.env.DEV) console.log(`\x1b[33m[LOOPBACK]\x1b[0m ${bytes.length} bytes looped back to RX.`);
         // Small delay to simulate propagation
         setTimeout(() => {
             this.processIncomingData(bytes);
@@ -271,7 +271,7 @@ export class SimulationEngine {
       const isMatch = bufferTail.every((b, i) => b === patternBytes[i]);
 
       if (isMatch) {
-        console.log(`\x1b[32m[MATCH]\x1b[0m Kural tetiklendi: ${rule.name}`);
+        if (import.meta.env.DEV) console.log(`\x1b[32m[MATCH]\x1b[0m Kural tetiklendi: ${rule.name}`);
         this.lastMatchTime[rule.id] = now;
         
         const matchEntry: ConversationEntry = {
@@ -355,7 +355,7 @@ export class SimulationEngine {
         switch (action.type) {
           case 'send_raw': {
             const bytes = this.parsePattern(action.payload, 'hex');
-            console.log(`\x1b[32m[RESP]\x1b[0m Yanıt gönderiliyor: ${action.payload}`);
+            if (import.meta.env.DEV) console.log(`\x1b[32m[RESP]\x1b[0m Yanıt gönderiliyor: ${action.payload}`);
             
             const txEntry: ConversationEntry = {
                 id: uuidv4(),
@@ -411,14 +411,14 @@ export class SimulationEngine {
   public startRecording() {
     this.isRecording = true;
     this.recordingBuffer = [];
-    console.log('\x1b[35m[REC]\x1b[0m Kayıt başlatıldı.');
+    if (import.meta.env.DEV) console.log('\x1b[35m[REC]\x1b[0m Kayıt başlatıldı.');
   }
 
   public stopRecording() {
     this.isRecording = false;
     const buffer = [...this.recordingBuffer];
     this.recordingBuffer = [];
-    console.log('\x1b[35m[REC]\x1b[0m Kayıt tamamlandı.', buffer.length, 'frame.');
+    if (import.meta.env.DEV) console.log('\x1b[35m[REC]\x1b[0m Kayıt tamamlandı.', buffer.length, 'frame.');
     return buffer;
   }
 
@@ -431,7 +431,7 @@ export class SimulationEngine {
     this.state.playbackIndex = 0;
     this.state.status = 'running' as SimulationStatus;
     this.state.outputMode = 'log'; // Default to log for playback
-    console.log('\x1b[36m[PLAY]\x1b[0m Oynatma başlatılıyor...', data.length, 'frame.');
+    if (import.meta.env.DEV) console.log('\x1b[36m[PLAY]\x1b[0m Oynatma başlatılıyor...', data.length, 'frame.');
     this.playbackLoop();
   }
 
@@ -475,7 +475,7 @@ export class SimulationEngine {
     if (!this.playbackData || this.playbackIndex >= this.playbackData.length || this.state.status !== 'running' || this.isPlaybackPaused) {
       if (this.playbackData && this.playbackIndex >= this.playbackData.length) {
          this.state.status = 'stopped' as SimulationStatus;
-         console.log('\x1b[36m[PLAY]\x1b[0m Oynatma bitti.');
+         if (import.meta.env.DEV) console.log('\x1b[36m[PLAY]\x1b[0m Oynatma bitti.');
       }
       return;
     }
@@ -628,7 +628,7 @@ export class SimulationEngine {
     
     for (const res of triggerResults) {
       if (res.triggered) {
-        console.log(`\x1b[33m[TRIGGERED]\x1b[0m ${res.triggerName} -> ${res.action}`);
+        if (import.meta.env.DEV) console.log(`\x1b[33m[TRIGGERED]\x1b[0m ${res.triggerName} -> ${res.action}`);
         
         switch (res.action) {
           case 'stop_simulation':
@@ -694,7 +694,7 @@ export class SimulationEngine {
     if (this.state.pendingErrors.length > 0) {
       const consumed = this.state.pendingErrors[0];
       this.state.pendingErrors = this.state.pendingErrors.slice(1);
-      console.log(`\x1b[35m[ERROR]\x1b[0m Hata başarıyla enjekte edildi: ${consumed}`);
+      if (import.meta.env.DEV) console.log(`\x1b[35m[ERROR]\x1b[0m Hata başarıyla enjekte edildi: ${consumed}`);
     }
 
     // Schedule next

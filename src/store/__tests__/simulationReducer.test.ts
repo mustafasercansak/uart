@@ -479,5 +479,19 @@ describe('simulationReducer', () => {
         expect(newState.selectedExchangeId).toBeNull();
       });
     });
+
+    describe('SET_CUSTOM_WAVEFORM', () => {
+      it('stores waveform array', () => {
+        const waveform = [0, 128, 255, 64];
+        const newState = reducer(INITIAL_STATE, { type: 'SET_CUSTOM_WAVEFORM', waveform });
+        expect(newState.customWaveform).toEqual(waveform);
+      });
+
+      it('converts null waveform to undefined', () => {
+        const withWave = reducer(INITIAL_STATE, { type: 'SET_CUSTOM_WAVEFORM', waveform: [1, 2, 3] });
+        const cleared = reducer(withWave, { type: 'SET_CUSTOM_WAVEFORM', waveform: null });
+        expect(cleared.customWaveform).toBeUndefined();
+      });
+    });
   });
 });

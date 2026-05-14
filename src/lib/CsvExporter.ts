@@ -1,4 +1,4 @@
-import { GeneratedFrame, FrameProfile } from '../types';
+import { GeneratedFrame, FrameProfile, FlagsConfig } from '../types';
 import { parseFrame } from '../engines/FrameParser';
 
 export function generateCsv(frames: GeneratedFrame[], profile: FrameProfile): string {
@@ -9,7 +9,7 @@ export function generateCsv(frames: GeneratedFrame[], profile: FrameProfile): st
   const headerRow = ['Timestamp (ms)', 'Raw (Hex)'];
   for (const f of sortedFields) {
     if (f.type === 'flags') {
-      const cfg = f.typeConfig as any;
+      const cfg = f.typeConfig as FlagsConfig;
       if (cfg && cfg.bits) {
         for (const b of cfg.bits) {
           headerRow.push(`${f.name}_${b.name}`);
@@ -33,7 +33,7 @@ export function generateCsv(frames: GeneratedFrame[], profile: FrameProfile): st
       for (const p of parsed) {
         if (p.flags) {
            const fDef = sortedFields.find(sf => sf.name === p.name);
-           const cfg = fDef?.typeConfig as any;
+           const cfg = fDef?.typeConfig as FlagsConfig;
            if (cfg && cfg.bits) {
              for (const b of cfg.bits) {
                 row.push(p.flags[b.name]?.toString() || '0');

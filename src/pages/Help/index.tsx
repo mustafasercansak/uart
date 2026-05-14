@@ -255,7 +255,7 @@ const HelpPage: React.FC = () => {
         {toc.length > 0 && (
           <aside className="w-52 shrink-0 border-l border-white/5 bg-[#05070a] py-8 px-4 hidden xl:flex flex-col overflow-y-auto custom-scrollbar">
             <h3 className="text-[10px] font-mono font-black text-gray-600 uppercase tracking-[0.2em] mb-5 pl-2">
-              {language === 'tr' ? 'İçindekiler' : 'On This Page'}
+              {t('helpPage.tableOfContents')}
             </h3>
             <nav className="flex flex-col gap-0.5">
               {toc.map((entry) => {

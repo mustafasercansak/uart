@@ -836,7 +836,8 @@
     "readmeLang": "Geliştirici",
     "developer": "Mustafa Sercan Sak",
     "date": "16 Nisan 2026",
-    "systemImage": "Sistem Görüntüsü"
+    "systemImage": "Sistem Görüntüsü",
+    "tableOfContents": "Bu Sayfada"
   },
   "telemetryPanel": {
     "waitingData": "Veri akışı bekleniyor...",

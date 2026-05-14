@@ -285,6 +285,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
           const logEntry = { time: timeStr, text: t('simulation.network.rxNet', { hex }), type: 'rx' as const };
           fullLogRef.current.push(logEntry);
+          if (fullLogRef.current.length > 2000) fullLogRef.current = fullLogRef.current.slice(-2000);
 
           const currentProfile = stateRef.current.profileId
             ? profilesRef.current.find(p => p.id === stateRef.current.profileId)

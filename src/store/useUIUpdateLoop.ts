@@ -83,7 +83,7 @@ export function useUIUpdateLoop({
                 waveformHistoryRef.current.push(point);
                 tickPoints.push(point);
                 if (waveformHistoryRef.current.length > 1024) {
-                  waveformHistoryRef.current.splice(0, waveformHistoryRef.current.length - 1024);
+                  waveformHistoryRef.current = waveformHistoryRef.current.slice(-1024);
                 }
                 break;
               }
@@ -92,6 +92,7 @@ export function useUIUpdateLoop({
                 break;
               case 'EXCHANGE':
                 exchangeBufferRef.current.push(msg.exchange);
+                if (exchangeBufferRef.current.length > 500) exchangeBufferRef.current = exchangeBufferRef.current.slice(-500);
                 break;
               case 'CONVERSATION': {
                 // Deduplication: Ignore backend TX confirms if we already have a recent local one
@@ -104,6 +105,7 @@ export function useUIUpdateLoop({
                 if (isDuplicate) break;
 
                 conversationBufferRef.current.push(msg.entry);
+                if (conversationBufferRef.current.length > 500) conversationBufferRef.current = conversationBufferRef.current.slice(-500);
                 const cDate = msg.entry.timestamp ? new Date(msg.entry.timestamp) : new Date();
                 const cTimeStr = `${cDate.getHours().toString().padStart(2, '0')}:${cDate.getMinutes().toString().padStart(2, '0')}:${cDate.getSeconds().toString().padStart(2, '0')}.${cDate.getMilliseconds().toString().padStart(3, '0')}`;
                 pushLog({

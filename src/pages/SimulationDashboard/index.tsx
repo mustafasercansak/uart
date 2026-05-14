@@ -55,29 +55,6 @@ const ERROR_TYPES: Array<{ type: ErrorType; key: string; color: string }> = [
   { type: 'delay_frame', key: 'errors.delay', color: 'text-blue-400 border-blue-800/50 bg-blue-900/20 hover:bg-blue-900/40' },
 ];
 
-interface TooltipProps {
-  active?: boolean;
-  payload?: Array<{ value: number; name: string; color: string }>;
-  label?: string | number;
-}
-
-const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
-  if (!active || !payload || !payload.length) return null;
-  return (
-    <div className="bg-gray-950 border border-gray-800 p-2 font-mono text-[10px] shadow-xl">
-      <div className="text-gray-500 mb-1">{label}{t('time.ms')}</div>
-      <div className="space-y-1">
-        {payload.map((entry) => (
-          <div key={entry.name} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-            <span className="text-gray-300">{entry.name}:</span>
-            <span className="text-white font-bold">{entry.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 export default function SimulationDashboard() {
   const { t } = useTranslation();

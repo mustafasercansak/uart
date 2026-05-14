@@ -152,7 +152,6 @@ export type SimAction =
   | { type: 'SAVE_SEQUENCE'; sequence: AutomationSequence }
   | { type: 'DELETE_SEQUENCE'; id: string }
   | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
-  | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
   | { type: 'CLEAR_EXCHANGES' }
   | { type: 'SET_CUSTOM_WAVEFORM'; waveform: number[] | null };
 

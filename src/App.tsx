@@ -10,6 +10,7 @@ import PeripheralDesigner from './pages/PeripheralDesigner/PeripheralDesigner';
 import HelpPage from './pages/Help';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { useOnboarding } from './hooks/useOnboarding';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function AppRoutes() {
   const { show, dismiss } = useOnboarding();
@@ -18,13 +19,13 @@ function AppRoutes() {
       {show && <OnboardingFlow onDone={dismiss} />}
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<SimulationDashboard />} />
-          <Route path="/profiles" element={<ProfileEditor />} />
-          <Route path="/scenarios" element={<ScenarioEditor />} />
-          <Route path="/designer" element={<PeripheralDesigner />} />
-          <Route path="/templates" element={<TemplateBrowser />} />
+          <Route path="/" element={<ErrorBoundary><SimulationDashboard /></ErrorBoundary>} />
+          <Route path="/profiles" element={<ErrorBoundary><ProfileEditor /></ErrorBoundary>} />
+          <Route path="/scenarios" element={<ErrorBoundary><ScenarioEditor /></ErrorBoundary>} />
+          <Route path="/designer" element={<ErrorBoundary><PeripheralDesigner /></ErrorBoundary>} />
+          <Route path="/templates" element={<ErrorBoundary><TemplateBrowser /></ErrorBoundary>} />
         </Route>
-        <Route path="/help" element={<HelpPage />} />
+        <Route path="/help" element={<ErrorBoundary><HelpPage /></ErrorBoundary>} />
       </Routes>
     </>
   );

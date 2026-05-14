@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import { X, Book, HelpCircle, FileText, Globe, MoveLeft } from 'lucide-react';
+import { X, Book, HelpCircle, FileText, Globe } from 'lucide-react';
 import { useTranslation } from '../../../i18n/context';
 
 interface HelpModalProps {

@@ -848,7 +848,8 @@
     "readmeLang": "Developer",
     "developer": "Mustafa Sercan Sak",
     "date": "April 16, 2026",
-    "systemImage": "System Image"
+    "systemImage": "System Image",
+    "tableOfContents": "On This Page"
   },
   "telemetryPanel": {
     "waitingData": "Waiting for data stream...",
