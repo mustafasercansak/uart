@@ -1,239 +1,259 @@
-# 📜 UART Sensör Simülatörü — Değişiklik Günlüğü (CHANGELOG)
+# 📜 UART Sensor Simulator — Changelog
 
-Bu dosya, UART Sensör Simülatörü'nün "Medikal Simülasyon" ve "Yeterlilik (Certification) Suite" dönüşümündeki tüm önemli kilometre taşlarını takip eder.
+All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
+
+---
+
+## [v1.5.26] — 2026-05-14
+### 🚀 Release v1.5.26
+- **Help System Overhaul**: The `/help` page was rewritten from scratch — interactive TOC sidebar with `IntersectionObserver`-based active section tracking, full Markdown support via `rehype-raw` and `remark-gfm` plugins.
+- **Comprehensive Guide Files**: `GUIDE_EN.md` and `GUIDE_TR.md` completely rewritten with 19 sections, tables, code examples, and all application screenshots (~500+ lines each).
+- **Image Path Fix**: Image paths in the help page and HelpModal corrected (added `/docs/` prefix) so images load correctly in all contexts.
+- **HelpModal File References**: Modal now correctly loads `GUIDE_TR.md` and `GUIDE_EN.md` instead of non-existent files.
+- **Dynamic Version Number**: Hardcoded `1.4.0` in `CommandPalette` replaced with `__APP_VERSION__`, automatically read from `package.json`.
+- **ErrorBoundary Integration**: All 6 routes (`/`, `/builder`, `/lab`, `/help`, `/scenarios`, `/profiles`) wrapped with `ErrorBoundary`; component-level crashes now reported via `ErrorReportPanel`.
+- **Type Safety Improvements**: `as any` casts in `CsvExporter.ts` replaced with `FlagsConfig`; duplicate `SET_SEQUENCES` union member removed from `simulationReducer.ts`.
+- **Console Log Cleanup**: 11 `console.log` calls in `SimulationEngine.ts` gated behind `import.meta.env.DEV` — no log output in production builds.
+- **Memory Management**: Max-size limits added for `fullLogRef` (2000), `exchangeBufferRef` (500), and `conversationBufferRef` (500); waveform history trimmed with `slice` instead of `splice`.
+- **Dead Code Removal**: Unused `CustomTooltip` interface and component removed from `SimulationDashboard/index.tsx`.
+- **Test Coverage Improvements**: Comprehensive unit tests added for 3 components:
+  - `ControlPanel.tsx` — Branches: **86.11% → 97.22%** (tx/rx/error/info log color classes, CSV export button)
+  - `StatBar.tsx` — Statements: **42.85% → 95.91%**, Lines: **40.9% → 97.72%** (Start/Stop/Pause/Resume, validation sessions, recording, TCP inputs, port selection, export)
+  - 13 failing tests fixed: locale setup (`uart_locale=en`) and removal of the destructive `document.body.appendChild` mock
+- **Localization**: `helpPage.tableOfContents` key added to TR/EN locale files.
 
 ---
 
 ## [v1.5.25] — 2026-05-13
 ### 🚀 Release v1.5.25
-- **I18n Compliance Test Suite**: Tüm kaynak dosyaları tarayıp `t('...')` çeviri anahtarlarını kontrol eden otomatik test eklendi. Eksik çeviriler geliştirme ve CI aşamalarında artık hemen yakalanıyor.
-- **44 Eksik Çeviri Anahtarı Tamamlanması**: Logic Analyzer ve Trigger Manager bileşenleri için:
-  - `logic.*` bloğu (19 anahtar): Waiting for signal, START, STOP, PARITY, ΔT, Freq, Logic Analyzer, Zoom, Clear Cursors, Running, Paused, UART TX, scroll/zoom/measure instructions, No data, Reset Cursors, Live Sync, Static View, Baud
-  - `triggerManager.*` bloğu (14 anahtar): New Trigger, Unnamed Trigger, Trigger Manager, No Rules, Rule Name, Condition, Action, Save, Cancel, ACTIVE, Critical Monitor ve action labels (Stop Simulation, Start Recording, Log Warning, Inject Error, Set Field Value)
-  - İzole anahtarlar: `common.injection`, `profileEditor.bit0`, `scenarioEditor.templates`
-- **Yerelleştirme Altyapısı**: I18n uygunluk testleri (I18nCompliance, LocaleParity) artık tüm eksik çevirileri ve dil parity kontrolleri otomatik yapıyor.
+- **I18n Compliance Test Suite**: Automated test added that scans all source files and validates `t('...')` translation keys. Missing translations are now caught immediately during development and CI.
+- **44 Missing Translation Keys Completed**: For Logic Analyzer and Trigger Manager components:
+  - `logic.*` block (19 keys): Waiting for signal, START, STOP, PARITY, ΔT, Freq, Logic Analyzer, Zoom, Clear Cursors, Running, Paused, UART TX, scroll/zoom/measure instructions, No data, Reset Cursors, Live Sync, Static View, Baud
+  - `triggerManager.*` block (14 keys): New Trigger, Unnamed Trigger, Trigger Manager, No Rules, Rule Name, Condition, Action, Save, Cancel, ACTIVE, Critical Monitor and action labels (Stop Simulation, Start Recording, Log Warning, Inject Error, Set Field Value)
+  - Isolated keys: `common.injection`, `profileEditor.bit0`, `scenarioEditor.templates`
+- **Localization Infrastructure**: I18n compliance tests (I18nCompliance, LocaleParity) now automatically detect all missing translations and language parity issues.
 
 ---
 
 ## [v1.5.24] — 2026-05-11
 ### 🚀 Release v1.5.24
-- **Konuşma ve Veri Alış-Verişi İzleme**: ConversationMonitor ve ExchangeMonitor bileşenleri eklenerek gerçek zamanlı iletişim günlükleri ve veri akışı görselleştirildi.
-- **Playback Panel İyileştirmeleri**: Kaydedilen simülasyonlar artık senaryo olarak kaydedilerek farklı test senaryolarında yeniden kullanılabilir hale geldi.
-- **Profil Karşılaştırma (ProfileCompare)**: İki frame profilini karşılaştıran yeni araç — alan yapıları, boyutları ve farkları highlight ediyor.
-- **Test Suite Geliştirmeleri**: Exchange acknowledgment ve latency kontrolleri gibi yeni assertion türleri eklendi.
-- **WaveformDesigner Enhancements**: Dalga formu oluşturmayı kolaylaştıran formül snippet'leri ve örnekler eklendi.
-- **Hata Enjeksiyon Geçmişi**: Simülasyon durumuna hata enjeksiyon tarihi takibi eklenerek debugging kolaylaştırıldı.
+- **Conversation & Data Exchange Monitoring**: ConversationMonitor and ExchangeMonitor components added for real-time communication logs and data flow visualization.
+- **Playback Panel Improvements**: Recorded simulations can now be saved as scenarios and reused across different test runs.
+- **Profile Compare (ProfileCompare)**: New tool to compare two frame profiles side-by-side — highlights field structures, byte widths, and differences.
+- **Test Suite Enhancements**: New assertion types added including exchange acknowledgment and latency checks.
+- **WaveformDesigner Enhancements**: Formula snippets and examples added to simplify waveform authoring.
+- **Error Injection History**: Error injection history tracking added to simulation state for easier debugging.
 
 ---
 
 ## [v1.5.23] — 2026-05-09
 ### 🚀 Release v1.5.23
-- **Otomatik Güncelleme Sistemi (Auto-Updater)**: Tauri v2 altyapısı kullanılarak kesintisiz güncelleme desteği eklendi. Uygulama artık yeni sürümleri arka planda kontrol edip kullanıcıya sunabiliyor.
-- **LinkedIn Entegrasyonu**: Geliştirici profili uygulama arayüzüne ve dökümantasyona resmi olarak eklendi.
+- **Auto-Updater**: Integrated `tauri-plugin-updater` — the app checks GitHub Releases for updates on startup, notifies the user via a bottom-right toast, and installs with a single click followed by an automatic restart.
+- **LinkedIn Integration**: Developer profile officially added to the application UI and documentation.
 
 ---
 
 ## [v1.5.22] — 2026-05-09
 ### 🚀 Release v1.5.22
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.21] — 2026-05-09
 ### 🚀 Release v1.5.21
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.20] — 2026-05-09
 ### 🚀 Release v1.5.20
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.19] — 2026-05-09
-### 🚀 Release v1.5.20
-- **İnteraktif Yanıtlayıcı (Script Responder)**: Simülatör artık sadece veri üreten bir TX kaynağı değil, RX üzerinden gelen komutlara yanıt verebilen akıllı bir motor. `dynamic-script` kuralı ile gelen baytlar işlenip `sendString` veya `pause/stop` komutlarıyla reaksiyon gösterilebilir.
-- **İki Yönlü Timeline Terminali (Quick Send)**: Timeline ekranına eklenen Hızlı Gönderim barı sayesinde simülasyon akarken anlık olarak HEX veya ASCII komutlar (Örn: `deneme`, `pause`) enjekte edilebilir.
-- **UTF-8 ve Loopback Optimizasyonu**: PuTTY gibi harici terminallere gönderilen paketlerde Türkçe karakterlerin (`ı`, `ş` vb.) çökmeden sorunsuz iletilmesi için TextEncoder altyapısı kuruldu. ASCII gönderimlerde otomatik `CRLF` (Satır Sonu) desteği eklendi.
-- **VCD Export Desteği**: Telemetri kayıtlarının Logic Analyzer (ör: PulseView) yazılımlarında bit bazında incelenebilmesi için IEEE 1364 VCD formatında dışa aktarım motoru eklendi.
-- **CSV Data Science Dışa Aktarımı**: Geliştiriciler ve veri bilimciler için telemetri kayıtlarının Excel ve Python tabanlı araçlarda kolayca açılabilmesi için "CSV Formatında Kaydet" (FileSpreadsheet) özelliği eklendi.
-- **ASCII Metin Aktarımı**: NMEA 0183 gibi metin tabanlı profillerde PuTTY vb. programlarda verilerin okunabilmesi için sinyal jeneratörüne `isAscii` desteği eklendi.
-- **İkon ve Çeviri Onarımları**: Windows'ta desteklenmeyen yeni nesil emojiler standart sembollerle (💓, ⚕️) değiştirildi ve eksik dil anahtarları onarıldı.
-- **Tauri Yönlendirme Optimizasyonu**: Uygulama içi sekme yönlendirmeleri `window.open` yerine React Router `navigate` kullanılarak stabilize edildi.
+### 🚀 Release v1.5.19
+- **Interactive Responder (Script Responder)**: The simulator is no longer just a TX data source — it can now respond to commands received over RX. The `dynamic-script` rule allows incoming bytes to be processed and reacted to with `sendString` or `pause/stop` commands.
+- **Bidirectional Timeline Terminal (Quick Send)**: A Quick Send bar added to the Timeline screen allows HEX or ASCII commands (e.g. `hello`, `pause`) to be injected on-the-fly while the simulation is running.
+- **UTF-8 and Loopback Optimization**: `TextEncoder` infrastructure added to ensure Turkish characters (`ı`, `ş`, etc.) are transmitted without corruption to external terminals like PuTTY. Automatic `CRLF` (line ending) support added for ASCII sends.
+- **VCD Export Support**: An IEEE 1364 VCD export engine added so telemetry recordings can be inspected at the bit level in Logic Analyzer tools (e.g. PulseView).
+- **CSV Data Science Export**: "Save as CSV" (FileSpreadsheet) feature added for developers and data scientists to open telemetry recordings in Excel and Python-based tools.
+- **ASCII Text Transfer**: `isAscii` support added to the signal generator for text-based profiles like NMEA 0183 so data is human-readable in PuTTY and similar terminals.
+- **Icon and Translation Fixes**: Unsupported next-gen emojis on Windows replaced with standard symbols (💓, ⚕️); missing language keys patched.
+- **Tauri Routing Optimization**: In-app tab navigation stabilized by switching from `window.open` to React Router `navigate`.
 
 ---
 
 ## [v1.5.18] — 2026-05-09
 ### 🚀 Release v1.5.18
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.17] — 2026-05-09
 ### 🚀 Release v1.5.17
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.16] — 2026-05-09
 ### 🚀 Release v1.5.16
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.15] — 2026-05-09
 ### 🚀 Release v1.5.15
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.14] — 2026-05-09
 ### 🚀 Release v1.5.14
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.13] — 2026-05-09
 ### 🚀 Release v1.5.13
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.12] — 2026-05-09
 ### 🚀 Release v1.5.12
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.11] — 2026-05-09
 ### 🚀 Release v1.5.11
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.10] — 2026-05-09
 ### 🚀 Release v1.5.10
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.9] — 2026-05-09
 ### 🚀 Release v1.5.9
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.8] — 2026-05-08
 ### 🚀 Release v1.5.8
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.7] — 2026-05-08
 ### 🚀 Release v1.5.7
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.6] — 2026-05-08
 ### 🚀 Release v1.5.6
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.5] — 2026-05-08
 ### 🚀 Release v1.5.5
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.4] — 2026-05-08
 ### 🚀 Release v1.5.4
-- Yeni sürüm yayınlandı.
+- New version released.
 
 ---
 
 ## [v1.5.0] — 2026-05-08
-### 🔄 Auto-Updater, CI/CD İyileştirmeleri & Release Otomasyonu
+### 🔄 Auto-Updater, CI/CD Improvements & Release Automation
 
-#### ✨ Yeni Özellikler
-- **Auto-Updater**: `tauri-plugin-updater` entegrasyonu — uygulama açılışta GitHub Releases'tan güncelleme kontrol eder, yeni sürüm varsa sağ altta bildirim gösterir, tek tıkla indirir ve yeniden başlatır.
-- **Release Script** (`npm run release -- 1.5`): Tek komutla `package.json`, `Cargo.toml`, `tauri.conf.json`, `README.md` ve `CHANGELOG.md` versiyonlarını günceller, commit atar, tag oluşturur ve push eder.
-- **Dinamik Versiyon**: Sidebar'daki versiyon numarası artık `package.json`'dan otomatik okunur — hardcoded değil.
+#### ✨ New Features
+- **Auto-Updater**: `tauri-plugin-updater` integration — the app checks GitHub Releases for updates on startup, shows a notification in the bottom-right corner when a new version is available, and restarts after a one-click download.
+- **Release Script** (`npm run release -- 1.5`): A single command updates version numbers in `package.json`, `Cargo.toml`, `tauri.conf.json`, `README.md`, and `CHANGELOG.md`, then commits, tags, and pushes.
+- **Dynamic Version**: The version number in the sidebar is now read automatically from `package.json` — no more hardcoded values.
 
-#### 🔧 CI/CD İyileştirmeleri
-- GitHub Actions Node.js 24'e yükseltildi (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
-- Ubuntu runner `22.04` → `24.04` güncellendi.
-- `actions/checkout` ve `actions/setup-node` v5'e yükseltildi.
-- Tauri signing secret'ları workflow'a eklendi (`TAURI_SIGNING_PRIVATE_KEY`).
+#### 🔧 CI/CD Improvements
+- GitHub Actions upgraded to Node.js 24 (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
+- Ubuntu runner updated `22.04` → `24.04`.
+- `actions/checkout` and `actions/setup-node` upgraded to v5.
+- Tauri signing secrets added to workflow (`TAURI_SIGNING_PRIVATE_KEY`).
 
-#### 🛠 Teknik Düzeltmeler
-- **Vite 8 Worker Build Fix**: `esbuild ^0.28.0` bağımlılığı eklendi — Web Worker bundle'ı CI'da başarısız oluyordu.
-- **Build Target**: `safari13` → `safari16` — esbuild'in desteklemediği destructuring dönüşümü kaldırıldı.
-- **Rust Edition**: `Cargo.toml` edition `2024`'e güncellendi.
-- `tauri-plugin-process` eklendi (updater sonrası uygulama yeniden başlatma için).
+#### 🛠 Bug Fixes
+- **Vite 8 Worker Build Fix**: Added `esbuild ^0.28.0` dependency — Web Worker bundle was failing in CI.
+- **Build Target**: `safari13` → `safari16` — removed destructuring transform unsupported by esbuild.
+- **Rust Edition**: `Cargo.toml` edition updated to `2024`.
+- Added `tauri-plugin-process` (required for app restart after update).
 
-#### 📦 Bağımlılık Güncellemeleri
-- Tüm npm paketleri en son sürümlere güncellendi (`esbuild`, `vite`, `vitest`, `eslint`, `react`, `uuid`, `zustand` vb.).
-- Node.js minimum gereksinimi `>=24.0.0` olarak güncellendi.
+#### 📦 Dependency Updates
+- All npm packages updated to latest versions (`esbuild`, `vite`, `vitest`, `eslint`, `react`, `uuid`, `zustand`, etc.).
+- Node.js minimum requirement updated to `>=24.0.0`.
 
 ---
 
 ## [v1.4.0] — 2026-05-01
 ### 🚀 Custom Waveform Designer & High-Density UI Overhaul
-- **Custom Waveform Designer (Lab)**: 
-  - Sinyalleri serbest çizim (Freehand), matematiksel ifadeler (Formula) veya tıbbi kütüphane (ECG, PPG, Resp, Square, Noise) ile tasarlama yeteneği.
-  - Tasarlanan sinyalin anında UART akışına enjekte edilmesi (Real-time Injection).
-- **High-Density Dashboard**: 
-  - Bilgi yoğunluğunu %60 artıran profesyonel "Bento-Grid" yerleşimi.
-  - 13px kompakt font hiyerarşisi ve optimize edilmiş hücre boşlukları.
-- **I18n Compliance Suite**: 
-  - Sistem genelinde %100 TR/EN dil desteği ve otomatik uyumluluk testleri.
+- **Custom Waveform Designer (Lab)**:
+  - Design signals via freehand drawing, mathematical expressions (Formula), or a medical library (ECG, PPG, Resp, Square, Noise).
+  - Designed signals are injected into the live UART stream in real-time.
+- **High-Density Dashboard**:
+  - Professional "Bento-Grid" layout increasing information density by 60%.
+  - 13px compact font hierarchy with optimized cell spacing.
+- **I18n Compliance Suite**:
+  - System-wide 100% TR/EN language support with automated compliance tests.
 - **UI/UX Refinement**:
-  - Builder sekmesi dinamik alt sekme yapısına (Frame/Waveform) geçirildi.
-  - Emerald & Amber vurgulu profesyonel medikal tasarım dili.
+  - Builder tab migrated to a dynamic sub-tab structure (Frame / Waveform).
+  - Professional medical design language with Emerald & Amber accents.
 
 ---
 
 ## [v1.3.5] — 2026-04-30
 ### ✨ Scriptable Virtual Peripheral Designer
-- **Dynamic Hardware Modeling**: Dahili JS motoru ile kendi sanal çevre birimlerini tasarlama ve programlama modülü.
-- **Zustand State Management**: Çevre birimi yönetiminin yüksek performanslı `Zustand` mimarisine taşınması.
-- **Real-time Script Runner**: Gelen baytları işleyen sandboxed JS motoru.
-- **Integrated Debugger**: Kod editörü ve anlık state görselleştirici içeren yeni tasarım sayfası.
+- **Dynamic Hardware Modeling**: A module for designing and scripting custom virtual peripherals using an embedded JS engine.
+- **Zustand State Management**: Peripheral management migrated to a high-performance `Zustand` architecture.
+- **Real-time Script Runner**: Sandboxed JS engine that processes incoming bytes.
+- **Integrated Debugger**: New design page with a code editor and live state visualizer.
 
 ---
 
 ## [v1.3.0] — 2026-04-23
-### 📈 Sinyal Sadakati (Signal Fidelity) & Tanı İstasyonu
-- **HUD Sparklines**: Vital kartların içine gerçek zamanlı mini dalga formları eklendi.
-- **Diagnostic Scope**: Ham UART sinyal bütünlüğünü mikrosaniye hassasiyetle izleyen osiloskop paneli.
-- **Fuzzy-Matching Engine**: Alan isimlerindeki uyuşmazlıkları yok sayan akıllı veri eşleştirme motoru.
-- **Smart Loopback Alignment**: TX ve RX sinyallerinin zaman tünelinde otomatik eşleştirilmesi.
+### 📈 Signal Fidelity & Diagnostic Station
+- **HUD Sparklines**: Real-time mini waveforms added inside vital cards.
+- **Diagnostic Scope**: Oscilloscope panel monitoring raw UART signal integrity at microsecond precision.
+- **Fuzzy-Matching Engine**: Smart data matching engine that tolerates mismatches in field names.
+- **Smart Loopback Alignment**: Automatic time-tunnel alignment of TX and RX signals.
 
 ---
 
 ## [v1.2.0] — 2026-04-17
-### 🏥 Medikal Digital Twin Overhaul & Validation
-- **Medical Digital Twin**: "Pearl White" kaplama ve dinamik ışıklandırmalı 3D monitör tasarımı.
-- **Compliance Reporting**: Medikal standartlara uygun print-optimize PDF raporlama desteği.
-- **Yeterlilik (Certification) Suite**: BPM, SpO2 ve Resp limitlerini denetleyen gerçek zamanlı "Monitoring Engine".
-- **Physical Connectors**: 3D model üzerine renk kodlu (ECG, Resp, SpO2) konnektörler eklendi.
+### 🏥 Medical Digital Twin Overhaul & Validation
+- **Medical Digital Twin**: 3D monitor design with "Pearl White" finish and dynamic lighting.
+- **Compliance Reporting**: Print-optimized PDF reporting support conforming to medical standards.
+- **Certification Suite**: Real-time "Monitoring Engine" that validates BPM, SpO2, and Resp limits.
+- **Physical Connectors**: Color-coded connectors (ECG, Resp, SpO2) overlaid on the 3D model.
 
 ---
 
 ## [v1.1.0] — 2026-04-10
 ### ⚙️ UART Core & Scenario Automation
-- **Scenario Editor**: Kompleks veri akışları için olay tabanlı otomasyon sistemi.
-- **Error Injection**: Checksum, Framing ve Parity hataları için simülasyon desteği.
-- **Level 4 Logic Analyzer**: Bit-seviyesinde gerçek zamanlı sinyal analizi.
+- **Scenario Editor**: Event-driven automation system for complex data flows.
+- **Error Injection**: Simulation support for Checksum, Framing, and Parity errors.
+- **Level 4 Logic Analyzer**: Real-time bit-level signal analysis.
 
 ---
 
-## [v1.0.0] ve Öncesi
-- **UART Temel Motoru**: Veri üretimi ve paketleme temelleri.
-- **Protokol Desteği**: Standart UART protokolü ve temel telemetri görselleştirme.
+## [v1.0.0] and Earlier
+- **UART Core Engine**: Foundations of data generation and frame assembly.
+- **Protocol Support**: Standard UART protocol and basic telemetry visualization.
 
 ---
 
