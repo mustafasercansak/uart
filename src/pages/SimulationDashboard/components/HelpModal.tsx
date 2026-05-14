@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import { X, Book, HelpCircle, FileText, Globe, MoveLeft } from 'lucide-react';
 import { useTranslation } from '../../../i18n/context';
 
@@ -17,8 +19,8 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(true);
 
   const docs = useMemo(() => ({
-    tr: { title: t('helpModal.userGuide'), file: '/docs/KULLANIM_KILAVUZU.md', icon: Book },
-    en: { title: t('helpModal.quickHelp'), file: '/docs/HELP.md', icon: HelpCircle },
+    tr: { title: t('helpModal.userGuide'), file: '/docs/GUIDE_TR.md', icon: Book },
+    en: { title: t('helpModal.quickHelp'), file: '/docs/GUIDE_EN.md', icon: HelpCircle },
     readme: { title: t('helpModal.readme'), file: '/docs/README.md', icon: FileText }
   }), [t]);
 
@@ -115,16 +117,26 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                   prose-strong:text-white prose-strong:font-bold
                   prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:p-4 prose-blockquote:rounded-r-2xl prose-blockquote:italic
                 ">
-                  <ReactMarkdown 
+                  <ReactMarkdown
+                    rehypePlugins={[rehypeRaw as never]}
+                    remarkPlugins={[remarkGfm]}
                     components={{
-                      img: ({node: _node, ...props}) => (
-                        <div className="relative group">
-                          <img {...props} style={{maxWidth: '100%'}} className="transition-transform duration-500 group-hover:scale-[1.01]" />
-                          <div className="absolute inset-x-0 -bottom-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                             <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">{props.alt}</span>
+                      p: ({ node: _node, ...props }) => <div className="paragraph mb-4 text-gray-400 leading-relaxed" {...props} />,
+                      img: ({node: _node, src, ...props}) => {
+                        const fixedSrc = src && !src.startsWith('http') && !src.startsWith('/')
+                          ? `/docs/${src}`
+                          : src;
+                        return (
+                          <div className="relative group my-8">
+                            <img src={fixedSrc} {...props} style={{maxWidth: '100%'}} className="rounded-2xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.01]" />
+                            {props.alt && (
+                              <div className="mt-3 text-center">
+                                <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest bg-white/5 px-4 py-1 rounded-full border border-white/10">{props.alt}</span>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )
+                        );
+                      }
                     }}
                   >
                     {content}
