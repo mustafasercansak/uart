@@ -1,5 +1,5 @@
 # UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite · v1.4.0
+## Professional Simulation, Diagnostic & Validation Suite · v1.5.26
 
 > **UART Pro Lab** is the world's most advanced browser-based UART simulation and validation environment — built for embedded engineers, medical device developers, and protocol researchers who demand precision.
 
@@ -114,7 +114,7 @@ The dashboard is engineered as a **High-Density Diagnostic Station** — every p
 - **Buffer Fill**: Real-time ring buffer utilization — critical for detecting overflow risk.
 
 ### Bento-Grid Layout
-In v1.4.0, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
+In v1.5.26, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
 
 ---
 
@@ -150,7 +150,7 @@ Click any field value in the Telemetry Panel to **pin it** as a reference. A del
 <a name="waveform-designer"></a>
 ## 5. Custom Waveform Designer
 
-> **New in v1.4.0** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
+> **New in v1.5.26** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
 
 ![Waveform Designer](images/v1.3/designer_live.png)
 
@@ -823,11 +823,11 @@ The live Diagnostics Panel shows:
 
 ## Conclusion
 
-**UART Pro Lab v1.4.0** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
+**UART Pro Lab v1.5.26** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
 
 Every feature was designed around a real engineering problem: framing errors that escape unit tests, jitter that only appears under thermal stress, waveform anomalies invisible to the naked eye. This tool surfaces all of them — before they reach silicon.
 
 ---
 
 *Mustafa Sercan Sak — Chief Architect*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.4.0-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.26-STABLE*

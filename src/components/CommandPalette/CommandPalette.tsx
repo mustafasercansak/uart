@@ -202,7 +202,7 @@ export function CommandPalette() {
                   <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">↵</kbd> {t('common.select')}</span>
                   <span className="flex items-center gap-1"><kbd className="bg-white/5 px-1 rounded border border-white/10">{t('common.esc')}</kbd> {t('common.close')}</span>
                 </div>
-                <div>{t('nav.versionLabel', { version: '1.4.0' })}</div>
+                <div>{t('nav.versionLabel', { version: __APP_VERSION__ })}</div>
               </div>
             </motion.div>
           </div>
