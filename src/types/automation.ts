@@ -12,6 +12,7 @@ export interface AutomationSequence {
   id: string;
   name: string;
   description?: string;
+  group?: string;
   steps: AutomationStep[];
   createdAt: string;
   updatedAt: string;

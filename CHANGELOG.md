@@ -4,6 +4,21 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.5.27] — 2026-05-15
+### 🚀 Release v1.5.27
+- **Automation Tab Rename**: "Testler" tab renamed to "Otomasyon" (TR) / "Automation" (EN) to clearly distinguish it from the "Test Paketi" tab.
+- **Test Series Mode**: New multi-sequence execution mode in the Sequence Runner. Select multiple sequences across groups, run them back-to-back, and get a professional PDF report with per-step pass/fail results.
+- **Sequence Combobox**: Replaced the plain dropdown with a searchable combobox supporting group headers, keyboard navigation (↑↓ Enter Esc), and filtered results.
+- **Group-Level Selection**: Campaign mode supports three checkbox states — all selected (filled), partial (minus), none — with a single click to toggle the whole group.
+- **PDF Report**: Locale-aware PDF report generated via a hidden iframe (Tauri-compatible). Includes summary cards, pass-rate progress bar, grouped sequence tables with colour-coded step pills, and a bilingual footer.
+- **Full i18n Coverage**: 45 new keys added to `automation.*` namespace in both `tr.json` and `en.json`. All hardcoded strings in `SequenceRunner`, `ReportModal`, and `SequenceCombobox` replaced with `t()` calls including interpolated keys (`selectedCount`, `summaryFooter`, `groupPassOf`). PDF brand text and date locale also follow the active language.
+- **Save Overwrite Fix**: `isNewModeRef` flag prevents the `useEffect` loader from overwriting a new unsaved sequence when sequences already exist in state.
+- **Test Coverage**: 31 new tests in `SequenceRunner.test.tsx` covering TR/EN labels for all UI sections, combobox placeholders, campaign mode empty state, and a key-coverage loop that asserts all 37 new automation keys are present in both locales.
+- **Compliance Fix**: `en-GB` and `Segoe UI` added to the i18n compliance test whitelist (locale string and PDF font — not user-visible strings).
+- **Documentation**: Section 13 of `GUIDE_TR.md` and `GUIDE_EN.md` rewritten to document the Sequence Runner (step types, Single Sequence workflow, Test Series workflow, PDF report). `README.md` updated with the new feature.
+
+---
+
 ## [v1.5.26] — 2026-05-14
 ### 🚀 Release v1.5.26
 - **Help System Overhaul**: The `/help` page was rewritten from scratch — interactive TOC sidebar with `IntersectionObserver`-based active section tracking, full Markdown support via `rehype-raw` and `remark-gfm` plugins.

@@ -1,5 +1,5 @@
 # UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite · v1.5.26
+## Professional Simulation, Diagnostic & Validation Suite · v1.5.27
 
 > **UART Pro Lab** is the world's most advanced browser-based UART simulation and validation environment — built for embedded engineers, medical device developers, and protocol researchers who demand precision.
 
@@ -114,7 +114,7 @@ The dashboard is engineered as a **High-Density Diagnostic Station** — every p
 - **Buffer Fill**: Real-time ring buffer utilization — critical for detecting overflow risk.
 
 ### Bento-Grid Layout
-In v1.5.26, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
+In v1.5.27, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
 
 ---
 
@@ -150,7 +150,7 @@ Click any field value in the Telemetry Panel to **pin it** as a reference. A del
 <a name="waveform-designer"></a>
 ## 5. Custom Waveform Designer
 
-> **New in v1.5.26** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
+> **New in v1.5.27** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
 
 ![Waveform Designer](images/v1.3/designer_live.png)
 
@@ -553,7 +553,85 @@ The Test Suite runs automated validation sessions against your defined scenarios
 <a name="automation"></a>
 ## 13. Automation & Scripting
 
-### 13.1 Dynamic Responder
+### 13.1 Sequence Runner & Protocol Validation
+
+The **Automation** tab lets you build and execute **step-by-step automated communication sequences** against a UART device. Two operating modes are available: **Single Sequence** and **Test Series**.
+
+#### Step Types
+
+Each sequence is composed of three step types:
+
+| Step | Icon | Description |
+|---|---|---|
+| **Send** | 🟢 | Transmits the specified Hex byte string onto the UART line |
+| **Wait** | 🟡 | Pauses execution for the specified duration (ms) before the next step |
+| **Expect** | 🟣 | Searches the RX stream for the specified Hex pattern; raises a timeout error if not found |
+
+**Expect step syntax**: `AABB CC | 2500` — the number after the pipe is the timeout in milliseconds (default: 2500 ms).
+
+#### 13.1.1 Single Sequence Mode
+
+Single Sequence mode is designed for **protocol handshake testing**: build a single communication flow, save it, and run it.
+
+**Workflow**:
+1. Open the **Automation** tab → select **Single Sequence** mode in the top-right toggle.
+2. Click **+ (New Sequence)** or pick an existing sequence from the searchable dropdown.
+3. Give the sequence a **name** and an optional **group label** (e.g. `Startup`, `ACK Test`).
+4. Add steps using the **Send / Wait / Expect** buttons at the bottom.
+5. Fill in each step's payload:
+   - Send: `AA BB 01 02 03` (space-separated Hex)
+   - Wait: `500` (milliseconds)
+   - Expect: `55 AA | 3000` (pattern | timeout ms)
+6. Press **💾 Save**.
+7. Press **▶ Run** to execute. Steps run in order; passed steps turn ✓ green, failed steps turn ✗ red.
+
+**Sequence Search**: Use the combobox at the top to filter by name or group when many sequences are saved. Results are displayed grouped by label.
+
+**Status Bar**: Shows a live count of passed and failed steps during execution.
+
+#### 13.1.2 Test Series Mode
+
+Test Series mode runs **multiple sequences back-to-back**, producing a full protocol validation session in one click.
+
+**Workflow**:
+1. Switch to **Test Series** mode.
+2. All saved sequences are displayed grouped by label. Check individual sequences or **click a group header** to select/deselect the whole group.
+3. Use **Select All** / **Clear** for quick bulk selection.
+4. Press **▶ Run Series**. Selected sequences execute in order.
+5. The active sequence is highlighted with a purple ● animation; completed ones are marked ✓ or ✗.
+6. The **Report modal** opens automatically when the series finishes.
+
+**Group Selection States**:
+| State | Appearance | Meaning |
+|---|---|---|
+| Filled ✓ | Solid purple | All sequences in the group are selected |
+| Minus — | Translucent purple | Some sequences in the group are selected |
+| Empty | Border only | None selected |
+
+#### 13.1.3 Test Series PDF Report
+
+When the series completes — or when the **Report** button is clicked — a professional report modal opens.
+
+**Summary Cards**:
+| Card | Content |
+|---|---|
+| **Passed** | Number of sequences that completed successfully |
+| **Failed** | Number of sequences that failed |
+| **Total Duration** | Elapsed time for the entire series (seconds) |
+| **Success Rate** | Passed / total percentage |
+
+The modal lists each sequence as an expandable card — expand to see every step's type, payload, duration, and result.
+
+Click **Download PDF** to open the browser print dialog. Save as **PDF** (non-editable document):
+- Summary cards, progress bar, and a grouped results table
+- Colour-coded step type pills (Send / Wait / Expect) for each row
+- Footer: passed/total sequences · total duration
+
+**Note**: The PDF language follows the application locale automatically (Turkish / English).
+
+---
+
+### 13.2 Dynamic Responder
 
 The scripting engine lets you create an interactive **Digital Twin** — a virtual device that responds intelligently to received data.
 
@@ -593,10 +671,10 @@ function toFloat32(b0, b1, b2, b3) { /* built-in */ }
 function log(msg) { /* prints to Script Console */ }
 ```
 
-### 13.2 Macro Recording
+### 13.3 Macro Recording
 Record a sequence of UI actions (start, stop, change baud rate, inject fault) and replay them automatically. Macros are saved as JSON and can be shared across sessions.
 
-### 13.3 Batch Processing
+### 13.4 Batch Processing
 Process pre-recorded `.bin` session files in headless batch mode:
 1. Upload one or more `.bin` files.
 2. Select a profile and validation rule set.
@@ -823,11 +901,11 @@ The live Diagnostics Panel shows:
 
 ## Conclusion
 
-**UART Pro Lab v1.5.26** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
+**UART Pro Lab v1.5.27** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
 
 Every feature was designed around a real engineering problem: framing errors that escape unit tests, jitter that only appears under thermal stress, waveform anomalies invisible to the naked eye. This tool surfaces all of them — before they reach silicon.
 
 ---
 
 *Mustafa Sercan Sak — Chief Architect*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.26-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.27-STABLE*

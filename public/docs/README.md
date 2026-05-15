@@ -1,4 +1,4 @@
-# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.5.26
+# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.5.27
 
 A high-performance, real-time UART telemetry platform designed for **embedded engineers** and **medical device developers**. Simulate complex sensor data (ECG, SpO₂, RESP, etc.) and stream it directly to your hardware via the **Web Serial API**.
 
@@ -6,13 +6,16 @@ A high-performance, real-time UART telemetry platform designed for **embedded en
 
 ---
 
-## 🚀 Key Features (v1.5.26)
+## 🚀 Key Features (v1.5.27)
 
 ### 🎨 Custom Waveform Designer (New!)
 Go beyond static signals. **Draw** your own waveforms by hand, generate them with **Math Formulas**, or use our **Clinical Preset Library** (ECG, PPG, Resp). Inject these custom signals directly into your UART stream in real-time.
 
 ### 📐 High-Density Bento Dashboard
 A professional-grade interface designed for maximum information density. Monitor telemetry, high-resolution waveforms, and logic analysis on a single compact screen without scrolling.
+
+### 🤖 Sequence Runner & Test Series
+Build **send / wait / expect** automation sequences and run them against any UART device. In **Test Series** mode, select multiple sequences across groups, execute them back-to-back, and export a professional **PDF report** with per-step pass/fail results — in both Turkish and English.
 
 ### 🧪 Error Injection & Lab Modules
 - **Jitter & Noise**: Simulate real-world signal degradation.

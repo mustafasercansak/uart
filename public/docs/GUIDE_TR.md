@@ -1,5 +1,5 @@
 # UART PRO LAB — Ana Mühendislik Kılavuzu
-## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.26
+## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.27
 
 > **UART Pro Lab**, hassasiyet gerektiren gömülü sistem mühendisleri, tıbbi cihaz geliştiricileri ve protokol araştırmacıları için tasarlanmış dünyanın en gelişmiş tarayıcı tabanlı UART simülasyon ve doğrulama ortamıdır.
 
@@ -114,7 +114,7 @@ Panel, **Yüksek Yoğunluklu Tanı İstasyonu** olarak tasarlanmıştır — her
 - **Tampon Doluluk**: Gerçek zamanlı halka tampon kullanımı — taşma riskini tespit için kritik.
 
 ### Bento-Grid Düzeni
-v1.5.26'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
+v1.5.27'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
 
 ---
 
@@ -150,7 +150,7 @@ Telemetri Paneli'nde herhangi bir alan değerine tıklayarak onu referans olarak
 <a name="waveform-designer"></a>
 ## 5. Özel Dalga Formu Tasarımcısı
 
-> **v1.5.26'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
+> **v1.5.27'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
 
 ![Dalga Formu Tasarımcısı](images/v1.3/designer_live.png)
 
@@ -553,7 +553,85 @@ Test Paketi, tanımlı senaryolarınıza karşı otomatik doğrulama oturumları
 <a name="automation"></a>
 ## 13. Otomasyon ve Betikleme
 
-### 13.1 Dinamik Yanıtlayıcı
+### 13.1 Dizi Çalıştırıcı ve Protokol Doğrulama
+
+**Otomasyon** sekmesi, UART aygıtlarıyla **adım adım otomatik iletişim dizileri** oluşturmanızı ve çalıştırmanızı sağlar. İki çalışma modu vardır: **Tek Sekans** ve **Test Serisi**.
+
+#### Adım Türleri
+
+Her sekans üç tür adımdan oluşur:
+
+| Adım | Simge | Açıklama |
+|---|---|---|
+| **Gönderim** | 🟢 | Belirtilen Hex bayt dizisini UART hattına iletir |
+| **Bekleme** | 🟡 | Bir sonraki adıma geçmeden önce belirtilen süre (ms) bekler |
+| **Beklenti** | 🟣 | RX akışında belirtilen Hex desenini arar; bulamazsa zaman aşımı hatası verir |
+
+**Beklenti adımı sözdizimi**: `AABB CC | 2500` — boru karakterinden sonra gelen sayı milisaniye cinsinden zaman aşımı süresidir (varsayılan: 2500 ms).
+
+#### 13.1.1 Tek Sekans Modu
+
+Tek sekans modu, **protokol el sıkışması testi** için tasarlanmıştır: tek bir iletişim akışı oluşturun, kaydedin ve çalıştırın.
+
+**İş Akışı**:
+1. **Otomasyon** sekmesini açın → sol üstteki **Tek Sekans** modunu seçin.
+2. Üstteki **+ (Yeni Sekans)** butonuna tıklayın veya var olan bir sekansı açılır listeden seçin.
+3. Sekansa bir **ad** ve isteğe bağlı bir **grup etiketi** verin (örn. `Başlatma`, `ACK Testi`).
+4. Adım türü butonlarından (**Gönderim / Bekleme / Beklenti**) adım ekleyin.
+5. Her adım için payload değerini girin:
+   - Gönderim: `AA BB 01 02 03` (boşlukla ayrılmış Hex)
+   - Bekleme: `500` (milisaniye)
+   - Beklenti: `55 AA | 3000` (desen | zaman aşımı ms)
+6. **💾 Kaydet** butonuna basın.
+7. **▶ Çalıştır** ile sekansı başlatın. Her adım sırayla yürütülür; geçen adımlar ✓ yeşil, başarısız adımlar ✗ kırmızı olarak işaretlenir.
+
+**Sekans Arama**: Çok sayıda kayıtlı sekans varsa üstteki **arama alanına** yazarak filtreleyin. Sekanslar gruba göre kategorilere ayrılmış olarak listelenir.
+
+**Durum Çubuğu**: Çalışma sırasında kaç adımın geçtiği ve kaçının hata verdiği anlık olarak gösterilir.
+
+#### 13.1.2 Test Serisi Modu
+
+Test Serisi modu, **birden fazla sekansı arka arkaya çalıştırarak** kapsamlı bir protokol doğrulama oturumu yürütmenizi sağlar.
+
+**İş Akışı**:
+1. **Test Serisi** modunu seçin.
+2. Listelenen sekanslar gruplarına göre ayrılmış şekilde görünür. **Onay kutusu** ile tek tek seçin veya **grup başlığına** tıklayarak tüm grubu seçin/kaldırın.
+3. **Tümünü Seç** / **Temizle** butonları hızlı toplu seçim için kullanılır.
+4. **▶ Seriyi Çalıştır** butonuna basın. Seçili sekanslar sırayla çalıştırılır.
+5. Aktif sekans mor ● animasyonuyla vurgulanır; tamamlananlar ✓/✗ olarak işaretlenir.
+6. Tüm seri bittikten sonra **Rapor Modalı** otomatik açılır.
+
+**Grup Seçimi Durumları**:
+| Durum | Görünüm | Anlam |
+|---|---|---|
+| Dolu ✓ | Mor dolgu | Gruptaki tüm sekanslar seçili |
+| Eksi — | Mor şeffaf | Gruptan bir kısmı seçili |
+| Boş | Yalnızca kenarlık | Hiçbiri seçili değil |
+
+#### 13.1.3 Test Serisi PDF Raporu
+
+Seri tamamlandığında veya **Rapor** butonuna tıklandığında profesyonel bir rapor modalı açılır.
+
+**Rapor Özet Kartları**:
+| Kart | İçerik |
+|---|---|
+| **Geçti** | Başarıyla tamamlanan sekans sayısı |
+| **Hata** | Başarısız sekans sayısı |
+| **Toplam Süre** | Tüm serinin geçen süresi (saniye) |
+| **Başarı Oranı** | Geçen / toplam yüzdesi |
+
+Modalda her sekans genişletilebilir bir kart olarak gösterilir — açılınca her adımın türü, payload'ı, süresi ve sonucu görünür.
+
+**PDF İndir** butonuna basıldığında tarayıcının yazdır diyaloğu açılır. Raporu **PDF olarak kaydedin** (değiştirilemez belge):
+- Özet kartlar, ilerleme çubuğu ve gruplara göre bölümlenmiş tablo
+- Her adımın renkli tip etiketi (Gönderim / Bekleme / Beklenti)
+- Alt bilgi: geçen/toplam sekans · toplam süre
+
+**Not**: PDF dili uygulama diline göre otomatik değişir (Türkçe / İngilizce).
+
+---
+
+### 13.2 Dinamik Yanıtlayıcı
 
 Betik motoru, alınan verilere akıllıca yanıt veren etkileşimli bir **Dijital İkiz** oluşturmanızı sağlar.
 
@@ -593,10 +671,10 @@ function toFloat32(b0, b1, b2, b3) { /* yerleşik */ }
 function log(msg) { /* Betik Konsoluna yazdırır */ }
 ```
 
-### 13.2 Makro Kayıt
+### 13.3 Makro Kayıt
 Bir dizi UI eylemini (başlat, durdur, baud hızını değiştir, hata enjekte et) kaydedin ve otomatik olarak tekrar oynatın. Makrolar JSON olarak kaydedilir ve oturumlar arasında paylaşılabilir.
 
-### 13.3 Toplu İşleme
+### 13.4 Toplu İşleme
 Önceden kaydedilmiş `.bin` oturum dosyalarını başsız toplu modda işleyin:
 1. Bir veya daha fazla `.bin` dosyası yükleyin.
 2. Bir profil ve doğrulama kural seti seçin.
@@ -823,11 +901,11 @@ Canlı Tanı Paneli şunları gösterir:
 
 ## Sonuç
 
-**UART Pro Lab v1.5.26** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
+**UART Pro Lab v1.5.27** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
 
 Her özellik gerçek bir mühendislik sorununa yönelik tasarlandı: birim testlerinden kaçan çerçeveleme hataları, yalnızca termal stres altında görünen jitter, çıplak gözle görünmeyen dalga formu anomalileri. Bu araç hepsini ortaya çıkarır — silikon aşamasına ulaşmadan önce.
 
 ---
 
 *Mustafa Sercan Sak — Baş Mimar*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.26-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.27-STABLE*
