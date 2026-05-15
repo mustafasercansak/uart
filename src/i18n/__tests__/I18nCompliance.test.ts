@@ -117,7 +117,9 @@ const IGNORE_VALUES = new Set([
     'Modbus RTU', 'NMEA 0183', 'NMEA', 'Modbus', 'UART-X1',
     'peripheral_logic.js', 'input', 'state', 'send(bytes)', 'bytes:', 'state:', 'sendHex:', 'setFields:',
     'Diagnostics', 'Gauge', 'Sparkline', 'Monitor', 'Timeline', 'VisualProtocolAnalyzer',
-    'minDurationMs', 'maxDurationMs', 'activateAtMs', 'deactivateAtMs', 'preserveStartEnd'
+    'minDurationMs', 'maxDurationMs', 'activateAtMs', 'deactivateAtMs', 'preserveStartEnd',
+    '&amp;', '&lt;', '&gt;', '&quot;', 'AssertionError', 'uart-sequences', 'UART Automation',
+    '\\n'
 ]);
 
 interface HardcodedString {

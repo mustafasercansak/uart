@@ -569,6 +569,8 @@ Her sekans üç tür adımdan oluşur:
 
 **Beklenti adımı sözdizimi**: `AABB CC | 2500` — boru karakterinden sonra gelen sayı milisaniye cinsinden zaman aşımı süresidir (varsayılan: 2500 ms).
 
+**Tekrar (×N)**: Her adımın sağındaki sayı girişi adımın kaç kez yineleneceğini belirler (varsayılan: 1). Aynı komutu N kez göndermek için tekrar sayısını artırın.
+
 #### 13.1.1 Tek Sekans Modu
 
 Tek sekans modu, **protokol el sıkışması testi** için tasarlanmıştır: tek bir iletişim akışı oluşturun, kaydedin ve çalıştırın.
@@ -582,8 +584,9 @@ Tek sekans modu, **protokol el sıkışması testi** için tasarlanmıştır: te
    - Gönderim: `AA BB 01 02 03` (boşlukla ayrılmış Hex)
    - Bekleme: `500` (milisaniye)
    - Beklenti: `55 AA | 3000` (desen | zaman aşımı ms)
-6. **💾 Kaydet** butonuna basın.
-7. **▶ Çalıştır** ile sekansı başlatın. Her adım sırayla yürütülür; geçen adımlar ✓ yeşil, başarısız adımlar ✗ kırmızı olarak işaretlenir.
+6. İsteğe bağlı olarak her adımın sağındaki **×N** kutusuna tekrar sayısı girin (varsayılan: 1).
+7. **💾 Kaydet** butonuna basın.
+8. **▶ Çalıştır** ile sekansı başlatın. Her adım sırayla yürütülür; geçen adımlar ✓ yeşil, başarısız adımlar ✗ kırmızı olarak işaretlenir.
 
 **Sekans Arama**: Çok sayıda kayıtlı sekans varsa üstteki **arama alanına** yazarak filtreleyin. Sekanslar gruba göre kategorilere ayrılmış olarak listelenir.
 
@@ -628,6 +631,53 @@ Modalda her sekans genişletilebilir bir kart olarak gösterilir — açılınca
 - Alt bilgi: geçen/toplam sekans · toplam süre
 
 **Not**: PDF dili uygulama diline göre otomatik değişir (Türkçe / İngilizce).
+
+#### 13.1.4 Sekans Import / Export (JSON)
+
+Sekansları JSON dosyası olarak dışa veya içe aktarabilirsiniz. Bu özellik sekansların yedeklenmesini, takımlar arası paylaşılmasını ve CI/CD boru hatlarında yeniden kullanılmasını sağlar.
+
+**Dışa Aktarma (Export)**:
+- **Tek Sekans modunda**: Araç çubuğundaki 📥 simgeli **JSON Dışa Aktar** butonuna tıklayın. Yalnızca mevcut sekans dışa aktarılır.
+- **Test Serisi modunda**: Üst araç çubuğundaki **JSON Dışa Aktar** bağlantısına tıklayın. Kayıtlı tüm sekanslar tek bir dosyaya aktarılır.
+- Dosya `uart-sequences-<zaman.damgası>.json` adıyla **İndirilenler** klasörüne kaydedilir.
+- Başarıda araç çubuğunda yeşil bir bildirim gösterilir.
+
+**İçe Aktarma (Import)**:
+- **JSON İçe Aktar** butonuna tıklayın ve daha önce dışa aktarılmış bir `.json` dosyası seçin.
+- Dosyadaki her sekans **yeni bir UUID** ile eklenir; mevcut sekansların üzerine yazılmaz.
+- Kaç sekansın eklendiği bildirim mesajında gösterilir.
+
+**Dosya Formatı**:
+```json
+{
+  "format": "uart-sequences",
+  "version": "1.5.28",
+  "exportedAt": "2026-05-15T12:00:00.000Z",
+  "sequences": [ ... ]
+}
+```
+
+#### 13.1.5 JUnit XML Dışa Aktarma
+
+Test Serisi raporundan makine tarafından okunabilir **JUnit XML** formatında sonuç dosyası indirebilirsiniz. Bu format Jenkins, GitLab CI, GitHub Actions gibi CI/CD araçlarıyla doğrudan uyumludur.
+
+**Kullanım**:
+1. Bir Test Serisi çalıştırın.
+2. Rapor modalı açıldığında **JUnit XML** butonuna tıklayın.
+3. `uart-test-results-<zaman.damgası>.xml` dosyası **İndirilenler** klasörüne kaydedilir.
+4. Modal içinde yeşil bir onay bildirimi gösterilir.
+
+**Çıktı Yapısı**:
+```xml
+<testsuites name="UART Automation" ...>
+  <testsuite name="Grup Adı" tests="N" failures="M" time="X.XX">
+    <testcase name="Sekans Adı" time="X.XX"/>
+    <testcase name="Başarısız Sekans" time="X.XX">
+      <failure message="hata açıklaması" type="AssertionError">...</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
+```
 
 ---
 

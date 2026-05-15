@@ -930,7 +930,13 @@
     "passRateLabel": "başarı oranı",
     "summaryFooter": "{passed}/{total} sekans başarılı · Toplam {duration}s",
     "groupPassOf": "{passed}/{total} geçti",
-    "reportBrand": "UART Simülatör · Otomasyon Sistemi"
+    "reportBrand": "UART Simülatör · Otomasyon Sistemi",
+    "exportJson": "JSON Dışa Aktar",
+    "importJson": "JSON İçe Aktar",
+    "importSuccess": "{count} sekans içe aktarıldı",
+    "importError": "Geçersiz sekans dosyası",
+    "downloadJunit": "JUnit XML",
+    "repeatLabel": "×"
   },
   "onboarding": {
     "skip": "TURU GEÇ",

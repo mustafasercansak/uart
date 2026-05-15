@@ -930,7 +930,13 @@
     "passRateLabel": "pass rate",
     "summaryFooter": "{passed}/{total} sequences passed · Total {duration}s",
     "groupPassOf": "{passed}/{total} passed",
-    "reportBrand": "UART Simulator · Automation System"
+    "reportBrand": "UART Simulator · Automation System",
+    "exportJson": "Export JSON",
+    "importJson": "Import JSON",
+    "importSuccess": "{count} sequences imported",
+    "importError": "Invalid sequences file",
+    "downloadJunit": "JUnit XML",
+    "repeatLabel": "×"
   },
   "onboarding": {
     "skip": "SKIP TOUR",

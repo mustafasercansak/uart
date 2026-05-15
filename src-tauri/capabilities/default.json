@@ -6,6 +6,10 @@
   "permissions": [
     "core:default",
     "fs:default",
+    "fs:allow-write-text-file",
+    "fs:allow-download-write",
+    "fs:scope-download",
+    "fs:scope-download-recursive",
     "shell:default",
     "updater:default",
     "updater:allow-check",

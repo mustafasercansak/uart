@@ -6,6 +6,7 @@ export interface AutomationStep {
   payload: string;
   status: 'idle' | 'running' | 'success' | 'fail';
   result?: string;
+  repeat?: number;
 }
 
 export interface AutomationSequence {

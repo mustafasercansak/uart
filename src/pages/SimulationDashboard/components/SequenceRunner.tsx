@@ -4,11 +4,11 @@ import {
   XCircle, Clock, Send, Eye, Save,
   FilePlus, ChevronDown, Download, Layers,
   AlignLeft, ChevronRight, AlertTriangle, Tag,
-  Minus,
+  Minus, FileDown, FileUp, RotateCcw,
 } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { v4 as uuidv4 } from 'uuid';
-import { AutomationStep, ConversationEntry } from '../../../types';
+import { AutomationStep, AutomationSequence, ConversationEntry } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -31,6 +31,13 @@ interface CampaignResult {
   startedAt: string;
 }
 
+interface ExportEnvelope {
+  format: 'uart-sequences';
+  version: string;
+  exportedAt: string;
+  sequences: AutomationSequence[];
+}
+
 // ─── Step executor ────────────────────────────────────────────────────────────
 
 async function executeSteps(
@@ -46,28 +53,32 @@ async function executeSteps(
     if (cancelRef.current) break;
     onStep(i, 'running');
     const step = steps[i];
+    const repeatCount = Math.max(1, step.repeat ?? 1);
     const t0 = Date.now();
     try {
-      if (step.type === 'send') {
-        sendFn(step.payload);
-        await new Promise(r => setTimeout(r, 100));
-      } else if (step.type === 'wait') {
-        await new Promise(r => setTimeout(r, parseInt(step.payload) || 1000));
-      } else if (step.type === 'expect') {
-        let matched = false;
-        const [patternPart, timeoutPart] = step.payload.split('|').map(p => p.trim());
-        const searchPattern = (patternPart || '').replace(/\s+/g, '').toUpperCase();
-        const timeoutMs = Number.parseInt(timeoutPart || '2500', 10);
-        const deadline = Date.now() + (Number.isFinite(timeoutMs) ? Math.max(200, timeoutMs) : 2500);
-        while (Date.now() < deadline) {
-          if (cancelRef.current) break;
-          const recentLogs = getState().conversationLogs.slice(0, 40);
-          if (recentLogs.some((log: ConversationEntry) =>
-            log.type === 'rx' && log.rawHex.replace(/\s+/g, '').toUpperCase().includes(searchPattern)
-          )) { matched = true; break; }
-          await new Promise(r => setTimeout(r, 50));
+      for (let rep = 0; rep < repeatCount; rep++) {
+        if (cancelRef.current) break;
+        if (step.type === 'send') {
+          sendFn(step.payload);
+          await new Promise(r => setTimeout(r, 100));
+        } else if (step.type === 'wait') {
+          await new Promise(r => setTimeout(r, parseInt(step.payload) || 1000));
+        } else if (step.type === 'expect') {
+          let matched = false;
+          const [patternPart, timeoutPart] = step.payload.split('|').map(p => p.trim());
+          const searchPattern = (patternPart || '').replace(/\s+/g, '').toUpperCase();
+          const timeoutMs = Number.parseInt(timeoutPart || '2500', 10);
+          const deadline = Date.now() + (Number.isFinite(timeoutMs) ? Math.max(200, timeoutMs) : 2500);
+          while (Date.now() < deadline) {
+            if (cancelRef.current) break;
+            const recentLogs = getState().conversationLogs.slice(0, 40);
+            if (recentLogs.some((log: ConversationEntry) =>
+              log.type === 'rx' && log.rawHex.replace(/\s+/g, '').toUpperCase().includes(searchPattern)
+            )) { matched = true; break; }
+            await new Promise(r => setTimeout(r, 50));
+          }
+          if (!matched) throw new Error(timeoutErrorMsg);
         }
-        if (!matched) throw new Error(timeoutErrorMsg);
       }
       onStep(i, 'success');
       results.push({ type: step.type, payload: step.payload, status: 'success', durationMs: Date.now() - t0 });
@@ -81,6 +92,27 @@ async function executeSteps(
   return results;
 }
 
+// ─── Download helper ──────────────────────────────────────────────────────────
+
+async function triggerDownload(content: string, filename: string, mimeType: string): Promise<string> {
+  try {
+    const fsModule = await import('@tauri-apps/plugin-fs');
+    await fsModule.writeTextFile(filename, content, { baseDir: fsModule.BaseDirectory.Download });
+  } catch (err) {
+    console.error('[triggerDownload] Tauri FS failed, falling back to blob:', err);
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  return filename;
+}
+
 // ─── Report Modal ─────────────────────────────────────────────────────────────
 
 function ReportModal({ results, totalMs, onClose }: {
@@ -91,6 +123,7 @@ function ReportModal({ results, totalMs, onClose }: {
   const { t, locale } = useTranslation();
   const passed = results.filter(r => r.status === 'pass').length;
   const failed = results.filter(r => r.status === 'fail').length;
+  const [dlMsg, setDlMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const buildHtml = () => {
     const groups = Array.from(new Set(results.map(r => r.group)));
@@ -294,6 +327,43 @@ function ReportModal({ results, totalMs, onClose }: {
 </body></html>`;
   };
 
+  const buildJunitXml = () => {
+    const groups = Array.from(new Set(results.map(r => r.group)));
+    const totalSec = (totalMs / 1000).toFixed(3);
+    const esc = (s: string) =>
+      s.replace(/&/g, '&amp;')
+       .replace(/</g, '&lt;')
+       .replace(/>/g, '&gt;')
+       .replace(/"/g, '&quot;');
+
+    const suites = groups.map(group => {
+      const gResults = results.filter(r => r.group === group);
+      const gFail = gResults.filter(r => r.status === 'fail').length;
+      const gSec = (gResults.reduce((a, r) => a + r.durationMs, 0) / 1000).toFixed(3);
+      const cases = gResults.map(r => {
+        const sec = (r.durationMs / 1000).toFixed(3);
+        const failMsg = r.stepResults.find(s => s.status === 'fail');
+        if (r.status === 'fail' && failMsg) {
+          const errMsg = failMsg.error ?? t('automation.timeoutError');
+          const tcOpen = `    <testcase name="${esc(r.sequenceName)}" time="${sec}">`;
+          const failEl = `      <failure message="${esc(errMsg)}" type="AssertionError">${esc(errMsg)}</failure>`;
+          return [tcOpen, failEl, '    </testcase>'].join('\n');
+        }
+        return `    <testcase name="${esc(r.sequenceName)}" time="${sec}" />`;
+      }).join('\n');
+      const suiteName = esc(group || t('automation.general'));
+      return [
+        `  <testsuite name="${suiteName}" tests="${gResults.length}" failures="${gFail}" time="${gSec}">`,
+        cases,
+        '  </testsuite>',
+      ].join('\n');
+    }).join('\n');
+
+    const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>';
+    const tsOpen = `<testsuites name="UART Automation" tests="${results.length}" failures="${results.filter(r => r.status === 'fail').length}" time="${totalSec}">`;
+    return [xmlHeader, tsOpen, suites, '</testsuites>'].join('\n');
+  };
+
   const printPdf = () => {
     const html = buildHtml();
     const blob = new Blob([html], { type: 'text/html' });
@@ -309,6 +379,17 @@ function ReportModal({ results, totalMs, onClose }: {
         URL.revokeObjectURL(url);
       }, 2000);
     };
+  };
+
+  const downloadJunit = () => {
+    const filename = `uart-test-results-${Date.now()}.xml`;
+    triggerDownload(buildJunitXml(), filename, 'application/xml').then(saved => {
+      setDlMsg({ text: saved ? `✓ ${saved}` : `✓ ${filename}`, ok: true });
+      setTimeout(() => setDlMsg(null), 3000);
+    }).catch(() => {
+      setDlMsg({ text: '✗ download failed', ok: false });
+      setTimeout(() => setDlMsg(null), 3000);
+    });
   };
 
   // Group results for modal display too
@@ -335,6 +416,9 @@ function ReportModal({ results, totalMs, onClose }: {
             <span className="px-3 py-1 rounded-lg text-[10px] font-mono bg-gray-800 text-gray-400 border border-gray-700/40">
               {(totalMs / 1000).toFixed(2)}s
             </span>
+            <button onClick={downloadJunit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-amber-700 hover:bg-amber-600 text-white transition-all">
+              <FileDown size={11} /> {t('automation.downloadJunit')}
+            </button>
             <button onClick={printPdf} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-indigo-700 hover:bg-indigo-600 text-white transition-all">
               <Download size={11} /> {t('automation.downloadPdf')}
             </button>
@@ -366,8 +450,13 @@ function ReportModal({ results, totalMs, onClose }: {
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-6 py-3 border-t border-white/5 bg-gray-900/40 text-[10px] font-mono text-gray-500">
-          {t('automation.summaryFooter', { passed: String(passed), total: String(results.length), duration: (totalMs / 1000).toFixed(2) })}
+        <div className="shrink-0 px-6 py-3 border-t border-white/5 bg-gray-900/40 text-[10px] font-mono flex items-center justify-between">
+          <span className="text-gray-500">{t('automation.summaryFooter', { passed: String(passed), total: String(results.length), duration: (totalMs / 1000).toFixed(2) })}</span>
+          {dlMsg && (
+            <span className={`px-3 py-1 rounded-lg font-bold text-[10px] transition-all ${dlMsg.ok ? 'bg-emerald-900/60 text-emerald-300' : 'bg-red-900/60 text-red-300'}`}>
+              {dlMsg.text}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -561,7 +650,7 @@ const SequenceRunner: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const cancelRef = useRef(false);
   const [currentStepIdx, setCurrentStepIdx] = useState<number | null>(null);
-  const isNewModeRef = useRef(false); // true = kullanıcı yeni sekans oluşturuyor, useEffect yükleme yapmasın
+  const isNewModeRef = useRef(false);
 
   // ── Campaign mode ──
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -572,9 +661,14 @@ const SequenceRunner: React.FC = () => {
   const [showReport, setShowReport] = useState(false);
   const [campaignTotalMs, setCampaignTotalMs] = useState(0);
 
+  // ── Import/Export ──
+  const importRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [exporting, setExporting] = useState(false);
+
   // Load sequence
   useEffect(() => {
-    if (isNewModeRef.current) return; // kullanıcı yeni sekans modunda, otomatik yükleme yapma
+    if (isNewModeRef.current) return;
 
     if (state.activeSequenceId) {
       const seq = state.sequences.find(s => s.id === state.activeSequenceId);
@@ -585,7 +679,6 @@ const SequenceRunner: React.FC = () => {
         setActiveId(seq.id);
       }
     } else if (state.sequences.length > 0 && activeId === null) {
-      // İlk açılışta ilk sekansı yükle
       const first = state.sequences[0];
       setSteps(first.steps);
       setSequenceName(first.name);
@@ -606,6 +699,9 @@ const SequenceRunner: React.FC = () => {
   const removeStep = useCallback((id: string) => setSteps(prev => prev.filter(s => s.id !== id)), []);
   const updateStep = useCallback((id: string, payload: string) => {
     setSteps(prev => prev.map(s => s.id === id ? { ...s, payload } : s));
+  }, []);
+  const updateRepeat = useCallback((id: string, repeat: number) => {
+    setSteps(prev => prev.map(s => s.id === id ? { ...s, repeat: repeat > 1 ? repeat : undefined } : s));
   }, []);
 
   const saveSequence = () => {
@@ -631,12 +727,74 @@ const SequenceRunner: React.FC = () => {
   };
 
   const createNew = () => {
-    isNewModeRef.current = true; // useEffect'in başka sekans yüklemesini engelle
+    isNewModeRef.current = true;
     setActiveId(null);
     automation.setActiveSequence(null);
     setSteps([]);
     setSequenceName(t('automation.untitledTest'));
     setSequenceGroup('');
+  };
+
+  // ── Export helpers ──
+  const exportSequences = (seqs: AutomationSequence[]) => {
+    if (exporting) return;
+    setExporting(true);
+    const envelope: ExportEnvelope = {
+      format: 'uart-sequences',
+      version: __APP_VERSION__,
+      exportedAt: new Date().toISOString(),
+      sequences: seqs,
+    };
+    const filename = `uart-sequences-${Date.now()}.json`;
+    triggerDownload(JSON.stringify(envelope, null, 2), filename, 'application/json').then(saved => {
+      setImportMsg({ text: `✓ ${saved}`, ok: true });
+      setTimeout(() => setImportMsg(null), 3000);
+    }).finally(() => setExporting(false));
+  };
+
+  const exportCurrentSequence = () => {
+    const current: AutomationSequence = {
+      id: activeId || uuidv4(),
+      name: sequenceName,
+      group: sequenceGroup || undefined,
+      steps: steps.map(s => ({ ...s, status: 'idle' })),
+      createdAt: (activeId ? state.sequences.find(s => s.id === activeId)?.createdAt : null) || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    exportSequences([current]);
+  };
+
+  const exportAllSequences = () => exportSequences(state.sequences);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target?.result as string) as ExportEnvelope;
+        if (data.format !== 'uart-sequences' || !Array.isArray(data.sequences)) {
+          throw new Error('bad format');
+        }
+        let count = 0;
+        data.sequences.forEach(seq => {
+          const newId = uuidv4();
+          automation.saveSequence({
+            ...seq,
+            id: newId,
+            steps: seq.steps.map(s => ({ ...s, id: uuidv4(), status: 'idle' })),
+            updatedAt: new Date().toISOString(),
+          });
+          count++;
+        });
+        setImportMsg({ text: t('automation.importSuccess', { count: String(count) }), ok: true });
+      } catch {
+        setImportMsg({ text: t('automation.importError'), ok: false });
+      }
+      setTimeout(() => setImportMsg(null), 3000);
+      if (importRef.current) importRef.current.value = '';
+    };
+    reader.readAsText(file);
   };
 
   const runSingle = async () => {
@@ -711,6 +869,16 @@ const SequenceRunner: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-gray-950/40 font-mono">
 
+      {/* Hidden file input for import */}
+      <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
+
+      {/* Import toast */}
+      {importMsg && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-xl text-[11px] font-bold shadow-xl border transition-all ${importMsg.ok ? 'bg-emerald-900 border-emerald-700 text-emerald-300' : 'bg-red-900 border-red-700 text-red-300'}`}>
+          {importMsg.text}
+        </div>
+      )}
+
       {/* ── Top bar ── */}
       <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5 bg-gray-900/40">
         <div>
@@ -744,6 +912,8 @@ const SequenceRunner: React.FC = () => {
                 <button onClick={createNew} title={t('automation.newScenario')} className="p-2 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"><FilePlus size={14} /></button>
                 <button onClick={saveSequence} title={t('automation.saveScenario')} className="p-2 text-gray-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Save size={14} /></button>
                 {activeId && <button onClick={deleteActiveSequence} title={t('automation.deleteScenario')} className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Trash2 size={14} /></button>}
+                <button onClick={exportCurrentSequence} disabled={exporting} title={t('automation.exportJson')} className="p-2 text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 rounded-lg transition-all disabled:opacity-30 disabled:cursor-wait"><FileDown size={14} /></button>
+                <button onClick={() => importRef.current?.click()} title={t('automation.importJson')} className="p-2 text-gray-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"><FileUp size={14} /></button>
               </div>
               {!isRunning
                 ? <button onClick={runSingle} disabled={steps.length === 0} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-[11px] font-bold transition-all"><Play size={12} fill="currentColor" /> {t('automation.run')}</button>
@@ -780,6 +950,17 @@ const SequenceRunner: React.FC = () => {
                 <input value={step.payload} onChange={e => updateStep(step.id, e.target.value)}
                   placeholder={step.type === 'wait' ? t('automation.placeholderWait') : t('automation.placeholderPattern')}
                   className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-[11px] font-mono text-gray-200 focus:outline-none focus:border-blue-500/50" />
+                {/* Repeat control */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <RotateCcw size={10} className="text-gray-600" />
+                  <input
+                    type="number" min={1} max={99}
+                    value={step.repeat ?? 1}
+                    onChange={e => updateRepeat(step.id, Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-9 bg-gray-950 border border-gray-800 rounded text-[10px] font-mono text-gray-400 text-center focus:outline-none focus:border-blue-500/50 py-0.5"
+                  />
+                  <span className="text-[9px] text-gray-600">{t('automation.repeatLabel')}</span>
+                </div>
                 <div className="flex items-center gap-1.5 min-w-[70px] justify-end">
                   {step.status === 'running' && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />}
                   {step.status === 'success' && <CheckCircle2 size={13} className="text-emerald-500" />}
@@ -823,6 +1004,13 @@ const SequenceRunner: React.FC = () => {
             <div className="w-px h-3 bg-gray-700" />
             <button onClick={selectAll} className="text-[9px] text-blue-400 hover:text-blue-300 font-bold transition-colors">{t('automation.selectAll')}</button>
             <button onClick={clearAll} className="text-[9px] text-gray-600 hover:text-gray-400 font-bold transition-colors">{t('automation.clearAll')}</button>
+            <div className="w-px h-3 bg-gray-700" />
+            <button onClick={exportAllSequences} disabled={exporting} title={t('automation.exportJson')} className="flex items-center gap-1 text-[9px] text-amber-500 hover:text-amber-400 font-bold transition-colors disabled:opacity-30 disabled:cursor-wait">
+              <FileDown size={11} /> {exporting ? '...' : t('automation.exportJson')}
+            </button>
+            <button onClick={() => importRef.current?.click()} title={t('automation.importJson')} className="flex items-center gap-1 text-[9px] text-cyan-500 hover:text-cyan-400 font-bold transition-colors">
+              <FileUp size={11} /> {t('automation.importJson')}
+            </button>
             <div className="flex-1" />
             {campaignResults.some(r => r.status === 'pass' || r.status === 'fail') && (
               <button onClick={() => setShowReport(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-indigo-700 hover:bg-indigo-600 text-white transition-all">

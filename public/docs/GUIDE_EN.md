@@ -569,6 +569,8 @@ Each sequence is composed of three step types:
 
 **Expect step syntax**: `AABB CC | 2500` — the number after the pipe is the timeout in milliseconds (default: 2500 ms).
 
+**Repeat (×N)**: The number input on the right side of each step controls how many times it repeats (default: 1). Increase the repeat count to send the same command N times in a row.
+
 #### 13.1.1 Single Sequence Mode
 
 Single Sequence mode is designed for **protocol handshake testing**: build a single communication flow, save it, and run it.
@@ -582,8 +584,9 @@ Single Sequence mode is designed for **protocol handshake testing**: build a sin
    - Send: `AA BB 01 02 03` (space-separated Hex)
    - Wait: `500` (milliseconds)
    - Expect: `55 AA | 3000` (pattern | timeout ms)
-6. Press **💾 Save**.
-7. Press **▶ Run** to execute. Steps run in order; passed steps turn ✓ green, failed steps turn ✗ red.
+6. Optionally set a **×N repeat count** on the right side of each step (default: 1).
+7. Press **💾 Save**.
+8. Press **▶ Run** to execute. Steps run in order; passed steps turn ✓ green, failed steps turn ✗ red.
 
 **Sequence Search**: Use the combobox at the top to filter by name or group when many sequences are saved. Results are displayed grouped by label.
 
@@ -628,6 +631,53 @@ Click **Download PDF** to open the browser print dialog. Save as **PDF** (non-ed
 - Footer: passed/total sequences · total duration
 
 **Note**: The PDF language follows the application locale automatically (Turkish / English).
+
+#### 13.1.4 Sequence Import / Export (JSON)
+
+Sequences can be exported to — or imported from — a JSON file. Use this to back up your work, share sequences across teams, or reuse automation scripts in CI/CD pipelines.
+
+**Exporting**:
+- **Single Sequence mode**: Click the 📥 **Export JSON** icon button in the toolbar. Only the current sequence is exported.
+- **Test Series mode**: Click the **Export JSON** link in the top toolbar. All saved sequences are exported to one file.
+- The file is saved as `uart-sequences-<timestamp>.json` in your **Downloads** folder.
+- A green toast notification confirms the saved filename.
+
+**Importing**:
+- Click **Import JSON** and select a `.json` file that was previously exported.
+- Each sequence in the file is added with a **new UUID** — existing sequences are never overwritten.
+- The toast shows how many sequences were imported.
+
+**File Format**:
+```json
+{
+  "format": "uart-sequences",
+  "version": "1.5.28",
+  "exportedAt": "2026-05-15T12:00:00.000Z",
+  "sequences": [ ... ]
+}
+```
+
+#### 13.1.5 JUnit XML Export
+
+A machine-readable **JUnit XML** results file can be downloaded from the Test Series report modal. This format is natively supported by Jenkins, GitLab CI, GitHub Actions, and most other CI/CD platforms.
+
+**Usage**:
+1. Run a Test Series.
+2. When the report modal opens, click the **JUnit XML** button.
+3. The file `uart-test-results-<timestamp>.xml` is saved to your **Downloads** folder.
+4. A green confirmation toast appears inside the modal.
+
+**Output Structure**:
+```xml
+<testsuites name="UART Automation" ...>
+  <testsuite name="Group Name" tests="N" failures="M" time="X.XX">
+    <testcase name="Sequence Name" time="X.XX"/>
+    <testcase name="Failed Sequence" time="X.XX">
+      <failure message="error description" type="AssertionError">...</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
+```
 
 ---
 

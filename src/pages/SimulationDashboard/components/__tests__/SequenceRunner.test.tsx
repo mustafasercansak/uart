@@ -309,6 +309,8 @@ describe('SequenceRunner i18n — new automation keys in LanguageProvider', () =
       'totalDuration', 'successRateLabel',
       'seqPassed', 'seqFailed', 'seqRan',
       'passedStat', 'failedStat', 'passRateLabel', 'reportBrand',
+      // v1.5.28 new keys
+      'exportJson', 'importJson', 'importSuccess', 'importError', 'downloadJunit', 'repeatLabel',
     ];
     const tTr = getT('tr');
     const tEn = getT('en');
@@ -317,6 +319,90 @@ describe('SequenceRunner i18n — new automation keys in LanguageProvider', () =
       expect(tTr(fullKey), `TR missing: ${fullKey}`).not.toBe(fullKey);
       expect(tEn(fullKey), `EN missing: ${fullKey}`).not.toBe(fullKey);
     }
+  });
+
+  it('translates automation.exportJson correctly', () => {
+    expect(getT('tr')('automation.exportJson')).toBe('JSON Dışa Aktar');
+    expect(getT('en')('automation.exportJson')).toBe('Export JSON');
+  });
+
+  it('translates automation.importJson correctly', () => {
+    expect(getT('tr')('automation.importJson')).toBe('JSON İçe Aktar');
+    expect(getT('en')('automation.importJson')).toBe('Import JSON');
+  });
+
+  it('translates automation.downloadJunit correctly', () => {
+    expect(getT('tr')('automation.downloadJunit')).toBe('JUnit XML');
+    expect(getT('en')('automation.downloadJunit')).toBe('JUnit XML');
+  });
+
+  it('interpolates automation.importSuccess correctly', () => {
+    expect(getT('tr')('automation.importSuccess', { count: '3' })).toBe('3 sekans içe aktarıldı');
+    expect(getT('en')('automation.importSuccess', { count: '3' })).toBe('3 sequences imported');
+  });
+});
+
+describe('SequenceRunner — import/export buttons', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('renders Export JSON icon button in single mode (TR)', () => {
+    renderRunner('tr');
+    expect(screen.getByTitle('JSON Dışa Aktar')).toBeInTheDocument();
+  });
+
+  it('renders Import JSON icon button in single mode (TR)', () => {
+    renderRunner('tr');
+    expect(screen.getByTitle('JSON İçe Aktar')).toBeInTheDocument();
+  });
+
+  it('renders Export JSON icon button in single mode (EN)', () => {
+    renderRunner('en');
+    expect(screen.getByTitle('Export JSON')).toBeInTheDocument();
+  });
+
+  it('renders Export JSON and Import JSON text links in campaign mode (TR)', () => {
+    renderRunner('tr');
+    fireEvent.click(screen.getByText('Test Serisi'));
+    expect(screen.getByText('JSON Dışa Aktar')).toBeInTheDocument();
+    expect(screen.getByText('JSON İçe Aktar')).toBeInTheDocument();
+  });
+
+  it('renders Export JSON and Import JSON text links in campaign mode (EN)', () => {
+    renderRunner('en');
+    fireEvent.click(screen.getByText('Test Series'));
+    expect(screen.getByText('Export JSON')).toBeInTheDocument();
+    expect(screen.getByText('Import JSON')).toBeInTheDocument();
+  });
+});
+
+describe('SequenceRunner — repeat step input', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('renders repeat number inputs for each default step', () => {
+    renderRunner('tr');
+    const repeatInputs = document.querySelectorAll('input[type="number"]');
+    expect(repeatInputs.length).toBeGreaterThanOrEqual(3); // 3 default steps
+  });
+
+  it('repeat inputs default to 1', () => {
+    renderRunner('tr');
+    const repeatInputs = document.querySelectorAll('input[type="number"]');
+    repeatInputs.forEach(input => {
+      expect((input as HTMLInputElement).value).toBe('1');
+    });
+  });
+
+  it('repeat × label is rendered', () => {
+    renderRunner('tr');
+    // repeatLabel key → '×'
+    const labels = screen.getAllByText('×');
+    expect(labels.length).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -4,6 +4,19 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.5.28] — 2026-05-15
+### 🚀 Release v1.5.28
+- **Sequence Import / Export (JSON)**: Sequences can now be exported to and imported from `.json` files. Export the current sequence (Single Sequence mode toolbar icon) or all sequences at once (Test Series toolbar link). Import merges sequences with fresh UUIDs — existing data is never overwritten. File format: `{ format: "uart-sequences", version, exportedAt, sequences }`.
+- **JUnit XML Export**: The Test Series report modal now includes a **JUnit XML** download button. Generates a `<testsuites>/<testsuite>/<testcase>` structure compatible with Jenkins, GitLab CI, and GitHub Actions. Failed sequences include a `<failure>` element with the error message.
+- **Loop / Repeat Step Support**: Each automation step now has a **×N repeat counter** (default: 1, max: 99). The step executes N times in sequence before moving to the next step — useful for burst-sending or stress-testing a single command.
+- **Download via Tauri FS**: File downloads (JSON export, JUnit XML) now use `@tauri-apps/plugin-fs` `writeTextFile` with `BaseDirectory.Download`, bypassing the Tauri WebView2 limitation that blocks `a.download` + blob URL on Windows. Falls back to the blob anchor method in non-Tauri environments.
+- **Export Guard**: An `exporting` state flag prevents duplicate file creation when a button is clicked multiple times. Export buttons are disabled with `cursor-wait` while a download is in progress.
+- **i18n**: 6 new keys added to the `automation.*` namespace in both `tr.json` and `en.json`: `exportJson`, `importJson`, `importSuccess`, `importError`, `downloadJunit`, `repeatLabel`.
+- **Test Coverage**: 12 new tests in `SequenceRunner.test.tsx` (43 total): import/export button title assertions, repeat input presence and default-value checks, `×` label rendering, and coverage of all 6 new i18n keys.
+- **Documentation**: Sections 13.1.4 (Import/Export JSON) and 13.1.5 (JUnit XML Export) added to `GUIDE_TR.md` and `GUIDE_EN.md`. Step types table and Single Sequence workflow updated to document the repeat (×N) feature.
+
+---
+
 ## [v1.5.27] — 2026-05-15
 ### 🚀 Release v1.5.27
 - **Automation Tab Rename**: "Testler" tab renamed to "Otomasyon" (TR) / "Automation" (EN) to clearly distinguish it from the "Test Paketi" tab.
