@@ -28,9 +28,9 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
-import { loadProfiles, loadScenarios, saveProfile as persistProfile } from '../../store/storage';
+import { loadProfiles, loadScenarios } from '../../store/storage';
+import { useNavigate } from 'react-router-dom';
 import { useSimulation } from '../../hooks/useSimulation';
-import ProfileEditorModal from './components/ProfileEditorModal';
 import TriggerManager from './components/TriggerManager';
 import ValidationControls from './components/ValidationControls';
 import ValidationReport from './components/ValidationReport';
@@ -58,6 +58,7 @@ const ERROR_TYPES: Array<{ type: ErrorType; key: string; color: string }> = [
 
 export default function SimulationDashboard() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const formatMs = useCallback((ms: number): string => {
     const s = Math.floor(ms / 1000);
@@ -133,8 +134,6 @@ export default function SimulationDashboard() {
     displayFilter,
   } = state;
 
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editingProfile, setEditingProfile] = useState<FrameProfile | null>(null);
 
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
@@ -193,22 +192,8 @@ export default function SimulationDashboard() {
     { id: 'profile-compare', icon: GitCompare, label: 'dashboard.profileCompare', color: 'bg-violet-600', shadow: 'shadow-violet-900/40' },
   ];
 
-  const handleSaveProfile = (profile: FrameProfile) => {
-    persistProfile(profile);
-    setProfilesStore(loadProfiles());
-    setIsEditingProfile(false);
-    setEditingProfile(null);
-  };
-
-  const handleAddProfile = () => {
-    setEditingProfile(null);
-    setIsEditingProfile(true);
-  };
-
-  const handleEditProfile = (profile: FrameProfile) => {
-    setEditingProfile(profile);
-    setIsEditingProfile(true);
-  };
+  const handleAddProfile = () => navigate('/profiles?new=1&from=dashboard');
+  const handleEditProfile = (profile: FrameProfile) => navigate(`/profiles?edit=${profile.id}&from=dashboard`);
 
   useEffect(() => {
     setProfiles(profiles);
@@ -458,6 +443,7 @@ export default function SimulationDashboard() {
                     setTriggers,
                     clearExchanges,
                     selectExchange,
+                    onSetProfile: setProfile,
                     onSendFrame: (bytes: number[]) => {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);
@@ -508,14 +494,6 @@ export default function SimulationDashboard() {
             />
           </div>
         </div>
-
-        {isEditingProfile && (
-          <ProfileEditorModal 
-            profile={editingProfile}
-            onSave={handleSaveProfile}
-            onClose={() => setIsEditingProfile(false)}
-          />
-        )}
 
         {isValidationModalOpen && (
           <ValidationControls 

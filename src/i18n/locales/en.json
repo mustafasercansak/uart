@@ -375,7 +375,14 @@
     "reflectOut": "Reflect Out",
     "bitLabel": "Bit {index}",
     "jsEs6": "JS / ES6+",
-    "bit0": "Bit 0"
+    "bit0": "Bit 0",
+    "alarmThresholds": "Alarm Thresholds",
+    "alarmLow": "Low Threshold",
+    "alarmHigh": "High Threshold",
+    "alarmThresholdsHint": "Alarm fires when the value is outside this range",
+    "frequencySource": "Frequency Source",
+    "freqSourceManual": "Manual (fixed Hz)",
+    "freqSourceHint": "Selected field value ÷ 60 = Hz (e.g. BPM=72 → 1.2 Hz)"
   },
   "validation": {
     "sessionActive": "VALIDATION SESSION ACTIVE",
@@ -936,6 +943,7 @@
     "importSuccess": "{count} sequences imported",
     "importError": "Invalid sequences file",
     "downloadJunit": "JUnit XML",
+    "downloadError": "Download failed",
     "repeatLabel": "×"
   },
   "onboarding": {
@@ -1289,6 +1297,10 @@
     "lastFrame": "Last Frame (RAW)",
     "alarm": "ALARM",
     "alarmCheck": "Check patient status immediately",
+    "alarmBrady": "Bradycardia",
+    "alarmTachy": "Tachycardia",
+    "alarmHypox": "Hypoxemia",
+    "allNormal": "All parameters normal",
     "backOverview": "BACK TO OVERVIEW",
     "suiteTitle": "ICU DIGITAL TWIN SUITE",
     "digitalTwinSuite": "DIGITAL TWIN SUITE",

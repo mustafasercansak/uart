@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useTranslation } from '../../i18n/context';
 import type {
@@ -57,6 +58,9 @@ function newProfile(t: any): FrameProfile {
 
 export default function ProfileEditor() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const fromDashboard = searchParams.get('from') === 'dashboard';
   const [profiles, setProfiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [profile, setProfile] = useState<FrameProfile | null>(null);
@@ -137,6 +141,19 @@ export default function ProfileEditor() {
     setSelectedFieldId(null);
   };
 
+  // URL param ile otomatik profil aç veya yeni oluştur
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    const isNew  = searchParams.get('new') === '1';
+    if (editId) {
+      const target = profiles.find(p => p.id === editId);
+      if (target) openProfile(target);
+    } else if (isNew) {
+      createNew();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const save = () => {
     if (!profile) return;
     const updated = { ...profile, updatedAt: new Date().toISOString() };
@@ -144,7 +161,11 @@ export default function ProfileEditor() {
     setProfiles(loadProfiles());
     setProfile(updated);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (fromDashboard) {
+      setTimeout(() => navigate('/'), 800);
+    } else {
+      setTimeout(() => setSaved(false), 2000);
+    }
   };
 
   const remove = (id: string) => {
@@ -284,8 +305,16 @@ export default function ProfileEditor() {
               <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
               <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
               <button onClick={save} className={`text-xs font-mono px-4 py-1.5 rounded border transition-colors ${saved ? 'bg-green-900/50 border-green-600 text-green-300' : 'bg-green-900/30 border-green-800/50 text-green-400 hover:bg-green-900/50'}`}>
-                {saved ? t('profileEditor.saved') : t('common.save')}
+                {saved ? (fromDashboard ? '✓ Kaydedildi, dönülüyor…' : t('profileEditor.saved')) : t('common.save')}
               </button>
+              {fromDashboard && (
+                <button
+                  onClick={() => navigate('/')}
+                  className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors"
+                >
+                  ← Dashboard
+                </button>
+              )}
             </div>
 
             {/* UART Settings */}

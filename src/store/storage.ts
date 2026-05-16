@@ -175,6 +175,8 @@ function normalizeField(raw: unknown, index: number): Field | null {
     type: src.type ?? 'fixed',
     typeConfig: src.typeConfig ?? { value: 0 },
     widgetConfig: src.widgetConfig,
+    ...(Number.isFinite(src.alarmLow)  && { alarmLow:  Number(src.alarmLow) }),
+    ...(Number.isFinite(src.alarmHigh) && { alarmHigh: Number(src.alarmHigh) }),
   };
 }
 

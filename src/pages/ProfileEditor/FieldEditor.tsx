@@ -90,11 +90,59 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       {field.type === 'fixed' && <FixedEditor config={field.typeConfig as FixedConfig} onChange={updateConfig} />}
       {field.type === 'range' && <RangeEditor config={field.typeConfig as RangeConfig} onChange={updateConfig} />}
       {field.type === 'ramp' && <RampEditor config={field.typeConfig as RampConfig} onChange={updateConfig} />}
-      {field.type === 'waveform' && <WaveformEditor config={field.typeConfig as WaveformConfig} onChange={updateConfig} />}
+      {field.type === 'waveform' && <WaveformEditor config={field.typeConfig as WaveformConfig} onChange={updateConfig} allFields={allFields} />}
       {field.type === 'checksum' && <ChecksumEditor config={field.typeConfig as ChecksumConfig} allFields={allFields} field={field} onChange={updateConfig} />}
       {field.type === 'flags' && <FlagsEditor config={field.typeConfig as FlagsConfig} onChange={updateConfig} byteWidth={field.byteWidth} />}
       {field.type === 'computed' && <ComputedEditor config={field.typeConfig as ComputedConfig} onChange={updateConfig} allFields={allFields} />}
       {field.type === 'script' && <ScriptEditor config={field.typeConfig as ScriptConfig} onChange={updateConfig} />}
+
+      {/* ── Alarm Thresholds ── */}
+      {(['fixed', 'range', 'ramp', 'waveform'] as FieldType[]).includes(field.type) && (
+        <div className="pt-3 border-t border-gray-800 space-y-2">
+          <div className="flex items-center gap-2 pb-1">
+            <span className="text-amber-500/80">⚡</span>
+            <span className="text-amber-500/80 text-[11px] font-mono font-bold uppercase tracking-wider">
+              {t('profileEditor.alarmThresholds')}
+            </span>
+          </div>
+          <div className="text-gray-600 text-[10px] font-mono leading-snug">
+            {t('profileEditor.alarmThresholdsHint')}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>{t('profileEditor.alarmLow')}</label>
+              <input
+                type="number"
+                className={`${inputCls} focus:border-rose-700/60`}
+                placeholder="—"
+                value={field.alarmLow ?? ''}
+                onChange={e => update({ alarmLow: e.target.value === '' ? undefined : Number(e.target.value) })}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>{t('profileEditor.alarmHigh')}</label>
+              <input
+                type="number"
+                className={`${inputCls} focus:border-rose-700/60`}
+                placeholder="—"
+                value={field.alarmHigh ?? ''}
+                onChange={e => update({ alarmHigh: e.target.value === '' ? undefined : Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          {/* Visual alarm band */}
+          {(field.alarmLow !== undefined || field.alarmHigh !== undefined) && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className="h-1 flex-1 rounded-full bg-rose-900/60" />
+              <div className="h-1 flex-[3] rounded-full bg-emerald-900/60" />
+              <div className="h-1 flex-1 rounded-full bg-rose-900/60" />
+              <div className="ml-1 text-[9px] text-gray-600 font-mono whitespace-nowrap">
+                {`${field.alarmLow ?? '?'} — ${field.alarmHigh ?? '?'}`}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -185,8 +233,17 @@ function RampEditor({ config, onChange }: { config: RampConfig; onChange: (p: Pa
   );
 }
 
-function WaveformEditor({ config, onChange }: { config: WaveformConfig; onChange: (p: Partial<WaveformConfig>) => void }) {
+function WaveformEditor({ config, onChange, allFields }: {
+  config: WaveformConfig;
+  onChange: (p: Partial<WaveformConfig>) => void;
+  allFields: Field[];
+}) {
   const { t } = useTranslation();
+  const srcDriven = !!config.frequencySource;
+  const numericFields = allFields.filter(f =>
+    ['fixed', 'range', 'ramp', 'waveform'].includes(f.type)
+  );
+
   return (
     <div className="space-y-2">
       <div>
@@ -200,25 +257,52 @@ function WaveformEditor({ config, onChange }: { config: WaveformConfig; onChange
           <option value="custom">{t('profileEditor.custom')}</option>
         </select>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+
+      {/* Frequency source */}
+      <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-2 space-y-1.5">
         <div>
-          <label className={labelCls}>{t('profileEditor.frequency')}</label>
-          <input type="number" step="0.1" min={0.01} className={inputCls} value={config.frequency} onChange={(e) => onChange({ frequency: Number(e.target.value) })} />
+          <label className={labelCls}>{t('profileEditor.frequencySource')}</label>
+          <select
+            className={inputCls}
+            value={config.frequencySource ?? ''}
+            onChange={e => onChange({ frequencySource: e.target.value || undefined })}
+          >
+            <option value="">{t('profileEditor.freqSourceManual')}</option>
+            {numericFields.map(f => (
+              <option key={f.id} value={f.name}>{f.name}</option>
+            ))}
+          </select>
         </div>
+        {srcDriven ? (
+          <div className="text-[10px] text-cyan-600 font-mono leading-snug">
+            {t('profileEditor.freqSourceHint')}
+          </div>
+        ) : null}
+        <div>
+          <label className={`${labelCls} ${srcDriven ? 'opacity-40' : ''}`}>{t('profileEditor.frequency')}</label>
+          <input
+            type="number" step="0.1" min={0.01}
+            className={`${inputCls} ${srcDriven ? 'opacity-40 cursor-not-allowed' : ''}`}
+            value={config.frequency}
+            disabled={srcDriven}
+            onChange={(e) => onChange({ frequency: Number(e.target.value) })}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className={labelCls}>{t('profileEditor.noiseLevel')}</label>
           <input type="number" min={0} max={50} className={inputCls} value={config.noiseLevel} onChange={(e) => onChange({ noiseLevel: Number(e.target.value) })} />
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className={labelCls}>{t('profileEditor.amplitude')}</label>
           <input type="number" min={0} className={inputCls} value={config.amplitude} onChange={(e) => onChange({ amplitude: Number(e.target.value) })} />
         </div>
-        <div>
-          <label className={labelCls}>{t('profileEditor.offset')}</label>
-          <input type="number" className={inputCls} value={config.offset} onChange={(e) => onChange({ offset: Number(e.target.value) })} />
-        </div>
+      </div>
+      <div>
+        <label className={labelCls}>{t('profileEditor.offset')}</label>
+        <input type="number" className={inputCls} value={config.offset} onChange={(e) => onChange({ offset: Number(e.target.value) })} />
       </div>
       {config.shape === 'custom' && (
         <div>

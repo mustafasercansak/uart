@@ -4,6 +4,40 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.5.29] — 2026-05-16
+### 🚀 Release v1.5.29
+
+- **YS2000A Patient Monitor Template**: New 14-byte clinical frame added to the Template Library — Sync (0xAAAA, 2B), BPM (1B), SpO₂ (1B), RR (1B), Temp (2B, ×10), Lead-I (2B ECG), Lead-II (2B ECG), SpO₂-Wave (1B), Alarms flags (1B), XOR CRC (1B). Baud 115200, 40 ms interval (~25 Hz). Ships with two ready-to-run scenarios: **Bradikardi Atağı** (BPM ramp to 38 → alarm bit → recovery) and **SpO₂ Desatürasyonu** (SpO₂ ramp to 88 → SpO₂ Low flag → recovery).
+
+- **Per-Field Alarm Thresholds in Profile Editor**: Every `range`, `waveform`, `ramp`, and `fixed` field can now have an optional **Low Threshold** (`alarmLow`) and **High Threshold** (`alarmHigh`). A value outside that range is considered an alarm condition. The thresholds are stored on the `Field` type (`src/types/field.ts`) and are preserved correctly through localStorage round-trips (see Storage fix below).
+
+- **Storage Bug Fix — alarmLow/alarmHigh lost on reload**: `normalizeField` in `storage.ts` was silently dropping `alarmLow` and `alarmHigh` when loading profiles from localStorage. Fixed by spreading them conditionally with `Number.isFinite` guard. Profiles saved before this fix that contained alarm thresholds will now load them correctly.
+
+- **Colored Alarm Zones on Field Override Sliders**: The Override sliders in the Control Panel now render a layered custom track (red – green – red) based on each field's `alarmLow` / `alarmHigh` thresholds. Zone padding (`25% of span, min 3`) ensures red zones are always visible even when thresholds are at the slider extremes. Alarm zones are dim (opacity 22%) when the value is normal and bright (opacity 85%) when the value enters the alarm zone. A pulsing `!` badge and rose label appear on the alarming field. When any field is in alarm, all other range-field labels turn dim rose (`text-rose-700`) to match the 3D patient monitor screen behavior — consistent global alarm state signalling.
+
+- **ProfileEditorModal Removed**: The inline modal-based profile editor on the Simulation Dashboard has been removed. The "Add Profile" and "Edit Profile" actions now navigate to the full `/profiles` page using URL params (`?new=1&from=dashboard` / `?edit=<id>&from=dashboard`). The full ProfileEditor auto-opens the correct dialog on mount and returns to `/` after saving. A "← Dashboard" back button is shown when navigating from the dashboard.
+
+- **Profile Dropdown in Visualizer Tab**: A profile selector `<select>` is now embedded in the 3D Visualizer's top-right HUD, allowing the active profile to be changed without leaving the Visualizer tab.
+
+- **3D Visualizer Performance Improvements**:
+  - Shadow map size reduced **2048 × 2048 → 1024 × 1024** (4× less shadow-map texture cost per frame)
+  - WebGL pixel ratio locked to **1** (no supersampling; eliminates HiDPI fill-rate overhead)
+  - `THREE.RectAreaLight` (expensive physically-based area light) replaced with a cheap `THREE.PointLight`
+  - `logarithmicDepthBuffer` disabled (not needed for this scene scale)
+  - Per-device mesh `traverse` for opacity updates now only runs when active/selection state actually changes (was running unconditionally every RAF frame)
+
+- **3D Visualizer Deprecation Fixes**: `THREE.Clock` replaced with `THREE.Timer` (requires `timer.update()` before `getDelta()`); `THREE.PCFSoftShadowMap` replaced with `THREE.PCFShadowMap`.
+
+- **Profile-Driven Alarm Thresholds in Visualizer**: The 3D patient monitor screen and pulse-oximeter screen now read `alarmLow` / `alarmHigh` from the currently active profile fields instead of using hardcoded clinical defaults. The `spo2AlarmLo` used for SpO₂ color is fully driven by the profile's `SpO₂` field alarm configuration.
+
+- **Turkish Field Name Normalization in Visualizer**: The field-to-device binding lookup now normalises Turkish characters (ı→i, ş→s, ğ→g, ç→c, ö→o, ü→u) before comparison, so Turkish-named fields (e.g. `Nabız`, `Sıcaklık`, `Solunum`) are correctly mapped to the patient monitor, ventilator, and IV-pump 3D screens.
+
+- **Alarm Vignette & Improved HUD**: When any alarm is active, a pulsing red border vignette overlays the 3D viewport. The top-center HUD now shows a named alarm banner ("Bradycardia", "Tachycardia", "Hypoxemia") that flashes at 750 ms intervals; individual BPM and SpO₂ values are colour-coded to their own alarm state rather than both turning red whenever any alarm fires.
+
+- **i18n**: 7 new keys added to `en.json` and `tr.json`: `visualizer.alarmBrady`, `visualizer.alarmTachy`, `visualizer.alarmHypox`, `visualizer.allNormal`, `profileEditor.alarmThresholds`, `profileEditor.alarmLow`, `profileEditor.alarmHigh`.
+
+---
+
 ## [v1.5.28] — 2026-05-15
 ### 🚀 Release v1.5.28
 - **Sequence Import / Export (JSON)**: Sequences can now be exported to and imported from `.json` files. Export the current sequence (Single Sequence mode toolbar icon) or all sequences at once (Test Series toolbar link). Import merges sequences with fresh UUIDs — existing data is never overwritten. File format: `{ format: "uart-sequences", version, exportedAt, sequences }`.

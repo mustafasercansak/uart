@@ -375,7 +375,14 @@
     "reflectOut": "Çıkışı Yansıt (Reflect Out)",
     "bitLabel": "Bit {index}",
     "jsEs6": "JS / ES6+",
-    "bit0": "Bit 0"
+    "bit0": "Bit 0",
+    "alarmThresholds": "Alarm Eşikleri",
+    "alarmLow": "Alt Eşik",
+    "alarmHigh": "Üst Eşik",
+    "alarmThresholdsHint": "Değer bu aralığın dışına çıktığında alarm tetiklenir",
+    "frequencySource": "Frekans Kaynağı",
+    "freqSourceManual": "Manuel (sabit Hz)",
+    "freqSourceHint": "Seçili alan değeri ÷ 60 = Hz (örn. BPM=72 → 1.2 Hz)"
   },
   "validation": {
     "startTitle": "Validasyon Oturumu Başlat",
@@ -936,6 +943,7 @@
     "importSuccess": "{count} sekans içe aktarıldı",
     "importError": "Geçersiz sekans dosyası",
     "downloadJunit": "JUnit XML",
+    "downloadError": "İndirme başarısız",
     "repeatLabel": "×"
   },
   "onboarding": {
@@ -1289,6 +1297,10 @@
     "lastFrame": "Son Paket (HAM)",
     "alarm": "ALARM",
     "alarmCheck": "Hasta durumunu derhal kontrol edin",
+    "alarmBrady": "Bradikardi",
+    "alarmTachy": "Taşikardi",
+    "alarmHypox": "Hipoksemi",
+    "allNormal": "Tüm parametreler normal",
     "backOverview": "GENEL BAKIŞA DÖN",
     "suiteTitle": "YOĞUN BAKIM DİJİTAL İKİZ SÜİTİ",
     "digitalTwinSuite": "DİJİTAL İKİZ SÜİTİ",

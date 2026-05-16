@@ -225,6 +225,35 @@ code {
   background: var(--code-bg);
 }
 
+/* Alarm slider: transparent native track so custom colored div shows through */
+.alarm-slider::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 16px;
+}
+.alarm-slider::-moz-range-track {
+  background: transparent;
+  height: 16px;
+}
+.alarm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+  margin-top: 2px; /* (16px track - 12px thumb) / 2 */
+}
+.alarm-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  border: none;
+  cursor: pointer;
+}
+
 /* Utility to hide scrollbars */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

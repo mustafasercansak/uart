@@ -91,28 +91,146 @@ const ControlPanel = memo(({
             <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest">{t('controls.overrides')}</div>
             <button onClick={onResetOverrides} className="text-gray-700 hover:text-gray-500 text-[9px] font-mono transition-colors uppercase">{t('controls.reset')}</button>
           </div>
-          <div className="space-y-2">
-            {allRangeFields.map((field) => {
+          <div className="space-y-3">
+            {(() => {
+              // Compute whether any field is currently in alarm — used to propagate alarm color to all labels
+              const anyFieldInAlarm = allRangeFields.some((f) => {
+                const c = f.typeConfig as RangeConfig;
+                const v = fieldOverrides[f.id] ?? Math.round((c.min + c.max) / 2);
+                return (f.alarmLow !== undefined && v < f.alarmLow) ||
+                       (f.alarmHigh !== undefined && v > f.alarmHigh);
+              });
+
+              return allRangeFields.map((field) => {
               const cfg = field.typeConfig as RangeConfig;
               const currentVal = fieldOverrides[field.id] ?? Math.round((cfg.min + cfg.max) / 2);
               const hasOverride = fieldOverrides[field.id] !== undefined;
+              const alarmLo = field.alarmLow;
+              const alarmHi = field.alarmHigh;
+              const hasAlarm = alarmLo !== undefined || alarmHi !== undefined;
+              // Alarm eşiklerinin ötesinde kırmızı zon görünsün diye padding ekle
+              const alarmSpan = hasAlarm ? ((alarmHi ?? cfg.max) - (alarmLo ?? cfg.min)) : (cfg.max - cfg.min);
+              const zonePad = Math.max(Math.round(alarmSpan * 0.25), 3);
+              const effectiveMin = hasAlarm ? Math.min(cfg.min, (alarmLo ?? cfg.min) - zonePad) : cfg.min;
+              const effectiveMax = hasAlarm ? Math.max(cfg.max, (alarmHi ?? cfg.max) + zonePad) : cfg.max;
+              const range = effectiveMax - effectiveMin || 1;
+              const inAlarm = hasAlarm && (
+                (alarmLo !== undefined && currentVal < alarmLo) ||
+                (alarmHi !== undefined && currentVal > alarmHi)
+              );
+              // Secondary alarm: this field itself is ok but another field is alarming
+              const inSecondaryAlarm = !inAlarm && anyFieldInAlarm;
+
+              const pctLo = hasAlarm && alarmLo !== undefined ? (alarmLo - effectiveMin) / range * 100 : null;
+              const pctHi = hasAlarm && alarmHi !== undefined ? (alarmHi - effectiveMin) / range * 100 : null;
+
               return (
                 <div key={field.id}>
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className={`text-[9px] font-mono ${hasOverride ? 'text-yellow-500 font-bold' : 'text-gray-500'}`}>{field.name}</span>
-                    <span className="text-gray-400 text-[9px] font-mono font-bold">{currentVal}</span>
+                  {/* Label row */}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[9px] font-mono ${inAlarm ? 'text-rose-400 font-bold' : inSecondaryAlarm ? 'text-rose-700 font-bold' : hasOverride ? 'text-yellow-500 font-bold' : 'text-gray-500'}`}>
+                      {field.name}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {inAlarm && (
+                        <span className="text-[8px] text-rose-500 font-black tracking-widest uppercase animate-pulse">!</span>
+                      )}
+                      <span className={`text-[9px] font-mono font-bold ${inAlarm ? 'text-rose-400' : inSecondaryAlarm ? 'text-rose-700' : 'text-gray-400'}`}>
+                        {currentVal}
+                      </span>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min={cfg.min}
-                    max={cfg.max}
-                    value={currentVal}
-                    onChange={(e) => onOverrideField(field.id, Number(e.target.value))}
-                    className="w-full h-1 accent-green-600 cursor-pointer bg-gray-800 rounded-full appearance-none"
-                  />
+
+                  {/* Custom track + native input overlay */}
+                  <div className="relative h-4 flex items-center">
+                    {/* Colored track */}
+                    <div className="absolute inset-x-0 h-2 rounded-full overflow-hidden" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+                      {hasAlarm ? (
+                        <>
+                          {/* red zone left — parlak sadece alarm aktifken */}
+                          {pctLo !== null && pctLo > 0 && (
+                            <div
+                              className="absolute top-0 h-full transition-colors duration-300"
+                              style={{
+                                left: 0,
+                                width: `${pctLo}%`,
+                                background: inAlarm && alarmLo !== undefined && currentVal < alarmLo
+                                  ? 'rgba(239,68,68,0.85)'
+                                  : 'rgba(239,68,68,0.22)',
+                              }}
+                            />
+                          )}
+                          {/* green zone middle */}
+                          <div
+                            className="absolute top-0 h-full bg-emerald-500/50"
+                            style={{
+                              left: `${pctLo ?? 0}%`,
+                              width: `${(pctHi ?? 100) - (pctLo ?? 0)}%`,
+                            }}
+                          />
+                          {/* red zone right — parlak sadece alarm aktifken */}
+                          {pctHi !== null && pctHi < 100 && (
+                            <div
+                              className="absolute top-0 h-full transition-colors duration-300"
+                              style={{
+                                left: `${pctHi}%`,
+                                width: `${100 - pctHi}%`,
+                                background: inAlarm && alarmHi !== undefined && currentVal > alarmHi
+                                  ? 'rgba(239,68,68,0.85)'
+                                  : 'rgba(239,68,68,0.22)',
+                              }}
+                            />
+                          )}
+                          {/* alarm threshold ticks */}
+                          {pctLo !== null && (
+                            <div className="absolute top-0 h-full w-0.5 bg-white/40" style={{ left: `${pctLo}%` }} />
+                          )}
+                          {pctHi !== null && (
+                            <div className="absolute top-0 h-full w-0.5 bg-white/40" style={{ left: `${pctHi}%` }} />
+                          )}
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 bg-gray-700 rounded-full" />
+                      )}
+                    </div>
+
+                    {/* Transparent native input for interaction */}
+                    <input
+                      type="range"
+                      min={effectiveMin}
+                      max={effectiveMax}
+                      value={currentVal}
+                      onChange={(e) => onOverrideField(field.id, Number(e.target.value))}
+                      className={`alarm-slider absolute inset-x-0 w-full h-full cursor-pointer appearance-none bg-transparent`}
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+
+                  {/* Alarm threshold labels */}
+                  {hasAlarm && (
+                    <div className="relative h-3 mt-0.5">
+                      {pctLo !== null && (
+                        <span
+                          className="absolute text-[8px] text-rose-400 font-mono font-bold -translate-x-1/2"
+                          style={{ left: `${pctLo}%` }}
+                        >
+                          {alarmLo}
+                        </span>
+                      )}
+                      {pctHi !== null && (
+                        <span
+                          className="absolute text-[8px] text-rose-400 font-mono font-bold -translate-x-1/2"
+                          style={{ left: `${pctHi}%` }}
+                        >
+                          {alarmHi}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         </div>
       )}

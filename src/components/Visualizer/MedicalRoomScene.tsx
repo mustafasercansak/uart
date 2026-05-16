@@ -38,6 +38,7 @@ interface LiveData {
   ivPhase: number;
   isAlarm: boolean;
   frameId: number;
+  spo2AlarmLo: number;
 }
 
 const makeLiveData = (): LiveData => ({
@@ -47,7 +48,7 @@ const makeLiveData = (): LiveData => ({
   ecgHistory: new Array(100).fill(2048),
   breathHistory: new Array(100).fill(128),
   plethHistory: new Array(100).fill(128),
-  beatPhase: 0, ivPhase: 0, isAlarm: false, frameId: 0,
+  beatPhase: 0, ivPhase: 0, isAlarm: false, frameId: 0, spo2AlarmLo: 94,
 });
 
 // ─── Camera helpers ───────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ function drawMonitorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
   ctx.fillText(d.bpm ? `${d.bpm}` : '--', 30, 490);
   drawLabel(ctx, t('visualizer.hrUnit'), 30, 512, '#ffffff40', 22);
 
-  ctx.fillStyle = d.isAlarm && d.spo2 < 90 ? '#ef4444' : '#06b6d4';
+  ctx.fillStyle = d.isAlarm && d.spo2 < d.spo2AlarmLo ? '#ef4444' : '#06b6d4';
   ctx.font = 'bold 100px monospace';
   ctx.fillText(d.spo2 ? `${d.spo2}` : '--', 300, 490);
   drawLabel(ctx, t('visualizer.spo2Unit'), 300, 512, '#ffffff40', 22);
@@ -182,7 +183,7 @@ function drawPulseOxScreen(ctx: CanvasRenderingContext2D, d: LiveData, beat: num
   ctx.fillStyle = `rgba(236,72,153,${0.2 + beat * 0.6})`;
   ctx.beginPath(); ctx.arc(460, 50, r, 0, Math.PI * 2); ctx.fill();
 
-  ctx.fillStyle = d.spo2 < 90 && d.spo2 > 0 ? '#ef4444' : '#ec4899';
+  ctx.fillStyle = d.spo2 < d.spo2AlarmLo && d.spo2 > 0 ? '#ef4444' : '#ec4899';
   ctx.font = 'bold 110px monospace';
   ctx.fillText(d.spo2 ? `${d.spo2}%` : '--', 30, 430);
   drawLabel(ctx, t('visualizer.spo2Unit'), 30, 460, '#ffffff40', 22);
@@ -475,7 +476,7 @@ interface SceneCtx {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
-  clock: THREE.Clock;
+  timer: THREE.Timer;
   rafId: number;
   devices: Record<string, DeviceObject>;
   cables: Array<{ line: THREE.Line; mat: THREE.LineBasicMaterial }>;
@@ -491,9 +492,10 @@ interface Props {
   lastFrame: GeneratedFrame | null;
   activeProfileId?: string | null;
   profiles?: FrameProfile[];
+  onSetProfile?: (id: string) => void;
 }
 
-export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles = [] }: Props) {
+export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles = [], onSetProfile }: Props) {
   const { t } = useTranslation();
 
   const DEVICES: DeviceConfig[] = [
@@ -556,6 +558,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
   const [isBooting, setIsBooting] = useState(true);
   const [displayData, setDisplayData] = useState<LiveData>(makeLiveData());
   const [showConfig, setShowConfig] = useState(false);
+  const [tick, setTick] = useState(0);
   const [activeScenarioStep, setActiveScenarioStep] = useState<string | null>(null);
   const scenarioStepRef = useRef<string | null>(null);
   // bindings: deviceId -> profileId
@@ -606,32 +609,31 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     camera.position.copy(OVERVIEW.pos);
     camera.lookAt(OVERVIEW.look);
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+    // Renderer — keep pixel ratio at 1 to reduce fill-rate cost
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: false });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(1);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
 
     // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
     keyLight.position.set(8, 18, 12);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.mapSize.set(1024, 1024);
     scene.add(keyLight);
 
     const fillLight = new THREE.DirectionalLight(0x8ecfff, 0.8);
     fillLight.position.set(-10, 8, -5);
     scene.add(fillLight);
 
-    // Overhead ICU light
-    const overheadLight = new THREE.RectAreaLight(0xfff8e7, 3, 2, 4);
+    // Overhead ICU light (cheap point light instead of RectAreaLight)
+    const overheadLight = new THREE.PointLight(0xfff8e7, 3, 12);
     overheadLight.position.set(0, 5, 0);
-    overheadLight.lookAt(0, 0, 0);
     scene.add(overheadLight);
 
     // Floor & grid
@@ -695,7 +697,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     const raycaster = new THREE.Raycaster();
 
     const ctx: SceneCtx = {
-      scene, camera, renderer, clock: new THREE.Clock(), rafId: 0,
+      scene, camera, renderer, timer: new THREE.Timer(), rafId: 0,
       devices, cables, alarmRings,
       camTarget: { pos: OVERVIEW.pos.clone(), look: OVERVIEW.look.clone() },
       currentLook: OVERVIEW.look.clone(),
@@ -709,10 +711,16 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     const SELECTED_INTERVAL = 1000 / 60;  // 60 fps
     const IDLE_INTERVAL     = 1000 / 10;  // 10 fps
 
+    // Track previous active/selection state to avoid traverse every frame
+    const prevActive: Record<string, boolean> = {};
+    const prevSel: Record<string, boolean> = {};
+    DEVICES.forEach(cfg => { prevActive[cfg.id] = false; prevSel[cfg.id] = false; });
+
     // ── Render loop ──────────────────────────────────────────────────────
     const animate = () => {
       ctx.rafId = requestAnimationFrame(animate);
-      const dt = ctx.clock.getDelta();
+      ctx.timer.update();
+      const dt = ctx.timer.getDelta();
       const now = Date.now();
       const time = now * 0.001;
       const d = liveRef.current;
@@ -746,19 +754,23 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
         lastDrawMs['pulse_ox'] = now;
       }
 
-      // Update glow lights
+      // Update glow lights + opacity (traverse only when active/sel state changes)
       Object.entries(ctx.devices).forEach(([id, dev]) => {
         const isSel = selectedRef.current === id;
         const isActive = activeDevicesRef.current.has(id);
         const isAlarmDev = d.isAlarm && id === 'patient_monitor';
 
-        // Dim inactive devices (profile not running)
-        dev.group.traverse(child => {
-          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshPhysicalMaterial) {
-            child.material.opacity = isActive ? 1 : 0.25;
-            child.material.transparent = !isActive;
-          }
-        });
+        // traverse is expensive — only run when active state changed
+        if (prevActive[id] !== isActive || prevSel[id] !== isSel) {
+          dev.group.traverse(child => {
+            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshPhysicalMaterial) {
+              child.material.opacity = isActive ? 1 : 0.25;
+              child.material.transparent = !isActive;
+            }
+          });
+          prevActive[id] = isActive;
+          prevSel[id] = isSel;
+        }
 
         dev.glowLight.intensity = isActive
           ? (isSel ? 5 : 2) + (id === 'patient_monitor' ? beat * 2 : 0)
@@ -870,7 +882,11 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
   // ── Data ingestion ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!lastFrame) return;
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Turkish-aware normalization: map ı→i ş→s ğ→g ç→c ö→o ü→u then strip non-alphanum
+    const norm = (s: string) => s.toLowerCase()
+      .replace(/[ıİ]/g, 'i').replace(/[şŞ]/g, 's').replace(/[ğĞ]/g, 'g')
+      .replace(/[çÇ]/g, 'c').replace(/[öÖ]/g, 'o').replace(/[üÜ]/g, 'u')
+      .replace(/[^a-z0-9]/g, '');
     const get = (...keys: string[]) => {
       for (const k of keys) {
         const f = lastFrame.fields.find(f => norm(f.name) === norm(k));
@@ -880,19 +896,30 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     };
 
     const d = liveRef.current;
-    d.bpm = get('bpm', 'hr', 'heartrate');
-    d.spo2 = get('spo2', 'oxygen');
-    d.rr = get('rr', 'resp');
-    d.temp = get('temp', 'temperature');
+    d.bpm  = get('bpm', 'hr', 'heartrate', 'nabiz', 'kalp', 'pulse');
+    d.spo2 = get('spo2', 'oxygen', 'oksijen', 'saturasyon', 'sat');
+    d.rr   = get('rr', 'resp', 'solunum', 'solunumsayisi', 'breathrate');
+    d.temp = get('temp', 'temperature', 'ates', 'sicaklik');
     d.fio2 = get('fio2', 'fi02');
     d.peep = get('peep');
-    d.tidalvol = get('tidalvol', 'tv');
-    d.flowrate = get('flowrate', 'rate', 'infusionrate');
-    d.volume = get('volume', 'vol');
-    d.remaining = get('remaining', 'rem');
+    d.tidalvol  = get('tidalvol', 'tv');
+    d.flowrate  = get('flowrate', 'rate', 'infusionrate', 'hiz');
+    d.volume    = get('volume', 'vol', 'hacim');
+    d.remaining = get('remaining', 'rem', 'kalan');
     d.pi = get('pi', 'perfusion');
     d.frameId = lastFrame.frameNumber;
-    d.isAlarm = (d.bpm > 0 && (d.bpm < 45 || d.bpm > 140)) || (d.spo2 > 0 && d.spo2 < 90);
+
+    // Profile-driven alarm thresholds (fallback to clinical defaults)
+    const activeProfile = profiles.find(p => p.id === activeProfileId);
+    const getProfileField = (...names: string[]) =>
+      activeProfile?.fields.find(f => names.some(n => norm(f.name) === norm(n)));
+    const bpmField  = getProfileField('bpm', 'hr', 'heartrate', 'nabiz', 'kalp', 'pulse');
+    const spo2Field = getProfileField('spo2', 'oxygen');
+    const bpmLo  = bpmField?.alarmLow  ?? 45;
+    const bpmHi  = bpmField?.alarmHigh ?? 140;
+    const spo2Lo = spo2Field?.alarmLow ?? 94;
+    d.spo2AlarmLo = spo2Lo;
+    d.isAlarm = (d.bpm > 0 && (d.bpm < bpmLo || d.bpm > bpmHi)) || (d.spo2 > 0 && d.spo2 < spo2Lo);
 
     // Scenario step — drives ring animations on device twins
     const step = lastFrame.activeScenarioStep ?? null;
@@ -920,7 +947,31 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     setDisplayData({ ...d });
   }, [lastFrame, activeScenarioStep, isDeviceActive]);
 
+  // Alarm flash ticker
+  useEffect(() => {
+    if (!displayData.isAlarm) return;
+    const id = setInterval(() => setTick(n => n + 1), 750);
+    return () => clearInterval(id);
+  }, [displayData.isAlarm]);
+
   const selectedCfg = DEVICES.find(d => d.id === selected);
+
+  const activeProf = profiles.find(p => p.id === activeProfileId);
+  const normName = (s: string) => s.toLowerCase()
+    .replace(/[ıİ]/g, 'i').replace(/[şŞ]/g, 's').replace(/[ğĞ]/g, 'g')
+    .replace(/[çÇ]/g, 'c').replace(/[öÖ]/g, 'o').replace(/[üÜ]/g, 'u')
+    .replace(/[^a-z0-9]/g, '');
+  const bpmProfileField  = activeProf?.fields.find(f => ['bpm','hr','heartrate','nabiz','kalp','pulse'].some(n => normName(f.name) === n));
+  const spo2ProfileField = activeProf?.fields.find(f => ['spo2','oxygen','oksijen','saturasyon','sat'].some(n => normName(f.name) === n));
+  const bpmAlarmLo  = bpmProfileField?.alarmLow  ?? 45;
+  const bpmAlarmHi  = bpmProfileField?.alarmHigh ?? 140;
+  const spo2AlarmLo = spo2ProfileField?.alarmLow ?? 94;
+  const alarmBpm  = displayData.bpm  > 0 && (displayData.bpm < bpmAlarmLo || displayData.bpm > bpmAlarmHi);
+  const alarmSpo2 = displayData.spo2 > 0 && displayData.spo2 < spo2AlarmLo;
+  const alarmFlash = displayData.isAlarm && tick % 2 === 0;
+  const alarmLabels: string[] = [];
+  if (alarmBpm)  alarmLabels.push(displayData.bpm < bpmAlarmLo ? t('visualizer.alarmBrady') : t('visualizer.alarmTachy'));
+  if (alarmSpo2) alarmLabels.push(t('visualizer.alarmHypox'));
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-gray-950 font-mono select-none">
@@ -928,22 +979,76 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
       {/* 3D Canvas */}
       <div ref={containerRef} className="w-full h-full cursor-pointer" />
 
+      {/* ── Alarm vignette ── */}
+      {displayData.isAlarm && (
+        <div className={`absolute inset-0 pointer-events-none transition-all duration-300 ${
+          alarmFlash
+            ? 'shadow-[inset_0_0_120px_rgba(239,68,68,0.22)] ring-2 ring-inset ring-rose-600/40'
+            : 'shadow-[inset_0_0_70px_rgba(239,68,68,0.1)] ring-1 ring-inset ring-rose-800/20'
+        }`} />
+      )}
+
       {/* ── Top HUD ── */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start pointer-events-none">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${displayData.isAlarm ? 'bg-red-500 animate-ping' : 'bg-emerald-500 shadow-[0_0_12px_#10b981]'}`} />
-            <span className="text-white font-black text-lg tracking-widest">{t('visualizer.suiteTitle')}</span>
+      <div className="absolute top-0 left-0 right-0 px-6 pt-5 pb-3 flex items-start justify-between pointer-events-none">
+        {/* Left: identity */}
+        <div className="flex items-center gap-3">
+          <div className={`w-3 h-3 rounded-sm flex-shrink-0 transition-all duration-300 ${
+            displayData.isAlarm
+              ? alarmFlash ? 'bg-rose-500 shadow-[0_0_10px_#ef4444]' : 'bg-rose-800'
+              : 'bg-emerald-500 shadow-[0_0_10px_#10b981]'
+          }`} />
+          <div>
+            <div className="text-white font-black text-base tracking-widest">{t('visualizer.suiteTitle')}</div>
+            <div className="text-[9px] text-gray-600 tracking-widest mt-0.5">{t('visualizer.activeDevices', { count: 4 })}</div>
           </div>
-          <div className="text-[10px] text-gray-500 tracking-widest mt-1 pl-6">{t('visualizer.activeDevices', { count: 4 })}</div>
         </div>
-        <div className="text-right">
+
+        {/* Center: alarm banner or normal status */}
+        <div className="flex-1 flex justify-center mx-6 mt-0.5">
+          {displayData.isAlarm ? (
+            <div className={`flex items-center gap-3 px-5 py-2 rounded-full border transition-all duration-300 ${
+              alarmFlash
+                ? 'bg-rose-600/20 border-rose-500/70 shadow-[0_0_20px_rgba(239,68,68,0.35)]'
+                : 'bg-rose-900/15 border-rose-700/40'
+            }`}>
+              <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${alarmFlash ? 'bg-rose-400' : 'bg-rose-800'}`} />
+              <span className={`font-black text-sm tracking-[0.4em] uppercase transition-colors duration-300 ${alarmFlash ? 'text-rose-400' : 'text-rose-700'}`}>
+                {t('visualizer.alarm')}
+              </span>
+              <span className="text-rose-600/40 text-xs">—</span>
+              <span className={`font-semibold text-xs tracking-wider transition-colors duration-300 ${alarmFlash ? 'text-rose-300' : 'text-rose-700'}`}>
+                {alarmLabels.join(' · ')}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+              <span className="text-emerald-400 font-bold text-[11px] tracking-[0.3em] uppercase">
+                {t('visualizer.allNormal')}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Right: clock + frame + profile picker */}
+        <div className="text-right flex flex-col items-end gap-1 pointer-events-auto">
           <div className="text-white font-black text-xl tabular-nums">{new Date().toLocaleTimeString()}</div>
-          <div className="text-[10px] text-cyan-500 tracking-widest mt-1">Frame #{displayData.frameId}</div>
+          <div className="text-[10px] text-cyan-500/70 tracking-widest">Frame #{displayData.frameId}</div>
           {activeScenarioStep && (
-            <div className="text-[10px] text-yellow-400 tracking-widest mt-0.5 animate-pulse">
+            <div className="text-[10px] text-yellow-400 tracking-widest animate-pulse">
               ▶ {activeScenarioStep}
             </div>
+          )}
+          {onSetProfile && profiles.length > 0 && (
+            <select
+              value={activeProfileId ?? ''}
+              onChange={e => onSetProfile(e.target.value)}
+              className="mt-1 bg-black/60 border border-white/15 rounded-lg px-2 py-1 text-[10px] text-gray-300 font-mono outline-none focus:border-white/30 cursor-pointer hover:border-white/25 transition-colors max-w-[160px] truncate"
+            >
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
           )}
         </div>
       </div>
@@ -958,18 +1063,24 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
         >
           {t('visualizer.overview')}
         </button>
-        {DEVICES.map(cfg => (
-          <button
-            key={cfg.id}
-            onClick={() => setSelected(prev => prev === cfg.id ? null : cfg.id)}
-            style={{ borderColor: selected === cfg.id ? cfg.glowCss : undefined, color: selected === cfg.id ? cfg.glowCss : undefined }}
-            className={`px-3 py-1.5 text-[11px] font-black tracking-widest rounded-lg border transition-all ${
-              selected === cfg.id ? 'bg-black/60' : 'bg-black/40 border-white/10 text-gray-500 hover:border-white/20'
-            }`}
-          >
-            {cfg.label.toUpperCase()}
-          </button>
-        ))}
+        {DEVICES.map(cfg => {
+          const hasAlarm = displayData.isAlarm && cfg.id === 'patient_monitor';
+          return (
+            <button
+              key={cfg.id}
+              onClick={() => setSelected(prev => prev === cfg.id ? null : cfg.id)}
+              style={{ borderColor: selected === cfg.id ? cfg.glowCss : hasAlarm ? (alarmFlash ? '#ef4444' : '#991b1b') : undefined, color: selected === cfg.id ? cfg.glowCss : undefined }}
+              className={`relative px-3 py-1.5 text-[11px] font-black tracking-widest rounded-lg border transition-all duration-300 ${
+                selected === cfg.id ? 'bg-black/60' : 'bg-black/40 border-white/10 text-gray-500 hover:border-white/20'
+              }`}
+            >
+              {cfg.label.toUpperCase()}
+              {hasAlarm && (
+                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full transition-colors duration-300 ${alarmFlash ? 'bg-rose-500 shadow-[0_0_6px_#ef4444]' : 'bg-rose-800'}`} />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Config button ── */}
@@ -1050,15 +1161,41 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
                   if (acc !== 0) return acc;
                   return (displayData as unknown as Record<string, number>)[k] || 0;
                 }, 0);
-                const isAlarmVal = displayData.isAlarm && (label === 'HR' || label === 'SpO₂');
+                const isBpmField  = keys.some(k => ['bpm', 'hr', 'heartrate'].includes(k));
+                const isSpo2Field = keys.some(k => ['spo2', 'oxygen'].includes(k));
+                const isValAlarm  = (isBpmField && alarmBpm) || (isSpo2Field && alarmSpo2);
+                const valFlash    = isValAlarm && alarmFlash;
                 return (
-                  <div key={label} className="bg-white/5 rounded-xl p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 font-black tracking-widest mb-1">{label}</div>
+                  <div
+                    key={label}
+                    className={`relative overflow-hidden rounded-xl p-3 border transition-all duration-300 ${
+                      isValAlarm
+                        ? valFlash
+                          ? 'border-rose-500/50 bg-rose-950/40 shadow-[0_0_10px_rgba(239,68,68,0.18)]'
+                          : 'border-rose-800/30 bg-rose-950/20'
+                        : 'border-white/5 bg-white/5'
+                    }`}
+                  >
+                    {/* Left accent bar */}
                     <div
-                      className="text-2xl font-black tabular-nums"
-                      style={{ color: isAlarmVal ? '#ef4444' : selectedCfg.glowCss }}
-                    >
-                      {val || '--'}
+                      className="absolute left-0 top-0 bottom-0 w-0.5 transition-colors duration-300"
+                      style={{ backgroundColor: isValAlarm ? (valFlash ? '#ef4444' : '#7f1d1d') : selectedCfg.glowCss }}
+                    />
+                    <div className="pl-2">
+                      <div className="text-[9px] font-black tracking-widest mb-1.5 flex items-center justify-between"
+                        style={{ color: isValAlarm ? (valFlash ? '#fca5a5' : '#7f1d1d') : `${selectedCfg.glowCss}99` }}>
+                        {label}
+                        {isValAlarm && (
+                          <span className={`text-[9px] font-black transition-opacity ${valFlash ? 'opacity-100' : 'opacity-40'}`}
+                            style={{ color: '#ef4444' }}>!</span>
+                        )}
+                      </div>
+                      <div
+                        className="text-2xl font-black tabular-nums leading-none transition-colors duration-300"
+                        style={{ color: isValAlarm ? (valFlash ? '#ef4444' : '#7f1d1d') : selectedCfg.glowCss }}
+                      >
+                        {val || '--'}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1090,9 +1227,21 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
 
             {/* Alarm indicator */}
             {displayData.isAlarm && selectedCfg.id === 'patient_monitor' && (
-              <div className="bg-red-950/60 border border-red-500/40 rounded-xl p-3 text-center">
-                <div className="text-red-400 font-black text-sm animate-pulse">{t('visualizer.alarm')}</div>
-                <div className="text-red-500/70 text-[10px] mt-1">{t('visualizer.alarmCheck')}</div>
+              <div className={`rounded-xl border px-4 py-3 transition-all duration-300 ${
+                alarmFlash
+                  ? 'bg-rose-950/70 border-rose-500/60 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
+                  : 'bg-rose-950/30 border-rose-800/40'
+              }`}>
+                <div className="flex items-center justify-center gap-2.5 mb-1.5">
+                  <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${alarmFlash ? 'bg-rose-400' : 'bg-rose-800'}`} />
+                  <span className={`font-black text-sm tracking-[0.35em] uppercase transition-colors duration-300 ${alarmFlash ? 'text-rose-400' : 'text-rose-800'}`}>
+                    {t('visualizer.alarm')}
+                  </span>
+                </div>
+                <div className={`text-center text-xs font-semibold tracking-wide mb-1 transition-colors duration-300 ${alarmFlash ? 'text-rose-300' : 'text-rose-700'}`}>
+                  {alarmLabels.join(' · ')}
+                </div>
+                <div className="text-[10px] text-rose-700/60 text-center">{t('visualizer.alarmCheck')}</div>
               </div>
             )}
 

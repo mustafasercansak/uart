@@ -1,5 +1,5 @@
 # UART PRO LAB — Ana Mühendislik Kılavuzu
-## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.27
+## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.29
 
 > **UART Pro Lab**, hassasiyet gerektiren gömülü sistem mühendisleri, tıbbi cihaz geliştiricileri ve protokol araştırmacıları için tasarlanmış dünyanın en gelişmiş tarayıcı tabanlı UART simülasyon ve doğrulama ortamıdır.
 
@@ -475,20 +475,40 @@ Her alana otomatik doğrulama ekleyin:
 
 Doğrulama başarısızlıkları Telemetri Paneli'nde (kırmızı) görünür ve Doğrulama Raporu'nun Sağlık Puanına katkıda bulunur.
 
+### 11.3.1 Alan Bazlı Alarm Eşikleri
+
+`range`, `waveform`, `ramp` ve `fixed` türündeki her alan için isteğe bağlı **Düşük Eşik** (`alarmLow`) ve **Yüksek Eşik** (`alarmHigh`) tanımlanabilir. Simüle edilen değer bu aralığın dışına çıktığında:
+
+- **Kontrol Paneli**'ndeki override slider renkli alarm zonlarıyla aydınlanır — eşik dışında **kırmızı**, arasında **yeşil**.
+- Alan etiketi ve değer gül-kırmızıya döner; yanında yanıp sönen `!` simgesi belirir.
+- **3D Hasta Monitörü** ekranı aynı eşikleri okuyarak BPM / SpO₂ renklerini buna göre ayarlar.
+- **Herhangi bir alan** alarm durumundayken diğer tüm alan etiketleri soluk gül tonuna geçerek global alarm sinyali verir.
+
+Eşikler, Profil Düzenleyici'deki ⚡ **Alarm Eşikleri** bölümünden ayarlanır. İkisi de boş bırakılırsa o alan için alarm renklendirmesi devre dışı kalır.
+
 ![Profil Düzenleyici Statik](images/v1.2/profile_editor.png)
 
 ### 11.4 Profil Şablonu Kütüphanesi
-21 önceden oluşturulmuş profil dahildir:
+Hazır profiller:
 
 | Kategori | Profiller |
 |---|---|
-| **Tıbbi** | EKG (ADS1292), SpO₂ (MAX30102), Kan Basıncı, Sıcaklık (DS18B20) |
-| **IMU / Hareket** | MPU-6050 (6 eksen), ICM-42688 (6 eksen), BNO085 (9 eksen + AHRS) |
-| **Çevresel** | BME280, SHT31, CCS811 (CO₂/VOC) |
-| **GPS** | NMEA-0183 GPRMC, uBlox UBX ikili |
-| **Endüstriyel** | Modbus RTU, Profibus DP (alt küme) |
+| **Tıbbi** | YS2000A Patient Monitor (EKG + SpO₂ + vital), YS2000A SpO₂ Modülü, Berry BM1000 Nabız Oksimetre, SpO₂ Modülü, Nabız Oksimetre, Sıcaklık Sensörü, NIBP Modülü, EKG Modülü |
+| **Endüstriyel** | Modbus RTU Master (FC03), Modbus RTU Slave (FC03 Response) |
+| **Navigasyon** | NMEA 0183 GPS (GPGGA) |
+| **Tıbbi (İnsancıl)** | Açık Kaynak Ventilatör (OpenVentilator-V1) |
+
+#### YS2000A Patient Monitor — Şablon Özellikleri
+- **14 baytlık sabit frame**: 115200 baud / 40 ms (~25 Hz)
+- Alanlar: Sync `0xAAAA`, BPM, SpO₂, RR, Temp (×10), Lead-I EKG, Lead-II EKG, SpO₂-Wave, Alarms bayrakları (Brady/Tachy/SpO₂ Low/Apnea/Lead Off/Temp High), XOR CRC
+- Ön tanımlı alarm eşikleri: BPM 45–140, SpO₂ 94–100, RR 8–30, Temp 360–385 (×10)
+- **Bradikardi Atağı senaryosu**: BPM 38'e düşer, Brady bayrağı ateşlenir, 20 s'de iyileşir
+- **SpO₂ Desatürasyonu senaryosu**: SpO₂ 88'e düşer, SpO₂ Low bayrağı ateşlenir, 20 s'de iyileşir
 
 ![Profil Şablonları](images/profiles.png)
+
+#### Panelden Düzenleme
+Stat çubuğundaki herhangi bir profilin yanındaki **kalem simgesine** tıklayarak tam Profil Düzenleyici açılır. Kaydetme sonrası otomatik olarak panele döner. Sıfırdan veya bir şablondan oluşturmak için **+ Yeni Profil** kullanılabilir.
 
 ---
 
@@ -735,24 +755,28 @@ Bir dizi UI eylemini (başlat, durdur, baud hızını değiştir, hata enjekte e
 <a name="visualizer"></a>
 ## 14. 3D Görselleştirici
 
-3D Görselleştirici, IMU sensör verilerini gerçek zamanlı 3D katı cisim olarak işler — kuaternyon matematiğinizi veya Euler açısı çıktınızı doğrulamanın en hızlı yolu.
+3D Görselleştirici, aktif profilin canlı verilerini gerçek zamanlı bir **Tıbbi Bakım Odası** sahnesinde canlandırır. Hasta monitörü, ventilatör, IV pompa ve nabız oksimetre aygıtları simülasyon verisini doğrudan ekranlarına yansıtır.
 
-![3D Görselleştirici](images/v1.2/visualizer_3d.png)
-
-### Desteklenen Yönelim Formatları
-| Format | Gereken Alanlar |
+### 14.1 Sahne Elemanları
+| Aygıt | Gösterilen Veriler |
 |---|---|
-| **Euler Açıları** | Yuvarlanma, Eğim, Sapma (derece veya radyan) |
-| **Kuaternyon (WXYZ)** | W, X, Y, Z (normalleştirilmiş) |
-| **Dönme Matrisi** | 3×3 matris (9 float alan) |
-| **Eksen-Açı** | Eksen X/Y/Z + Açı |
+| **Hasta Monitörü** | EKG dalgası, BPM, SpO₂ — alarm varsa kırmızı |
+| **Ventilatör** | Solunum dalgası, RR, FiO₂, PEEP |
+| **IV Pompa** | Akış hızı, hacim, kalan miktar, damlama animasyonu |
+| **Nabız Oksimetre** | SpO₂ %, PI, Pleth dalgası — alarm rengi |
 
-### Oluşturma Seçenekleri
-- **Referans Çerçevesi**: NED (Kuzey-Doğu-Aşağı, havacılık) veya ENU (Doğu-Kuzey-Yukarı, robotik) seçin.
-- **Izgarası**: Seçilebilir ölçekli zemin düzlemi ızgarasını aç/kapat.
-- **Eksenler**: Cisim sabit X/Y/Z eksenlerini renkli oklar olarak göster.
-- **Yörünge**: Katı cisim üzerindeki seçili noktanın son N saniyedeki yolunu çiz.
-- **Gimbal Kilit Göstergesi**: Euler temsili için eğim ±90°'ye yaklaştığında vurgular.
+### 14.2 Profil Seçimi
+Görselleştirici sekmesinden ayrılmadan sağ üst HUD'daki **profil açılır menüsünden** aktif profil değiştirilebilir.
+
+### 14.3 Alarm Gösterimi
+- Herhangi bir vital değer alarm eşiğini aştığında görünür **kırmızı vignette** (ekran kenarı) belirer.
+- Üst merkezdeki banner yanıp sönerek alarm tipini gösterir: **Bradikardi**, **Taşikardi**, **Hipoksemi**.
+- Hasta monitörü ekranında BPM, kendi eşiği aşıldığında kırmızı gösterilir; SpO₂ kendi SpO₂ alarm eşiğine göre bağımsız renklenir.
+
+### 14.4 Performans İpuçları
+- Gölge haritası 1024×1024'e küçültülmüştür — düşük GPU'lu sistemlerde frame takılmaları azalmıştır.
+- Pixel oranı 1'de sabitlenmiştir (HiDPI fill-rate yükü yoktur).
+- Pahalı `RectAreaLight` kaldırılmış, ucuz `PointLight` ile değiştirilmiştir.
 
 ![Görselleştirici Canlı](images/v1.2/visualizer_live.png)
 

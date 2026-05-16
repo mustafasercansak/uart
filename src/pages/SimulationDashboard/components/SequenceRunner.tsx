@@ -387,7 +387,7 @@ function ReportModal({ results, totalMs, onClose }: {
       setDlMsg({ text: saved ? `✓ ${saved}` : `✓ ${filename}`, ok: true });
       setTimeout(() => setDlMsg(null), 3000);
     }).catch(() => {
-      setDlMsg({ text: '✗ download failed', ok: false });
+      setDlMsg({ text: `✗ ${t('automation.downloadError')}`, ok: false });
       setTimeout(() => setDlMsg(null), 3000);
     });
   };

@@ -60,6 +60,8 @@ export interface WaveformConfig {
   noiseLevel: number;
   phase?: number;
   customPoints?: number[];
+  /** Field name whose decimal value (÷60) overrides the static frequency. */
+  frequencySource?: string;
 }
 
 export type ChecksumAlgorithm =
@@ -149,4 +151,8 @@ export interface Field {
   typeConfig: FieldTypeConfig;
   widgetConfig?: WidgetConfig;
   isAscii?: boolean;
+  /** Alarm fires when value drops below this threshold. */
+  alarmLow?: number;
+  /** Alarm fires when value rises above this threshold. */
+  alarmHigh?: number;
 }

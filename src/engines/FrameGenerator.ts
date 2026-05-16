@@ -101,18 +101,19 @@ function getFieldValue(
         return clampValue(samples[index], byteWidth);
       }
 
-      // Medical Sync: If this is an ECG and there's a BPM field, sync them
-      if (cfg.shape === 'ecg') {
-        const bpm = namedValues['BPM'] || namedValues['HR'] || 0;
-        if (bpm > 0) {
-          cfg.frequency = bpm / 60;
+      // Explicit frequencySource: any field can drive this waveform's frequency
+      if (cfg.frequencySource) {
+        const srcVal = namedValues[cfg.frequencySource] ?? 0;
+        if (srcVal > 0) cfg.frequency = srcVal / 60;
+      } else {
+        // Legacy medical auto-sync (backward-compat when frequencySource is not set)
+        if (cfg.shape === 'ecg') {
+          const bpm = namedValues['BPM'] || namedValues['HR'] || 0;
+          if (bpm > 0) cfg.frequency = bpm / 60;
         }
-      }
-
-      if (cfg.shape === 'resp_pressure' || cfg.shape === 'resp_flow') {
-        const rr = namedValues['RR'] || namedValues['Respiration'] || 0;
-        if (rr > 0) {
-          cfg.frequency = rr / 60;
+        if (cfg.shape === 'resp_pressure' || cfg.shape === 'resp_flow') {
+          const rr = namedValues['RR'] || namedValues['Respiration'] || 0;
+          if (rr > 0) cfg.frequency = rr / 60;
         }
       }
 

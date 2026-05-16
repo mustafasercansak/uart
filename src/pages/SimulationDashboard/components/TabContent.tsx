@@ -47,6 +47,7 @@ interface TabContentProps {
     clearExchanges: () => void;
     onSendFrame?: (bytes: number[]) => void;
     selectExchange?: (id: string | null) => void;
+    onSetProfile?: (id: string) => void;
   };
   elapsedMs?: number;
   frameCount?: number;
@@ -179,7 +180,7 @@ export default function TabContent({
         />
       );
     case 'visualizer':
-      return <MedicalRoomScene lastFrame={lastFrame} activeProfileId={selectedProfile?.id ?? null} profiles={profiles} />;
+      return <MedicalRoomScene lastFrame={lastFrame} activeProfileId={selectedProfile?.id ?? null} profiles={profiles} onSetProfile={hooks.onSetProfile} />;
     case 'decoder':
       return (
         <ProtocolDecoderPanel

@@ -1,5 +1,5 @@
 # UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite · v1.5.27
+## Professional Simulation, Diagnostic & Validation Suite · v1.5.29
 
 > **UART Pro Lab** is the world's most advanced browser-based UART simulation and validation environment — built for embedded engineers, medical device developers, and protocol researchers who demand precision.
 
@@ -475,20 +475,40 @@ Add automatic validation to each field:
 
 Validation failures appear in the Telemetry Panel (red) and contribute to the Validation Report's Health Score.
 
+### 11.3.1 Per-Field Alarm Thresholds
+
+Every `range`, `waveform`, `ramp`, and `fixed` field can be given an optional **Low Threshold** (`alarmLow`) and **High Threshold** (`alarmHigh`). When the simulated value goes outside that range:
+
+- The field override slider in the **Control Panel** lights up with colored alarm zones — **red** outside the thresholds, **green** between them.
+- The label and value turn rose-red; a pulsing `!` badge appears.
+- The **3D Patient Monitor** screen reads the same thresholds and colours BPM / SpO₂ accordingly.
+- When **any** field is alarming, all other field labels shift to a dim rose to signal a global alarm state.
+
+Set thresholds in the Profile Editor field form under the ⚡ **Alarm Thresholds** section. Leave both blank to disable alarm colouring for that field.
+
 ![Profile Editor Static](images/v1.2/profile_editor.png)
 
 ### 11.4 Profile Templates Library
-21 pre-built profiles included:
+Pre-built profiles included:
 
 | Category | Profiles |
 |---|---|
-| **Medical** | ECG (ADS1292), SpO₂ (MAX30102), Blood Pressure, Temperature (DS18B20) |
-| **IMU / Motion** | MPU-6050 (6-axis), ICM-42688 (6-axis), BNO085 (9-axis + AHRS) |
-| **Environmental** | BME280, SHT31, CCS811 (CO₂/VOC) |
-| **GPS** | NMEA-0183 GPRMC, uBlox UBX binary |
-| **Industrial** | Modbus RTU, Profibus DP (subset) |
+| **Medical** | YS2000A Patient Monitor (ECG + SpO₂ + vitals), YS2000A SpO₂ Module, Berry BM1000 Pulse Oximeter, SpO₂ Module, Pulse Oximeter, Temperature Sensor, NIBP Module, ECG Module |
+| **Industrial** | Modbus RTU Master (FC03), Modbus RTU Slave (FC03 Response) |
+| **Navigation** | NMEA 0183 GPS (GPGGA) |
+| **Medical (Humanitarian)** | Open-Source Ventilator (OpenVentilator-V1) |
+
+#### YS2000A Patient Monitor — Template Highlights
+- **14-byte fixed frame** at 115200 baud / 40 ms (~25 Hz)
+- Fields: Sync `0xAAAA`, BPM, SpO₂, RR, Temp (×10), Lead-I ECG, Lead-II ECG, SpO₂-Wave, Alarms flags (Brady/Tachy/SpO₂ Low/Apnea/Lead Off/Temp High), XOR CRC
+- Pre-configured alarm thresholds: BPM 45–140, SpO₂ 94–100, RR 8–30, Temp 360–385 (×10)
+- **Bradikardi Atağı scenario**: BPM ramps to 38, Brady flag fires, recovers over 20 s
+- **SpO₂ Desatürasyonu scenario**: SpO₂ drops to 88, SpO₂ Low flag fires, recovers over 20 s
 
 ![Profile Templates](images/profiles.png)
+
+#### Editing from the Dashboard
+Click the **pencil icon** next to any profile in the dashboard stat bar to open the full Profile Editor. The editor returns you to the dashboard automatically after saving. You can also press **+ New Profile** to create from scratch or from a template.
 
 ---
 
@@ -735,24 +755,28 @@ Process pre-recorded `.bin` session files in headless batch mode:
 <a name="visualizer"></a>
 ## 14. 3D Visualizer
 
-The 3D Visualizer renders IMU sensor data as a real-time 3D rigid body — the fastest way to validate your quaternion math or Euler angle output.
+The 3D Visualizer renders the active profile's live data in a real-time **Medical ICU Room** scene. A patient monitor, ventilator, IV pump, and pulse oximeter each display simulation data on their on-screen panels.
 
-![3D Visualizer](images/v1.2/visualizer_3d.png)
-
-### Supported Orientation Formats
-| Format | Fields Required |
+### 14.1 Scene Devices
+| Device | Displayed Data |
 |---|---|
-| **Euler Angles** | Roll, Pitch, Yaw (degrees or radians) |
-| **Quaternion (WXYZ)** | W, X, Y, Z (normalized) |
-| **Rotation Matrix** | 3×3 matrix (9 float fields) |
-| **Axis-Angle** | Axis X/Y/Z + Angle |
+| **Patient Monitor** | ECG waveform, BPM, SpO₂ — coloured red during alarm |
+| **Ventilator** | Breath waveform, RR, FiO₂, PEEP |
+| **IV Pump** | Flow rate, volume, remaining, drip animation |
+| **Pulse Oximeter** | SpO₂ %, PI, Pleth waveform — alarm-aware colour |
 
-### Rendering Options
-- **Reference Frame**: Choose NED (North-East-Down, aerospace) or ENU (East-North-Up, robotics).
-- **Grid**: Toggle ground plane grid with selectable scale.
-- **Axes**: Show body-fixed X/Y/Z axes as colored arrows.
-- **Trajectory**: Draw the path of a selected point on the rigid body over the last N seconds.
-- **Gimbal Lock Indicator**: Highlights when pitch approaches ±90° in Euler representation.
+### 14.2 Profile Switching
+Change the active profile without leaving the Visualizer tab using the **profile dropdown** in the top-right HUD.
+
+### 14.3 Alarm Display
+- A pulsing red **vignette border** appears whenever any vital value breaches its alarm threshold.
+- The top-center banner flashes with the named alarm: **Bradycardia**, **Tachycardia**, **Hypoxemia**.
+- BPM on the patient monitor screen turns red only when BPM itself is alarming; SpO₂ is coloured independently based on the profile's SpO₂ alarm threshold.
+
+### 14.4 Performance Notes
+- Shadow map reduced to 1024×1024 — reduces frame stutters on low-GPU systems.
+- Pixel ratio locked to 1 — eliminates HiDPI fill-rate overhead.
+- Expensive `RectAreaLight` removed; replaced with a `PointLight`.
 
 ![Visualizer Live](images/v1.2/visualizer_live.png)
 
