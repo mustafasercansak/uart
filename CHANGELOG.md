@@ -4,55 +4,10 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
-## [v1.5.29] — 2026-05-16
-### 🚀 Release v1.5.29
-
-- **YS2000A Patient Monitor Template**: New 14-byte clinical frame added to the Template Library — Sync (0xAAAA, 2B), BPM (1B), SpO₂ (1B), RR (1B), Temp (2B, ×10), Lead-I (2B ECG), Lead-II (2B ECG), SpO₂-Wave (1B), Alarms flags (1B), XOR CRC (1B). Baud 115200, 40 ms interval (~25 Hz). Ships with two ready-to-run scenarios: **Bradikardi Atağı** (BPM ramp to 38 → alarm bit → recovery) and **SpO₂ Desatürasyonu** (SpO₂ ramp to 88 → SpO₂ Low flag → recovery).
-
-- **Per-Field Alarm Thresholds in Profile Editor**: Every `range`, `waveform`, `ramp`, and `fixed` field can now have an optional **Low Threshold** (`alarmLow`) and **High Threshold** (`alarmHigh`). A value outside that range is considered an alarm condition. The thresholds are stored on the `Field` type (`src/types/field.ts`) and are preserved correctly through localStorage round-trips (see Storage fix below).
-
-- **Storage Bug Fix — alarmLow/alarmHigh lost on reload**: `normalizeField` in `storage.ts` was silently dropping `alarmLow` and `alarmHigh` when loading profiles from localStorage. Fixed by spreading them conditionally with `Number.isFinite` guard. Profiles saved before this fix that contained alarm thresholds will now load them correctly.
-
-- **Colored Alarm Zones on Field Override Sliders**: The Override sliders in the Control Panel now render a layered custom track (red – green – red) based on each field's `alarmLow` / `alarmHigh` thresholds. Zone padding (`25% of span, min 3`) ensures red zones are always visible even when thresholds are at the slider extremes. Alarm zones are dim (opacity 22%) when the value is normal and bright (opacity 85%) when the value enters the alarm zone. A pulsing `!` badge and rose label appear on the alarming field. When any field is in alarm, all other range-field labels turn dim rose (`text-rose-700`) to match the 3D patient monitor screen behavior — consistent global alarm state signalling.
-
-- **ProfileEditorModal Removed**: The inline modal-based profile editor on the Simulation Dashboard has been removed. The "Add Profile" and "Edit Profile" actions now navigate to the full `/profiles` page using URL params (`?new=1&from=dashboard` / `?edit=<id>&from=dashboard`). The full ProfileEditor auto-opens the correct dialog on mount and returns to `/` after saving. A "← Dashboard" back button is shown when navigating from the dashboard.
-
-- **Profile Dropdown in Visualizer Tab**: A profile selector `<select>` is now embedded in the 3D Visualizer's top-right HUD, allowing the active profile to be changed without leaving the Visualizer tab.
-
-- **3D Visualizer Performance Improvements**:
-  - Shadow map size reduced **2048 × 2048 → 1024 × 1024** (4× less shadow-map texture cost per frame)
-  - WebGL pixel ratio locked to **1** (no supersampling; eliminates HiDPI fill-rate overhead)
-  - `THREE.RectAreaLight` (expensive physically-based area light) replaced with a cheap `THREE.PointLight`
-  - `logarithmicDepthBuffer` disabled (not needed for this scene scale)
-  - Per-device mesh `traverse` for opacity updates now only runs when active/selection state actually changes (was running unconditionally every RAF frame)
-
-- **3D Visualizer Deprecation Fixes**: `THREE.Clock` replaced with `THREE.Timer` (requires `timer.update()` before `getDelta()`); `THREE.PCFSoftShadowMap` replaced with `THREE.PCFShadowMap`.
-
-- **Profile-Driven Alarm Thresholds in Visualizer**: The 3D patient monitor screen and pulse-oximeter screen now read `alarmLow` / `alarmHigh` from the currently active profile fields instead of using hardcoded clinical defaults. The `spo2AlarmLo` used for SpO₂ color is fully driven by the profile's `SpO₂` field alarm configuration.
-
-- **Turkish Field Name Normalization in Visualizer**: The field-to-device binding lookup now normalises Turkish characters (ı→i, ş→s, ğ→g, ç→c, ö→o, ü→u) before comparison, so Turkish-named fields (e.g. `Nabız`, `Sıcaklık`, `Solunum`) are correctly mapped to the patient monitor, ventilator, and IV-pump 3D screens.
-
-- **Alarm Vignette & Improved HUD**: When any alarm is active, a pulsing red border vignette overlays the 3D viewport. The top-center HUD now shows a named alarm banner ("Bradycardia", "Tachycardia", "Hypoxemia") that flashes at 750 ms intervals; individual BPM and SpO₂ values are colour-coded to their own alarm state rather than both turning red whenever any alarm fires.
-
-- **i18n**: 7 new keys added to `en.json` and `tr.json`: `visualizer.alarmBrady`, `visualizer.alarmTachy`, `visualizer.alarmHypox`, `visualizer.allNormal`, `profileEditor.alarmThresholds`, `profileEditor.alarmLow`, `profileEditor.alarmHigh`.
-
----
-
-## [v1.5.28] — 2026-05-15
-### 🚀 Release v1.5.28
-- **Sequence Import / Export (JSON)**: Sequences can now be exported to and imported from `.json` files. Export the current sequence (Single Sequence mode toolbar icon) or all sequences at once (Test Series toolbar link). Import merges sequences with fresh UUIDs — existing data is never overwritten. File format: `{ format: "uart-sequences", version, exportedAt, sequences }`.
-- **JUnit XML Export**: The Test Series report modal now includes a **JUnit XML** download button. Generates a `<testsuites>/<testsuite>/<testcase>` structure compatible with Jenkins, GitLab CI, and GitHub Actions. Failed sequences include a `<failure>` element with the error message.
-- **Loop / Repeat Step Support**: Each automation step now has a **×N repeat counter** (default: 1, max: 99). The step executes N times in sequence before moving to the next step — useful for burst-sending or stress-testing a single command.
-- **Download via Tauri FS**: File downloads (JSON export, JUnit XML) now use `@tauri-apps/plugin-fs` `writeTextFile` with `BaseDirectory.Download`, bypassing the Tauri WebView2 limitation that blocks `a.download` + blob URL on Windows. Falls back to the blob anchor method in non-Tauri environments.
-- **Export Guard**: An `exporting` state flag prevents duplicate file creation when a button is clicked multiple times. Export buttons are disabled with `cursor-wait` while a download is in progress.
-- **i18n**: 6 new keys added to the `automation.*` namespace in both `tr.json` and `en.json`: `exportJson`, `importJson`, `importSuccess`, `importError`, `downloadJunit`, `repeatLabel`.
-- **Test Coverage**: 12 new tests in `SequenceRunner.test.tsx` (43 total): import/export button title assertions, repeat input presence and default-value checks, `×` label rendering, and coverage of all 6 new i18n keys.
-- **Documentation**: Sections 13.1.4 (Import/Export JSON) and 13.1.5 (JUnit XML Export) added to `GUIDE_TR.md` and `GUIDE_EN.md`. Step types table and Single Sequence workflow updated to document the repeat (×N) feature.
-
----
-
-## [v1.5.27] — 2026-05-15
+## [v1.5.27] — 2026-05-16
 ### 🚀 Release v1.5.27
+
+#### Otomasyon & Test Paketi
 - **Automation Tab Rename**: "Testler" tab renamed to "Otomasyon" (TR) / "Automation" (EN) to clearly distinguish it from the "Test Paketi" tab.
 - **Test Series Mode**: New multi-sequence execution mode in the Sequence Runner. Select multiple sequences across groups, run them back-to-back, and get a professional PDF report with per-step pass/fail results.
 - **Sequence Combobox**: Replaced the plain dropdown with a searchable combobox supporting group headers, keyboard navigation (↑↓ Enter Esc), and filtered results.
@@ -63,6 +18,32 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 - **Test Coverage**: 31 new tests in `SequenceRunner.test.tsx` covering TR/EN labels for all UI sections, combobox placeholders, campaign mode empty state, and a key-coverage loop that asserts all 37 new automation keys are present in both locales.
 - **Compliance Fix**: `en-GB` and `Segoe UI` added to the i18n compliance test whitelist (locale string and PDF font — not user-visible strings).
 - **Documentation**: Section 13 of `GUIDE_TR.md` and `GUIDE_EN.md` rewritten to document the Sequence Runner (step types, Single Sequence workflow, Test Series workflow, PDF report). `README.md` updated with the new feature.
+- **Sequence Import / Export (JSON)**: Sequences can now be exported to and imported from `.json` files. Export the current sequence (Single Sequence mode toolbar icon) or all sequences at once (Test Series toolbar link). Import merges sequences with fresh UUIDs — existing data is never overwritten. File format: `{ format: "uart-sequences", version, exportedAt, sequences }`.
+- **JUnit XML Export**: The Test Series report modal now includes a **JUnit XML** download button. Generates a `<testsuites>/<testsuite>/<testcase>` structure compatible with Jenkins, GitLab CI, and GitHub Actions. Failed sequences include a `<failure>` element with the error message.
+- **Loop / Repeat Step Support**: Each automation step now has a **×N repeat counter** (default: 1, max: 99). The step executes N times in sequence before moving to the next step — useful for burst-sending or stress-testing a single command.
+- **Download via Tauri FS**: File downloads (JSON export, JUnit XML) now use `@tauri-apps/plugin-fs` `writeTextFile` with `BaseDirectory.Download`, bypassing the Tauri WebView2 limitation that blocks `a.download` + blob URL on Windows. Falls back to the blob anchor method in non-Tauri environments.
+- **Export Guard**: An `exporting` state flag prevents duplicate file creation when a button is clicked multiple times. Export buttons are disabled with `cursor-wait` while a download is in progress.
+- **i18n (automation)**: 6 new keys added to the `automation.*` namespace in both `tr.json` and `en.json`: `exportJson`, `importJson`, `importSuccess`, `importError`, `downloadJunit`, `repeatLabel`.
+- **Test Coverage (SequenceRunner)**: 12 new tests (43 total): import/export button title assertions, repeat input presence and default-value checks, `×` label rendering, and coverage of all 6 new i18n keys.
+- **Documentation**: Sections 13.1.4 (Import/Export JSON) and 13.1.5 (JUnit XML Export) added to `GUIDE_TR.md` and `GUIDE_EN.md`. Step types table and Single Sequence workflow updated to document the repeat (×N) feature.
+
+#### Profil Düzenleyici & Şablon Kütüphanesi
+- **YS2000A Patient Monitor Template**: New 14-byte clinical frame added to the Template Library — Sync (0xAAAA, 2B), BPM (1B), SpO₂ (1B), RR (1B), Temp (2B, ×10), Lead-I (2B ECG), Lead-II (2B ECG), SpO₂-Wave (1B), Alarms flags (1B), XOR CRC (1B). Baud 115200, 40 ms interval (~25 Hz). Ships with two ready-to-run scenarios: **Bradikardi Atağı** (BPM ramp to 38 → alarm bit → recovery) and **SpO₂ Desatürasyonu** (SpO₂ ramp to 88 → SpO₂ Low flag → recovery).
+- **Per-Field Alarm Thresholds in Profile Editor**: Every `range`, `waveform`, `ramp`, and `fixed` field can now have an optional **Low Threshold** (`alarmLow`) and **High Threshold** (`alarmHigh`). A value outside that range is considered an alarm condition. The thresholds are stored on the `Field` type (`src/types/field.ts`) and are preserved correctly through localStorage round-trips.
+- **Storage Bug Fix — alarmLow/alarmHigh lost on reload**: `normalizeField` in `storage.ts` was silently dropping `alarmLow` and `alarmHigh` when loading profiles from localStorage. Fixed by spreading them conditionally with `Number.isFinite` guard.
+- **ProfileEditorModal Removed**: The inline modal-based profile editor on the Simulation Dashboard has been removed. "Add Profile" and "Edit Profile" now navigate to the full `/profiles` page via URL params (`?new=1&from=dashboard` / `?edit=<id>&from=dashboard`). The ProfileEditor auto-opens the correct dialog on mount and returns to `/` after saving. A "← Dashboard" back button is shown when navigating from the dashboard.
+- **i18n (profileEditor)**: 7 new keys added to `en.json` and `tr.json`: `alarmThresholds`, `alarmLow`, `alarmHigh`, `alarmThresholdsHint`, `visualizer.alarmBrady`, `visualizer.alarmTachy`, `visualizer.alarmHypox`.
+
+#### Kontrol Paneli
+- **Colored Alarm Zones on Field Override Sliders**: The Override sliders in the Control Panel now render a layered custom track (red – green – red) based on each field's `alarmLow` / `alarmHigh` thresholds. Zone padding (25% of span, min 3) ensures red zones are always visible even when thresholds are at the slider extremes. Alarm zones are dim (opacity 22%) when the value is normal and bright (opacity 85%) when the value enters the alarm zone. A pulsing `!` badge and rose label appear on the alarming field. When any field is in alarm, all other range-field labels turn dim rose to signal global alarm state.
+
+#### 3D Görselleştirici
+- **Profile Dropdown in Visualizer Tab**: A profile selector `<select>` is now embedded in the 3D Visualizer's top-right HUD, allowing the active profile to be changed without leaving the Visualizer tab.
+- **3D Visualizer Performance Improvements**: Shadow map 2048×2048 → 1024×1024 (4× less GPU cost); pixel ratio locked to 1 (no HiDPI overhead); `THREE.RectAreaLight` replaced with `THREE.PointLight`; `logarithmicDepthBuffer` disabled; per-device mesh `traverse` now only runs when active/selection state actually changes.
+- **3D Visualizer Deprecation Fixes**: `THREE.Clock` → `THREE.Timer`; `THREE.PCFSoftShadowMap` → `THREE.PCFShadowMap`.
+- **Profile-Driven Alarm Thresholds in Visualizer**: The 3D patient monitor and pulse-oximeter screens now read `alarmLow`/`alarmHigh` from the active profile instead of hardcoded clinical defaults.
+- **Turkish Field Name Normalization**: Field-to-device binding lookup now normalises Turkish characters (ı→i, ş→s, ğ→g, ç→c, ö→o, ü→u) so Turkish-named fields map correctly to 3D device screens.
+- **Alarm Vignette & Improved HUD**: Pulsing red border vignette on alarm; top-center banner shows named alarm type (Bradycardia / Tachycardia / Hypoxemia) at 750 ms flash; BPM and SpO₂ are coloured independently based on their own alarm state.
 
 ---
 

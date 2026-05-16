@@ -1,5 +1,5 @@
 # UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite · v1.5.29
+## Professional Simulation, Diagnostic & Validation Suite · v1.5.27
 
 > **UART Pro Lab** is the world's most advanced browser-based UART simulation and validation environment — built for embedded engineers, medical device developers, and protocol researchers who demand precision.
 
