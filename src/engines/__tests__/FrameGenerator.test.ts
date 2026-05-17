@@ -463,6 +463,46 @@ describe('FrameGenerator', () => {
       expect(frameParity.bitStream?.some(t => t.label === 'PARITY')).toBe(true); // Still adds parity bit but it defaults to 0
     });
 
+    it('uses customWaveform samples when state.customWaveform is set', () => {
+      const waveformProfile: FrameProfile = {
+        ...mockProfile,
+        fields: [{
+          id: 'w1', name: 'W1', byteWidth: 1, order: 0,
+          type: 'waveform', typeConfig: { shape: 'sine', frequency: 1, amplitude: 100, offset: 128 },
+          endianness: 'big'
+        }]
+      } as unknown as FrameProfile;
+
+      const customWaveformState = {
+        ...mockState,
+        elapsedMs: 0,
+        customWaveform: [200, 100, 50]
+      };
+      const frame = generateFrame(waveformProfile, customWaveformState as unknown as typeof mockState, 1);
+      // At elapsedMs=0, progress=0, index=0 → samples[0] = 200
+      expect(frame.rawBytes[0]).toBe(200);
+    });
+
+    it('uses frequencySource to drive waveform frequency', () => {
+      const waveformProfile: FrameProfile = {
+        ...mockProfile,
+        fields: [
+          { id: 'bpm', name: 'BPM', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 60 }, endianness: 'big' },
+          {
+            id: 'w2', name: 'W2', byteWidth: 1, order: 1,
+            type: 'waveform',
+            typeConfig: { shape: 'sine', frequency: 0.5, amplitude: 100, offset: 128, frequencySource: 'BPM' },
+            endianness: 'big'
+          }
+        ]
+      } as unknown as FrameProfile;
+
+      const frame = generateFrame(waveformProfile, mockState, 1);
+      // BPM=60 → frequency = 60/60 = 1 Hz; the waveform value is within valid byte range
+      expect(frame.rawBytes[1]).toBeGreaterThanOrEqual(0);
+      expect(frame.rawBytes[1]).toBeLessThanOrEqual(255);
+    });
+
     it('covers gaussian clamp limits', () => {
       const clampProfile = {
         ...mockProfile,

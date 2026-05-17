@@ -480,6 +480,79 @@ describe('simulationReducer', () => {
       });
     });
 
+    describe('MASTER_TICK: MAX_LOGIC_TRANSITIONS overflow', () => {
+      it('slices transitions when combined length exceeds MAX_LOGIC_TRANSITIONS (1500)', () => {
+        const existing = Array.from({ length: 1499 }, (_, i) => ({ t: i, v: 0 as const }));
+        const state: SimulationState = {
+          ...INITIAL_STATE,
+          logicHistory: [{ id: 'tx-main', name: 'UART TX', transitions: existing }]
+        };
+        const action = {
+          type: 'MASTER_TICK' as const,
+          updates: {
+            lastFrame: {
+              frameNumber: 1,
+              bitStream: [{ t: 10000, v: 1 }, { t: 10001, v: 0 }]
+            } as unknown as GeneratedFrame
+          },
+          points: [], logEntries: [], elapsedMs: 200
+        };
+        const res = reducer(state, action);
+        // 1499 + 2 = 1501 > 1500 → sliced to 1500
+        expect(res.logicHistory[0].transitions.length).toBe(1500);
+      });
+    });
+
+    describe('INIT_STATE: truthy first-branch and final fallback coverage', () => {
+      it('uses action.newState values for telemetryLayouts, dashboardLayout, snapshots when provided', () => {
+        const frame = { frameNumber: 99 } as unknown as GeneratedFrame;
+        const res = reducer(INITIAL_STATE, {
+          type: 'INIT_STATE',
+          newState: {
+            telemetryLayouts: { p1: ['f1'] },
+            dashboardLayout: { widgets: [{ id: 'w1' }] as import('../../types').DashboardWidget[] },
+            watchlist: ['field1'],
+            snapshots: [frame]
+          }
+        });
+        expect(res.telemetryLayouts).toEqual({ p1: ['f1'] });
+        expect(res.dashboardLayout?.widgets.length).toBe(1);
+        expect(res.watchlist).toEqual(['field1']);
+        expect(res.snapshots).toEqual([frame]);
+      });
+
+      it('falls back to hardcoded defaults when both action.newState and state have nullish values', () => {
+        const nullState = {
+          ...INITIAL_STATE,
+          telemetryLayouts: undefined as unknown as typeof INITIAL_STATE.telemetryLayouts,
+          dashboardLayout: undefined as unknown as typeof INITIAL_STATE.dashboardLayout,
+          watchlist: undefined as unknown as typeof INITIAL_STATE.watchlist,
+          snapshots: undefined as unknown as typeof INITIAL_STATE.snapshots,
+        };
+        const res = reducer(nullState, {
+          type: 'INIT_STATE',
+          newState: {} // no overrides for these fields
+        });
+        expect(res.telemetryLayouts).toEqual({});
+        expect(res.dashboardLayout).toEqual({ widgets: [] });
+        expect(res.watchlist).toEqual([]);
+        expect(res.snapshots).toEqual([]);
+      });
+    });
+
+    describe('SAVE_SEQUENCE: inner map branch coverage', () => {
+      it('returns unchanged sequences for non-matching indices when updating', () => {
+        const seq1 = { id: 'seq-1', name: 'First' } as AutomationSequence;
+        const seq2 = { id: 'seq-2', name: 'Second' } as AutomationSequence;
+        const state = { ...INITIAL_STATE, sequences: [seq1, seq2] };
+        const updated = { id: 'seq-2', name: 'Updated Second' } as AutomationSequence;
+        const res = reducer(state, { type: 'SAVE_SEQUENCE', sequence: updated });
+        expect(res.sequences.length).toBe(2);
+        expect(res.sequences[0]).toBe(seq1); // untouched
+        expect(res.sequences[1].name).toBe('Updated Second');
+      });
+    });
+
     describe('SET_CUSTOM_WAVEFORM', () => {
       it('stores waveform array', () => {
         const waveform = [0, 128, 255, 64];

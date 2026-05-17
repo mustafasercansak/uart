@@ -19,5 +19,5 @@ export interface ScriptablePeripheral {
 export interface PeripheralScriptResult {
   bytes: number[];
   log: string;
-  nextState?: Record<string, unknown>;
+  nextState: Record<string, unknown>;
 }

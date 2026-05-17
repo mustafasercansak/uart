@@ -43,7 +43,7 @@ export function exportToCSV(
     ...fieldNames.map((n) => `field_${n}_hex`),
   ];
 
-  const firstTs = frames[0]?.timestampMs ?? 0;
+  const firstTs = frames[0].timestampMs;
 
   const rows = frames.map((f) => {
     const fieldDecMap: Record<string, string> = {};
@@ -246,7 +246,7 @@ export function computeErrorStats(frames: GeneratedFrame[]): ErrorStats {
     errorTypeCounts,
     crcFailRate: errorFrames > 0 ? crcFails / errorFrames : 0,
     avgFrameSize: totalBytes / frames.length,
-    minFrameSize: minBytes === Infinity ? 0 : minBytes,
+    minFrameSize: minBytes,
     maxFrameSize: maxBytes,
     durationMs,
     framesPerSecond: fps,

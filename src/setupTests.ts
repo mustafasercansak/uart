@@ -9,6 +9,9 @@ afterEach(() => {
   cleanup();
 });
 
+// scrollIntoView not implemented in jsdom
+window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
 // Mock Web Workers (jsdom doesn't support them)
 class MockWorker {
   onmessage: ((e: MessageEvent) => void) | null = null;

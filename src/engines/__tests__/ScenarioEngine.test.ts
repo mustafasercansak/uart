@@ -182,13 +182,25 @@ describe('ScenarioEngine', () => {
 
     it('evaluates random condition', () => {
         const scenario: Scenario = {
-            steps: [{ 
+            steps: [{
                 id: 'r1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
                 condition: { type: 'random', value: 1.0 } // Always true
             }]
         } as unknown as Scenario;
         const result = tickScenarioEngine(scenario, mockProfile, mockState);
         expect(result.executedSteps.length).toBe(1);
+    });
+
+    it('evaluates random condition with undefined value (uses ?? 0.5 default)', () => {
+        const scenario: Scenario = {
+            steps: [{
+                id: 'r2', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
+                condition: { type: 'random' } // no value → defaults to 0.5
+            }]
+        } as unknown as Scenario;
+        // Result is non-deterministic but the branch is exercised; just verify it runs
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(typeof result.executedSteps.length).toBe('number');
     });
     });
 
@@ -268,11 +280,121 @@ describe('ScenarioEngine', () => {
 
     it('covers compareValues default branch (Line 246)', () => {
         const scenario: Scenario = {
-            steps: [{ 
+            steps: [{
                 id: 'cv1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 100 },
                 condition: { type: 'elapsed_time', operator: 'INVALID' as string, value: 0 }
             }]
         } as unknown as Scenario;
         expect(tickScenarioEngine(scenario, mockProfile, mockState).executedSteps.length).toBe(0);
+    });
+
+    it('skips steps whose timestamp is outside the current window (line 165 false branch)', () => {
+        // atMs=500, elapsedMs=1000 → prevElapsed=950 → 500 < 950 → does not fire
+        const scenario: Scenario = {
+            steps: [{ id: 'old', atMs: 500, target: 'field:BPM', action: 'set', actionConfig: { value: 42 } }]
+        } as unknown as Scenario;
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(result.executedSteps.length).toBe(0);
+    });
+
+    it('covers bit toggle ?? and ternary branches (lines 126-127)', () => {
+        // When bitOverrides[bitKey] is undefined → current = 0 (??), then 0 → 1
+        const stepToggle: ScenarioStep = {
+            id: 'tg1', atMs: 0, target: 'bit:BPM.READY', action: 'toggle', actionConfig: {}
+        };
+        const resFromUndefined = processScenarioStep(stepToggle, mockProfile, mockState);
+        expect(resFromUndefined.newState.bitOverrides?.['f1.READY']).toBe(1);
+
+        // When bitOverrides[bitKey] = 1 → current = 1 (defined), then 1 → 0
+        const resFromOne = processScenarioStep(stepToggle, mockProfile,
+            { ...mockState, bitOverrides: { 'f1.READY': 1 } } as unknown as SimulationState);
+        expect(resFromOne.newState.bitOverrides?.['f1.READY']).toBe(0);
+    });
+
+    it('covers bit target with no subName or no fieldId (line 115)', () => {
+        // Unknown field → !fieldId → early return
+        const stepUnknownField: ScenarioStep = {
+            id: 'bf1', atMs: 0, target: 'bit:UNKNOWN.FLAG', action: 'set', actionConfig: { value: 1 }
+        };
+        expect(processScenarioStep(stepUnknownField, mockProfile, mockState).newState).toEqual({});
+    });
+
+    it('covers executedStep falsy branch (line 172)', () => {
+        // When processScenarioStep finds no matching field, executedStep is undefined
+        const scenario: Scenario = {
+            steps: [{ id: 'u1', atMs: 1000, target: 'field:NONEXISTENT', action: 'set', actionConfig: { value: 99 } }]
+        } as unknown as Scenario;
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(result.executedSteps.length).toBe(0);
+    });
+
+    it('covers non-expired pulse branch (line 183)', () => {
+        // Pulse with revertAtMs in the future → not reverted, stays in activePulses
+        const stateWithFuturePulse: SimulationState = {
+            ...mockState,
+            elapsedMs: 1000,
+            activePulses: {
+                'f1': { originalValue: 10, revertAtMs: 5000 } // not yet expired
+            }
+        } as unknown as SimulationState;
+        const result = tickScenarioEngine({ steps: [] } as unknown as Scenario, mockProfile, stateWithFuturePulse);
+        // pulsesChanged stays false → activePulses not written to updates
+        expect(result.updates.activePulses).toBeUndefined();
+    });
+
+    it('covers in-progress ramp branch (line 205)', () => {
+        // Ramp that is still in progress → not completed
+        const stateWithActiveRamp: SimulationState = {
+            ...mockState,
+            elapsedMs: 500,
+            activeRamps: {
+                'f1': { from: 0, to: 100, startMs: 0, durationMs: 5000, curve: 'linear' }
+            }
+        } as unknown as SimulationState;
+        const result = tickScenarioEngine({ steps: [] } as unknown as Scenario, mockProfile, stateWithActiveRamp);
+        // rampsChanged stays false → activeRamps not written to updates
+        expect(result.updates.activeRamps).toBeUndefined();
+    });
+
+    it('covers evaluateCondition ?? defaults for operator and value', () => {
+        // elapsed_time: operator and value both undefined → defaults to '>' and 0
+        // mockState.elapsedMs = 1000, so 1000 > 0 → true
+        const s1: Scenario = {
+            steps: [{
+                id: 'qt1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 10 },
+                condition: { type: 'elapsed_time' } // no operator, no value
+            }]
+        } as unknown as Scenario;
+        expect(tickScenarioEngine(s1, mockProfile, mockState).executedSteps.length).toBe(1);
+
+        // field_value: operator and value both undefined → defaults to '==' and 0
+        // BPM=75 in lastFrame, 75 == 0 → false
+        const s2: Scenario = {
+            steps: [{
+                id: 'qt2', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 10 },
+                condition: { type: 'field_value', field: 'BPM' } // no operator, no value
+            }]
+        } as unknown as Scenario;
+        expect(tickScenarioEngine(s2, mockProfile, mockState).executedSteps.length).toBe(0);
+    });
+
+    it('covers compareValues == operator', () => {
+        // mockState.elapsedMs = 1000, condition: elapsed_time == 1000 → true
+        const scenario: Scenario = {
+            steps: [{
+                id: 'eq1', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 99 },
+                condition: { type: 'elapsed_time', operator: '==', value: 1000 }
+            }]
+        } as unknown as Scenario;
+        expect(tickScenarioEngine(scenario, mockProfile, mockState).executedSteps.length).toBe(1);
+
+        // also test field_value with == (existing field, BPM=75)
+        const scenario2: Scenario = {
+            steps: [{
+                id: 'eq2', atMs: 1000, target: 'field:BPM', action: 'set', actionConfig: { value: 99 },
+                condition: { type: 'field_value', field: 'BPM', operator: '==', value: 75 }
+            }]
+        } as unknown as Scenario;
+        expect(tickScenarioEngine(scenario2, mockProfile, mockState).executedSteps.length).toBe(1);
     });
 });

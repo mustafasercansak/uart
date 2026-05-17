@@ -40,9 +40,7 @@ export class ScriptableDriver extends PeripheralDriver {
 
   process(input: number[]): PeripheralResponse | null {
     const result = executePeripheralScript(this.script, input, this.state);
-    if (result.nextState) {
-      this.state = result.nextState;
-    }
+    this.state = result.nextState;
     return {
       bytes: result.bytes,
       log: result.log

@@ -123,4 +123,14 @@ describe('WaveformGenerator', () => {
     // t >= ieRatio (exp)
     expect(generateWaveformSample(fCfg, 500)).toBeLessThan(0);
   });
+
+  it('custom shape with no customPoints returns 0', () => {
+    const cfg: WaveformConfig = { shape: 'custom', frequency: 1, amplitude: 1, offset: 0, noiseLevel: 0 };
+    expect(generateWaveformSample(cfg, 500)).toBe(0);
+  });
+
+  it('custom shape with single point (length <= 1) returns 0', () => {
+    const cfg: WaveformConfig = { shape: 'custom', frequency: 1, amplitude: 1, offset: 0, noiseLevel: 0, customPoints: [42] };
+    expect(generateWaveformSample(cfg, 500)).toBe(0);
+  });
 });

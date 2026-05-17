@@ -313,3 +313,94 @@ describe('ControlPanel', () => {
     expect(document.body.textContent).toMatch(/logs will appear|simulation starts/i);
   });
 });
+
+// ─── Alarm Threshold Branch Coverage ─────────────────────────────────────────
+
+const makeAlarmField = (
+  id: string, name: string, min: number, max: number,
+  alarmLow?: number, alarmHigh?: number,
+): Field => ({
+  id, name, order: 0, byteWidth: 1, endianness: 'big' as const,
+  type: 'range' as const,
+  typeConfig: { min, max, distribution: 'uniform' as const },
+  alarmLow,
+  alarmHigh,
+});
+
+describe('ControlPanel — alarm thresholds', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem('uart_locale', 'en');
+  });
+
+  it('renders alarm zone track (alarmLow + alarmHigh) without crashing', () => {
+    // min=0, max=100, midpoint=50 — distinct from alarmLow=30 and alarmHigh=80
+    const field = makeAlarmField('spo2', 'SpO2', 0, 100, 30, 80);
+    render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper });
+    expect(screen.getByText('SpO2')).toBeInTheDocument();
+    expect(screen.getAllByText('30').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('80').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows alarm indicator (!) when value is below alarmLow', () => {
+    const field = makeAlarmField('spo2', 'SpO2', 0, 100, 60, 100);
+    render(
+      <ControlPanel {...defaultProps} allRangeFields={[field]} fieldOverrides={{ spo2: 40 }} />,
+      { wrapper },
+    );
+    expect(screen.getByText('!')).toBeInTheDocument();
+  });
+
+  it('shows alarm indicator (!) when value is above alarmHigh', () => {
+    const field = makeAlarmField('hr', 'HR', 0, 200, 60, 100);
+    render(
+      <ControlPanel {...defaultProps} allRangeFields={[field]} fieldOverrides={{ hr: 150 }} />,
+      { wrapper },
+    );
+    expect(screen.getByText('!')).toBeInTheDocument();
+  });
+
+  it('shows secondary alarm coloring on other fields when one field is in alarm', () => {
+    const hrField = makeAlarmField('hr', 'HR', 0, 200, 60, 100);
+    const spo2Field = makeAlarmField('spo2', 'SpO2', 80, 100, 90, 99);
+    // hr override = 150 > 100 → inAlarm; spo2 uses midpoint ≈ 90 → inSecondaryAlarm
+    render(
+      <ControlPanel {...defaultProps} allRangeFields={[hrField, spo2Field]} fieldOverrides={{ hr: 150 }} />,
+      { wrapper },
+    );
+    expect(document.querySelector('.text-rose-400')).toBeTruthy();
+    expect(document.querySelector('.text-rose-700')).toBeTruthy();
+  });
+
+  it('renders with only alarmLow set (no alarmHigh)', () => {
+    const field = makeAlarmField('spo2', 'SpO2', 0, 100, 60, undefined);
+    render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper });
+    expect(screen.getByText('60')).toBeInTheDocument();
+  });
+
+  it('renders with only alarmHigh set (no alarmLow)', () => {
+    // min=0, max=200, midpoint=100 — distinct from alarmHigh=150
+    const field = makeAlarmField('hr', 'HR', 0, 200, undefined, 150);
+    render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper });
+    expect(screen.getByText('150')).toBeInTheDocument();
+  });
+
+  it('does not show alarm indicator when value is within normal range', () => {
+    const field = makeAlarmField('spo2', 'SpO2', 0, 100, 60, 100);
+    render(
+      <ControlPanel {...defaultProps} allRangeFields={[field]} fieldOverrides={{ spo2: 80 }} />,
+      { wrapper },
+    );
+    expect(screen.queryByText('!')).not.toBeInTheDocument();
+  });
+
+  it('uses fieldOverrides ?? midpoint for anyFieldInAlarm calculation', () => {
+    // alarmLow = 50, alarmHigh = 90, no override → midpoint = 50 → on boundary
+    // midpoint of 0..100 = 50, which equals alarmLow — "not < 50" → no alarm
+    const field = makeAlarmField('val', 'Val', 0, 100, 50, 90);
+    expect(() =>
+      render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper })
+    ).not.toThrow();
+  });
+});

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { LanguageProvider } from '../../../../i18n/LanguageProvider';
 import type { FrameProfile, GeneratedFrame } from '../../../../types';
 import ErrorReportPanel from '../ErrorReportPanel';

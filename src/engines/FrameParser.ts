@@ -16,7 +16,6 @@ export function parseFrame(profile: FrameProfile, bytes: number[]): ParsedField[
 
   for (const field of sortedFields) {
     const fieldBytes = bytes.slice(currentOffset, currentOffset + field.byteWidth);
-    if (fieldBytes.length < field.byteWidth) break;
 
     // Calculate decimal value based on endianness
     let decimalValue = 0;

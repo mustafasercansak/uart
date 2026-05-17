@@ -171,6 +171,21 @@ describe('storage.ts', () => {
             expect(profiles.length).toBe(1);
         });
 
+        it('normalizeField: handles endianness little and alarmLow/alarmHigh', () => {
+            const legacy = [{
+                id: 'p1',
+                fields: [
+                    { id: 'hr', name: 'HR', byteWidth: 1, endianness: 'little', alarmLow: 50, alarmHigh: 100 }
+                ]
+            }];
+            localStorage.setItem('uart_profiles', JSON.stringify(legacy));
+            const profiles = loadProfiles();
+            const field = profiles[0].fields[0];
+            expect(field.endianness).toBe('little');
+            expect(field.alarmLow).toBe(50);
+            expect(field.alarmHigh).toBe(100);
+        });
+
         it('normalizeField: handles invalid inputs and provides defaults', () => {
             const legacy = [{
                 id: 'legacy-1',

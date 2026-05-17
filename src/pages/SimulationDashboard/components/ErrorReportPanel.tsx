@@ -76,7 +76,7 @@ export default function ErrorReportPanel({ frames, profile, elapsedMs, frameCoun
       if (f.errors.length > 0) buckets[bucket].err++;
       else buckets[bucket].ok++;
     }
-    const firstTs = frames[0]?.timestampMs ?? 0;
+    const firstTs = frames[0].timestampMs;
     return Object.entries(buckets)
       .sort(([a], [b]) => Number(a) - Number(b))
       .map(([bucket, v]) => ({

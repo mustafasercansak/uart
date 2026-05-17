@@ -144,8 +144,8 @@ describe('StatBar', () => {
 
   it('renders scenarios filtered by selectedProfileId', () => {
     const scenarios: Scenario[] = [
-      { id: 's1', name: 'Scenario A', profileId: 'p1', steps: [], createdAt: '', updatedAt: '' },
-      { id: 's2', name: 'Scenario B', profileId: 'p2', steps: [], createdAt: '', updatedAt: '' },
+      { id: 's1', name: 'Scenario A', profileId: 'p1', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
+      { id: 's2', name: 'Scenario B', profileId: 'p2', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
     ];
     render(
       <StatBar {...defaultProps} scenarios={scenarios} selectedProfileId="p1" profiles={[sampleProfile]} />,
@@ -356,7 +356,7 @@ describe('StatBar', () => {
     );
     // recording button has no text label when isRecording=true, find by disabled=false among buttons
     const allBtns = screen.getAllByRole('button');
-    const recBtn = allBtns.find(b => !b.disabled && b.className.includes('rose'));
+    const recBtn = allBtns.find(b => !(b as HTMLButtonElement).disabled && b.className.includes('rose'));
     if (recBtn) fireEvent.click(recBtn);
     expect(onStopRecording).toHaveBeenCalledTimes(1);
   });
@@ -374,7 +374,7 @@ describe('StatBar', () => {
     const onSetOutputMode = vi.fn();
     render(<StatBar {...defaultProps} onSetOutputMode={onSetOutputMode} />, { wrapper });
     const selects = screen.getAllByRole('combobox');
-    const modeSelect = selects.find(s => s.querySelector('option[value="serial"]') !== null || Array.from(s.options ?? []).some((o: HTMLOptionElement) => o.value === 'serial'));
+    const modeSelect = selects.find(s => s.querySelector('option[value="serial"]') !== null || Array.from((s as HTMLSelectElement).options ?? []).some((o) => (o as HTMLOptionElement).value === 'serial'));
     // Change to serial
     if (modeSelect) fireEvent.change(modeSelect, { target: { value: 'serial' } });
     expect(onSetOutputMode).toHaveBeenCalledWith('serial');

@@ -119,9 +119,6 @@ function getFieldValue(
 
       return clampValue(generateWaveformSample(cfg, elapsedMs), byteWidth);
     }
-    case 'checksum':
-      // @@ts-expect-error - Unreachable: generateFrame handles checksums in Pass 3 directly.
-      return 0; // Computed separately
     case 'flags': {
       const cfg = typeConfig as FlagsConfig;
       let value = 0;
