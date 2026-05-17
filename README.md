@@ -2,7 +2,7 @@
 ### Medical-Grade Telemetry & Hardware Engineering Ecosystem
 
 ![License](https://img.shields.io/badge/license-MIT-emerald?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.5.25-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.27-blue?style=flat-square)
 ![Stack](https://img.shields.io/badge/stack-tauri--rust--react-red?style=flat-square)
 ![Compliance](https://img.shields.io/badge/compliance-ISO--13485--ready-blue?style=flat-square)
 
