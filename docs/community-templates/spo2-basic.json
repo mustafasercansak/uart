@@ -1,0 +1,98 @@
+{
+  "id": "community-spo2-basic",
+  "name": "SpO2 Modülü (Temel)",
+  "description": "5 byte frame: Sync (0xAA), SpO2 (%90-100), Nabız (60-120), Durum bayrakları, XOR checksum",
+  "icon": "❤️",
+  "category": "medical",
+  "profile": {
+    "name": "SpO2 Modülü (Temel)",
+    "description": "Kan oksijen saturasyonu sensörü simülasyonu",
+    "baudRate": 9600,
+    "dataBits": 8,
+    "parity": "None",
+    "stopBits": 1,
+    "sendIntervalMs": 20,
+    "framing": { "mode": "fixed" },
+    "fields": [
+      {
+        "id": "spo2-sync",
+        "name": "Sync",
+        "order": 0,
+        "byteWidth": 1,
+        "endianness": "big",
+        "type": "fixed",
+        "typeConfig": { "value": 170 }
+      },
+      {
+        "id": "spo2-value",
+        "name": "SpO2",
+        "order": 1,
+        "byteWidth": 1,
+        "endianness": "big",
+        "type": "range",
+        "typeConfig": { "min": 95, "max": 100, "distribution": "gaussian", "mean": 98, "stddev": 1 },
+        "alarmLow": 94,
+        "alarmHigh": 100
+      },
+      {
+        "id": "spo2-pulse",
+        "name": "Nabız",
+        "order": 2,
+        "byteWidth": 1,
+        "endianness": "big",
+        "type": "range",
+        "typeConfig": { "min": 60, "max": 100, "distribution": "gaussian", "mean": 75, "stddev": 5 },
+        "alarmLow": 50,
+        "alarmHigh": 110
+      },
+      {
+        "id": "spo2-status",
+        "name": "Durum",
+        "order": 3,
+        "byteWidth": 1,
+        "endianness": "big",
+        "type": "flags",
+        "typeConfig": {
+          "bits": [
+            { "index": 0, "name": "Parmak Algılandı", "defaultValue": 1, "behavior": "fixed", "behaviorConfig": {} },
+            { "index": 1, "name": "Düşük Sinyal", "defaultValue": 0, "behavior": "random", "behaviorConfig": { "probability": 0.05, "minDurationMs": 500, "maxDurationMs": 2000 } },
+            { "index": 2, "name": "Hareket Artefaktı", "defaultValue": 0, "behavior": "manual", "behaviorConfig": {} }
+          ]
+        }
+      },
+      {
+        "id": "spo2-checksum",
+        "name": "Checksum",
+        "order": 4,
+        "byteWidth": 1,
+        "endianness": "big",
+        "type": "checksum",
+        "typeConfig": {
+          "algorithm": "xor",
+          "scope": { "startFieldId": "spo2-sync", "endFieldId": "spo2-status" }
+        }
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "Desatürasyon → İyileşme",
+      "description": "SpO2 %70'e düşer, sonra normale döner",
+      "loop": false,
+      "durationMs": 20000,
+      "category": "physiological",
+      "steps": [
+        { "id": "s1", "atMs": 3000, "target": "field:SpO2", "action": "ramp", "actionConfig": { "from": 98, "to": 70, "durationMs": 5000, "curve": "ease-in" }, "description": "Desatürasyon başlangıcı" },
+        { "id": "s2", "atMs": 3000, "target": "bit:Durum.Düşük Sinyal", "action": "set", "actionConfig": { "value": 1 }, "description": "Düşük sinyal bayrağı" },
+        { "id": "s3", "atMs": 10000, "target": "field:SpO2", "action": "ramp", "actionConfig": { "from": 70, "to": 98, "durationMs": 5000, "curve": "ease-out" }, "description": "İyileşme başlangıcı" },
+        { "id": "s4", "atMs": 10000, "target": "bit:Durum.Düşük Sinyal", "action": "set", "actionConfig": { "value": 0 }, "description": "Normal sinyal" }
+      ]
+    }
+  ],
+  "defaultLayout": {
+    "widgets": [
+      { "id": "spo2-w-pulse", "type": "gauge", "fieldId": "Nabız", "x": 0, "y": 0, "w": 6, "h": 4, "config": { "unit": "BPM", "color": "#f87171" } },
+      { "id": "spo2-w-val", "type": "gauge", "fieldId": "SpO2", "x": 6, "y": 0, "w": 6, "h": 4, "config": { "unit": "%", "color": "#3b82f6" } }
+    ]
+  }
+}

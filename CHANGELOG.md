@@ -4,6 +4,16 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.5.28] — 2026-05-17
+### 🚀 Release v1.5.28
+
+#### Topluluk Şablon Kütüphanesi
+- **Community Templates**: Kullanıcılar kendi profil şablonlarını `.json` olarak toplulukla paylaşabilir. Uygulama içinden tek tıkla import edilebilir.
+- **GitHub Pages Template Index**: `docs/community-templates/index.json` üzerinden serve edilen onaylı şablon listesi.
+- **GitHub Showcase Page**: `docs/index.html` — projenin tanıtım sayfası GitHub Pages üzerinden yayında.
+
+---
+
 ## [v1.5.27] — 2026-05-16
 ### 🚀 Release v1.5.27
 

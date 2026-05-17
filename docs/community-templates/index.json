@@ -1,0 +1,29 @@
+{
+  "format": "uart-community-index",
+  "version": "1",
+  "updatedAt": "2026-05-17",
+  "templates": [
+    {
+      "id": "community-spo2-basic",
+      "name": "SpO2 Modülü (Temel)",
+      "description": "5 byte frame: Sync, SpO2, Nabız, Durum bayrakları, XOR checksum. Desatürasyon senaryosu dahil.",
+      "author": "mustafasercansak",
+      "category": "medical",
+      "icon": "❤️",
+      "tags": ["spo2", "medical", "oximeter", "starter"],
+      "submittedAt": "2026-05-17",
+      "file": "spo2-basic.json"
+    },
+    {
+      "id": "community-nmea-gps",
+      "name": "NMEA 0183 GPS",
+      "description": "$GPGGA cümlesi — UTC saat, enlem/boylam, uydu sayısı, yükseklik. Batıdan doğuya yol simülasyonu.",
+      "author": "mustafasercansak",
+      "category": "navigation",
+      "icon": "📡",
+      "tags": ["nmea", "gps", "navigation", "serial"],
+      "submittedAt": "2026-05-17",
+      "file": "nmea-gps.json"
+    }
+  ]
+}

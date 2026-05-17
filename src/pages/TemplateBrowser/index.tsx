@@ -6,6 +6,7 @@ import { SENSOR_TEMPLATES } from '../../data/templates';
 import { saveProfile, saveScenario } from '../../store/storage';
 import { useSimulation } from '../../hooks/useSimulation';
 import { useTranslation } from '../../i18n/context';
+import CommunityTemplates from '../../components/CommunityTemplates';
 
 const CATEGORY_COLORS: Record<string, string> = {
   medical: 'text-red-400 bg-red-900/20 border-red-800/40',
@@ -20,6 +21,7 @@ export default function TemplateBrowser() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { setProfile, updateLayout, setScenario } = useSimulation();
+  const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
   const [applying, setApplying] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -86,9 +88,28 @@ export default function TemplateBrowser() {
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-xl font-bold font-mono text-gray-200 mb-1">{t('templateBrowser.title')}</h1>
-          <p className="text-gray-500 text-sm font-mono">{t('templateBrowser.subtitle')}</p>
         </div>
 
+        {/* Tab Bar */}
+        <div className="flex gap-1 mb-6 border-b border-gray-700">
+          {(['builtin', 'community'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-xs font-mono border-b-2 transition-colors -mb-px ${
+                activeTab === tab
+                  ? 'border-green-500 text-green-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              {t(`templateBrowser.tabs.${tab}`)}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'community' && <CommunityTemplates />}
+
+        {activeTab === 'builtin' && <>
         {/* Category Filter */}
         <div className="flex gap-2 mb-6">
           {categories.map((cat) => (
@@ -188,6 +209,7 @@ export default function TemplateBrowser() {
             <span className="bg-yellow-900/40 border border-yellow-800 text-yellow-300 px-2 py-0.5 rounded">{t('templateBrowser.flags')}</span>
           </div>
         </div>
+        </>}
       </div>
     </div>
   );

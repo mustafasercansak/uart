@@ -1350,7 +1350,23 @@
     "range": "Aralık",
     "waveform": "Dalga Formu",
     "checksum": "Sağlama",
-    "flags": "Bayraklar"
+    "flags": "Bayraklar",
+    "tabs": {
+      "builtin": "Dahili",
+      "community": "Topluluk"
+    },
+    "community": {
+      "subtitle": "Topluluk tarafından paylaşılan şablonlar",
+      "loading": "Şablonlar yükleniyor...",
+      "error": "Şablonlar yüklenemedi",
+      "retry": "Tekrar Dene",
+      "empty": "Henüz topluluk şablonu yok",
+      "by": "Yazar:",
+      "submit": "Şablon Gönder (GitHub PR)",
+      "import": "İçe Aktar",
+      "importing": "İçe Aktarılıyor...",
+      "imported": "Uygulandı!"
+    }
   },
   "protocolDecoder": {
     "title": "Protokol Dekoder",

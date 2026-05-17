@@ -1,0 +1,85 @@
+{
+  "id": "community-nmea-gps",
+  "name": "NMEA 0183 GPS",
+  "description": "$GPGGA cümlesi — UTC saat, enlem/boylam, uydu sayısı, yükseklik + checksum",
+  "icon": "📡",
+  "category": "navigation",
+  "profile": {
+    "name": "NMEA 0183 GPS (GPGGA)",
+    "description": "Standart NMEA 0183 GPGGA cümlesi simülasyonu",
+    "baudRate": 4800,
+    "dataBits": 8,
+    "parity": "None",
+    "stopBits": 1,
+    "sendIntervalMs": 1000,
+    "framing": { "mode": "delimiter", "delimiter": 10 },
+    "fields": [
+      { "id": "nmea-dollar", "name": "$", "order": 0, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 36 } },
+      { "id": "nmea-talker-g", "name": "G", "order": 1, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 71 } },
+      { "id": "nmea-talker-p", "name": "P", "order": 2, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 80 } },
+      { "id": "nmea-s1", "name": "G2", "order": 3, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 71 } },
+      { "id": "nmea-s2", "name": "G3", "order": 4, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 71 } },
+      { "id": "nmea-s3", "name": "A", "order": 5, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 65 } },
+      { "id": "nmea-sep", "name": "Virgül", "order": 6, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 44 } },
+      {
+        "id": "nmea-lat-int",
+        "name": "Enlem (integer)",
+        "order": 7,
+        "byteWidth": 2,
+        "endianness": "big",
+        "isAscii": true,
+        "type": "range",
+        "typeConfig": { "min": 37, "max": 42, "distribution": "uniform" },
+        "widgetConfig": { "type": "gauge", "min": 0, "max": 90, "unit": "°N", "color": "#10b981" }
+      },
+      {
+        "id": "nmea-lon-int",
+        "name": "Boylam (integer)",
+        "order": 8,
+        "byteWidth": 2,
+        "endianness": "big",
+        "isAscii": true,
+        "type": "range",
+        "typeConfig": { "min": 26, "max": 45, "distribution": "uniform" },
+        "widgetConfig": { "type": "gauge", "min": 0, "max": 180, "unit": "°E", "color": "#3b82f6" }
+      },
+      {
+        "id": "nmea-sats",
+        "name": "Uydu Sayısı",
+        "order": 9,
+        "byteWidth": 2,
+        "endianness": "big",
+        "isAscii": true,
+        "type": "range",
+        "typeConfig": { "min": 4, "max": 12, "distribution": "uniform" },
+        "widgetConfig": { "type": "gauge", "min": 0, "max": 16, "unit": "sat", "color": "#f59e0b" }
+      },
+      {
+        "id": "nmea-alt",
+        "name": "Yükseklik (m)",
+        "order": 10,
+        "byteWidth": 4,
+        "endianness": "big",
+        "isAscii": true,
+        "type": "range",
+        "typeConfig": { "min": 0, "max": 1500, "distribution": "gaussian", "mean": 100, "stddev": 30 },
+        "widgetConfig": { "type": "sparkline", "color": "#8b5cf6" }
+      },
+      { "id": "nmea-newline", "name": "CR LF", "order": 11, "byteWidth": 1, "endianness": "big", "type": "fixed", "typeConfig": { "value": 10 } }
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "Yol Simülasyonu",
+      "description": "Boylam yavaşça artar (batıdan doğuya hareket)",
+      "loop": true,
+      "durationMs": 20000,
+      "steps": [
+        { "id": "g1", "atMs": 0,     "target": "field:nmea-lon-int", "action": "ramp", "actionConfig": { "from": 26, "to": 45, "durationMs": 20000, "curve": "linear" } },
+        { "id": "g2", "atMs": 5000,  "target": "field:nmea-sats",    "action": "set",  "actionConfig": { "value": 8 } },
+        { "id": "g3", "atMs": 10000, "target": "field:nmea-sats",    "action": "set",  "actionConfig": { "value": 6 } },
+        { "id": "g4", "atMs": 15000, "target": "field:nmea-sats",    "action": "set",  "actionConfig": { "value": 11 } }
+      ]
+    }
+  ]
+}

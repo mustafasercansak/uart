@@ -1350,7 +1350,23 @@
     "range": "Range",
     "waveform": "Waveform",
     "checksum": "Checksum",
-    "flags": "Flags"
+    "flags": "Flags",
+    "tabs": {
+      "builtin": "Built-in",
+      "community": "Community"
+    },
+    "community": {
+      "subtitle": "Templates shared by the community",
+      "loading": "Loading templates...",
+      "error": "Could not load templates",
+      "retry": "Retry",
+      "empty": "No community templates yet",
+      "by": "By:",
+      "submit": "Submit a Template (GitHub PR)",
+      "import": "Import",
+      "importing": "Importing...",
+      "imported": "Applied!"
+    }
   },
   "protocolDecoder": {
     "title": "Protocol Decoder",

@@ -1,5 +1,5 @@
 # UART PRO LAB — Ana Mühendislik Kılavuzu
-## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.27
+## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.28
 
 > **UART Pro Lab**, hassasiyet gerektiren gömülü sistem mühendisleri, tıbbi cihaz geliştiricileri ve protokol araştırmacıları için tasarlanmış dünyanın en gelişmiş tarayıcı tabanlı UART simülasyon ve doğrulama ortamıdır.
 
@@ -114,7 +114,7 @@ Panel, **Yüksek Yoğunluklu Tanı İstasyonu** olarak tasarlanmıştır — her
 - **Tampon Doluluk**: Gerçek zamanlı halka tampon kullanımı — taşma riskini tespit için kritik.
 
 ### Bento-Grid Düzeni
-v1.5.27'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
+v1.5.28'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
 
 ---
 
@@ -150,7 +150,7 @@ Telemetri Paneli'nde herhangi bir alan değerine tıklayarak onu referans olarak
 <a name="waveform-designer"></a>
 ## 5. Özel Dalga Formu Tasarımcısı
 
-> **v1.5.27'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
+> **v1.5.28'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
 
 ![Dalga Formu Tasarımcısı](images/v1.3/designer_live.png)
 
@@ -975,11 +975,11 @@ Canlı Tanı Paneli şunları gösterir:
 
 ## Sonuç
 
-**UART Pro Lab v1.5.27** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
+**UART Pro Lab v1.5.28** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
 
 Her özellik gerçek bir mühendislik sorununa yönelik tasarlandı: birim testlerinden kaçan çerçeveleme hataları, yalnızca termal stres altında görünen jitter, çıplak gözle görünmeyen dalga formu anomalileri. Bu araç hepsini ortaya çıkarır — silikon aşamasına ulaşmadan önce.
 
 ---
 
 *Mustafa Sercan Sak — Baş Mimar*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.27-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.28-STABLE*
