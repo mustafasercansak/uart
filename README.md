@@ -6,6 +6,8 @@
 ![Stack](https://img.shields.io/badge/stack-tauri--rust--react-red?style=flat-square)
 ![Compliance](https://img.shields.io/badge/compliance-ISO--13485--ready-blue?style=flat-square)
 
+> **[Live Showcase →](https://mustafasercansak.github.io/uart/)**
+
 **UART Simulator Pro** is an advanced engineering platform designed for the comprehensive simulation, validation, and analysis of serial telemetry protocols. Engineered for medical-grade reliability, it provides a bit-perfect virtual twin of UART communication layers, enabling deterministic testing of SpO2, ECG, and respiratory monitoring systems.
 
 ---
