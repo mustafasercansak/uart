@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from 'react';
-import { GitCompare, Send, Trash2 } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { Circle, GitCompare, Send, Square, Trash2 } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import type { GeneratedFrame } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
@@ -18,18 +18,51 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
   const { t } = useTranslation();
   const [txHistory, setTxHistory] = useState<GeneratedFrame[]>([]);
   const prevUid = useRef<string | null>(null);
+  const [flashUid, setFlashUid] = useState<string | null>(null);
+
+  // Frame Recorder
+  const [isRecording, setIsRecording] = useState(false);
+  const recordedRef = useRef<GeneratedFrame[]>([]);
 
   useEffect(() => {
     if (!lastFrame) return;
     if (lastFrame.uId === prevUid.current) return;
     prevUid.current = lastFrame.uId;
     setTxHistory((prev) => [lastFrame, ...prev].slice(0, MAX_TX_HISTORY));
-  }, [lastFrame]);
+    setFlashUid(lastFrame.uId);
+    setTimeout(() => setFlashUid(null), 400);
+    if (isRecording) recordedRef.current.push(lastFrame);
+  }, [lastFrame, isRecording]);
 
   const clearHistory = () => {
     setTxHistory([]);
     prevUid.current = null;
   };
+
+  const startRecording = () => {
+    recordedRef.current = [];
+    setIsRecording(true);
+  };
+
+  const stopAndExport = useCallback(() => {
+    setIsRecording(false);
+    const frames = recordedRef.current;
+    if (frames.length === 0) return;
+
+    const header = 'frame,timestamp_ms,bytes,hex,errors';
+    const rows = frames.map(f =>
+      `${f.frameNumber},${f.timestampMs},${f.rawBytes.length},"${f.rawHex}","${f.errors.join('|')}"`
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `uart_frames_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    recordedRef.current = [];
+  }, []);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 border-b border-gray-800 bg-green-900/5">
@@ -45,8 +78,32 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
               {txHistory.length}
             </span>
           )}
+          {isRecording && (
+            <span className="text-[9px] font-mono text-red-400 animate-pulse">
+              ● REC {recordedRef.current.length}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Frame Recorder */}
+          {!isRecording ? (
+            <button
+              onClick={startRecording}
+              className="p-1 hover:bg-red-900/30 text-gray-500 hover:text-red-400 rounded transition-colors"
+              title={t('frameMonitor.recordStart')}
+            >
+              <Circle size={11} />
+            </button>
+          ) : (
+            <button
+              onClick={stopAndExport}
+              className="p-1 hover:bg-red-900/50 text-red-400 rounded transition-colors animate-pulse"
+              title={t('frameMonitor.recordStop')}
+            >
+              <Square size={11} fill="currentColor" />
+            </button>
+          )}
+
           {lastFrame && (
             <>
               <button
@@ -88,6 +145,7 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
             {txHistory.map((frame, idx) => {
               const isLatest = idx === 0;
               const isSelected = selectedFrameId === frame.frameNumber;
+              const isFlashing = flashUid === frame.uId;
 
               return (
                 <div
@@ -95,6 +153,8 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
                   className={`group px-3 py-2 cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-green-900/30'
+                      : isFlashing
+                      ? 'bg-green-500/15'
                       : isLatest
                       ? 'bg-green-950/20 hover:bg-green-900/20'
                       : 'hover:bg-gray-800/20'
@@ -136,8 +196,8 @@ const FrameMonitor = memo(({ lastFrame, selectedFrameId, onSelectFrame }: FrameM
                     </div>
                   </div>
 
-                  <div className={`font-mono text-[10px] truncate ${
-                    isSelected ? 'text-green-300' : 'text-green-400/80'
+                  <div className={`font-mono text-[10px] truncate transition-colors duration-300 ${
+                    isFlashing ? 'text-green-300' : isSelected ? 'text-green-300' : 'text-green-400/80'
                   }`}>
                     {frame.rawHex}
                   </div>

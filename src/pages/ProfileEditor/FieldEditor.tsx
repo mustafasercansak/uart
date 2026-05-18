@@ -43,6 +43,7 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       computed: { expression: t('profileEditor.exampleExpression'), clampMin: 0, clampMax: 255 },
       script: { code: t('profileEditor.scriptHeader') + "\nreturn Math.sin(t/1000) * 100 + 128;" },
     };
+    localStorage.setItem('uart_last_field_type', type);
     onChange({ ...field, type, typeConfig: defaultConfigs[type] as Field['typeConfig'] });
   };
 

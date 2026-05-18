@@ -872,27 +872,37 @@ The live Diagnostics Panel shows:
 <a name="shortcuts"></a>
 ## 17. Keyboard Shortcuts
 
-### Global
-| Shortcut | Action |
-|---|---|
-| `Space` | Start / Stop simulation |
-| `Ctrl + S` | Save session |
-| `Ctrl + O` | Open session |
-| `Ctrl + E` | Export PDF report |
-| `Ctrl + Z` | Undo last configuration change |
-| `Ctrl + /` | Open Command Palette |
-| `?` / `F1` | Open this Help |
-| `Esc` | Close modal / cancel action |
+> **Tip**: Press `?` anywhere on the Dashboard to open the in-app shortcut cheatsheet.
 
-### Dashboard
+### Simulation
 | Shortcut | Action |
 |---|---|
-| `F` | Toggle fullscreen waveform |
-| `C` | Clear waveform history |
-| `R` | Reset all counters |
-| `N` | Toggle noise injection |
-| `J` | Toggle jitter injection |
-| `1–8` | Select device 1–8 (multi-device mode) |
+| `Space` | Play / Pause simulation |
+| `Esc` | Stop simulation & deselect frame |
+| `?` | Toggle keyboard shortcuts overlay |
+| `Ctrl + K` | Open Command Palette |
+
+### Profile Editor
+| Shortcut | Action |
+|---|---|
+| `Ctrl + Z` | Undo last change |
+| `Ctrl + Y` | Redo |
+| `Ctrl + S` | Save active profile |
+| `Enter` (tag input) | Add tag to profile |
+
+### Frame Monitor
+| Shortcut | Action |
+|---|---|
+| Click ⏺ | Start recording frames to CSV |
+| Click ⏹ | Stop recording & download CSV |
+| Click row | Select frame for inspection |
+
+### Analysis
+| Shortcut | Action |
+|---|---|
+| GitCompare (A) | Set Slot A reference frame |
+| GitCompare (B) | Set Slot B test frame |
+| `⇆` (toolbar) | Open Profile Compare modal |
 
 ### Logic Analyzer
 | Shortcut | Action |

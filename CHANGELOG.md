@@ -4,6 +4,34 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.5.28 — devam] — 2026-05-18
+
+### UX & Geliştirici Araçları (Unreleased — part of v1.5.28)
+
+#### Profil Editörü
+- **Profile Compare Modal**: Profil Editörü toolbar'ına "⇆" butonu eklendi. 2+ profil varken tıklayınca tam ekran bir karşılaştırma modalı açılır; mevcut `ProfileCompare` bileşeni kullanılmaktadır.
+- **Frame Timing / BER Paneli**: Toolbar'daki "BER" butonuyla açılıp kapanan bir şerit panel eklendi. Mevcut baud rate, parity, stop bit ve frame boyutuna göre şunları hesaplar: bit/bayt, bit/frame, frame süresi (µs), maksimum FPS, istenen FPS, hat kullanım yüzdesi. İstenen FPS maksimu aşarsa kırmızı uyarı gösterilir.
+- **Profile Etiketleri (Tags)**: Her profile `tags?: string[]` alanı eklendi. UART ayarları satırında etiket girişi mevcut; Enter veya "+" ile eklenip × ile silinir. Sol panelde aktif etiketler filtre butonları olarak görünür — bir etikete tıklayınca yalnızca o etiketli profiller listelenir.
+- **Son Kullanılan Field Tipi**: `FieldEditor`'da bir field tipi değiştirildiğinde seçim `localStorage` içine kaydedilir. Gelecek oturumda en son kullanılan tip hatırlanır.
+
+#### Frame Monitörü
+- **Frame Recorder (CSV)**: TX geçmişi header'ına "⏺" kaydı başlat / "⏹" durdur butonları eklendi. Kayıt sırasında toplanan frame'ler `uart_frames_<timestamp>.csv` adıyla indirilen bir CSV'ye aktarılır (frame, timestamp_ms, bytes, hex, errors sütunları).
+- **Frame Flaş Animasyonu**: Her yeni frame geldiğinde ilgili satır 400 ms süreyle yeşilimsi bir parlamayla vurgulanır.
+
+#### Dashboard
+- **Klavye Kısayolları Modalı**: `?` tuşuyla (input dışında) açılıp kapanan bir kısayol cheatsheet eklendi — simülasyon, editör, frame monitörü ve analiz gruplarını içerir. Dışarı tıklayarak veya Esc ile kapatılabilir.
+
+#### Topluluk Şablon Kütüphanesi
+- **Favoriler**: Her şablon kartında ☆/★ butonu eklendi. Favori IDs'leri `localStorage` içinde saklanır. Şablonlar favori olanlara göre otomatik sıralanır; "★ Favoriler" filtre butonu yalnızca yıldızlananları gösterir.
+
+#### i18n
+- `frameMonitor`: 2 yeni anahtar (`recordStart`, `recordStop`)
+- `templateBrowser.community`: 4 yeni anahtar (`favorites`, `showFavorites`, `favorite`, `unfavorite`)
+- `profileEditor`: 10 yeni anahtar (`tags`, `addTag`, `compareProfiles`, `berTitle`, `berBitsPerByte`, `berBitsPerFrame`, `berFrameTime`, `berMaxFps`, `berRequestedFps`, `berUtil`)
+- `shortcuts`: Tüm kısayol grupları için 25 yeni anahtar (yeni namespace)
+
+---
+
 ## [v1.5.28] — 2026-05-17
 ### 🚀 Release v1.5.28
 

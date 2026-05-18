@@ -872,27 +872,37 @@ Canlı Tanı Paneli şunları gösterir:
 <a name="shortcuts"></a>
 ## 17. Klavye Kısayolları
 
-### Genel
-| Kısayol | Eylem |
-|---|---|
-| `Boşluk` | Simülasyonu başlat / durdur |
-| `Ctrl + S` | Oturumu kaydet |
-| `Ctrl + O` | Oturumu aç |
-| `Ctrl + E` | PDF raporunu dışa aktar |
-| `Ctrl + Z` | Son yapılandırma değişikliğini geri al |
-| `Ctrl + /` | Komut Paletini aç |
-| `?` / `F1` | Bu Yardım'ı aç |
-| `Esc` | Modalı kapat / eylemi iptal et |
+> **İpucu**: Dashboard'da `?` tuşuna basarak uygulama içi kısayol cheatsheet'ini açabilirsiniz.
 
-### Panel
+### Simülasyon
 | Kısayol | Eylem |
 |---|---|
-| `F` | Tam ekran dalga formunu aç/kapat |
-| `C` | Dalga formu geçmişini temizle |
-| `R` | Tüm sayaçları sıfırla |
-| `N` | Gürültü enjeksiyonunu aç/kapat |
-| `J` | Jitter enjeksiyonunu aç/kapat |
-| `1–8` | Cihaz 1–8'i seç (çok cihaz modu) |
+| `Boşluk` | Simülasyonu oynat / duraklat |
+| `Esc` | Simülasyonu durdur ve frame seçimini kaldır |
+| `?` | Klavye kısayolları modalını aç/kapat |
+| `Ctrl + K` | Komut Paletini aç |
+
+### Profil Editörü
+| Kısayol | Eylem |
+|---|---|
+| `Ctrl + Z` | Son değişikliği geri al |
+| `Ctrl + Y` | İleri al |
+| `Ctrl + S` | Aktif profili kaydet |
+| `Enter` (etiket girişi) | Profile etiket ekle |
+
+### Frame Monitörü
+| Kısayol | Eylem |
+|---|---|
+| ⏺ butonuna tıkla | Frame kayıt başlat (CSV'ye aktarılır) |
+| ⏹ butonuna tıkla | Kaydı durdur ve CSV'yi indir |
+| Satıra tıkla | Frame'i inceleme için seç |
+
+### Analiz
+| Kısayol | Eylem |
+|---|---|
+| GitCompare (A) | Slot A referans frame'i ata |
+| GitCompare (B) | Slot B test frame'i ata |
+| `⇆` (toolbar) | Profil Karşılaştırma modalını aç |
 
 ### Mantık Analizörü
 | Kısayol | Eylem |

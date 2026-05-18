@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import type { SensorTemplate } from '../../types';
@@ -50,6 +50,23 @@ export default function CommunityTemplates() {
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [imported, setImported] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('uart_community_favorites');
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+  });
+
+  const toggleFavorite = useCallback((id: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem('uart_community_favorites', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const [showFavOnly, setShowFavOnly] = useState(false);
 
   // loading is true until the fetch for the current retryCount completes
   const loading = fetchedAt !== retryCount;
@@ -185,20 +202,36 @@ export default function CommunityTemplates() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <p className="text-gray-500 text-xs font-mono">{t('templateBrowser.community.subtitle')}</p>
-        <button
-          onClick={submitActiveProfile}
-          disabled={!state.profileId}
-          title={state.profileId ? t('templateBrowser.community.submit') : t('templateBrowser.community.submitNoProfile')}
-          className="px-3 py-1.5 rounded text-xs font-mono bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t('templateBrowser.community.submit')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFavOnly(v => !v)}
+            className={`px-2 py-1 rounded text-xs font-mono border transition-colors ${
+              showFavOnly
+                ? 'bg-yellow-900/30 border-yellow-700 text-yellow-400'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
+            }`}
+            title={t('templateBrowser.community.showFavorites')}
+          >
+            {showFavOnly ? '★ ' : '☆ '}{t('templateBrowser.community.favorites')} ({favorites.size})
+          </button>
+          <button
+            onClick={submitActiveProfile}
+            disabled={!state.profileId}
+            title={state.profileId ? t('templateBrowser.community.submit') : t('templateBrowser.community.submitNoProfile')}
+            className="px-3 py-1.5 rounded text-xs font-mono bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {t('templateBrowser.community.submit')}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {index.templates.map((entry) => {
+        {index.templates
+          .filter(e => !showFavOnly || favorites.has(e.id))
+          .sort((a, b) => (favorites.has(b.id) ? 1 : 0) - (favorites.has(a.id) ? 1 : 0))
+          .map((entry) => {
           const isImporting = importing === entry.id;
           const isImported = imported === entry.id;
           return (
@@ -209,9 +242,18 @@ export default function CommunityTemplates() {
               <div className="p-4 border-b border-gray-700">
                 <div className="flex items-start justify-between mb-2">
                   <div className="text-3xl">{entry.icon}</div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${CATEGORY_COLORS[entry.category] ?? 'text-gray-400 bg-gray-700 border-gray-600'}`}>
-                    {t(`templateBrowser.categories.${entry.category}`, { defaultValue: entry.category })}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleFavorite(entry.id)}
+                      className={`text-base transition-colors ${favorites.has(entry.id) ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400'}`}
+                      title={favorites.has(entry.id) ? t('templateBrowser.community.unfavorite') : t('templateBrowser.community.favorite')}
+                    >
+                      {favorites.has(entry.id) ? '★' : '☆'}
+                    </button>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${CATEGORY_COLORS[entry.category] ?? 'text-gray-400 bg-gray-700 border-gray-600'}`}>
+                      {t(`templateBrowser.categories.${entry.category}`, { defaultValue: entry.category })}
+                    </span>
+                  </div>
                 </div>
                 <h3 className="text-gray-200 font-mono font-bold text-sm">{entry.name}</h3>
                 <p className="text-gray-500 text-xs font-mono mt-1 leading-relaxed">{entry.description}</p>

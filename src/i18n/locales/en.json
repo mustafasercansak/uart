@@ -388,7 +388,17 @@
     "alarmThresholdsHint": "Alarm fires when the value is outside this range",
     "frequencySource": "Frequency Source",
     "freqSourceManual": "Manual (fixed Hz)",
-    "freqSourceHint": "Selected field value ÷ 60 = Hz (e.g. BPM=72 → 1.2 Hz)"
+    "freqSourceHint": "Selected field value ÷ 60 = Hz (e.g. BPM=72 → 1.2 Hz)",
+    "tags": "Tags",
+    "addTag": "add tag…",
+    "compareProfiles": "Compare Profiles",
+    "berTitle": "Frame Timing",
+    "berBitsPerByte": "Bits/byte",
+    "berBitsPerFrame": "Bits/frame",
+    "berFrameTime": "Frame time",
+    "berMaxFps": "Max FPS",
+    "berRequestedFps": "Requested FPS",
+    "berUtil": "Line utilization"
   },
   "validation": {
     "sessionActive": "VALIDATION SESSION ACTIVE",
@@ -1232,7 +1242,9 @@
     "slotBTest": "Slot B (Test)",
     "hex": "HEX:",
     "addToDashboard": "Add to Dashboard ({name})",
-    "clearHistory": "Clear TX history"
+    "clearHistory": "Clear TX history",
+    "recordStart": "Start recording frames (export as CSV)",
+    "recordStop": "Stop recording & export CSV"
   },
   "visualizer": {
     "booting": "CLINICAL SYNC ENGINE v7.0",
@@ -1372,7 +1384,11 @@
       "submitNoProfile": "Select a profile first",
       "import": "Import",
       "importing": "Importing...",
-      "imported": "Applied!"
+      "imported": "Applied!",
+      "favorites": "Favorites",
+      "showFavorites": "Show starred only",
+      "favorite": "Add to favorites",
+      "unfavorite": "Remove from favorites"
     }
   },
   "protocolDecoder": {
@@ -1439,6 +1455,29 @@
       "inject_error": "Inject Error",
       "set_field": "Set Field Value"
     }
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "groupSimulation": "Simulation",
+    "groupEditor": "Profile Editor",
+    "groupNavigation": "Navigation",
+    "groupFrameMonitor": "Frame Monitor",
+    "groupAnalysis": "Analysis",
+    "playPause": "Play / Pause simulation",
+    "stop": "Stop & deselect",
+    "undo": "Undo",
+    "redo": "Redo",
+    "save": "Save profile",
+    "showShortcuts": "Show keyboard shortcuts",
+    "commandPalette": "Open command palette",
+    "selectFrame": "Select frame for inspection",
+    "startRecording": "Start recording to CSV",
+    "stopExportCsv": "Stop recording & export CSV",
+    "slotA": "Set Slot A reference",
+    "slotB": "Set Slot B test",
+    "diff": "Open Diff Lab",
+    "pressToClose": "Press",
+    "orClickOutside": "or click outside to close"
   }
 }
 

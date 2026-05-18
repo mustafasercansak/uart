@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useTranslation } from '../../i18n/context';
@@ -20,6 +20,7 @@ import { SENSOR_TEMPLATES } from '../../data/templates';
 import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { FramePreview } from './FramePreview';
 import { FieldEditor } from './FieldEditor';
+import ProfileCompare from '../SimulationDashboard/components/ProfileCompare';
 
 function newField(order: number, t: any): Field {
   return {
@@ -69,6 +70,10 @@ export default function ProfileEditor() {
   const [shareModal, setShareModal] = useState<{ json: string; url: string; copied: boolean } | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+  const [showBer, setShowBer] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   const historyRef = useRef<FrameProfile[]>([]);
   const historyIndexRef = useRef(-1);
@@ -269,6 +274,33 @@ export default function ProfileEditor() {
   const selectedField = profile?.fields.find((f) => f.id === selectedFieldId) ?? null;
   const sortedFields = profile ? [...profile.fields].sort((a, b) => a.order - b.order) : [];
 
+  // BER / Frame timing calculations
+  const berStats = useMemo(() => {
+    if (!profile) return null;
+    const parityBits = profile.parity !== 'None' ? 1 : 0;
+    const bitsPerByte = 1 + profile.dataBits + parityBits + profile.stopBits; // start + data + parity + stop
+    const totalBytes = sortedFields.reduce((s, f) => s + f.byteWidth, 0);
+    const bitsPerFrame = totalBytes * bitsPerByte;
+    const frameTimeUs = (bitsPerFrame / profile.baudRate) * 1_000_000;
+    const maxFps = 1_000_000 / frameTimeUs;
+    const requestedFps = 1000 / profile.sendIntervalMs;
+    const utilizationPct = Math.min(100, (requestedFps / maxFps) * 100);
+    return { bitsPerByte, bitsPerFrame, frameTimeUs: Math.round(frameTimeUs * 10) / 10, maxFps: Math.round(maxFps * 10) / 10, requestedFps: Math.round(requestedFps * 10) / 10, utilizationPct: Math.round(utilizationPct) };
+  }, [profile, sortedFields]);
+
+  const addTag = () => {
+    const tag = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!tag || !profile) return;
+    if ((profile.tags ?? []).includes(tag)) { setTagInput(''); return; }
+    setProfileWithHistory({ ...profile, tags: [...(profile.tags ?? []), tag] });
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    if (!profile) return;
+    setProfileWithHistory({ ...profile, tags: (profile.tags ?? []).filter(t => t !== tag) });
+  };
+
   return (
     <div className="flex h-full">
       {/* Profile List */}
@@ -283,11 +315,25 @@ export default function ProfileEditor() {
             <button onClick={createNew} className="text-green-400 hover:text-green-300 text-xs px-1.5 py-0.5 rounded hover:bg-green-900/20 transition-colors" title={t('profileEditor.newProfile')}>+</button>
           </div>
         </div>
+        {/* Tag filter */}
+        {profiles.some(p => (p.tags ?? []).length > 0) && (
+          <div className="px-2 py-1.5 border-b border-gray-800 flex flex-wrap gap-1">
+            {Array.from(new Set(profiles.flatMap(p => p.tags ?? []))).map(tag => (
+              <button
+                key={tag}
+                onClick={() => setActiveTagFilter(f => f === tag ? null : tag)}
+                className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-colors ${activeTagFilter === tag ? 'bg-indigo-900/40 border-indigo-700 text-indigo-300' : 'bg-gray-800/60 border-gray-700 text-gray-500 hover:text-gray-300'}`}
+              >#{tag}</button>
+            ))}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {profiles.length === 0 && (
             <div className="text-gray-600 text-xs font-mono p-2 text-center">{t('profileEditor.noProfileYet')}</div>
           )}
-          {profiles.map((p) => (
+          {profiles
+            .filter(p => !activeTagFilter || (p.tags ?? []).includes(activeTagFilter))
+            .map((p) => (
             <div
               key={p.id}
               onClick={() => openProfile(p)}
@@ -298,6 +344,13 @@ export default function ProfileEditor() {
               <div className="truncate flex-1">
                 <div className="truncate">{p.name}</div>
                 <div className="text-gray-600 text-[10px]">{p.baudRate} bps · {p.fields.length} {t('profileEditor.fields')}</div>
+                {(p.tags ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-0.5 mt-0.5">
+                    {(p.tags ?? []).map(tag => (
+                      <span key={tag} className="text-[8px] font-mono px-1 py-0 rounded bg-indigo-900/20 text-indigo-400">#{tag}</span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 ml-1 shrink-0">
                 <button
@@ -351,6 +404,10 @@ export default function ProfileEditor() {
               >↪</button>
               <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
               <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
+              <button onClick={() => setShowBer(v => !v)} className={`text-xs font-mono px-3 py-1.5 rounded border transition-colors ${showBer ? 'bg-amber-900/30 border-amber-700 text-amber-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`} title={t('profileEditor.berTitle')}>BER</button>
+              {profiles.length >= 2 && (
+                <button onClick={() => setShowCompare(v => !v)} className={`text-xs font-mono px-3 py-1.5 rounded border transition-colors ${showCompare ? 'bg-indigo-900/30 border-indigo-700 text-indigo-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`} title={t('profileEditor.compareProfiles')}>⇆</button>
+              )}
               <button onClick={() => submitToCommunity(profile)} className="text-xs font-mono px-3 py-1.5 bg-blue-900/20 border border-blue-800/40 text-blue-400 rounded hover:border-blue-600 hover:bg-blue-900/30 transition-colors">{t('profileEditor.submitToCommunity')}</button>
               <button onClick={save} className={`text-xs font-mono px-4 py-1.5 rounded border transition-colors ${saved ? 'bg-green-900/50 border-green-600 text-green-300' : 'bg-green-900/30 border-green-800/50 text-green-400 hover:bg-green-900/50'}`}>
                 {saved ? (fromDashboard ? '✓ Kaydedildi, dönülüyor…' : t('profileEditor.saved')) : t('common.save')}
@@ -404,7 +461,42 @@ export default function ProfileEditor() {
                 <input className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-48"
                   value={profile.description} onChange={(e) => setProfileWithHistory({ ...profile, description: e.target.value })} />
               </div>
+              {/* Tags */}
+              <div>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.tags')}</label>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {(profile.tags ?? []).map(tag => (
+                    <span key={tag} className="flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-900/30 border border-indigo-800/40 text-indigo-300">
+                      #{tag}
+                      <button onClick={() => removeTag(tag)} className="ml-0.5 text-indigo-500 hover:text-red-400 leading-none">×</button>
+                    </span>
+                  ))}
+                  <input
+                    className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-xs font-mono text-gray-200 outline-none focus:border-indigo-600 w-24"
+                    placeholder={t('profileEditor.addTag')}
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                  />
+                  <button onClick={addTag} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-900/20 border border-indigo-800/40 text-indigo-400 hover:border-indigo-600">+</button>
+                </div>
+              </div>
             </div>
+
+            {/* BER Panel */}
+            {showBer && berStats && (
+              <div className="px-4 py-3 border-b border-gray-800 bg-amber-950/10">
+                <div className="flex items-center gap-6 flex-wrap text-xs font-mono">
+                  <span className="text-amber-400 font-bold uppercase tracking-wider text-[10px]">{t('profileEditor.berTitle')}</span>
+                  <span className="text-gray-400">{t('profileEditor.berBitsPerByte')}: <span className="text-amber-300">{berStats.bitsPerByte}</span></span>
+                  <span className="text-gray-400">{t('profileEditor.berBitsPerFrame')}: <span className="text-amber-300">{berStats.bitsPerFrame}</span></span>
+                  <span className="text-gray-400">{t('profileEditor.berFrameTime')}: <span className="text-amber-300">{berStats.frameTimeUs} µs</span></span>
+                  <span className="text-gray-400">{t('profileEditor.berMaxFps')}: <span className="text-amber-300">{berStats.maxFps}</span></span>
+                  <span className="text-gray-400">{t('profileEditor.berRequestedFps')}: <span className={berStats.requestedFps > berStats.maxFps ? 'text-red-400 font-bold' : 'text-green-400'}>{berStats.requestedFps}</span></span>
+                  <span className="text-gray-400">{t('profileEditor.berUtil')}: <span className={berStats.utilizationPct > 90 ? 'text-red-400 font-bold' : berStats.utilizationPct > 70 ? 'text-yellow-400' : 'text-green-400'}>{berStats.utilizationPct}%</span></span>
+                </div>
+              </div>
+            )}
 
             {/* Field List */}
             <div className="flex-1 overflow-y-auto">
@@ -479,6 +571,21 @@ export default function ProfileEditor() {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Profile Compare Modal */}
+      {showCompare && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-4xl mx-4 h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 shrink-0">
+              <h2 className="text-sm font-mono font-bold text-gray-200">⇆ {t('profileEditor.compareProfiles')}</h2>
+              <button onClick={() => setShowCompare(false)} className="text-gray-500 hover:text-gray-300 text-lg leading-none">×</button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ProfileCompare profiles={profiles} />
+            </div>
+          </div>
         </div>
       )}
 

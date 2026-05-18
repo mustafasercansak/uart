@@ -388,7 +388,17 @@
     "alarmThresholdsHint": "Değer bu aralığın dışına çıktığında alarm tetiklenir",
     "frequencySource": "Frekans Kaynağı",
     "freqSourceManual": "Manuel (sabit Hz)",
-    "freqSourceHint": "Seçili alan değeri ÷ 60 = Hz (örn. BPM=72 → 1.2 Hz)"
+    "freqSourceHint": "Seçili alan değeri ÷ 60 = Hz (örn. BPM=72 → 1.2 Hz)",
+    "tags": "Etiketler",
+    "addTag": "etiket ekle…",
+    "compareProfiles": "Profilleri Karşılaştır",
+    "berTitle": "Frame Zamanlaması",
+    "berBitsPerByte": "Bit/bayt",
+    "berBitsPerFrame": "Bit/frame",
+    "berFrameTime": "Frame süresi",
+    "berMaxFps": "Maks FPS",
+    "berRequestedFps": "İstenen FPS",
+    "berUtil": "Hat kullanımı"
   },
   "validation": {
     "startTitle": "Validasyon Oturumu Başlat",
@@ -1232,7 +1242,9 @@
     "slotBTest": "Slot B (Test)",
     "hex": "HEX:",
     "addToDashboard": "Pano'ya ekle ({name})",
-    "clearHistory": "TX geçmişini temizle"
+    "clearHistory": "TX geçmişini temizle",
+    "recordStart": "Frame kayıt başlat (CSV olarak dışa aktar)",
+    "recordStop": "Kaydı durdur ve CSV dışa aktar"
   },
   "visualizer": {
     "booting": "CLINICAL SYNC ENGINE v7.0",
@@ -1372,7 +1384,11 @@
       "submitNoProfile": "Önce bir profil seçin",
       "import": "İçe Aktar",
       "importing": "İçe Aktarılıyor...",
-      "imported": "Uygulandı!"
+      "imported": "Uygulandı!",
+      "favorites": "Favoriler",
+      "showFavorites": "Yalnızca yıldızlıları göster",
+      "favorite": "Favorilere ekle",
+      "unfavorite": "Favorilerden çıkar"
     }
   },
   "protocolDecoder": {
@@ -1439,5 +1455,28 @@
       "inject_error": "Hata Enjekte Et",
       "set_field": "Alan De\u011feri Ata"
     }
+  },
+  "shortcuts": {
+    "title": "Klavye K\u0131sayollar\u0131",
+    "groupSimulation": "Sim\u00fclasyon",
+    "groupEditor": "Profil Edit\u00f6r\u00fc",
+    "groupNavigation": "Navigasyon",
+    "groupFrameMonitor": "Frame Monit\u00f6r\u00fc",
+    "groupAnalysis": "Analiz",
+    "playPause": "Sim\u00fclasyonu ba\u015flat / duraklat",
+    "stop": "Durdur ve se\u00e7imi kald\u0131r",
+    "undo": "Geri al",
+    "redo": "\u0130leri al",
+    "save": "Profili kaydet",
+    "showShortcuts": "Klavye k\u0131sayollar\u0131n\u0131 g\u00f6ster",
+    "commandPalette": "Komut paletini a\u00e7",
+    "selectFrame": "Frame se\u00e7 (inceleme i\u00e7in)",
+    "startRecording": "CSV kayd\u0131n\u0131 ba\u015flat",
+    "stopExportCsv": "Kayd\u0131 durdur ve CSV d\u0131\u015fa aktar",
+    "slotA": "Slot A referans\u0131 ata",
+    "slotB": "Slot B testi ata",
+    "diff": "Diff Lab'\u0131 a\u00e7",
+    "pressToClose": "Kapatmak i\u00e7in",
+    "orClickOutside": "tu\u015funa bas veya d\u0131\u015far\u0131 t\u0131kla"
   }
 }

@@ -46,6 +46,7 @@ import PacketInspector from './components/PacketInspector';
 import TraceTable from './components/TraceTable';
 import LiveDashboard from './components/LiveDashboard';
 import TabContent from './components/TabContent';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 
 const ERROR_TYPES: Array<{ type: ErrorType; key: string; color: string }> = [
   { type: 'corrupt_checksum', key: 'errors.checksum', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
@@ -137,6 +138,7 @@ export default function SimulationDashboard() {
 
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn' | 'exchange' | 'conversation' | 'profile-compare';
   const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>('waveforms');
@@ -224,6 +226,11 @@ export default function SimulationDashboard() {
       if (e.code === 'Escape') {
         stop();
         setSelectedFrame(null);
+        setShowShortcuts(false);
+      }
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(v => !v);
       }
     };
     window.addEventListener('keydown', handler);
@@ -507,11 +514,13 @@ export default function SimulationDashboard() {
         )}
 
         {isReportViewOpen && state.validationSession && (
-          <ValidationReport 
+          <ValidationReport
             session={state.validationSession}
             onClose={() => setIsReportViewOpen(false)}
           />
         )}
+
+        <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
       </div>
     </div>
   );

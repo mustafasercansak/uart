@@ -35,4 +35,5 @@ export interface FrameProfile {
   framing: FramingConfig;
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
 }
