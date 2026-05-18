@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import type { SensorTemplate } from '../../types';
 import type { FrameProfile, Scenario } from '../../types';
-import { saveProfile, saveScenario } from '../../store/storage';
+import { saveProfile, saveScenario, getProfile, loadScenarios } from '../../store/storage';
+import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { useSimulation } from '../../hooks/useSimulation';
 import { useTranslation } from '../../i18n/context';
 
@@ -41,36 +42,71 @@ interface CommunityIndex {
 export default function CommunityTemplates() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setProfile, updateLayout, setScenario } = useSimulation();
+  const { setProfile, updateLayout, setScenario, state } = useSimulation();
 
   const [index, setIndex] = useState<CommunityIndex | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [imported, setImported] = useState<string | null>(null);
 
-  const fetchIndex = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const res = await fetch(`${COMMUNITY_INDEX_URL}?t=${Date.now()}`);
-      if (!res.ok) throw new Error('fetch failed');
-      const data: CommunityIndex = await res.json();
-      setIndex(data);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // loading is true until the fetch for the current retryCount completes
+  const loading = fetchedAt !== retryCount;
 
-  useEffect(() => { fetchIndex(); }, [fetchIndex]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${COMMUNITY_INDEX_URL}?v=${retryCount}`)
+      .then((res) => { if (!res.ok) throw new Error('fetch failed'); return res.json(); })
+      .then((data: CommunityIndex) => {
+        if (!cancelled) { setIndex(data); setError(false); setFetchedAt(retryCount); }
+      })
+      .catch(() => {
+        if (!cancelled) { setError(true); setFetchedAt(retryCount); }
+      });
+    return () => { cancelled = true; };
+  }, [retryCount]);
+
+  const submitActiveProfile = () => {
+    const profileId = state.profileId;
+    if (!profileId) return;
+
+    const profile = getProfile(profileId);
+    if (!profile) return;
+
+    const scenarios = loadScenarios().filter((s) => s.profileId === profileId);
+
+    const template: SensorTemplate = {
+      id: `community-${profile.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
+      name: profile.name,
+      description: profile.description || '',
+      icon: '📡',
+      category: 'general',
+      profile: {
+        name: profile.name,
+        description: profile.description,
+        baudRate: profile.baudRate,
+        dataBits: profile.dataBits,
+        parity: profile.parity,
+        stopBits: profile.stopBits,
+        sendIntervalMs: profile.sendIntervalMs,
+        framing: profile.framing,
+        fields: profile.fields,
+      },
+      scenarios: scenarios.map(({ id: _id, profileId: _pid, createdAt: _c, updatedAt: _u, ...rest }) => rest),
+    };
+
+    const json = JSON.stringify(template, null, 2);
+    const body = `## Community Template Submission\n\n**Template Name:** ${profile.name}\n**Category:** general\n**Author:** (your GitHub username)\n\n### Template JSON\n\`\`\`json\n${json}\n\`\`\`\n\n### Description\n(Describe what this template simulates and how to use it.)`;
+    const url = `https://github.com/mustafasercansak/uart/issues/new?title=${encodeURIComponent(`Community Template: ${profile.name}`)}&body=${encodeURIComponent(body)}&labels=community-template`;
+    openUrl(url);
+  };
 
   const importTemplate = async (entry: CommunityEntry) => {
     setImporting(entry.id);
     try {
       const base = COMMUNITY_INDEX_URL.replace('index.json', '');
-      const res = await fetch(`${base}${entry.file}?t=${Date.now()}`);
+      const res = await fetch(`${base}${entry.file}`);
       if (!res.ok) throw new Error('fetch failed');
       const template: SensorTemplate = await res.json();
 
@@ -123,7 +159,7 @@ export default function CommunityTemplates() {
       <div className="flex flex-col items-center justify-center h-48 gap-3">
         <p className="text-red-400 font-mono text-sm">{t('templateBrowser.community.error')}</p>
         <button
-          onClick={fetchIndex}
+          onClick={() => setRetryCount((c) => c + 1)}
           className="px-3 py-1.5 rounded text-xs font-mono bg-gray-800 border border-gray-700 text-gray-300 hover:border-gray-500"
         >
           {t('templateBrowser.community.retry')}
@@ -136,14 +172,13 @@ export default function CommunityTemplates() {
     return (
       <div className="flex flex-col items-center justify-center h-48 gap-4">
         <p className="text-gray-500 font-mono text-sm">{t('templateBrowser.community.empty')}</p>
-        <a
-          href="https://github.com/mustafasercansak/uart/pulls"
-          target="_blank"
-          rel="noreferrer"
-          className="px-3 py-1.5 rounded text-xs font-mono bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600"
+        <button
+          onClick={submitActiveProfile}
+          disabled={!state.profileId}
+          className="px-3 py-1.5 rounded text-xs font-mono bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t('templateBrowser.community.submit')}
-        </a>
+        </button>
       </div>
     );
   }
@@ -152,14 +187,14 @@ export default function CommunityTemplates() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 text-xs font-mono">{t('templateBrowser.community.subtitle')}</p>
-        <a
-          href="https://github.com/mustafasercansak/uart/pulls"
-          target="_blank"
-          rel="noreferrer"
-          className="px-3 py-1.5 rounded text-xs font-mono bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600 transition-colors"
+        <button
+          onClick={submitActiveProfile}
+          disabled={!state.profileId}
+          title={state.profileId ? t('templateBrowser.community.submit') : t('templateBrowser.community.submitNoProfile')}
+          className="px-3 py-1.5 rounded text-xs font-mono bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t('templateBrowser.community.submit')}
-        </a>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

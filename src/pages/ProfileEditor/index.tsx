@@ -16,6 +16,8 @@ import type {
   FlagBit,
 } from '../../types';
 import { loadProfiles, saveProfile, deleteProfile, exportAsJson, importFromJson } from '../../store/storage';
+import { SENSOR_TEMPLATES } from '../../data/templates';
+import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { FramePreview } from './FramePreview';
 import { FieldEditor } from './FieldEditor';
 
@@ -64,6 +66,7 @@ export default function ProfileEditor() {
   const [profiles, setProfiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [profile, setProfile] = useState<FrameProfile | null>(null);
+  const [shareModal, setShareModal] = useState<{ json: string; url: string; copied: boolean } | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -183,6 +186,43 @@ export default function ProfileEditor() {
     openProfile(dup);
   };
 
+  const submitToCommunity = async (p: FrameProfile) => {
+    // Block built-in templates — detect by matching all field IDs against SENSOR_TEMPLATES
+    const profileFieldIds = new Set(p.fields.map((f) => f.id));
+    const isBuiltin = SENSOR_TEMPLATES.some((tmpl) =>
+      tmpl.profile.fields.every((f) => profileFieldIds.has(f.id))
+    );
+    if (isBuiltin) {
+      alert(t('profileEditor.submitBuiltinBlocked'));
+      return;
+    }
+
+    const template = {
+      id: `community-${p.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${uuidv4().slice(0, 6)}`,
+      name: p.name,
+      description: p.description || '',
+      icon: '📡',
+      category: 'general',
+      profile: {
+        name: p.name,
+        description: p.description,
+        baudRate: p.baudRate,
+        dataBits: p.dataBits,
+        parity: p.parity,
+        stopBits: p.stopBits,
+        sendIntervalMs: p.sendIntervalMs,
+        framing: p.framing,
+        fields: p.fields,
+      },
+      scenarios: [],
+    };
+
+    const json = JSON.stringify(template, null, 2);
+    const body = `## Community Template Submission\n\n**Template Name:** ${p.name}\n**Category:** general\n**Author:** (GitHub kullanıcı adınız)\n\n### Template JSON\n\n\`\`\`json\n(JSON buraya yapıştırın)\n\`\`\`\n\n### Açıklama\n(Bu şablonun ne simüle ettiğini yazın.)`;
+    const url = `https://github.com/mustafasercansak/uart/issues/new?title=${encodeURIComponent(`Community Template: ${p.name}`)}&body=${encodeURIComponent(body)}&labels=community-template`;
+    setShareModal({ json, url, copied: false });
+  };
+
   const addField = () => {
     if (!profile) return;
     const field = newField(profile.fields.length, t);
@@ -259,10 +299,17 @@ export default function ProfileEditor() {
                 <div className="truncate">{p.name}</div>
                 <div className="text-gray-600 text-[10px]">{p.baudRate} bps · {p.fields.length} {t('profileEditor.fields')}</div>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); remove(p.id); }}
-                className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 ml-1 shrink-0"
-              >×</button>
+              <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 ml-1 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); submitToCommunity(p); }}
+                  className="text-blue-500 hover:text-blue-400 text-[10px] px-1"
+                  title={t('profileEditor.submitToCommunity')}
+                >↑</button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); remove(p.id); }}
+                  className="text-red-500 hover:text-red-400"
+                >×</button>
+              </div>
             </div>
           ))}
         </div>
@@ -304,6 +351,7 @@ export default function ProfileEditor() {
               >↪</button>
               <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
               <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
+              <button onClick={() => submitToCommunity(profile)} className="text-xs font-mono px-3 py-1.5 bg-blue-900/20 border border-blue-800/40 text-blue-400 rounded hover:border-blue-600 hover:bg-blue-900/30 transition-colors">{t('profileEditor.submitToCommunity')}</button>
               <button onClick={save} className={`text-xs font-mono px-4 py-1.5 rounded border transition-colors ${saved ? 'bg-green-900/50 border-green-600 text-green-300' : 'bg-green-900/30 border-green-800/50 text-green-400 hover:bg-green-900/50'}`}>
                 {saved ? (fromDashboard ? '✓ Kaydedildi, dönülüyor…' : t('profileEditor.saved')) : t('common.save')}
               </button>
@@ -431,6 +479,46 @@ export default function ProfileEditor() {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {shareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <h2 className="text-sm font-mono font-bold text-gray-200">{t('profileEditor.submitToCommunity')}</h2>
+              <button onClick={() => setShareModal(null)} className="text-gray-500 hover:text-gray-300 text-lg leading-none">×</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-xs font-mono text-gray-400">{t('profileEditor.shareModalHint')}</p>
+              <pre className="bg-gray-800 border border-gray-700 rounded p-3 text-[10px] font-mono text-gray-300 max-h-48 overflow-auto whitespace-pre-wrap break-all">
+                {shareModal.json}
+              </pre>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(shareModal.json);
+                    setShareModal({ ...shareModal, copied: true });
+                  }}
+                  className={`flex-1 px-3 py-2 rounded text-xs font-mono border transition-colors ${
+                    shareModal.copied
+                      ? 'bg-green-900/30 border-green-700 text-green-400'
+                      : 'bg-gray-800 border-gray-600 text-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {shareModal.copied ? t('profileEditor.shareCopied') : t('profileEditor.shareCopy')}
+                </button>
+                <button
+                  onClick={() => { openUrl(shareModal.url); setShareModal(null); }}
+                  disabled={!shareModal.copied}
+                  className="flex-1 px-3 py-2 rounded text-xs font-mono bg-blue-900/20 border border-blue-800/40 text-blue-400 hover:border-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {t('profileEditor.shareOpenGithub')}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
