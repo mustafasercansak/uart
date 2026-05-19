@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CANFrame, CANArbitrationEvent } from '../types/CANFrame';
 import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANBusState, CANBaudRate, CANLogEntry, CANFaultEvent } from '../types/CANBusState';
+import type { CANErrorInjectionConfig, CANInjectedErrorType } from '../types/CANErrorInjection';
+import { CAN_INJECTED_ERROR_LABELS } from '../types/CANErrorInjection';
 
 function t(key: string): string {
   const translations: Record<string, string> = {
@@ -134,6 +136,47 @@ export class CANSimulationEngine {
 
   public getState(): CANBusState {
     return this.state;
+  }
+
+  public setErrorInjectionConfig(config: CANErrorInjectionConfig): void {
+    this.state.errorInjection = {
+      ...this.state.errorInjection,
+      config: {
+        ...config,
+        periodicEvery: Math.max(1, config.periodicEvery),
+        randomRate: Math.max(0, Math.min(100, config.randomRate)),
+      },
+    };
+    this.emitStateUpdate({ errorInjection: this.state.errorInjection });
+  }
+
+  public armOneTimeErrorInjection(): void {
+    this.state.errorInjection = { ...this.state.errorInjection, oneTimeArmed: true };
+    this.log('info', 'CAN Error Injection armed for next matching packet');
+    this.emitStateUpdate({ errorInjection: this.state.errorInjection });
+  }
+
+  public clearFrames(): void {
+    this.state.recentFrames = [];
+    this.state.frameCount = 0;
+    this.state.errorCount = 0;
+    this.state.arbitrationEvents = [];
+    this.state.errorInjection = {
+      ...this.state.errorInjection,
+      stats: {
+        totalPackets: 0,
+        successfulPackets: 0,
+        errorsInjected: 0,
+      },
+      oneTimeArmed: false,
+    };
+    this.emitStateUpdate({
+      recentFrames: [],
+      frameCount: 0,
+      errorCount: 0,
+      arbitrationEvents: [],
+      errorInjection: this.state.errorInjection,
+    });
   }
 
   public injectFault(nodeId: number, fault: CANFaultType): void {
@@ -281,6 +324,8 @@ export class CANSimulationEngine {
       functionCode: 0,
       canOpenNodeId: 0,
     };
+
+    this.applyErrorInjection(frame);
 
     this.state.recentFrames = [frame, ...this.state.recentFrames].slice(0, MAX_RECENT_FRAMES);
     this.state.frameCount++;
@@ -435,6 +480,8 @@ export class CANSimulationEngine {
       canOpenNodeId: 0,
     };
 
+    this.applyErrorInjection(frame);
+
     this.state.recentFrames = [frame, ...this.state.recentFrames].slice(0, MAX_RECENT_FRAMES);
     this.state.frameCount++;
     this.onFrame?.(frame);
@@ -464,6 +511,8 @@ export class CANSimulationEngine {
       functionCode: 0x180,
       canOpenNodeId: node.id,
     };
+
+    this.applyErrorInjection(frame);
 
     // Noise-burst: mark ~40% of frames as errors while fault is active
     if (node.activeFault === 'noise-burst' && Math.random() < 0.4) {
@@ -507,6 +556,50 @@ export class CANSimulationEngine {
     this.onFrame?.(frame);
 
     this.log('tx', `Node ${node.id} TX [0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}] DLC=${dlc} ${encodeCANFrame(frame).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
+  }
+
+  private applyErrorInjection(frame: CANFrame): void {
+    const current = this.state.errorInjection;
+    const enabledTypes = (Object.keys(current.config.enabledTypes) as CANInjectedErrorType[])
+      .filter(type => current.config.enabledTypes[type]);
+
+    const packetNumber = current.stats.totalPackets + 1;
+    let shouldInject = false;
+
+    if (enabledTypes.length > 0) {
+      if (current.config.triggerMode === 'one-time') {
+        shouldInject = current.oneTimeArmed;
+      } else if (current.config.triggerMode === 'periodic') {
+        shouldInject = packetNumber % Math.max(1, current.config.periodicEvery) === 0;
+      } else {
+        shouldInject = Math.random() * 100 < current.config.randomRate;
+      }
+    }
+
+    const injectedLabels = shouldInject
+      ? enabledTypes.map(type => CAN_INJECTED_ERROR_LABELS[type])
+      : [];
+
+    if (shouldInject && enabledTypes.includes('crc-corruption')) {
+      frame.crc = (frame.crc ^ 0x3fff) & 0x7fff;
+    }
+
+    if (injectedLabels.length > 0) {
+      frame.errors = [...frame.errors, ...injectedLabels];
+      this.log('error', `Injected Errors: ${injectedLabels.join(', ')} on CAN 0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}`, frame.nodeId >= 0 ? frame.nodeId : undefined);
+    }
+
+    this.state.errorInjection = {
+      ...current,
+      oneTimeArmed: current.config.triggerMode === 'one-time' && shouldInject ? false : current.oneTimeArmed,
+      stats: {
+        totalPackets: current.stats.totalPackets + 1,
+        successfulPackets: current.stats.successfulPackets + (injectedLabels.length === 0 ? 1 : 0),
+        errorsInjected: current.stats.errorsInjected + injectedLabels.length,
+      },
+    };
+
+    this.emitStateUpdate({ errorInjection: this.state.errorInjection });
   }
 
   // ── BUS LOAD ───────────────────────────────────────────────────────────────

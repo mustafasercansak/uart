@@ -1,6 +1,7 @@
 import type { CANBusState, CANLogEntry, CANFaultEvent } from '../types/CANBusState';
 import type { CANFrame, CANArbitrationEvent } from '../types/CANFrame';
 import type { CANNode } from '../types/CANNode';
+import { DEFAULT_CAN_ERROR_INJECTION_STATE } from '../types/CANErrorInjection';
 
 const MAX_RECENT_FRAMES = 200;
 const MAX_LOG_ENTRIES = 500;
@@ -30,6 +31,7 @@ export const INITIAL_CAN_STATE: CANBusState = {
   displayFilter: '',
   showArbitrationEvents: true,
   showErrorFrames: true,
+  errorInjection: DEFAULT_CAN_ERROR_INJECTION_STATE,
 };
 
 export type CANAction =
@@ -107,7 +109,18 @@ export function canReducer(state: CANBusState, action: CANAction): CANBusState {
       return { ...state, showErrorFrames: !state.showErrorFrames };
 
     case 'CAN_CLEAR_FRAMES':
-      return { ...state, recentFrames: [], frameCount: 0, errorCount: 0, arbitrationEvents: [] };
+      return {
+        ...state,
+        recentFrames: [],
+        frameCount: 0,
+        errorCount: 0,
+        arbitrationEvents: [],
+        errorInjection: {
+          ...state.errorInjection,
+          stats: { ...DEFAULT_CAN_ERROR_INJECTION_STATE.stats },
+          oneTimeArmed: false,
+        },
+      };
 
     case 'CAN_SET_BAUD_RATE':
       return { ...state, baudRate: action.baudRate };

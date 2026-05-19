@@ -50,7 +50,8 @@ export default function CANDashboard() {
     toggleArbitrationDisplay, toggleErrorDisplay,
     injectFault, recoverNode, setOutputMode,
     connectSerial, disconnectSerial, connectNetwork, disconnectNetwork,
-    startRecording, stopRecording, sendFrame
+    startRecording, stopRecording, sendFrame,
+    setErrorInjectionConfig, armErrorInjection
   } = useCANContext();
 
   const [showAddNode, setShowAddNode] = useState(false);
@@ -421,6 +422,10 @@ export default function CANDashboard() {
                   onInject={injectFault}
                   onRecover={recoverNode}
                   onSelectNode={selectNode}
+                  errorInjection={state.errorInjection}
+                  onSetErrorInjectionConfig={setErrorInjectionConfig}
+                  onArmErrorInjection={armErrorInjection}
+                  isRunning={isRunning}
                 />
               )}
               {activeTab === 'automation' && (
