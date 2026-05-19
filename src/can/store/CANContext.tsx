@@ -5,6 +5,7 @@ import type { CANBusState, CANBaudRate } from '../types/CANBusState';
 import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANFrame } from '../types/CANFrame';
 import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
+import type { UDSDiagnosticConfig } from '../types/UDS';
 
 interface CANContextValue {
   state: CANBusState;
@@ -33,6 +34,8 @@ interface CANContextValue {
   stopRecording: () => void;
   clearRecording: () => void;
   sendFrame: (arbitrationId: number, data: number[]) => void;
+  sendUDSRequest: (requestId: number, payload: number[]) => void;
+  setUDSConfig: (config: UDSDiagnosticConfig) => void;
   setErrorInjectionConfig: (config: CANErrorInjectionConfig) => void;
   armErrorInjection: () => void;
 }
@@ -365,6 +368,15 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     send({ type: 'CAN_SEND_FRAME', arbitrationId, data });
   }, [send]);
 
+  const sendUDSRequest = useCallback((requestId: number, payload: number[]) => {
+    send({ type: 'CAN_SEND_UDS_REQUEST', requestId, payload });
+  }, [send]);
+
+  const setUDSConfig = useCallback((config: UDSDiagnosticConfig) => {
+    send({ type: 'CAN_SET_UDS_CONFIG', config });
+    dispatch({ type: 'CAN_SET_UDS_CONFIG', config });
+  }, [send]);
+
   const setErrorInjectionConfig = useCallback((config: CANErrorInjectionConfig) => {
     send({ type: 'CAN_SET_ERROR_INJECTION_CONFIG', config });
   }, [send]);
@@ -382,6 +394,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       injectFault, recoverNode, setOutputMode,
       connectSerial, disconnectSerial, connectNetwork, disconnectNetwork,
       startRecording, stopRecording, clearRecording, sendFrame,
+      sendUDSRequest, setUDSConfig,
       setErrorInjectionConfig, armErrorInjection
     }}>
       {children}

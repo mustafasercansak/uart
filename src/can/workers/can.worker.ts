@@ -9,6 +9,7 @@ import { INITIAL_CAN_STATE } from '../store/canReducer';
 import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANBaudRate } from '../types/CANBusState';
 import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
+import type { UDSDiagnosticConfig } from '../types/UDS';
 
 const engine = new CANSimulationEngine(structuredClone(INITIAL_CAN_STATE));
 
@@ -86,6 +87,14 @@ self.onmessage = (event: MessageEvent) => {
 
     case 'CAN_SEND_FRAME':
       engine.sendCustomFrame(msg.arbitrationId as number, msg.data as number[]);
+      break;
+
+    case 'CAN_SEND_UDS_REQUEST':
+      engine.sendUDSRequest(msg.requestId as number, msg.payload as number[]);
+      break;
+
+    case 'CAN_SET_UDS_CONFIG':
+      engine.setUDSConfig(msg.config as UDSDiagnosticConfig);
       break;
 
     case 'CAN_SET_ERROR_INJECTION_CONFIG':
