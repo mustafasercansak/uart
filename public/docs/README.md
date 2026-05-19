@@ -17,6 +17,7 @@ A high-performance, real-time UART telemetry platform designed for **embedded en
 - **Keyboard Shortcuts Modal**: Press `?` anywhere on the Dashboard to open a shortcut cheatsheet covering all key bindings.
 - **Community Template Favorites**: Star/unstar any community template. Favorites are persisted locally and sorted to the top.
 - **Last Used Field Type Memory**: The Profile Editor remembers the last field type you selected and uses it as the default for new fields.
+- **CAN Smart Listen**: Passive CAN discovery mode detects Standard/Extended CAN traffic and locks common bus speeds before enabling Sync and Connect.
 
 ### 🎨 Custom Waveform Designer
 Go beyond static signals. **Draw** your own waveforms by hand, generate them with **Math Formulas**, or use our **Clinical Preset Library** (ECG, PPG, Resp). Inject these custom signals directly into your UART stream in real-time.

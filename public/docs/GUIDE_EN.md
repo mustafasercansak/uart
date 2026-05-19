@@ -1139,7 +1139,24 @@ Four built-in profiles ship with the app: **ICU**, **ER**, **OR**, and **Ward** 
 
 ---
 
-### 20.9 Keyboard Shortcuts
+### 20.9 Smart Listen
+
+**Smart Listen** is a passive CAN discovery mode for unknown hardware configurations. Open the CAN Dashboard and click **Smart Listen** in the lower-right corner.
+
+The scanner observes already captured traffic only. It does not inject frames, reset nodes, acknowledge traffic, or alter the running bus.
+
+| Detection | Behavior |
+|-----------|----------|
+| Baud rate | Locks to common CAN speeds: 125k, 250k, 500k, or 1M bps |
+| Margin | Requires the detected speed to be within 5% of a known rate |
+| Protocol | Distinguishes Standard 11-bit CAN from Extended 29-bit CAN |
+| Confidence | Enables **Sync and Connect** only after enough frames are observed |
+
+When locked, click **Sync and Connect** to apply the detected baud rate and return to the Bus Monitor.
+
+---
+
+### 20.10 Keyboard Shortcuts
 
 Press **?** anywhere on the CAN Dashboard to open the shortcuts cheatsheet.
 

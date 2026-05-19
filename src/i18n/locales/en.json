@@ -8,6 +8,7 @@
     "canDashboard": "CAN Dashboard",
     "canProfiles": "CAN Profiles",
     "canGroup": "CAN",
+    "help": "Help",
     "subtitle": "Sensor Simulator",
     "expand": "Expand",
     "collapse": "Collapse",
@@ -103,6 +104,22 @@
     "tcpServerMode": "TCP SERVER",
     "tcpListen": "LISTEN",
     "examplePort": "COM1 / /dev/tty"
+  },
+  "smartListen": {
+    "button": "Smart Listen",
+    "scanning": "Scanning...",
+    "locked": "Parameters locked",
+    "passive": "Passive listen only",
+    "protocol": "Protocol",
+    "baudRate": "Baud",
+    "confidence": "Confidence",
+    "waiting": "Waiting",
+    "syncConnect": "Sync and Connect",
+    "protocolUnknown": "Unknown",
+    "protocolUart": "UART",
+    "protocolModbusRtu": "Modbus RTU",
+    "protocolCanStandard": "CAN Standard",
+    "protocolCanExtended": "CAN Extended"
   },
   "rxMonitor": {
     "title": "RX History",
@@ -1824,6 +1841,7 @@
     "nmtState": "NMT Initial State",
     "nmtOperational": "Operational",
     "nmtPreOperational": "Pre-Operational",
-    "nmtStopped": "Stopped"
+    "nmtStopped": "Stopped",
+    "invalidProfileFormat": "Invalid profile format"
   }
 }

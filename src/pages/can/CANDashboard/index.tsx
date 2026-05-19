@@ -29,6 +29,8 @@ import { LogTab } from './components/LogTab';
 import { CANAutomationTab } from './components/CANAutomationTab';
 import { CANKeyboardShortcutsModal } from './components/CANKeyboardShortcutsModal';
 import { useTranslation } from '../../../i18n/context';
+import { detectCANTraffic } from '../../../engines/SmartListen';
+import { SmartListenOverlay } from '../../shared/SmartListenOverlay';
 import type { CANBaudRate } from '../../../can/types/CANBusState';
 import type { CANArbitrationEvent } from '../../../can/types/CANFrame';
 import { MEDICAL_PROFILE_COLORS, type CANNode } from '../../../can/types/CANNode';
@@ -62,6 +64,7 @@ export default function CANDashboard() {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>('inspector');
   const [activeTab, setActiveTab] = useState<CenterTab>('bus');
+  const [isSmartListenActive, setIsSmartListenActive] = useState(false);
 
   const [profiles] = useState<CANProfile[]>(() => loadCANProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -125,11 +128,23 @@ export default function CANDashboard() {
     () => state.nodes.find(n => n.id === (selectedFrame?.nodeId ?? -1)) ?? undefined,
     [state.nodes, selectedFrame]
   );
+  const smartListenResult = useMemo(
+    () => detectCANTraffic(state.recentFrames, state.baudRate),
+    [state.recentFrames, state.baudRate]
+  );
 
   const isRunning = state.status === 'running';
   const isPaused  = state.status === 'paused';
   const isStopped = state.status === 'stopped';
   const canStart  = state.nodes.filter(n => n.isActive).length > 0;
+
+  const handleSmartListenSync = useCallback(() => {
+    if (smartListenResult.baudRate) {
+      setBaudRate((smartListenResult.baudRate / 1000) as CANBaudRate);
+    }
+    setActiveTab('bus');
+    setIsSmartListenActive(false);
+  }, [setBaudRate, smartListenResult.baudRate]);
 
   const TAB_ORDER: CenterTab[] = ['bus', 'nodes', 'arbitration', 'log', 'fault', 'automation', 'compliance'];
 
@@ -199,6 +214,13 @@ export default function CANDashboard() {
 
       {/* Main area */}
       <div className="flex-1 min-h-0 flex relative bg-[#0a0a0d] overflow-hidden">
+        <SmartListenOverlay
+          active={isSmartListenActive}
+          result={smartListenResult}
+          onStart={() => setIsSmartListenActive(true)}
+          onCancel={() => setIsSmartListenActive(false)}
+          onSync={handleSmartListenSync}
+        />
 
         {/* ── Left panel: Node list ── */}
         <div
