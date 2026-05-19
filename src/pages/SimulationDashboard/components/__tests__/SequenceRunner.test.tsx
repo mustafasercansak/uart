@@ -6,7 +6,7 @@ import type { AutomationSequence } from '../../../../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const makeSeq = (overrides: Partial<AutomationSequence> = {}): AutomationSequence => ({
+const _makeSeq = (overrides: Partial<AutomationSequence> = {}): AutomationSequence => ({
   id: 'seq-1',
   name: 'Test Sekansı',
   steps: [

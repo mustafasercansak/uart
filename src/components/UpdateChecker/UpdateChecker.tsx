@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { check } from '@tauri-apps/plugin-updater';
+import { check, type Update, type DownloadEvent } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { useTranslation } from '../../i18n/context';
 import { ArrowUpCircle, X } from 'lucide-react';
 
 export function UpdateChecker() {
   const { t } = useTranslation();
-  const [update, setUpdate] = useState<any>(null);
+  const [update, setUpdate] = useState<Update | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -30,7 +30,7 @@ export function UpdateChecker() {
       let downloaded = 0;
       let total = 0;
 
-      await update.downloadAndInstall((event: any) => {
+      await update.downloadAndInstall((event: DownloadEvent) => {
         if (event.event === 'Started') {
           total = event.data.contentLength ?? 0;
         } else if (event.event === 'Progress') {

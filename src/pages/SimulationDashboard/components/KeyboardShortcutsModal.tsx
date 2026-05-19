@@ -95,7 +95,7 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
         </div>
 
         <div className="px-5 py-2.5 border-t border-gray-800 text-[10px] font-mono text-gray-600 text-center">
-          {t('shortcuts.pressToClose')} <span className="text-gray-400">Esc</span> {t('shortcuts.orClickOutside')}
+          {t('shortcuts.pressToClose')} <span className="text-gray-400">{t('can.esc')}</span> {t('shortcuts.orClickOutside')}
         </div>
       </div>
     </div>

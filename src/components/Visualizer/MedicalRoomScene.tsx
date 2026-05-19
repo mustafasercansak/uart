@@ -106,7 +106,9 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.fillText(text, x, y);
 }
 
-function drawMonitorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
+type TFn = (path: string, params?: Record<string, unknown>) => string;
+
+function drawMonitorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: TFn) {
   clearScreen(ctx, '#010810');
   drawWave(ctx, d.ecgHistory, '#10b981', 220, 180);
   drawWave(ctx, d.plethHistory, '#06b6d4', 420, 120, 255);
@@ -125,7 +127,7 @@ function drawMonitorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
   drawLabel(ctx, t('visualizer.spo2Unit'), 300, 512, '#ffffff40', 22);
 }
 
-function drawVentilatorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
+function drawVentilatorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: TFn) {
   clearScreen(ctx, '#020c1a');
   drawWave(ctx, d.breathHistory, '#3b82f6', 260, 160, 255);
 
@@ -146,7 +148,7 @@ function drawVentilatorScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any
   ctx.fillText(d.peep ? `${t('visualizer.peepLabel')} ${d.peep}` : `${t('visualizer.peepLabel')} --`, 30, 510);
 }
 
-function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
+function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: TFn) {
   clearScreen(ctx, '#1a0e00');
   drawLabel(ctx, t('visualizer.devices.iv_pump.label').toUpperCase(), 30, 40, '#f59e0b40', 18);
 
@@ -172,7 +174,7 @@ function drawIVPumpScreen(ctx: CanvasRenderingContext2D, d: LiveData, t: any) {
   ctx.fill();
 }
 
-function drawPulseOxScreen(ctx: CanvasRenderingContext2D, d: LiveData, beat: number, t: any) {
+function drawPulseOxScreen(ctx: CanvasRenderingContext2D, d: LiveData, beat: number, t: TFn) {
   clearScreen(ctx, '#180014');
   drawWave(ctx, d.plethHistory, `rgba(236,72,153,${0.6 + beat * 0.4})`, 260, 160, 255);
 
@@ -590,6 +592,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     selectedRef.current = selected;
     const active = new Set(DEVICES.map(d => d.id).filter(id => isDeviceActive(id)));
     activeDevicesRef.current = active;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, bindings, activeProfileId, isDeviceActive]);
 
   // ── Three.js setup ───────────────────────────────────────────────────────
@@ -866,6 +869,8 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
       window.removeEventListener('resize', onResize);
       clearTimeout(bootTimer);
     };
+  // DEVICES and t are module-level constants that never change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Camera target when selected changes via UI buttons ───────────────────
@@ -877,6 +882,8 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     } else {
       sceneRef.current.camTarget = { pos: OVERVIEW.pos.clone(), look: OVERVIEW.look.clone() };
     }
+  // DEVICES is a module-level constant
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
   // ── Data ingestion ───────────────────────────────────────────────────────
@@ -945,7 +952,7 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
     if (d.plethHistory.length > 100) d.plethHistory.shift();
 
     setDisplayData({ ...d });
-  }, [lastFrame, activeScenarioStep, isDeviceActive]);
+  }, [lastFrame, activeScenarioStep, isDeviceActive, activeProfileId, profiles]);
 
   // Alarm flash ticker
   useEffect(() => {

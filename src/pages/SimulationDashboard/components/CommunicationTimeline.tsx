@@ -33,7 +33,7 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
     e?.preventDefault();
     if (!inputText.trim() || !onSendFrame) return;
 
-    let bytes: number[] = [];
+    let bytes: number[];
     if (inputType === 'ascii') {
       let text = inputText;
       text = text.replace(/\\r/g, '\r').replace(/\\n/g, '\n');

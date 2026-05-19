@@ -21,13 +21,32 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
     setMounted(true);
   }, []);
 
-  const NAV_ITEMS = [
+  const UART_ITEMS = [
     { path: '/', label: t('nav.dashboard'), icon: '▶' },
     { path: '/profiles', label: t('nav.profiles'), icon: '⊞' },
     { path: '/scenarios', label: t('nav.scenarios'), icon: '⏱' },
     { path: '/designer', label: t('nav.designer'), icon: '🔌' },
     { path: '/templates', label: t('nav.templates'), icon: '📦' },
   ];
+
+  const CAN_ITEMS = [
+    { path: '/can', label: t('nav.dashboard'), icon: '🚌' },
+    { path: '/can-profiles', label: t('nav.profiles'), icon: '🗂' },
+  ];
+
+  const navLinkClass = (isActive: boolean) =>
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${
+      isActive
+        ? 'bg-green-900/20 text-green-400 border border-green-800/40'
+        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
+    } ${collapsed ? 'justify-center px-0' : ''}`;
+
+  const canLinkClass = (isActive: boolean) =>
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${
+      isActive
+        ? 'bg-orange-900/20 text-orange-400 border border-orange-800/40'
+        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
+    } ${collapsed ? 'justify-center px-0' : ''}`;
 
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-56'} bg-gray-950 border-r border-gray-800 flex flex-col h-full shrink-0 transition-all duration-300 relative`}>
@@ -49,24 +68,54 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
           {collapsed ? '❯' : '❮'}
         </button>
       </div>
-      <nav className="flex-1 py-4 px-2 space-y-1">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            title={collapsed ? item.label : ''}
-            end={item.path === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${isActive
-                ? 'bg-green-900/20 text-green-400 border border-green-800/40'
-                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
-              } ${collapsed ? 'justify-center px-0' : ''}`
-            }
-          >
-            <span className="w-4 text-center text-xs shrink-0">{item.icon}</span>
-            {!collapsed && <span className="truncate">{item.label}</span>}
-          </NavLink>
-        ))}
+
+      <nav className="flex-1 py-3 px-2 overflow-y-auto flex flex-col gap-4">
+        {/* UART Grubu */}
+        <div className="space-y-1">
+          {!collapsed && (
+            <div className="px-3 pb-1 flex items-center gap-2">
+              <div className="h-px flex-1 bg-cyan-900/60" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-700 font-mono">UART</span>
+              <div className="h-px flex-1 bg-cyan-900/60" />
+            </div>
+          )}
+          {collapsed && <div className="h-px bg-cyan-900/40 mx-2 mb-1" />}
+          {UART_ITEMS.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={collapsed ? item.label : ''}
+              end={item.path === '/'}
+              className={({ isActive }) => navLinkClass(isActive)}
+            >
+              <span className="w-4 text-center text-xs shrink-0">{item.icon}</span>
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </NavLink>
+          ))}
+        </div>
+
+        {/* CAN Grubu */}
+        <div className="space-y-1">
+          {!collapsed && (
+            <div className="px-3 pb-1 flex items-center gap-2">
+              <div className="h-px flex-1 bg-orange-900/60" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-700 font-mono">{t('nav.canGroup')}</span>
+              <div className="h-px flex-1 bg-orange-900/60" />
+            </div>
+          )}
+          {collapsed && <div className="h-px bg-orange-900/40 mx-2 mb-1" />}
+          {CAN_ITEMS.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={collapsed ? item.label : ''}
+              className={({ isActive }) => canLinkClass(isActive)}
+            >
+              <span className="w-4 text-center text-xs shrink-0">{item.icon}</span>
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </NavLink>
+          ))}
+        </div>
       </nav>
 
       <div className={`${collapsed ? 'px-2' : 'px-4'} py-3 border-t border-gray-800 flex flex-col items-center gap-2`}>

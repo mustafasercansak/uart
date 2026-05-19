@@ -349,7 +349,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [fullLogRef]);
+  }, [fullLogRef, t]);
 
   // ── RECORDING & PLAYBACK ──────────────────────────────────────────────────────
   const startRecording = useCallback(() => {

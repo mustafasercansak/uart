@@ -11,6 +11,9 @@ import HelpPage from './pages/Help';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { useOnboarding } from './hooks/useOnboarding';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import CANDashboard from './pages/can/CANDashboard';
+import CANProfiles from './pages/can/CANProfiles';
+import { CANProvider } from './can/store/CANContext';
 
 function AppRoutes() {
   const { show, dismiss } = useOnboarding();
@@ -24,6 +27,8 @@ function AppRoutes() {
           <Route path="/scenarios" element={<ErrorBoundary><ScenarioEditor /></ErrorBoundary>} />
           <Route path="/designer" element={<ErrorBoundary><PeripheralDesigner /></ErrorBoundary>} />
           <Route path="/templates" element={<ErrorBoundary><TemplateBrowser /></ErrorBoundary>} />
+          <Route path="/can" element={<ErrorBoundary><CANProvider><CANDashboard /></CANProvider></ErrorBoundary>} />
+          <Route path="/can-profiles" element={<ErrorBoundary><CANProvider><CANProfiles /></CANProvider></ErrorBoundary>} />
         </Route>
         <Route path="/help" element={<ErrorBoundary><HelpPage /></ErrorBoundary>} />
       </Routes>

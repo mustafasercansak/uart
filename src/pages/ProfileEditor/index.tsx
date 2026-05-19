@@ -22,7 +22,7 @@ import { FramePreview } from './FramePreview';
 import { FieldEditor } from './FieldEditor';
 import ProfileCompare from '../SimulationDashboard/components/ProfileCompare';
 
-function newField(order: number, t: any): Field {
+function newField(order: number, t: (key: string, params?: Record<string, unknown>) => string): Field {
   return {
     id: uuidv4(),
     name: t('profileEditor.newFieldDefault', { index: order + 1 }),
@@ -34,7 +34,7 @@ function newField(order: number, t: any): Field {
   };
 }
 
-function newProfile(t: any): FrameProfile {
+function newProfile(t: (key: string, params?: Record<string, unknown>) => string): FrameProfile {
   const now = new Date().toISOString();
   const syncId = uuidv4();
   const dataId = uuidv4();
@@ -155,6 +155,7 @@ export default function ProfileEditor() {
     const isNew  = searchParams.get('new') === '1';
     if (editId) {
       const target = profiles.find(p => p.id === editId);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (target) openProfile(target);
     } else if (isNew) {
       createNew();
@@ -272,7 +273,10 @@ export default function ProfileEditor() {
   };
 
   const selectedField = profile?.fields.find((f) => f.id === selectedFieldId) ?? null;
-  const sortedFields = profile ? [...profile.fields].sort((a, b) => a.order - b.order) : [];
+  const sortedFields = useMemo(
+    () => profile ? [...profile.fields].sort((a, b) => a.order - b.order) : [],
+    [profile]
+  );
 
   // BER / Frame timing calculations
   const berStats = useMemo(() => {
@@ -404,7 +408,7 @@ export default function ProfileEditor() {
               >↪</button>
               <button onClick={duplicate} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.copy')}</button>
               <button onClick={() => exportAsJson(profile, `${profile.name}.json`)} className="text-xs font-mono px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 rounded hover:text-gray-200 hover:bg-gray-700 transition-colors">{t('profileEditor.exportJson')}</button>
-              <button onClick={() => setShowBer(v => !v)} className={`text-xs font-mono px-3 py-1.5 rounded border transition-colors ${showBer ? 'bg-amber-900/30 border-amber-700 text-amber-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`} title={t('profileEditor.berTitle')}>BER</button>
+              <button onClick={() => setShowBer(v => !v)} className={`text-xs font-mono px-3 py-1.5 rounded border transition-colors ${showBer ? 'bg-amber-900/30 border-amber-700 text-amber-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`} title={t('profileEditor.berTitle')}>{t('can.bER')}</button>
               {profiles.length >= 2 && (
                 <button onClick={() => setShowCompare(v => !v)} className={`text-xs font-mono px-3 py-1.5 rounded border transition-colors ${showCompare ? 'bg-indigo-900/30 border-indigo-700 text-indigo-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`} title={t('profileEditor.compareProfiles')}>⇆</button>
               )}

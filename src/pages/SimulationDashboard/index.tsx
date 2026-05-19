@@ -81,7 +81,7 @@ export default function SimulationDashboard() {
     ...et,
     label: t(et.key)
   })), [t]);
-  const [profiles, setProfilesStore] = useState<FrameProfile[]>(() => loadProfiles());
+  const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
   const [selectedSnapshotFrame, setSelectedSnapshotFrame] = useState<GeneratedFrame | null>(null);

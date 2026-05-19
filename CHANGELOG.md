@@ -4,6 +4,43 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.6.0] — 2026-05-19
+### 🚌 CAN Bus Simülatörü & UX İyileştirmeleri
+
+#### CAN Bus Modülü (Yeni)
+- **CAN Dashboard**: Gerçek zamanlı CAN bus simülasyonu için tam donanımlı kontrol paneli. Web Worker tabanlı bağımsız simülasyon motoru (`can.worker.ts`), UART modülünden tamamen ayrı `CANProvider` context'i.
+- **Bus Monitor**: Canlı frame akışı, arbitration ve hata frame'leri dahil. Filtre, durdur/başlat/duraklat kontrolleri.
+- **Frame Inspector**: Seçili CAN frame'inin bit-düzeyi detay görünümü — arbitration ID, DLC, data bytes, CRC, EOF.
+- **Nodes Sekmesi**: Düğüm ekleme/düzenleme/silme; her düğüme tıbbi profil (ECG, SpO₂, NIBP vb.), renk, baud rate ve gönderim aralığı atanabilir.
+- **Arbitration Sekmesi**: Çakışma olaylarının kaydı ve kazanan/kaybeden düğüm analizi.
+- **Fault Injection Paneli**: Seçili düğüme hata enjeksiyonu (bit flip, CRC hatası, bus-off); düğüm kurtarma desteği.
+- **Compliance Paneli**: IEC 60601-1 / ISO 11898-1 / CiA 301 uyumluluk kontrolleri.
+- **Automation Sekmesi**: CAN senaryoları için adım tabanlı otomasyon desteği.
+- **Vitals Paneli**: Tıbbi profilli düğümlerden gelen vital değerlerin (BPM, SpO₂, NIBP, sıcaklık) gerçek zamanlı görüntülenmesi.
+- **CANStatBar**: Üst bilgi çubuğu — toplam frame, hata sayısı, bus yükü, baud rate seçici, profil yükleme.
+
+#### CAN Profilleri
+- **CANProfiles Sayfası**: CAN düğüm konfigürasyonlarını profil olarak kaydetme ve yükleme. Sidebar'da ayrı `/can-profiles` rotası.
+- **Profil Depolama**: `localStorage` tabanlı `canProfileStorage` — profil kaydetme, yükleme, silme.
+
+#### Sidebar & Navigasyon
+- CAN bölümü sidebar'a eklendi — turuncu renk teması, `🚌 Dashboard` ve `🗂 Profiles` linkleri.
+- Sidebar grup başlığı `"CAN"` i18n anahtarına bağlandı (`nav.canGroup`).
+- CAN alt menülerinden gereksiz "CAN" öneki kaldırıldı.
+
+#### Bug Fix
+- CAN Dashboard'daki "+" (profil ekleme) butonuna tıklayınca siyah ekran açılıyor ve geri dönülemiyordu. `navigate('/can/profiles')` (var olmayan rota) → `navigate('/can-profiles')` olarak düzeltildi.
+- Log sekmesindeki okunmamış mesaj rozeti kaldırıldı — yüksek frekanslı veri akışında rozet sürekli artarak anlamsız hale geliyordu.
+
+#### i18n
+- `can.*` namespace'i tamamen dolduruldu (~60 anahtar): `busMonitor`, `nodes`, `arbitration`, `log`, `faultInjection`, `compliance`, `automation`, `vitals`, `filter`, `resume`, `clear`, vb.
+- `canProfiles.*` namespace'i eklendi (14 anahtar): `savedProfiles`, `loadToBus`, `hint`, `deleteConfirm`, vb.
+- `nav.canGroup` eklendi.
+- Bozuk unicode dizileri düzeltildi (mojibake): `✔ Recovered`, `IEC 60601-1 · ISO 11898-1 · CiA 301`, `cmH₂O`, `FiO₂`, vb.
+- Tüm değerler hem TR hem EN için tamamlandı; 13/13 i18n testi geçiyor.
+
+---
+
 ## [v1.5.28 — devam] — 2026-05-18
 
 ### UX & Geliştirici Araçları (Unreleased — part of v1.5.28)

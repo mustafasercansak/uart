@@ -82,7 +82,8 @@ const IGNORE_VALUES = new Set([
     'monospace', 'sans-serif', 'serif', 'auto', 'none', 'initial',
     'button', 'submit', 'reset', 'checkbox', 'radio', 'select',
     'info', 'tx', 'rx', 'error', 'pending', 'running', 'stopped', 'paused', 'Started', 'Progress', 'Finished',
-    'HR', 'SpO2', 'RR', 'Temp', 'Pleth', 'BPM', 'Rate', 'Volume', 'Remaining', 'PI', 'FiO2', 'PEEP', 'Tidal Vol', 'Lead-I', 'Lead-II', 'SPO2-Wave',
+    'Disconnected from SLCAN', 'Disconnected from SocketCAN', 'fontFamily=', 'fontWeight=',
+    'HR', 'SpO2', 'spO2', 'systolicBP', 'RR', 'Temp', 'Pleth', 'BPM', 'Rate', 'Volume', 'Remaining', 'PI', 'FiO2', 'PEEP', 'Tidal Vol', 'Lead-I', 'Lead-II', 'SPO2-Wave',
     'INIT_STATE', 'SET_PROFILE', 'SET_SCENARIO', 'SET_OUTPUT_MODE', 'START', 'STOP', 'PAUSE', 'RESUME',
     'SET:', 'RAMP:', 'INJECT_ERROR:', 'Mustafa Sercan Sak', '© 2026 Mustafa Sercan Sak',
     'SpO₂', 'Math.*', 'struct MyData { uint32_t id; ... };', 'BPM > 150',
@@ -159,12 +160,12 @@ function scanFile(filePath: string): HardcodedString[] {
                 !IGNORE_VALUES.has(text.toLowerCase()) &&
                 !/^[0-9\s.,:;/%-]+$/.test(text) &&
                 !/^[0-9.]+(ms|Hz|BPM|MB\/s|s|h|m|sa|dk|sn|%|V|A|W|px|rem|vh|vw|mmHg|cmH2O|mL|mL\/h|L\/min)$/.test(text)) {
-                
+
                 // Filter out code-like fragments often found in JSX text by mistake (e.g. inside brackets)
-                const isCodeLikeText = text.includes('&&') || text.includes('||') || text.includes('==') || 
-                                       text.includes('!=') || text.includes('>') || text.includes('<') ||
-                                       text.includes('?') || text.includes(': ') || text.includes('().') ||
-                                       /^[a-z0-9]+\.[a-z0-9]+$/i.test(text);
+                const isCodeLikeText = text.includes('&&') || text.includes('||') || text.includes('==') ||
+                    text.includes('!=') || text.includes('>') || text.includes('<') ||
+                    text.includes('?') || text.includes(': ') || text.includes('().') ||
+                    /^[a-z0-9]+\.[a-z0-9]+$/i.test(text);
 
                 // Ignore single chars like A, B (labels for cursors etc)
                 if ((text.length > 1 || /[ğüşıöçĞÜŞİÖÇ]/.test(text)) && !isCodeLikeText) {
@@ -217,48 +218,48 @@ function scanFile(filePath: string): HardcodedString[] {
 
             // Ignore if it's likely a technical string
             // Refined Tailwind/Technical detection
-            const isLikelyTailwind = /^[a-z0-9\s\-[\]/:#%().!,><]+$/.test(text) && 
-                                    (text.includes(' ') || text.includes('-') || text.includes(':')) && 
-                                    !/[A-Z]/.test(text) && 
-                                    !/[ğüşıöçĞÜŞİÖÇ]/.test(text);
+            const isLikelyTailwind = /^[a-z0-9\s\-[\]/:#%().!,><]+$/.test(text) &&
+                (text.includes(' ') || text.includes('-') || text.includes(':')) &&
+                !/[A-Z]/.test(text) &&
+                !/[ğüşıöçĞÜŞİÖÇ]/.test(text);
 
-            const isTechnical = /^[A-Z0-9_]+$/.test(text) || 
-                                IGNORE_VALUES.has(text) || 
-                                IGNORE_VALUES.has(text.toLowerCase()) ||
-                                /^[a-z]+[A-Z][a-z]+$/.test(text) || // camelCase
-                                /^[A-Z][a-z]+[A-Z][a-z]+$/.test(text) || // PascalCase
-                                (text.includes('.') && !text.includes(' ')) || // translation keys
-                                /^[a-z0-9-]+$/.test(text) || // kebab-case technical words
-                                /^[a-z]+:[a-z0-9]+$/i.test(text); // field:Name patterns
+            const isTechnical = /^[A-Z0-9_]+$/.test(text) ||
+                IGNORE_VALUES.has(text) ||
+                IGNORE_VALUES.has(text.toLowerCase()) ||
+                /^[a-z]+[A-Z][a-z]+$/.test(text) || // camelCase
+                /^[A-Z][a-z]+[A-Z][a-z]+$/.test(text) || // PascalCase
+                (text.includes('.') && !text.includes(' ')) || // translation keys
+                /^[a-z0-9-]+$/.test(text) || // kebab-case technical words
+                /^[a-z]+:[a-z0-9]+$/i.test(text); // field:Name patterns
 
-            const isCssOrSvg = text.startsWith('hsla(') || 
-                               text.startsWith('rgba(') || 
-                               text.startsWith('rgb(') || 
-                               /^[MLHVCSQTA][0-9\s.,-]+/i.test(text) || 
-                               text.includes('shadow-') ||
-                               text.includes('bg-') ||
-                               text.includes('text-') ||
-                               text.includes('px ') ||
-                               text.includes('deg') ||
-                               text.includes('border-') ||
-                               text.includes('solid ') ||
-                               text.includes('font-');
+            const isCssOrSvg = text.startsWith('hsla(') ||
+                text.startsWith('rgba(') ||
+                text.startsWith('rgb(') ||
+                /^[MLHVCSQTA][0-9\s.,-]+/i.test(text) ||
+                text.includes('shadow-') ||
+                text.includes('bg-') ||
+                text.includes('text-') ||
+                text.includes('px ') ||
+                text.includes('deg') ||
+                text.includes('border-') ||
+                text.includes('solid ') ||
+                text.includes('font-');
 
-            const isCodeLike = text.includes('=>') || 
-                               text.includes('&&') || 
-                               text.includes('||') || 
-                               (text.includes('=') && text.includes(' ')) ||
-                               text.includes('${') ||
-                               text.includes('`') ||
-                               text.includes('return ') ||
-                               text.includes('if (') ||
-                               text.includes('Math.') ||
-                               text.includes('sin(') ||
-                               text.includes('cos(') ||
-                               text.includes('=>') ||
-                               text.includes('!=') ||
-                               text.includes('==') ||
-                               /^[0-9\s.,+\-*/%|&!? :;[\](){}=<>]+$/.test(text);
+            const isCodeLike = text.includes('=>') ||
+                text.includes('&&') ||
+                text.includes('||') ||
+                (text.includes('=') && text.includes(' ')) ||
+                text.includes('${') ||
+                text.includes('`') ||
+                text.includes('return ') ||
+                text.includes('if (') ||
+                text.includes('Math.') ||
+                text.includes('sin(') ||
+                text.includes('cos(') ||
+                text.includes('=>') ||
+                text.includes('!=') ||
+                text.includes('==') ||
+                /^[0-9\s.,+\-*/%|&!? :;[\](){}=<>]+$/.test(text);
 
             const hasUppercase = /[A-Z]/.test(text);
             const hasTurkish = /[ğüşıöçĞÜŞİÖÇ]/.test(text);
@@ -358,6 +359,7 @@ describe('I18n Compliance', () => {
             });
 
             console.log('\n');
+            fs.writeFileSync('findings.json', JSON.stringify(allFindings, null, 2), 'utf8');
         }
 
         // For now, let's just log them and not fail if it's the first run, 

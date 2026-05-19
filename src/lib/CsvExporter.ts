@@ -46,7 +46,7 @@ export function generateCsv(frames: GeneratedFrame[], profile: FrameProfile): st
         }
       }
     } else {
-      let extraCols = headerRow.length - 2;
+      const extraCols = headerRow.length - 2;
       for (let i = 0; i < extraCols; i++) {
         row.push('');
       }

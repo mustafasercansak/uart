@@ -56,7 +56,6 @@ export default function WaveformDesigner() {
   const formulaTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [points, setPoints] = useState<Point[]>([]);
   const setPointsRef = useRef(setPoints);
-  setPointsRef.current = setPoints;
   const prevSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mode, setMode] = useState<'draw' | 'formula' | 'preset' | 'saved'>('draw');

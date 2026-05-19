@@ -673,6 +673,7 @@ const SequenceRunner: React.FC = () => {
     if (state.activeSequenceId) {
       const seq = state.sequences.find(s => s.id === state.activeSequenceId);
       if (seq && seq.id !== activeId) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSteps(seq.steps);
         setSequenceName(seq.name);
         setSequenceGroup(seq.group ?? '');
@@ -691,6 +692,7 @@ const SequenceRunner: React.FC = () => {
         { id: '3', type: 'expect', payload: '55 AA 01 02 03', status: 'idle' },
       ]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeSequenceId, state.sequences]); // activeId ve steps kasıtlı olarak bağımlılıktan çıkarıldı
 
   const addStep = useCallback((type: AutomationStep['type']) => {
@@ -814,7 +816,9 @@ const SequenceRunner: React.FC = () => {
   const allGroups = Array.from(new Set(state.sequences.map(s => s.group ?? ''))).sort();
 
   const toggleSeq = (id: string) => setSelectedIds(prev => {
-    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+    const next = new Set(prev);
+    if (next.has(id)) { next.delete(id); } else { next.add(id); }
+    return next;
   });
 
   const toggleGroup = (group: string) => {

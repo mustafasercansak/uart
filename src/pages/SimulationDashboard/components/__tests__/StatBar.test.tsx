@@ -547,7 +547,7 @@ describe('StatBar', () => {
     );
     const allBtns = screen.getAllByRole('button');
     // Edit button is the small pencil icon next to the profile select, after the + button
-    const editBtn = allBtns.find(b => b.querySelector('[data-lucide="edit-3"], svg') && b !== allBtns[0]);
+    const _editBtn = allBtns.find(b => b.querySelector('[data-lucide="edit-3"], svg') && b !== allBtns[0]);
     // Click the second small icon button (after +)
     const smallIconBtns = allBtns.filter(b => b.className.includes('p-0.5') || (b.querySelector('svg') && b.textContent === ''));
     if (smallIconBtns.length >= 2) {

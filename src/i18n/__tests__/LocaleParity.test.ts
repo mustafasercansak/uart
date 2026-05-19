@@ -5,12 +5,12 @@ import * as path from 'path';
 const EN_PATH = path.resolve('src/i18n/locales/en.json');
 const TR_PATH = path.resolve('src/i18n/locales/tr.json');
 
-function getAllKeys(obj: any, prefix = ''): string[] {
+function getAllKeys(obj: Record<string, unknown>, prefix = ''): string[] {
     return Object.keys(obj).reduce((res: string[], el) => {
         if (Array.isArray(obj[el])) {
             return [...res, prefix + el];
         } else if (typeof obj[el] === 'object' && obj[el] !== null) {
-            return [...res, ...getAllKeys(obj[el], prefix + el + '.')];
+            return [...res, ...getAllKeys(obj[el] as Record<string, unknown>, prefix + el + '.')];
         }
         return [...res, prefix + el];
     }, []);
@@ -36,13 +36,13 @@ describe('I18n Locale Parity', () => {
     });
 
     it('should not have empty values', () => {
-        const flatten = (obj: any, prefix = '') => {
-            let results: Record<string, string> = {};
+        const flatten = (obj: Record<string, unknown>, prefix = '') => {
+            const results: Record<string, string> = {};
             for (const key in obj) {
                 if (typeof obj[key] === 'object' && obj[key] !== null) {
-                    Object.assign(results, flatten(obj[key], prefix + key + '.'));
+                    Object.assign(results, flatten(obj[key] as Record<string, unknown>, prefix + key + '.'));
                 } else {
-                    results[prefix + key] = obj[key];
+                    results[prefix + key] = obj[key] as string;
                 }
             }
             return results;
@@ -63,13 +63,13 @@ describe('I18n Locale Parity', () => {
     });
 
     it('should not have untranslated placeholders (identical values across languages)', () => {
-        const flatten = (obj: any, prefix = '') => {
-            let results: Record<string, string> = {};
+        const flatten = (obj: Record<string, unknown>, prefix = '') => {
+            const results: Record<string, string> = {};
             for (const key in obj) {
                 if (typeof obj[key] === 'object' && obj[key] !== null) {
-                    Object.assign(results, flatten(obj[key], prefix + key + '.'));
+                    Object.assign(results, flatten(obj[key] as Record<string, unknown>, prefix + key + '.'));
                 } else {
-                    results[prefix + key] = obj[key];
+                    results[prefix + key] = obj[key] as string;
                 }
             }
             return results;
