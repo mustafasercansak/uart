@@ -2,70 +2,68 @@
 
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
----
+-## [v1.6.0] — 2026-05-19
+### 🚌 CAN Bus Simulator & UX Enhancements
 
-## [v1.6.0] — 2026-05-19
-### 🚌 CAN Bus Simülatörü & UX İyileştirmeleri
+#### CAN Bus Module (New)
+- **CAN Dashboard**: Fully featured dashboard for real-time CAN bus simulation. Powered by an independent Web Worker-based simulation engine (`can.worker.ts`), utilizing a `CANProvider` context completely decoupled from the UART module.
+- **Bus Monitor**: Live frame stream, including arbitration and error frames. Supports filtering and stop/start/pause controls.
+- **Frame Inspector**: Bit-level detailed view of the selected CAN frame — arbitration ID, DLC, data bytes, CRC, and EOF.
+- **Nodes Tab**: Add, edit, and delete nodes; assign medical profiles (ECG, SpO₂, NIBP, etc.), custom colors, baud rates, and transmission intervals to each node.
+- **Arbitration Tab**: Collisions logging and analysis of winning/losing nodes.
+- **Fault Injection Panel**: Inject faults (bit flips, CRC errors, bus-off) into selected nodes; includes support for node recovery.
+- **Compliance Panel**: IEC 60601-1 / ISO 11898-1 / CiA 301 compliance checks.
+- **Automation Tab**: Step-based automation support for CAN scenarios.
+- **Vitals Panel**: Real-time display of vital values (BPM, SpO₂, NIBP, temperature) received from nodes with medical profiles.
+- **CANStatBar**: Top information bar — displays total frames, error count, bus load, baud rate selector, and profile loader.
 
-#### CAN Bus Modülü (Yeni)
-- **CAN Dashboard**: Gerçek zamanlı CAN bus simülasyonu için tam donanımlı kontrol paneli. Web Worker tabanlı bağımsız simülasyon motoru (`can.worker.ts`), UART modülünden tamamen ayrı `CANProvider` context'i.
-- **Bus Monitor**: Canlı frame akışı, arbitration ve hata frame'leri dahil. Filtre, durdur/başlat/duraklat kontrolleri.
-- **Frame Inspector**: Seçili CAN frame'inin bit-düzeyi detay görünümü — arbitration ID, DLC, data bytes, CRC, EOF.
-- **Nodes Sekmesi**: Düğüm ekleme/düzenleme/silme; her düğüme tıbbi profil (ECG, SpO₂, NIBP vb.), renk, baud rate ve gönderim aralığı atanabilir.
-- **Arbitration Sekmesi**: Çakışma olaylarının kaydı ve kazanan/kaybeden düğüm analizi.
-- **Fault Injection Paneli**: Seçili düğüme hata enjeksiyonu (bit flip, CRC hatası, bus-off); düğüm kurtarma desteği.
-- **Compliance Paneli**: IEC 60601-1 / ISO 11898-1 / CiA 301 uyumluluk kontrolleri.
-- **Automation Sekmesi**: CAN senaryoları için adım tabanlı otomasyon desteği.
-- **Vitals Paneli**: Tıbbi profilli düğümlerden gelen vital değerlerin (BPM, SpO₂, NIBP, sıcaklık) gerçek zamanlı görüntülenmesi.
-- **CANStatBar**: Üst bilgi çubuğu — toplam frame, hata sayısı, bus yükü, baud rate seçici, profil yükleme.
+#### CAN Profiles
+- **CANProfiles Page**: Save and load CAN node configurations as profiles. Integrated into the sidebar as a distinct `/can-profiles` route.
+- **Profile Storage**: `localStorage`-based `canProfileStorage` — handles profile saving, loading, and deletion.
 
-#### CAN Profilleri
-- **CANProfiles Sayfası**: CAN düğüm konfigürasyonlarını profil olarak kaydetme ve yükleme. Sidebar'da ayrı `/can-profiles` rotası.
-- **Profil Depolama**: `localStorage` tabanlı `canProfileStorage` — profil kaydetme, yükleme, silme.
+#### Sidebar & Navigation
+- Added the CAN section to the sidebar with an orange color theme, containing links to `🚌 Dashboard` and `🗂 Profiles`.
+- Bound the sidebar group title `"CAN"` to the i18n key (`nav.canGroup`).
+- Removed redundant "CAN" prefixes from CAN submenus.
 
-#### Sidebar & Navigasyon
-- CAN bölümü sidebar'a eklendi — turuncu renk teması, `🚌 Dashboard` ve `🗂 Profiles` linkleri.
-- Sidebar grup başlığı `"CAN"` i18n anahtarına bağlandı (`nav.canGroup`).
-- CAN alt menülerinden gereksiz "CAN" öneki kaldırıldı.
-
-#### Bug Fix
-- CAN Dashboard'daki "+" (profil ekleme) butonuna tıklayınca siyah ekran açılıyor ve geri dönülemiyordu. `navigate('/can/profiles')` (var olmayan rota) → `navigate('/can-profiles')` olarak düzeltildi.
-- Log sekmesindeki okunmamış mesaj rozeti kaldırıldı — yüksek frekanslı veri akışında rozet sürekli artarak anlamsız hale geliyordu.
+#### Bug Fixes
+- Fixed an issue where clicking the "+" (add profile) button on the CAN Dashboard caused a black screen without any way to return. Corrected `navigate('/can/profiles')` (non-existent route) to `navigate('/can-profiles')`.
+- Removed the unread message badge from the Log tab — under high-frequency data streams, the badge counter incremented endlessly, rendering it meaningless.
 
 #### i18n
-- `can.*` namespace'i tamamen dolduruldu (~60 anahtar): `busMonitor`, `nodes`, `arbitration`, `log`, `faultInjection`, `compliance`, `automation`, `vitals`, `filter`, `resume`, `clear`, vb.
-- `canProfiles.*` namespace'i eklendi (14 anahtar): `savedProfiles`, `loadToBus`, `hint`, `deleteConfirm`, vb.
-- `nav.canGroup` eklendi.
-- Bozuk unicode dizileri düzeltildi (mojibake): `✔ Recovered`, `IEC 60601-1 · ISO 11898-1 · CiA 301`, `cmH₂O`, `FiO₂`, vb.
-- Tüm değerler hem TR hem EN için tamamlandı; 13/13 i18n testi geçiyor.
+- Fully populated the `can.*` namespace (~60 keys): `busMonitor`, `nodes`, `arbitration`, `log`, `faultInjection`, `compliance`, `automation`, `vitals`, `filter`, `resume`, `clear`, etc.
+- Added the `canProfiles.*` namespace (14 keys): `savedProfiles`, `loadToBus`, `hint`, `deleteConfirm`, etc.
+- Added `nav.canGroup`.
+- Fixed corrupted unicode sequences (mojibake): `✔ Recovered`, `IEC 60601-1 · ISO 11898-1 · CiA 301`, `cmH₂O`, `FiO₂`, etc.
+- Completed all values for both TR and EN; all 13/13 i18n tests are passing.
 
 ---
 
-## [v1.5.28 — devam] — 2026-05-18
+## [v1.5.28 — in progress] — 2026-05-18
 
-### UX & Geliştirici Araçları (Unreleased — part of v1.5.28)
+### UX & Developer Tools (Unreleased — part of v1.5.28)
 
-#### Profil Editörü
-- **Profile Compare Modal**: Profil Editörü toolbar'ına "⇆" butonu eklendi. 2+ profil varken tıklayınca tam ekran bir karşılaştırma modalı açılır; mevcut `ProfileCompare` bileşeni kullanılmaktadır.
-- **Frame Timing / BER Paneli**: Toolbar'daki "BER" butonuyla açılıp kapanan bir şerit panel eklendi. Mevcut baud rate, parity, stop bit ve frame boyutuna göre şunları hesaplar: bit/bayt, bit/frame, frame süresi (µs), maksimum FPS, istenen FPS, hat kullanım yüzdesi. İstenen FPS maksimu aşarsa kırmızı uyarı gösterilir.
-- **Profile Etiketleri (Tags)**: Her profile `tags?: string[]` alanı eklendi. UART ayarları satırında etiket girişi mevcut; Enter veya "+" ile eklenip × ile silinir. Sol panelde aktif etiketler filtre butonları olarak görünür — bir etikete tıklayınca yalnızca o etiketli profiller listelenir.
-- **Son Kullanılan Field Tipi**: `FieldEditor`'da bir field tipi değiştirildiğinde seçim `localStorage` içine kaydedilir. Gelecek oturumda en son kullanılan tip hatırlanır.
+#### Profile Editor
+- **Profile Compare Modal**: Added a "⇆" button to the Profile Editor toolbar. When 2+ profiles exist, clicking it opens a full-screen comparison modal, reusing the existing `ProfileCompare` component.
+- **Frame Timing / BER Panel**: Added a toggleable ribbon panel opened via the "BER" button on the toolbar. Based on the active baud rate, parity, stop bits, and frame size, it calculates: bits/byte, bits/frame, frame duration (µs), maximum FPS, requested FPS, and line utilization percentage. Shows a red warning if requested FPS exceeds the maximum.
+- **Profile Tags**: Added a `tags?: string[]` field to each profile. Added tag input in the UART settings row; tags can be added via Enter or "+" and deleted via "×". Active tags appear as filter buttons in the left panel — clicking a tag filters the list to show only profiles with that tag.
+- **Last Used Field Type**: In `FieldEditor`, when a field type is changed, the selection is saved in `localStorage`. The last used type is remembered in the next session.
 
-#### Frame Monitörü
-- **Frame Recorder (CSV)**: TX geçmişi header'ına "⏺" kaydı başlat / "⏹" durdur butonları eklendi. Kayıt sırasında toplanan frame'ler `uart_frames_<timestamp>.csv` adıyla indirilen bir CSV'ye aktarılır (frame, timestamp_ms, bytes, hex, errors sütunları).
-- **Frame Flaş Animasyonu**: Her yeni frame geldiğinde ilgili satır 400 ms süreyle yeşilimsi bir parlamayla vurgulanır.
+#### Frame Monitor
+- **Frame Recorder (CSV)**: Added "⏺" start recording / "⏹" stop recording buttons to the TX history header. Captured frames are exported to a CSV file named `uart_frames_<timestamp>.csv` (columns: frame, timestamp_ms, bytes, hex, errors).
+- **Frame Flash Animation**: Each incoming frame briefly highlights its corresponding row with a greenish flash animation for 400 ms.
 
 #### Dashboard
-- **Klavye Kısayolları Modalı**: `?` tuşuyla (input dışında) açılıp kapanan bir kısayol cheatsheet eklendi — simülasyon, editör, frame monitörü ve analiz gruplarını içerir. Dışarı tıklayarak veya Esc ile kapatılabilir.
+- **Keyboard Shortcuts Modal**: Added a shortcuts cheatsheet modal toggleable via the `?` key (when not focusing an input), covering simulation, editor, frame monitor, and analysis groups. Can be closed by clicking outside or pressing Esc.
 
-#### Topluluk Şablon Kütüphanesi
-- **Favoriler**: Her şablon kartında ☆/★ butonu eklendi. Favori IDs'leri `localStorage` içinde saklanır. Şablonlar favori olanlara göre otomatik sıralanır; "★ Favoriler" filtre butonu yalnızca yıldızlananları gösterir.
+#### Community Template Library
+- **Favorites**: Added a ☆/★ button to each template card. Favorite IDs are stored in `localStorage`. Templates are automatically sorted based on favorites; the "★ Favorites" filter button displays only starred templates.
 
 #### i18n
-- `frameMonitor`: 2 yeni anahtar (`recordStart`, `recordStop`)
-- `templateBrowser.community`: 4 yeni anahtar (`favorites`, `showFavorites`, `favorite`, `unfavorite`)
-- `profileEditor`: 10 yeni anahtar (`tags`, `addTag`, `compareProfiles`, `berTitle`, `berBitsPerByte`, `berBitsPerFrame`, `berFrameTime`, `berMaxFps`, `berRequestedFps`, `berUtil`)
-- `shortcuts`: Tüm kısayol grupları için 25 yeni anahtar (yeni namespace)
+- `frameMonitor`: 2 new keys (`recordStart`, `recordStop`)
+- `templateBrowser.community`: 4 new keys (`favorites`, `showFavorites`, `favorite`, `unfavorite`)
+- `profileEditor`: 10 new keys (`tags`, `addTag`, `compareProfiles`, `berTitle`, `berBitsPerByte`, `berBitsPerFrame`, `berFrameTime`, `berMaxFps`, `berRequestedFps`, `berUtil`)
+- `shortcuts`: 25 new keys for all shortcut groups (new namespace)
 
 ---
 
@@ -102,17 +100,17 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 - **Test Coverage (SequenceRunner)**: 12 new tests (43 total): import/export button title assertions, repeat input presence and default-value checks, `×` label rendering, and coverage of all 6 new i18n keys.
 - **Documentation**: Sections 13.1.4 (Import/Export JSON) and 13.1.5 (JUnit XML Export) added to `GUIDE_TR.md` and `GUIDE_EN.md`. Step types table and Single Sequence workflow updated to document the repeat (×N) feature.
 
-#### Profil Düzenleyici & Şablon Kütüphanesi
-- **YS2000A Patient Monitor Template**: New 14-byte clinical frame added to the Template Library — Sync (0xAAAA, 2B), BPM (1B), SpO₂ (1B), RR (1B), Temp (2B, ×10), Lead-I (2B ECG), Lead-II (2B ECG), SpO₂-Wave (1B), Alarms flags (1B), XOR CRC (1B). Baud 115200, 40 ms interval (~25 Hz). Ships with two ready-to-run scenarios: **Bradikardi Atağı** (BPM ramp to 38 → alarm bit → recovery) and **SpO₂ Desatürasyonu** (SpO₂ ramp to 88 → SpO₂ Low flag → recovery).
+#### Profile Editor & Template Library
+- **YS2000A Patient Monitor Template**: New 14-byte clinical frame added to the Template Library — Sync (0xAAAA, 2B), BPM (1B), SpO₂ (1B), RR (1B), Temp (2B, ×10), Lead-I (2B ECG), Lead-II (2B ECG), SpO₂-Wave (1B), Alarms flags (1B), XOR CRC (1B). Baud 115200, 40 ms interval (~25 Hz). Ships with two ready-to-run scenarios: **Bradycardia Attack** (BPM ramp to 38 → alarm bit → recovery) and **SpO₂ Desaturation** (SpO₂ ramp to 88 → SpO₂ Low flag → recovery).
 - **Per-Field Alarm Thresholds in Profile Editor**: Every `range`, `waveform`, `ramp`, and `fixed` field can now have an optional **Low Threshold** (`alarmLow`) and **High Threshold** (`alarmHigh`). A value outside that range is considered an alarm condition. The thresholds are stored on the `Field` type (`src/types/field.ts`) and are preserved correctly through localStorage round-trips.
 - **Storage Bug Fix — alarmLow/alarmHigh lost on reload**: `normalizeField` in `storage.ts` was silently dropping `alarmLow` and `alarmHigh` when loading profiles from localStorage. Fixed by spreading them conditionally with `Number.isFinite` guard.
 - **ProfileEditorModal Removed**: The inline modal-based profile editor on the Simulation Dashboard has been removed. "Add Profile" and "Edit Profile" now navigate to the full `/profiles` page via URL params (`?new=1&from=dashboard` / `?edit=<id>&from=dashboard`). The ProfileEditor auto-opens the correct dialog on mount and returns to `/` after saving. A "← Dashboard" back button is shown when navigating from the dashboard.
 - **i18n (profileEditor)**: 7 new keys added to `en.json` and `tr.json`: `alarmThresholds`, `alarmLow`, `alarmHigh`, `alarmThresholdsHint`, `visualizer.alarmBrady`, `visualizer.alarmTachy`, `visualizer.alarmHypox`.
 
-#### Kontrol Paneli
+#### Control Panel
 - **Colored Alarm Zones on Field Override Sliders**: The Override sliders in the Control Panel now render a layered custom track (red – green – red) based on each field's `alarmLow` / `alarmHigh` thresholds. Zone padding (25% of span, min 3) ensures red zones are always visible even when thresholds are at the slider extremes. Alarm zones are dim (opacity 22%) when the value is normal and bright (opacity 85%) when the value enters the alarm zone. A pulsing `!` badge and rose label appear on the alarming field. When any field is in alarm, all other range-field labels turn dim rose to signal global alarm state.
 
-#### 3D Görselleştirici
+#### 3D Visualizer
 - **Profile Dropdown in Visualizer Tab**: A profile selector `<select>` is now embedded in the 3D Visualizer's top-right HUD, allowing the active profile to be changed without leaving the Visualizer tab.
 - **3D Visualizer Performance Improvements**: Shadow map 2048×2048 → 1024×1024 (4× less GPU cost); pixel ratio locked to 1 (no HiDPI overhead); `THREE.RectAreaLight` replaced with `THREE.PointLight`; `logarithmicDepthBuffer` disabled; per-device mesh `traverse` now only runs when active/selection state actually changes.
 - **3D Visualizer Deprecation Fixes**: `THREE.Clock` → `THREE.Timer`; `THREE.PCFSoftShadowMap` → `THREE.PCFShadowMap`.
