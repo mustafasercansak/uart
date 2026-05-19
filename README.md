@@ -17,6 +17,7 @@
 - **Dual Operation Modes:** Seamlessly switch between clinical **Standard Mode** and engineering-focused **Pro (Analyzer) Mode**.
 - **17+ Specialized Modules:** Bit-level logic analysis, protocol diffing, signal integrity simulation, 3D visualization, and more.
 - **Automation & Scenarios:** Scripted clinical events and automated handshakes for comprehensive HIL (Hardware-in-the-Loop) testing.
+- **CAN Bus Tooling:** Dedicated CAN Dashboard with node simulation, arbitration visibility, fault injection, profiles, and passive Smart Listen discovery.
 - **Medical Validation:** Integrated compliance suite with automated PDF report generation for regulatory auditing.
 - **Enterprise Updates:** Built-in auto-updater system for seamless delivery of new protocol definitions and engineering tools.
 - **Cross-Platform Excellence:** High-performance Rust-based core running on Windows, macOS, and Linux.

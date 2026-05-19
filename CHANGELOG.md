@@ -2,7 +2,19 @@
 
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
--## [v1.6.0] — 2026-05-19
+## [Unreleased] — CAN Smart Listen
+
+### CAN Auto Baud Detection & Protocol Sniffer
+- **Smart Listen overlay**: Added a passive discovery overlay to the CAN Dashboard. It scans observed bus traffic without transmitting frames or changing existing traffic.
+- **CAN protocol identification**: Detects Standard 11-bit and Extended 29-bit CAN traffic from captured frames and arbitration identifiers.
+- **Baud rate locking**: Estimates and locks to common CAN bit rates (`125k`, `250k`, `500k`, `1M`) with a 5% margin requirement before enabling synchronization.
+- **Sync and Connect flow**: Shows a **Sync and Connect** button once the detector has sufficient confidence, then applies the detected CAN baud rate and returns the user to the Bus Monitor.
+- **Shared detector tests**: Added focused test coverage for baud estimation, CAN Standard/Extended detection, Modbus RTU signature detection, and lock criteria.
+- **i18n**: Added `smartListen.*` translations in English and Turkish.
+
+---
+
+## [v1.6.0] — 2026-05-19
 ### 🚌 CAN Bus Simulator & UX Enhancements
 
 #### CAN Bus Module (New)

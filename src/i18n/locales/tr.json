@@ -8,6 +8,7 @@
     "canDashboard": "CAN Gösterge Paneli",
     "canProfiles": "CAN Profilleri",
     "canGroup": "CAN",
+    "help": "Yardım",
     "subtitle": "Sensör Simülatörü",
     "expand": "Genişlet",
     "collapse": "Daralt",
@@ -103,6 +104,22 @@
     "tcpServerMode": "TCP SUNUCU",
     "tcpListen": "DİNLE",
     "examplePort": "COM1 / /dev/tty"
+  },
+  "smartListen": {
+    "button": "Akıllı Dinle",
+    "scanning": "Taranıyor...",
+    "locked": "Parametreler kilitlendi",
+    "passive": "Yalnızca pasif dinleme",
+    "protocol": "Protokol",
+    "baudRate": "Baud",
+    "confidence": "Güven",
+    "waiting": "Bekleniyor",
+    "syncConnect": "Senkronize Et ve Bağlan",
+    "protocolUnknown": "Bilinmeyen",
+    "protocolUart": "UART",
+    "protocolModbusRtu": "Modbus RTU",
+    "protocolCanStandard": "CAN Standart",
+    "protocolCanExtended": "CAN Genişletilmiş"
   },
   "rxMonitor": {
     "title": "RX Geçmişi",
@@ -1824,6 +1841,7 @@
     "nmtState": "NMT Başlangıç Durumu",
     "nmtOperational": "Operasyonel",
     "nmtPreOperational": "Ön-Operasyonel",
-    "nmtStopped": "Durdurulmuş"
+    "nmtStopped": "Durdurulmuş",
+    "invalidProfileFormat": "Geçersiz profil biçimi"
   }
 }

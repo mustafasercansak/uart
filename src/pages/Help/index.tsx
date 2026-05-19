@@ -107,7 +107,9 @@ const HelpPage: React.FC = () => {
   const scrollToSection = useCallback((id: string) => {
     const root = contentRef.current;
     if (!root) return;
-    const el = root.querySelector(`[id="${id}"]`) ?? root.querySelector(`a[name="${id}"]`);
+    const idSelector = `[id="${id}"]`;
+    const anchorSelector = `a[name="${id}"]`;
+    const el = root.querySelector(idSelector) ?? root.querySelector(anchorSelector);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }

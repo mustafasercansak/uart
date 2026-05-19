@@ -21,15 +21,23 @@ interface NodeEditForm {
   nodeId: string;
   frameFormat: 'standard' | 'extended';
   dlc: string;
-  nmtInitialState: 'operational' | 'pre-operational' | 'stopped';
+  nmtInitialState: NMTInitialState;
   priority: string;
 }
 
+type NMTInitialState = 'operational' | 'pre-operational' | 'stopped';
+
 const DEFAULT_FORM: NodeEditForm = {
-  name: '', profile: 'vital-monitor', arbitrationHex: '100',
-  intervalMs: '50', isActive: true, nodeId: '1',
-  frameFormat: 'standard', dlc: '8',
-  nmtInitialState: 'operational', priority: '0',
+  name: '',
+  profile: 'vital-monitor',
+  arbitrationHex: '100',
+  intervalMs: '50',
+  isActive: true,
+  nodeId: '1',
+  frameFormat: 'standard',
+  dlc: '8',
+  nmtInitialState: 'operational',
+  priority: '0',
 };
 
 function nodeToForm(n: CANProfileNode): NodeEditForm {
@@ -59,7 +67,7 @@ function formToNode(form: NodeEditForm, base: Partial<CANProfileNode> = {}): Par
   if (isNaN(interval) || interval < 1) return null;
   return {
     ...base,
-    name: form.name.trim() || (base.name ?? 'Node'),
+    name: form.name.trim() || (base.name ?? 'node'),
     profile: form.profile,
     color: MEDICAL_PROFILE_COLORS[form.profile],
     baseArbitrationId: arbId,
@@ -140,7 +148,7 @@ function NodeForm({ form, onChange, onSave, onCancel, saveLabel, autoFocus = tru
             {t('canProfiles.arbId')} {form.frameFormat === 'standard' ? '(0x000–0x7FF)' : '(0x00000000–0x1FFFFFFF)'}
           </div>
           <div className="flex items-center gap-1 bg-gray-800/60 border border-white/10 rounded-lg px-2 py-1.5">
-            <span className="text-[10px] text-gray-600">0x</span>
+            <span className="text-[10px] text-gray-600">{'0x'}</span>
             <input
               value={form.arbitrationHex}
               onChange={e => onChange({ ...form, arbitrationHex: e.target.value.toUpperCase().replace(arbPattern, '').slice(0, arbLimit) })}
@@ -186,7 +194,7 @@ function NodeForm({ form, onChange, onSave, onCancel, saveLabel, autoFocus = tru
         <div className="text-[9px] text-gray-600 mb-1 uppercase tracking-wide">{t('canProfiles.nmtState')}</div>
         <select
           value={form.nmtInitialState}
-          onChange={e => onChange({ ...form, nmtInitialState: e.target.value as NodeEditForm['nmtInitialState'] })}
+          onChange={e => onChange({ ...form, nmtInitialState: e.target.value as NMTInitialState })}
           className="w-full bg-gray-800/60 border border-white/10 text-gray-300 text-[11px] px-2 py-1.5 rounded-lg focus:border-cyan-500 outline-none"
         >
           <option value="operational">{t('canProfiles.nmtOperational')}</option>
@@ -358,7 +366,7 @@ export default function CANProfiles() {
     reader.onload = (ev) => {
       try {
         const raw = JSON.parse(ev.target?.result as string) as CANProfile;
-        if (!raw.nodes || !raw.baudRate) throw new Error('Invalid profile format');
+        if (!raw.nodes || !raw.baudRate) throw new Error(t('canProfiles.invalidProfileFormat'));
         const imported: CANProfile = {
           ...raw,
           id: crypto.randomUUID(),

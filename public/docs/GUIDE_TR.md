@@ -1139,7 +1139,24 @@ Uygulamayla birlikte dört yerleşik profil gelir: **YBÜ**, **Acil Servis**, **
 
 ---
 
-### 20.9 Klavye Kısayolları
+### 20.9 Akıllı Dinleme
+
+**Akıllı Dinleme**, bilinmeyen donanım yapılandırmaları için pasif CAN keşif modudur. CAN Gösterge Paneli'ni açın ve sağ alt köşedeki **Akıllı Dinle** düğmesine tıklayın.
+
+Tarayıcı yalnızca zaten yakalanmış trafiği gözlemler. Frame enjekte etmez, düğümleri sıfırlamaz, trafiği acknowledge etmez ve çalışan bus'ı değiştirmez.
+
+| Tespit | Davranış |
+|--------|----------|
+| Baud hızı | Yaygın CAN hızlarına kilitlenir: 125k, 250k, 500k veya 1M bps |
+| Marjin | Tespit edilen hızın bilinen hıza en fazla %5 uzaklıkta olmasını ister |
+| Protokol | Standart 11-bit CAN ile Genişletilmiş 29-bit CAN trafiğini ayırır |
+| Güven | Yeterli frame gözlenmeden **Senkronize Et ve Bağlan** düğmesini etkinleştirmez |
+
+Kilitlendikten sonra **Senkronize Et ve Bağlan** düğmesine basarak tespit edilen baud hızını uygulayın ve Bus Monitörü'ne dönün.
+
+---
+
+### 20.10 Klavye Kısayolları
 
 CAN Gösterge Paneli'nde herhangi bir yerde **?** tuşuna basarak kısayol sayfasını açın.
 
