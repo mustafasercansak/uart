@@ -44,6 +44,10 @@ self.onmessage = (event: MessageEvent) => {
       engine.stop();
       break;
 
+    case 'CAN_CLEAR_FRAMES':
+      engine.clearFrames();
+      break;
+
     case 'CAN_PAUSE':
       engine.pause();
       break;

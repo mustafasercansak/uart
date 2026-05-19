@@ -3,7 +3,7 @@ import { Zap, RotateCcw, AlertTriangle, Wifi } from 'lucide-react';
 import type { CANNode, CANFaultType } from '../../../../can/types/CANNode';
 import { FAULT_LABELS, FAULT_SEVERITY } from '../../../../can/types/CANNode';
 import type { CANErrorInjectionConfig, CANErrorInjectionState, CANInjectedErrorType, CANInjectionTriggerMode } from '../../../../can/types/CANErrorInjection';
-import { CAN_INJECTED_ERROR_LABELS } from '../../../../can/types/CANErrorInjection';
+import { CAN_INJECTED_ERROR_LABEL_KEYS, CAN_INJECTION_TRIGGER_LABEL_KEYS } from '../../../../can/types/CANErrorInjection';
 import { useTranslation } from '../../../../i18n/context';
 
 interface FaultInjectionPanelProps {
@@ -85,15 +85,15 @@ export function FaultInjectionPanel({
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>
             <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">
-              CAN Error Injection
+              {t('can.errorInjectionTitle')}
             </div>
             <div className="text-[10px] font-mono text-gray-500 mt-0.5">
-              Inject protocol violations into active bus traffic.
+              {t('can.errorInjectionSubtitle')}
             </div>
           </div>
           {errorInjection.oneTimeArmed && (
             <span className="text-[8px] font-mono text-amber-300 border border-amber-700 bg-amber-950/30 rounded px-1.5 py-0.5">
-              ARMED
+              {t('can.errorInjectionArmed')}
             </span>
           )}
         </div>
@@ -109,7 +109,7 @@ export function FaultInjectionPanel({
                   : 'border-gray-800 text-gray-500 hover:border-gray-600'
               }`}
             >
-              {CAN_INJECTED_ERROR_LABELS[type]}
+              {t(CAN_INJECTED_ERROR_LABEL_KEYS[type])}
             </button>
           ))}
         </div>
@@ -125,7 +125,7 @@ export function FaultInjectionPanel({
                   : 'border-gray-800 text-gray-600 hover:text-gray-300'
               }`}
             >
-              {mode.replace('-', ' ')}
+              {t(CAN_INJECTION_TRIGGER_LABEL_KEYS[mode])}
             </button>
           ))}
         </div>
@@ -136,13 +136,13 @@ export function FaultInjectionPanel({
             disabled={!isRunning}
             className="w-full px-3 py-2 rounded-lg border border-amber-700/60 text-amber-300 hover:bg-amber-950/30 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-mono transition-colors"
           >
-            Arm Next Packet Injection
+            {t('can.armNextPacketInjection')}
           </button>
         )}
 
         {errorInjection.config.triggerMode === 'periodic' && (
           <label className="block text-[10px] font-mono text-gray-500">
-            Every X packets
+            {t('can.everyXPackets')}
             <input
               type="number"
               min={1}
@@ -155,7 +155,7 @@ export function FaultInjectionPanel({
 
         {errorInjection.config.triggerMode === 'random' && (
           <label className="block text-[10px] font-mono text-gray-500">
-            Random probability: {errorInjection.config.randomRate}%
+            {t('can.randomProbability')}: {errorInjection.config.randomRate}%
             <input
               type="range"
               min={1}
@@ -169,21 +169,21 @@ export function FaultInjectionPanel({
 
         <div className="grid grid-cols-3 gap-1.5 mt-3">
           <div className="rounded border border-gray-800 bg-gray-900/40 px-2 py-1">
-            <div className="text-[8px] font-mono text-gray-600 uppercase">Errors Sent</div>
+            <div className="text-[8px] font-mono text-gray-600 uppercase">{t('can.errorsSent')}</div>
             <div className="text-sm font-black text-rose-400">{errorInjection.stats.errorsInjected}</div>
           </div>
           <div className="rounded border border-gray-800 bg-gray-900/40 px-2 py-1">
-            <div className="text-[8px] font-mono text-gray-600 uppercase">Successful</div>
+            <div className="text-[8px] font-mono text-gray-600 uppercase">{t('can.successfulPackets')}</div>
             <div className="text-sm font-black text-emerald-400">{errorInjection.stats.successfulPackets}</div>
           </div>
           <div className="rounded border border-gray-800 bg-gray-900/40 px-2 py-1">
-            <div className="text-[8px] font-mono text-gray-600 uppercase">Packets</div>
+            <div className="text-[8px] font-mono text-gray-600 uppercase">{t('can.packetCount')}</div>
             <div className="text-sm font-black text-gray-300">{errorInjection.stats.totalPackets}</div>
           </div>
         </div>
 
         <div className="mt-2 text-[9px] font-mono text-gray-600">
-          Terminal log entries are marked with "Injected Errors".
+          {t('can.injectedErrorsLogHint')}
         </div>
       </div>
 

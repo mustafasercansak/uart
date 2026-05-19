@@ -156,6 +156,29 @@ export class CANSimulationEngine {
     this.emitStateUpdate({ errorInjection: this.state.errorInjection });
   }
 
+  public clearFrames(): void {
+    this.state.recentFrames = [];
+    this.state.frameCount = 0;
+    this.state.errorCount = 0;
+    this.state.arbitrationEvents = [];
+    this.state.errorInjection = {
+      ...this.state.errorInjection,
+      stats: {
+        totalPackets: 0,
+        successfulPackets: 0,
+        errorsInjected: 0,
+      },
+      oneTimeArmed: false,
+    };
+    this.emitStateUpdate({
+      recentFrames: [],
+      frameCount: 0,
+      errorCount: 0,
+      arbitrationEvents: [],
+      errorInjection: this.state.errorInjection,
+    });
+  }
+
   public injectFault(nodeId: number, fault: CANFaultType): void {
     const node = this.state.nodes.find(n => n.id === nodeId);
     if (!node) return;

@@ -204,7 +204,11 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const selectNode   = useCallback((nodeId: number | null) => dispatch({ type: 'CAN_SELECT_NODE', nodeId }), []);
   const selectFrame  = useCallback((uid: string | null)    => dispatch({ type: 'CAN_SELECT_FRAME', uid }), []);
   const setFilter    = useCallback((filter: string)         => dispatch({ type: 'CAN_SET_FILTER', filter }), []);
-  const clearFrames  = useCallback(() => { send({ type: 'CAN_STOP' }); dispatch({ type: 'CAN_CLEAR_FRAMES' }); }, [send]);
+  const clearFrames  = useCallback(() => {
+    send({ type: 'CAN_STOP' });
+    send({ type: 'CAN_CLEAR_FRAMES' });
+    dispatch({ type: 'CAN_CLEAR_FRAMES' });
+  }, [send]);
   const toggleArbitrationDisplay = useCallback(() => dispatch({ type: 'CAN_TOGGLE_ARBITRATION_DISPLAY' }), []);
   const toggleErrorDisplay       = useCallback(() => dispatch({ type: 'CAN_TOGGLE_ERROR_DISPLAY' }), []);
   const injectFault  = useCallback((nodeId: number, fault: CANFaultType) => send({ type: 'CAN_INJECT_FAULT', nodeId, fault }), [send]);
