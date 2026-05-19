@@ -1,5 +1,6 @@
 import type { CANFrame, CANArbitrationEvent } from './CANFrame';
 import type { CANNode, CANFaultType } from './CANNode';
+import type { CANErrorInjectionState } from './CANErrorInjection';
 import type { OutputMode } from '../../types';
 
 export type CANBusStatus = 'stopped' | 'running' | 'paused';
@@ -44,6 +45,7 @@ export interface CANBusState {
   displayFilter: string;
   showArbitrationEvents: boolean;
   showErrorFrames: boolean;
+  errorInjection: CANErrorInjectionState;
 }
 
 // Re-export referenced types so consumers only need one import path

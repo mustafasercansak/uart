@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Zap, RotateCcw, AlertTriangle, Wifi } from 'lucide-react';
 import type { CANNode, CANFaultType } from '../../../../can/types/CANNode';
 import { FAULT_LABELS, FAULT_SEVERITY } from '../../../../can/types/CANNode';
+import type { CANErrorInjectionConfig, CANErrorInjectionState, CANInjectedErrorType, CANInjectionTriggerMode } from '../../../../can/types/CANErrorInjection';
+import { CAN_INJECTED_ERROR_LABELS } from '../../../../can/types/CANErrorInjection';
 import { useTranslation } from '../../../../i18n/context';
 
 interface FaultInjectionPanelProps {
@@ -10,6 +12,10 @@ interface FaultInjectionPanelProps {
   onRecover: (nodeId: number) => void;
   onSelectNode: (nodeId: number | null) => void;
   selectedNodeId: number | null;
+  errorInjection: CANErrorInjectionState;
+  onSetErrorInjectionConfig: (config: CANErrorInjectionConfig) => void;
+  onArmErrorInjection: () => void;
+  isRunning: boolean;
 }
 
 const CLINICAL_FAULTS: CANFaultType[] = [
@@ -19,6 +25,8 @@ const CLINICAL_FAULTS: CANFaultType[] = [
 ];
 
 const NETWORK_FAULTS: CANFaultType[] = ['bus-off', 'freeze', 'noise-burst'];
+const PROTOCOL_ERRORS: CANInjectedErrorType[] = ['crc-corruption', 'form-error', 'ack-error', 'bit-stuffing'];
+const TRIGGER_MODES: CANInjectionTriggerMode[] = ['one-time', 'periodic', 'random'];
 
 const SEVERITY_STYLE: Record<string, string> = {
   critical: 'border-red-700/60 text-red-400 hover:bg-red-950/40 bg-red-950/20',
@@ -34,6 +42,7 @@ const ACTIVE_STYLE: Record<string, string> = {
 
 export function FaultInjectionPanel({
   nodes, onInject, onRecover, onSelectNode, selectedNodeId,
+  errorInjection, onSetErrorInjectionConfig, onArmErrorInjection, isRunning,
 }: FaultInjectionPanelProps) {
   const { t } = useTranslation();
   const [pendingFault, setPendingFault] = useState<CANFaultType | null>(null);
@@ -57,8 +66,127 @@ export function FaultInjectionPanel({
     setPendingFault(null);
   };
 
+  const patchErrorConfig = (patch: Partial<CANErrorInjectionConfig>) => {
+    onSetErrorInjectionConfig({ ...errorInjection.config, ...patch });
+  };
+
+  const toggleProtocolError = (type: CANInjectedErrorType) => {
+    patchErrorConfig({
+      enabledTypes: {
+        ...errorInjection.config.enabledTypes,
+        [type]: !errorInjection.config.enabledTypes[type],
+      },
+    });
+  };
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
+      <div className="p-3 border-b border-gray-800/60 bg-gray-950/40">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">
+              CAN Error Injection
+            </div>
+            <div className="text-[10px] font-mono text-gray-500 mt-0.5">
+              Inject protocol violations into active bus traffic.
+            </div>
+          </div>
+          {errorInjection.oneTimeArmed && (
+            <span className="text-[8px] font-mono text-amber-300 border border-amber-700 bg-amber-950/30 rounded px-1.5 py-0.5">
+              ARMED
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          {PROTOCOL_ERRORS.map(type => (
+            <button
+              key={type}
+              onClick={() => toggleProtocolError(type)}
+              className={`px-2 py-1.5 rounded-lg border text-[10px] font-mono text-left transition-colors ${
+                errorInjection.config.enabledTypes[type]
+                  ? 'border-orange-500/70 bg-orange-950/40 text-orange-300'
+                  : 'border-gray-800 text-gray-500 hover:border-gray-600'
+              }`}
+            >
+              {CAN_INJECTED_ERROR_LABELS[type]}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-1 mb-3">
+          {TRIGGER_MODES.map(mode => (
+            <button
+              key={mode}
+              onClick={() => patchErrorConfig({ triggerMode: mode })}
+              className={`px-2 py-1 rounded border text-[9px] font-mono uppercase transition-colors ${
+                errorInjection.config.triggerMode === mode
+                  ? 'border-cyan-600 bg-cyan-950/40 text-cyan-300'
+                  : 'border-gray-800 text-gray-600 hover:text-gray-300'
+              }`}
+            >
+              {mode.replace('-', ' ')}
+            </button>
+          ))}
+        </div>
+
+        {errorInjection.config.triggerMode === 'one-time' && (
+          <button
+            onClick={onArmErrorInjection}
+            disabled={!isRunning}
+            className="w-full px-3 py-2 rounded-lg border border-amber-700/60 text-amber-300 hover:bg-amber-950/30 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-mono transition-colors"
+          >
+            Arm Next Packet Injection
+          </button>
+        )}
+
+        {errorInjection.config.triggerMode === 'periodic' && (
+          <label className="block text-[10px] font-mono text-gray-500">
+            Every X packets
+            <input
+              type="number"
+              min={1}
+              value={errorInjection.config.periodicEvery}
+              onChange={(event) => patchErrorConfig({ periodicEvery: Number(event.target.value) || 1 })}
+              className="mt-1 w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 text-gray-200"
+            />
+          </label>
+        )}
+
+        {errorInjection.config.triggerMode === 'random' && (
+          <label className="block text-[10px] font-mono text-gray-500">
+            Random probability: {errorInjection.config.randomRate}%
+            <input
+              type="range"
+              min={1}
+              max={100}
+              value={errorInjection.config.randomRate}
+              onChange={(event) => patchErrorConfig({ randomRate: Number(event.target.value) })}
+              className="mt-2 w-full accent-orange-500"
+            />
+          </label>
+        )}
+
+        <div className="grid grid-cols-3 gap-1.5 mt-3">
+          <div className="rounded border border-gray-800 bg-gray-900/40 px-2 py-1">
+            <div className="text-[8px] font-mono text-gray-600 uppercase">Errors Sent</div>
+            <div className="text-sm font-black text-rose-400">{errorInjection.stats.errorsInjected}</div>
+          </div>
+          <div className="rounded border border-gray-800 bg-gray-900/40 px-2 py-1">
+            <div className="text-[8px] font-mono text-gray-600 uppercase">Successful</div>
+            <div className="text-sm font-black text-emerald-400">{errorInjection.stats.successfulPackets}</div>
+          </div>
+          <div className="rounded border border-gray-800 bg-gray-900/40 px-2 py-1">
+            <div className="text-[8px] font-mono text-gray-600 uppercase">Packets</div>
+            <div className="text-sm font-black text-gray-300">{errorInjection.stats.totalPackets}</div>
+          </div>
+        </div>
+
+        <div className="mt-2 text-[9px] font-mono text-gray-600">
+          Terminal log entries are marked with "Injected Errors".
+        </div>
+      </div>
+
       {/* Node selector */}
       <div className="p-3 border-b border-gray-800/60">
         <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest mb-2">

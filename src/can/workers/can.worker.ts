@@ -8,6 +8,7 @@ import { CANSimulationEngine } from '../engines/CANSimulationEngine';
 import { INITIAL_CAN_STATE } from '../store/canReducer';
 import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANBaudRate } from '../types/CANBusState';
+import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
 
 const engine = new CANSimulationEngine(structuredClone(INITIAL_CAN_STATE));
 
@@ -81,6 +82,14 @@ self.onmessage = (event: MessageEvent) => {
 
     case 'CAN_SEND_FRAME':
       engine.sendCustomFrame(msg.arbitrationId as number, msg.data as number[]);
+      break;
+
+    case 'CAN_SET_ERROR_INJECTION_CONFIG':
+      engine.setErrorInjectionConfig(msg.config as CANErrorInjectionConfig);
+      break;
+
+    case 'CAN_ARM_ERROR_INJECTION':
+      engine.armOneTimeErrorInjection();
       break;
   }
 };

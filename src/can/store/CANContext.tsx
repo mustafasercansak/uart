@@ -4,6 +4,7 @@ import { canReducer, INITIAL_CAN_STATE, type CANAction } from './canReducer';
 import type { CANBusState, CANBaudRate } from '../types/CANBusState';
 import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANFrame } from '../types/CANFrame';
+import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
 
 interface CANContextValue {
   state: CANBusState;
@@ -32,6 +33,8 @@ interface CANContextValue {
   stopRecording: () => void;
   clearRecording: () => void;
   sendFrame: (arbitrationId: number, data: number[]) => void;
+  setErrorInjectionConfig: (config: CANErrorInjectionConfig) => void;
+  armErrorInjection: () => void;
 }
 
 const CANContext = createContext<CANContextValue | null>(null);
@@ -358,6 +361,14 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     send({ type: 'CAN_SEND_FRAME', arbitrationId, data });
   }, [send]);
 
+  const setErrorInjectionConfig = useCallback((config: CANErrorInjectionConfig) => {
+    send({ type: 'CAN_SET_ERROR_INJECTION_CONFIG', config });
+  }, [send]);
+
+  const armErrorInjection = useCallback(() => {
+    send({ type: 'CAN_ARM_ERROR_INJECTION' });
+  }, [send]);
+
   return (
     <CANContext.Provider value={{
       state, start, stop, pause, resume,
@@ -366,7 +377,8 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       toggleArbitrationDisplay, toggleErrorDisplay,
       injectFault, recoverNode, setOutputMode,
       connectSerial, disconnectSerial, connectNetwork, disconnectNetwork,
-      startRecording, stopRecording, clearRecording, sendFrame
+      startRecording, stopRecording, clearRecording, sendFrame,
+      setErrorInjectionConfig, armErrorInjection
     }}>
       {children}
     </CANContext.Provider>
