@@ -65,7 +65,7 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
-## [v1.5.28 — in progress] — 2026-05-18
+## [v1.5.28] — 2026-05-18
 
 ### UX & Developer Tools (Unreleased — part of v1.5.28)
 
