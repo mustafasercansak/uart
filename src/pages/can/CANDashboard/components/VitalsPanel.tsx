@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Pencil } from 'lucide-react';
 import type { CANNode } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
 
 interface VitalsPanelProps {
   nodes: CANNode[];
+  focusNodeId?: number | null;
+  onEdit?: (node: CANNode) => void;
 }
 
 interface VitalHistory {
@@ -72,7 +74,7 @@ function Sparkline({ history, color, min, max, warnLow, warnHigh, isAlarm }: {
   );
 }
 
-export function VitalsPanel({ nodes }: VitalsPanelProps) {
+export function VitalsPanel({ nodes, focusNodeId, onEdit }: VitalsPanelProps) {
   const { t } = useTranslation();
   const VITAL_CONFIGS = [
     { key: 'heartRate'       as keyof VitalHistory, label: t('can.heartRate'),  unit: 'bpm',    color: '#ef4444', min: 20,  max: 200, warnLow: 50,  warnHigh: 120, alarmBit: 0x01, decimals: 0 },
@@ -86,6 +88,13 @@ export function VitalsPanel({ nodes }: VitalsPanelProps) {
   const historiesRef = useRef<Map<number, VitalHistory>>(new Map());
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  // focusNodeId from outside overrides internal selection
+  useEffect(() => {
+    if (focusNodeId != null && nodes.some(n => n.id === focusNodeId)) {
+      setSelectedId(focusNodeId);
+    }
+  }, [focusNodeId, nodes]);
 
   // Auto-select first active node when nodes change
   const activeNodes = nodes.filter(n => n.isActive && n.state !== 'bus-off');
@@ -162,13 +171,22 @@ export function VitalsPanel({ nodes }: VitalsPanelProps) {
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: selectedNode.color }} />
             <span className="text-xs font-mono font-bold text-white">{selectedNode.name}</span>
             <span className="text-[9px] font-mono text-gray-600">#{selectedNode.id}</span>
+            {onEdit && (
+              <button
+                onClick={() => onEdit(selectedNode)}
+                className="ml-auto text-gray-600 hover:text-cyan-400 p-0.5 transition-colors"
+                title={t('can.editNode')}
+              >
+                <Pencil size={11} />
+              </button>
+            )}
             {selectedNode.activeFault && (
-              <span className="ml-auto text-[9px] font-mono text-orange-400 bg-orange-900/30 border border-orange-800/60 px-1.5 py-0.5 rounded">
+              <span className={`${onEdit ? '' : 'ml-auto'} text-[9px] font-mono text-orange-400 bg-orange-900/30 border border-orange-800/60 px-1.5 py-0.5 rounded`}>
                 {selectedNode.activeFault}
               </span>
             )}
             {selectedNode.vitals.alarmFlags !== 0 && (
-              <span className={`${selectedNode.activeFault ? '' : 'ml-auto'} flex items-center gap-1 text-[9px] font-mono font-bold text-red-400 bg-red-900/30 border border-red-800 px-1.5 py-0.5 rounded animate-pulse`}>
+              <span className={`${selectedNode.activeFault || onEdit ? '' : 'ml-auto'} flex items-center gap-1 text-[9px] font-mono font-bold text-red-400 bg-red-900/30 border border-red-800 px-1.5 py-0.5 rounded animate-pulse`}>
                 <AlertTriangle size={9} />
                 {t('can.alarm')}
               </span>

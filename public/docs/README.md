@@ -1,4 +1,4 @@
-# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.5.28
+# 🩺 Professional UART Sensor Simulator & Telemetry Dashboard v1.6.0
 
 A high-performance, real-time UART telemetry platform designed for **embedded engineers** and **medical device developers**. Simulate complex sensor data (ECG, SpO₂, RESP, etc.) and stream it directly to your hardware via the **Web Serial API**.
 
@@ -6,9 +6,9 @@ A high-performance, real-time UART telemetry platform designed for **embedded en
 
 ---
 
-## 🚀 Key Features (v1.5.28)
+## 🚀 Key Features (v1.6.0)
 
-### 🆕 v1.5.28 — UX & Developer Tools Update
+### 🆕 v1.6.0 — UX & Developer Tools Update
 - **Profile Compare Modal**: Compare any two profiles side-by-side directly from the Profile Editor toolbar (⇆ button).
 - **Frame Timing / BER Panel**: Instantly see bits/frame, frame duration (µs), max FPS, and line utilization for the active profile. Highlights over-utilization in red.
 - **Profile Tags**: Organize profiles with custom tags. Filter the profile list by tag with one click.

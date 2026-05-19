@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, ArrowLeft, Plus, Edit3, Circle, Square, FileDown } from 'lucide-react';
+import { Globe, HelpCircle, Plus, Edit3, Circle, Square, FileDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { OutputMode } from '../../../../types';
 import type { CANBusState } from '../../../../can/types/CANBusState';
@@ -241,13 +241,13 @@ export function CANStatBar({
 
         <div className="w-px h-3 bg-gray-800 mx-1" />
 
-        {/* Back to UART */}
+        {/* Help */}
         <button
-          onClick={() => navigate('/')}
-          className="p-1 rounded hover:bg-gray-800 text-gray-500 hover:text-white transition-all border border-transparent hover:border-gray-700"
-          title="UART"
+          onClick={() => navigate('/help')}
+          className="p-1 rounded hover:bg-gray-800 text-gray-500 hover:text-orange-400 transition-all border border-transparent hover:border-orange-800/50"
+          title={t('nav.help') ?? 'Help'}
         >
-          <ArrowLeft size={11} />
+          <HelpCircle size={11} />
         </button>
 
         <div className="w-px h-3 bg-gray-800 mx-0.5" />

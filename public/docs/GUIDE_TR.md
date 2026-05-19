@@ -1,5 +1,5 @@
 # UART PRO LAB — Ana Mühendislik Kılavuzu
-## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.28
+## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.6.0
 
 > **UART Pro Lab**, hassasiyet gerektiren gömülü sistem mühendisleri, tıbbi cihaz geliştiricileri ve protokol araştırmacıları için tasarlanmış dünyanın en gelişmiş tarayıcı tabanlı UART simülasyon ve doğrulama ortamıdır.
 
@@ -114,7 +114,7 @@ Panel, **Yüksek Yoğunluklu Tanı İstasyonu** olarak tasarlanmıştır — her
 - **Tampon Doluluk**: Gerçek zamanlı halka tampon kullanımı — taşma riskini tespit için kritik.
 
 ### Bento-Grid Düzeni
-v1.5.28'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
+v1.6.0'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
 
 ---
 
@@ -150,7 +150,7 @@ Telemetri Paneli'nde herhangi bir alan değerine tıklayarak onu referans olarak
 <a name="waveform-designer"></a>
 ## 5. Özel Dalga Formu Tasarımcısı
 
-> **v1.5.28'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
+> **v1.6.0'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
 
 ![Dalga Formu Tasarımcısı](images/v1.3/designer_live.png)
 
@@ -671,7 +671,7 @@ Sekansları JSON dosyası olarak dışa veya içe aktarabilirsiniz. Bu özellik 
 ```json
 {
   "format": "uart-sequences",
-  "version": "1.5.28",
+  "version": "1.6.0",
   "exportedAt": "2026-05-15T12:00:00.000Z",
   "sequences": [ ... ]
 }
@@ -983,13 +983,185 @@ Canlı Tanı Paneli şunları gösterir:
 
 ---
 
+## 20. CAN Bus Simülatörü
+
+CAN Bus modülü, **ISO 11898-1 CAN 2.0A** ağları için tamamen tarayıcı tabanlı, bağımsız bir simülasyon ortamıdır. UART motorundan tamamen izole edilmiş ayrı bir **Web Worker** thread'i üzerinde çalışır; 125 / 250 / 500 / 1000 kbps baud hızlarında 127 adede kadar düğümü destekler.
+
+Kenar çubuğundan **CAN → Gösterge Paneli** yolunu izleyin.
+
+---
+
+### 20.1 Mimari Genel Bakış
+
+| Katman | Bileşen | Açıklama |
+|--------|---------|----------|
+| Worker thread | `can.worker.ts` | Simülasyon motorunu 20 Hz'de çalıştırır, UI'dan izole |
+| Motor | `CANSimulationEngine` | Arbitrasyon, hata enjeksiyonu, vital göstergeler, UDS protokolü |
+| Hata durum makinesi | `CANErrorStateMachine` | ISO 11898-1 TEC/REC sayaçları, Error-Active/Passive/Bus-Off |
+| Tıbbi vital göstergeler | `CANMedicalVitals` | Profil başına Gauss gürültülü vital evrim |
+| Frame codec | `CANFrameParser` | 15-bit CRC, SLCAN kodlama/çözme |
+| Depo | `CANContext` + `canReducer` | React context, Web Serial API, profil kalıcılığı |
+
+---
+
+### 20.2 Gösterge Paneli Düzeni
+
+Gösterge paneli üç bölümden oluşur:
+
+**Sol panel — Düğüm Listesi**
+- Renk kodlu profil rozetleriyle tüm aktif CAN düğümlerini listeler
+- `+` butonu ile düğüm eklenebilir; `❮` ile daraltılabilir
+- Her düğüm kartı ID, profil türü ve canlı vital özeti gösterir
+
+**Orta panel — Sekmeli Çalışma Alanı**
+
+| # | Sekme | Açıklama |
+|---|-------|----------|
+| 1 | Bus Monitörü | Enjeksiyon çubuğuyla canlı frame akışı |
+| 2 | Düğümler | Aç/kapat, düzenle, sil seçenekli tam düğüm ızgarası |
+| 3 | Arbitrasyon | Çarpışma olay günlüğü (kazanan / kaybeden çiftleri) |
+| 4 | Günlük | TXT dışa aktarmalı, arama/filtreleme destekli olay günlüğü |
+| 5 | Hata Enjeksiyonu | Klinik ve ağ hata enjeksiyon arayüzü |
+| 6 | Otomasyon | Adım tabanlı zamanlı hata sekansları |
+| 7 | Uyumluluk | IEC 60601-1 / ISO 11898-1 / CiA 301 canlı metrikler |
+
+**Sağ panel — Inspector / Vital Göstergeler**
+- En sağdaki `⚙` butonu ile açılır/kapanır
+- **Frame Inspector**: seçili frame'in bit düzeyinde dökümü (Arbitrasyon ID, DLC, veri baytları, CRC, EOF)
+- **Vital Göstergeler Paneli**: seçili düğüm için gerçek zamanlı vital sparkline grafikleri
+
+---
+
+### 20.3 Düğüm Ekleme ve Yapılandırma
+
+1. Sol panel başlığındaki **+ Düğüm Ekle** butonuna tıklayın (veya **N** tuşuna basın)
+2. **Düğüm ID** ayarlayın (1–127; sonraki boş ID'ye otomatik artış)
+3. Bir **isim** girin (örn. "Yatak-3 Vital Monitör")
+4. **Tıbbi Profil** seçin — hangi vital göstergelerin simüle edileceğini ve CAN veri baytlarına nasıl kodlanacağını belirler
+5. **Arbitrasyon ID** ayarlayın (varsayılan: `0x180 + nodeId`, standart CANopen TPDO1)
+6. **Gönderim Aralığı** belirleyin (10–2000 ms, yani 0,5–100 Hz)
+
+**Mevcut profiller:**
+
+| Profil | Açıklama |
+|--------|----------|
+| Vital Monitör | KAH, SpO₂, KB, Sıcaklık, SS |
+| IV Pompası | Akış hızı, hacim, basınç |
+| Ventilatör | Tidal hacim, PEEP, FiO₂, tepe basıncı |
+| EKG Monitörü | KAH, SpO₂, KB |
+| Defibrilatör | KAH, bekleme durumu |
+| İnfüzyon Pompası | Akış hızı, hacim, basınç |
+| Nabız Oksimetresi | KAH, SpO₂ |
+| Özel | Kullanıcı tanımlı payload |
+
+---
+
+### 20.4 Simülasyonu Çalıştırma
+
+| Kontrol | Eylem |
+|---------|-------|
+| ▶ Başlat | Simülasyonu başlatır (en az bir aktif düğüm gerektirir) |
+| ⏸ Duraklat | Frame üretimini dondurur; durum korunur |
+| ▶ Devam Et | Duraklatılan yerden devam eder |
+| ■ Durdur | Durdurur ve boşta konumuna sıfırlar |
+
+Üstteki **İstatistik Çubuğu** şunları gösterir: toplam frame, hata sayısı, canlı FPS, bus yük göstergesi, baud hızı seçici ve profil hızlı yükleme.
+
+---
+
+### 20.5 Bus Monitörü ve Frame Enjeksiyonu
+
+Bus Monitörü tüm CAN framelerini gerçek zamanlı olarak akışa alır. Herhangi bir satıra tıklayarak seçin — sağ paneldeki **Frame Inspector** çözümleyecektir.
+
+**Manuel Frame Enjeksiyonu** (Bus Monitörü üst çubuğu):
+1. **Arbitrasyon ID**'yi hex olarak girin (örn. `0x200`)
+2. **Veri baytlarını** boşlukla ayrılmış hex olarak girin (örn. `01 FF A0 00`, maks. 8 bayt)
+3. **Gönder**'e tıklayın veya **Enter** tuşuna basın
+
+Enjekte edilen frameler `INJECT` etiketiyle camgöbeği renkte vurgulanır. Enjeksiyon için bus'ın çalışıyor olması gerekir.
+
+---
+
+### 20.6 Hata Enjeksiyonu
+
+**Hata Enjeksiyonu** sekmesine geçin. Bir düğüm seçin ve hata türüne tıklayın:
+
+**Klinik hatalar** (vital evrimini etkiler):
+
+| Hata | Etki |
+|------|------|
+| Kardiyak Arrest | KAH ~6 bpm'e düşer |
+| Bradikardi | KAH ~40 bpm'e kayar |
+| Taşikardi | KAH ~160 bpm'e çıkar |
+| Hipoksi | SpO₂ ~%85'e düşer |
+| Hipotansiyon | KB ~60 mmHg'ya düşer |
+| Hipertansiyon | KB ~190 mmHg'ya çıkar |
+| Ateş | Sıcaklık ~39,5°C'ye yükselir |
+| Hipotermi | Sıcaklık ~35°C'ye düşer |
+
+**Ağ hataları:**
+
+| Hata | Etki |
+|------|------|
+| Bus-Off | Düğüm iletimi durur (TEC > 255) |
+| Dondur | Düğüm son değerlerde kalır, güncellemeyi durdurur |
+| Gürültü Patlaması | ~3 saniye boyunca ~%40 hata oranı |
+
+**Düğümü Kurtar** butonuna tıklayarak normal çalışmaya dönebilirsiniz.
+
+---
+
+### 20.7 Uyumluluk Paneli
+
+Uyumluluk sekmesi canlı ISO/IEC metrikleri sağlar:
+
+| Metrik | Eşik | Standart |
+|--------|------|----------|
+| Bus yükü | ≤ %30 | IEC 60601-1 §14 |
+| Hata oranı | ≤ %1 | ISO 11898-1 §6.12 |
+| Düğüm erişilebilirliği | ≥ %99,9 | IEC 60601-1 §14 |
+| Aktif alarmlar | 0 | Klinik gereksinim |
+
+Dördü de geçerse **UYUMLU** rozeti görünür. Herhangi bir başarısızlık = başarısız metrik kırmızıyla vurgulanmış **UYUMSUZ**.
+
+---
+
+### 20.8 CAN Profilleri
+
+Mevcut bus yapılandırmasını (düğümler + baud hızı) yeniden kullanılabilir profil olarak kaydedin:
+
+1. Kenar çubuğundan **CAN → Profiller**'e gidin
+2. Çalışan yapılandırmanın anlık görüntüsünü almak için **Mevcut Bus'ı Kaydet**'e tıklayın
+3. Profili adlandırın ve açıklayın
+4. Herhangi bir kaydedilmiş profili gösterge paneline geri yüklemek için **Veri Yoluna Yükle**'ye tıklayın
+
+Uygulamayla birlikte dört yerleşik profil gelir: **YBÜ**, **Acil Servis**, **Ameliyathane** ve **Servis** — her biri gerçekçi önceden yapılandırılmış düğüm setleriyle.
+
+---
+
+### 20.9 Klavye Kısayolları
+
+CAN Gösterge Paneli'nde herhangi bir yerde **?** tuşuna basarak kısayol sayfasını açın.
+
+| Tuş | Eylem |
+|-----|-------|
+| `Space` | Başlat / Duraklat / Devam Et |
+| `Esc` | Bus'ı durdur |
+| `1` – `7` | Sekmeye geç |
+| `N` | Yeni düğüm ekle |
+| `C` | Bus framelerini temizle |
+| `Enter` | Enjekte frame gönder (enjeksiyon çubuğu odakta) |
+| `?` | Kısayol modalını aç/kapat |
+
+---
+
 ## Sonuç
 
-**UART Pro Lab v1.5.28** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
+**UART Pro Lab v1.6.0** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
 
 Her özellik gerçek bir mühendislik sorununa yönelik tasarlandı: birim testlerinden kaçan çerçeveleme hataları, yalnızca termal stres altında görünen jitter, çıplak gözle görünmeyen dalga formu anomalileri. Bu araç hepsini ortaya çıkarır — silikon aşamasına ulaşmadan önce.
 
 ---
 
 *Mustafa Sercan Sak — Baş Mimar*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.28-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.6.0-STABLE*

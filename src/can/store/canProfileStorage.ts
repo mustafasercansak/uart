@@ -13,6 +13,12 @@ export interface CANProfileNode {
   baseArbitrationId: number;
   sendIntervalMs: number;
   isActive: boolean;
+  // Extended CAN parameters (optional — backwards compatible)
+  nodeId?: number;                // CANopen node ID 1–127
+  frameFormat?: 'standard' | 'extended';
+  dlc?: number;                   // Data Length Code 1–8 bytes
+  nmtInitialState?: 'operational' | 'pre-operational' | 'stopped';
+  priority?: number;              // Frame priority 0–7
 }
 
 export interface CANProfile {

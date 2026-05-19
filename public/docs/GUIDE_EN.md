@@ -1,5 +1,5 @@
 # UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite · v1.5.28
+## Professional Simulation, Diagnostic & Validation Suite · v1.6.0
 
 > **UART Pro Lab** is the world's most advanced browser-based UART simulation and validation environment — built for embedded engineers, medical device developers, and protocol researchers who demand precision.
 
@@ -114,7 +114,7 @@ The dashboard is engineered as a **High-Density Diagnostic Station** — every p
 - **Buffer Fill**: Real-time ring buffer utilization — critical for detecting overflow risk.
 
 ### Bento-Grid Layout
-In v1.5.28, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
+In v1.6.0, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
 
 ---
 
@@ -150,7 +150,7 @@ Click any field value in the Telemetry Panel to **pin it** as a reference. A del
 <a name="waveform-designer"></a>
 ## 5. Custom Waveform Designer
 
-> **New in v1.5.28** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
+> **New in v1.6.0** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
 
 ![Waveform Designer](images/v1.3/designer_live.png)
 
@@ -671,7 +671,7 @@ Sequences can be exported to — or imported from — a JSON file. Use this to b
 ```json
 {
   "format": "uart-sequences",
-  "version": "1.5.28",
+  "version": "1.6.0",
   "exportedAt": "2026-05-15T12:00:00.000Z",
   "sequences": [ ... ]
 }
@@ -983,13 +983,185 @@ The live Diagnostics Panel shows:
 
 ---
 
+## 20. CAN Bus Simulator
+
+The CAN Bus module is a standalone, browser-native simulation environment for **ISO 11898-1 CAN 2.0A** networks. It runs on a dedicated **Web Worker** thread, completely isolated from the UART engine, and supports up to 127 nodes at baud rates of 125 / 250 / 500 / 1000 kbps.
+
+Navigate to **CAN → Dashboard** from the sidebar.
+
+---
+
+### 20.1 Architecture Overview
+
+| Layer | Component | Description |
+|-------|-----------|-------------|
+| Worker thread | `can.worker.ts` | Runs the simulation engine at 20 Hz, isolated from UI |
+| Engine | `CANSimulationEngine` | Arbitration, fault injection, vitals, UDS protocol |
+| Error state machine | `CANErrorStateMachine` | ISO 11898-1 TEC/REC counters, Error-Active/Passive/Bus-Off |
+| Medical vitals | `CANMedicalVitals` | Per-profile vital sign evolution with Gaussian drift |
+| Frame codec | `CANFrameParser` | 15-bit CRC, SLCAN encode/decode |
+| Store | `CANContext` + `canReducer` | React context, Web Serial API, profile persistence |
+
+---
+
+### 20.2 Dashboard Layout
+
+The dashboard is divided into three panels:
+
+**Left panel — Node List**
+- Lists all active CAN nodes with color-coded profile badges
+- Add (`+`) or remove nodes; collapse with the `❮` toggle
+- Each node card shows its ID, profile type, and live vital summary
+
+**Center panel — Tabbed Workspace**
+
+| # | Tab | Description |
+|---|-----|-------------|
+| 1 | Bus Monitor | Live frame stream with injection bar |
+| 2 | Nodes | Full node grid with toggle/edit/remove |
+| 3 | Arbitration | Collision event log (winner / loser pairs) |
+| 4 | Log | Searchable, filterable event log with TXT export |
+| 5 | Fault Injection | Clinical and network fault injection UI |
+| 6 | Automation | Step-based timed fault sequences |
+| 7 | Compliance | IEC 60601-1 / ISO 11898-1 / CiA 301 live metrics |
+
+**Right panel — Inspector / Vitals**
+- Toggle with the `⚙` button on the far right
+- **Frame Inspector**: bit-level breakdown of the selected frame (Arbitration ID, DLC, data bytes, CRC, EOF)
+- **Vitals Panel**: real-time vital sign sparklines for the selected node
+
+---
+
+### 20.3 Adding and Configuring Nodes
+
+1. Click **+ Add Node** in the left panel header (or press **N**)
+2. Set the **Node ID** (1–127; auto-increments to next free ID)
+3. Enter a **name** (e.g. "Bed-3 Vital Monitor")
+4. Select a **Medical Profile** — determines which vital signs are simulated and how they are encoded in the CAN data bytes
+5. Adjust the **Arbitration ID** (default: `0x180 + nodeId`, standard CANopen TPDO1)
+6. Set the **Send Interval** (10–2000 ms, i.e. 0.5–100 Hz)
+
+**Available profiles:**
+
+| Profile | Description |
+|---------|-------------|
+| Vital Monitor | HR, SpO₂, BP, Temp, RR |
+| IV Pump | Flow rate, volume infused, pressure |
+| Ventilator | Tidal vol, PEEP, FiO₂, peak pressure |
+| ECG Monitor | HR, SpO₂, BP |
+| Defibrillator | HR, standby state |
+| Infusion Pump | Flow rate, volume, pressure |
+| Pulse Oximeter | HR, SpO₂ |
+| Custom | User-defined payload |
+
+---
+
+### 20.4 Running the Simulation
+
+| Control | Action |
+|---------|--------|
+| ▶ Start | Begins simulation (requires at least one active node) |
+| ⏸ Pause | Freezes frame generation; state is preserved |
+| ▶ Resume | Continues from paused state |
+| ■ Stop | Stops and resets to idle |
+
+The top **Stat Bar** shows: total frames, error count, live FPS, bus load gauge, baud rate selector, and profile quick-load.
+
+---
+
+### 20.5 Bus Monitor & Frame Injection
+
+The Bus Monitor streams all CAN frames in real time. Click any row to select it — the right-panel **Frame Inspector** will decode it.
+
+**Manual Frame Injection** (top bar of Bus Monitor):
+1. Enter the **Arbitration ID** in hex (e.g. `0x200`)
+2. Enter **data bytes** as space-separated hex (e.g. `01 FF A0 00`, max 8 bytes)
+3. Click **Send** or press **Enter**
+
+Injected frames appear highlighted in cyan with the tag `INJECTED`. The bus must be running to inject.
+
+---
+
+### 20.6 Fault Injection
+
+Switch to the **Fault Injection** tab. Select a node, then click a fault type:
+
+**Clinical faults** (alter vital sign evolution):
+
+| Fault | Effect |
+|-------|--------|
+| Cardiac Arrest | HR drops to ~6 bpm |
+| Bradycardia | HR drifts to ~40 bpm |
+| Tachycardia | HR climbs to ~160 bpm |
+| Hypoxia | SpO₂ falls to ~85% |
+| Hypotension | BP drops to ~60 mmHg |
+| Hypertension | BP rises to ~190 mmHg |
+| Fever | Temp rises to ~39.5°C |
+| Hypothermia | Temp falls to ~35°C |
+
+**Network faults:**
+
+| Fault | Effect |
+|-------|--------|
+| Bus-Off | Node stops transmitting (TEC > 255) |
+| Freeze | Node freezes last values, stops updating |
+| Noise Burst | ~40% error rate for ~3 seconds |
+
+Click **Recover Node** to restore normal operation.
+
+---
+
+### 20.7 Compliance Panel
+
+The Compliance tab provides live ISO/IEC metrics:
+
+| Metric | Threshold | Standard |
+|--------|-----------|----------|
+| Bus load | ≤ 30% | IEC 60601-1 §14 |
+| Error rate | ≤ 1% | ISO 11898-1 §6.12 |
+| Node availability | ≥ 99.9% | IEC 60601-1 §14 |
+| Active alarms | 0 | Clinical requirement |
+
+All four passing = **COMPLIANT** badge. Any failure = **NON-COMPLIANT** with the failing metric highlighted in red.
+
+---
+
+### 20.8 CAN Profiles
+
+Save the current bus configuration (nodes + baud rate) as a reusable profile:
+
+1. Navigate to **CAN → Profiles** (sidebar, or `navigate('/can-profiles')`)
+2. Click **Save Current Bus** to snapshot the running configuration
+3. Name and describe the profile
+4. **Load to Bus** to restore any saved profile onto the dashboard
+
+Four built-in profiles ship with the app: **ICU**, **ER**, **OR**, and **Ward** — each with a realistic set of pre-configured nodes.
+
+---
+
+### 20.9 Keyboard Shortcuts
+
+Press **?** anywhere on the CAN Dashboard to open the shortcuts cheatsheet.
+
+| Key | Action |
+|-----|--------|
+| `Space` | Start / Pause / Resume |
+| `Esc` | Stop bus |
+| `1` – `7` | Switch to tab |
+| `N` | Add new node |
+| `C` | Clear bus frames |
+| `Enter` | Send injected frame (when injection bar focused) |
+| `?` | Toggle shortcuts modal |
+
+---
+
 ## Conclusion
 
-**UART Pro Lab v1.5.28** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
+**UART Pro Lab v1.6.0** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
 
 Every feature was designed around a real engineering problem: framing errors that escape unit tests, jitter that only appears under thermal stress, waveform anomalies invisible to the naked eye. This tool surfaces all of them — before they reach silicon.
 
 ---
 
 *Mustafa Sercan Sak — Chief Architect*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.28-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.6.0-STABLE*

@@ -1,4 +1,4 @@
-import { Pencil } from 'lucide-react';
+import { Pencil, HeartPulse } from 'lucide-react';
 import type { CANNode } from '../../../../can/types/CANNode';
 import { MEDICAL_PROFILE_LABELS } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
@@ -10,6 +10,7 @@ interface NodeCardProps {
   onToggle: () => void;
   onRemove: () => void;
   onEdit?: () => void;
+  onViewVitals?: () => void;
 }
 
 const NMT_BADGE: Record<CANNode['nmtState'], string> = {
@@ -19,7 +20,7 @@ const NMT_BADGE: Record<CANNode['nmtState'], string> = {
   'stopped':         'text-red-400',
 };
 
-export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdit }: NodeCardProps) {
+export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdit, onViewVitals }: NodeCardProps) {
   const { t } = useTranslation();
   
   const STATE_BADGE: Record<CANNode['state'], { label: string; cls: string }> = {
@@ -57,6 +58,15 @@ export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdi
           >
             {node.isActive ? t('can.on') : t('can.off')}
           </button>
+          {onViewVitals && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewVitals(); }}
+              className="text-gray-600 hover:text-red-400 p-0.5 transition-colors"
+              title={t('can.vitals')}
+            >
+              <HeartPulse size={10} />
+            </button>
+          )}
           {onEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}

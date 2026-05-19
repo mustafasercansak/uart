@@ -27,6 +27,7 @@ import { NodesTab } from './components/NodesTab';
 import { ArbitrationTab } from './components/ArbitrationTab';
 import { LogTab } from './components/LogTab';
 import { CANAutomationTab } from './components/CANAutomationTab';
+import { CANKeyboardShortcutsModal } from './components/CANKeyboardShortcutsModal';
 import { useTranslation } from '../../../i18n/context';
 import type { CANBaudRate } from '../../../can/types/CANBusState';
 import type { CANArbitrationEvent } from '../../../can/types/CANFrame';
@@ -49,10 +50,12 @@ export default function CANDashboard() {
     toggleArbitrationDisplay, toggleErrorDisplay,
     injectFault, recoverNode, setOutputMode,
     connectSerial, disconnectSerial, connectNetwork, disconnectNetwork,
-    startRecording, stopRecording
+    startRecording, stopRecording, sendFrame
   } = useCANContext();
 
   const [showAddNode, setShowAddNode] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [vitalsNodeId, setVitalsNodeId] = useState<number | null>(null);
   const [editingNode, setEditingNode] = useState<CANNode | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
@@ -126,6 +129,43 @@ export default function CANDashboard() {
   const isPaused  = state.status === 'paused';
   const isStopped = state.status === 'stopped';
   const canStart  = state.nodes.filter(n => n.isActive).length > 0;
+
+  const TAB_ORDER: CenterTab[] = ['bus', 'nodes', 'arbitration', 'log', 'fault', 'automation', 'compliance'];
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (isInput) return;
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          if (isStopped && canStart) start();
+          else if (isRunning) pause();
+          else if (isPaused) resume();
+          break;
+        case 'Escape':
+          if (showShortcuts) { setShowShortcuts(false); break; }
+          if (!isStopped) stop();
+          break;
+        case '?':
+          setShowShortcuts(s => !s);
+          break;
+        case 'n': case 'N':
+          setShowAddNode(true);
+          break;
+        case 'c': case 'C':
+          clearFrames();
+          break;
+        case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+          setActiveTab(TAB_ORDER[parseInt(e.key) - 1]);
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isStopped, isRunning, isPaused, canStart, start, pause, resume, stop, clearFrames, showShortcuts]);
 
   const TABS: Array<{ id: CenterTab; icon: React.ElementType; label: string; color: string; shadow: string }> = [
     { id: 'bus',         icon: Radio,        label: t('can.busMonitor'),       color: 'bg-cyan-600',    shadow: 'shadow-cyan-900/40' },
@@ -203,6 +243,11 @@ export default function CANDashboard() {
                     onToggle={() => updateNode(node.id, { isActive: !node.isActive })}
                     onRemove={() => removeNode(node.id)}
                     onEdit={() => setEditingNode(node)}
+                    onViewVitals={() => {
+                      setVitalsNodeId(node.id);
+                      setRightPanel('vitals');
+                      setIsRightPanelOpen(true);
+                    }}
                   />
                 ))
               )}
@@ -301,12 +346,19 @@ export default function CANDashboard() {
               {t('can.err')}
             </button>
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-1">
               <button
                 onClick={clearFrames}
                 className="px-2 py-1 text-[10px] font-mono text-gray-500 hover:text-gray-300 border border-gray-700/50 rounded transition-colors"
               >
                 {t('can.clear')}
+              </button>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="px-2 py-1 text-[10px] font-mono text-gray-500 hover:text-orange-400 border border-gray-700/50 hover:border-orange-800/60 rounded transition-colors"
+                title={t('can.canShortcutsShowShortcuts')}
+              >
+                ?
               </button>
             </div>
           </div>
@@ -354,7 +406,9 @@ export default function CANDashboard() {
                   filter={state.displayFilter}
                   selectedFrameUid={state.selectedFrameUid}
                   showErrorFrames={state.showErrorFrames}
+                  isRunning={isRunning}
                   onSelectFrame={selectFrame}
+                  onSendFrame={sendFrame}
                 />
               )}
               {activeTab === 'nodes' && <NodesTab state={state} updateNode={updateNode} removeNode={removeNode} selectNode={selectNode} onEdit={setEditingNode} />}
@@ -425,7 +479,7 @@ export default function CANDashboard() {
               {rightPanel === 'inspector' && (
                 <FrameInspector frame={selectedFrame} node={selectedFrameNode} />
               )}
-              {rightPanel === 'vitals' && <VitalsPanel nodes={state.nodes} />}
+              {rightPanel === 'vitals' && <VitalsPanel nodes={state.nodes} focusNodeId={vitalsNodeId} onEdit={(node) => setEditingNode(node)} />}
             </div>
           </div>
         </div>
@@ -446,6 +500,11 @@ export default function CANDashboard() {
           onClose={() => setEditingNode(null)}
         />
       )}
+
+      <CANKeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
     </div>
   );
 }
