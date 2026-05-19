@@ -1164,11 +1164,85 @@ Press **?** anywhere on the CAN Dashboard to open the shortcuts cheatsheet.
 |-----|--------|
 | `Space` | Start / Pause / Resume |
 | `Esc` | Stop bus |
-| `1` – `7` | Switch to tab |
+| `1` – `8` | Switch to tab |
 | `N` | Add new node |
 | `C` | Clear bus frames |
 | `Enter` | Send injected frame (when injection bar focused) |
 | `?` | Toggle shortcuts modal |
+
+---
+
+### 20.11 UDS Diagnostic Terminal (ISO 14229 / ISO-TP)
+
+The **Diagnostic Terminal** tab exposes a full UDS (Unified Diagnostic Services) stack over the ISO-TP (ISO 15765-2) transport layer. It lets you send standard diagnostic requests, inspect multi-frame ISO-TP traffic, and configure a simulated ECU that responds automatically.
+
+#### Opening the Terminal
+
+Select the **Diagnostics** tab (tab 6) on the CAN Dashboard. The panel is split into a configuration sidebar on the left and a live ISO-TP frame log on the right.
+
+#### Configuring CAN IDs
+
+| Field | Default | Notes |
+|-------|---------|-------|
+| Request ID | `0x7E0` | CAN ID used by the tester (this application) |
+| Response ID | `0x7E8` | CAN ID used by the simulated ECU |
+
+If the Request ID is in the standard range `0x7E0`–`0x7E7`, the Response ID is derived automatically (`requestId + 8`) when you leave the field.
+
+#### Sending Requests
+
+Choose a preset and click **Send UDS Request** (bus must be running):
+
+| Preset | SID | Payload |
+|--------|-----|---------|
+| `0x10` Session Control | `0x10` | Configurable session type (Default / Programming / Extended) |
+| `0x22` Read DID | `0x22` | 16-bit Data Identifier (hex, e.g. `F190` for VIN) |
+| `0x19` Read DTC | `0x19` | Sub-function `0x02`, configurable status mask |
+| Raw | — | Any hex bytes separated by spaces |
+
+Multi-frame payloads are automatically segmented using ISO-TP (First Frame + Consecutive Frames). A Flow Control frame is injected after the First Frame.
+
+#### Symphony — Automated ECU Responses
+
+Toggle **Symphony On** to enable the simulated ECU. When active, the engine:
+
+1. Receives and reassembles multi-frame requests.
+2. Processes the UDS Service Identifier (SID).
+3. Transmits an ISO-TP response automatically.
+
+Supported SIDs and their responses:
+
+| SID | Service | Positive Response |
+|-----|---------|------------------|
+| `0x10` | Diagnostic Session Control | `0x50` + session params |
+| `0x22` | Read Data By Identifier | `0x62` + DID + value bytes |
+| `0x19` | Read DTC Information (SF `0x02`) | `0x59` + DTC records |
+| Other | — | `0x7F` NRC `0x11` (serviceNotSupported) |
+
+#### DID Response Table
+
+Configure what value is returned for each DID:
+
+| Encoding | Behaviour |
+|----------|-----------|
+| **ASCII** | Value string is transmitted as raw ASCII bytes |
+| **Hex** | Hex string (e.g. `DEADBEEF`) is split into bytes |
+| **Vitals** | Live vital value (e.g. `heartRate`, `spO2`) is read from the target node at response time, scaled ×10, and returned as a 2-byte big-endian integer |
+
+Use **Target Node** to pin vitals responses to a specific simulation node. Leave it as **Auto from request ID** to let the engine infer the node from the tester request ID offset.
+
+#### ISO-TP Frame Log
+
+The right panel shows all frames on the diagnostic CAN IDs:
+
+| Column | Content |
+|--------|---------|
+| Time | ISO timestamp (ms precision) |
+| ID | CAN arbitration ID |
+| PCI | Frame type: **SF** (Single Frame), **FF** (First Frame), **CF** (Consecutive Frame), **FC** (Flow Control) |
+| Data | Raw hex payload (8 bytes, zero-padded) |
+
+Tester frames have a cyan background; ECU frames have an emerald background.
 
 ---
 

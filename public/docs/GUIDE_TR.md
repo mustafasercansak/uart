@@ -1164,11 +1164,85 @@ CAN Gösterge Paneli'nde herhangi bir yerde **?** tuşuna basarak kısayol sayfa
 |-----|-------|
 | `Space` | Başlat / Duraklat / Devam Et |
 | `Esc` | Bus'ı durdur |
-| `1` – `7` | Sekmeye geç |
+| `1` – `8` | Sekmeye geç |
 | `N` | Yeni düğüm ekle |
 | `C` | Bus framelerini temizle |
 | `Enter` | Enjekte frame gönder (enjeksiyon çubuğu odakta) |
 | `?` | Kısayol modalını aç/kapat |
+
+---
+
+### 20.11 UDS Tanı Terminali (ISO 14229 / ISO-TP)
+
+**Tanı Terminali** sekmesi, ISO-TP (ISO 15765-2) taşıma katmanı üzerinde tam bir UDS (Unified Diagnostic Services) yığını sunar. Standart tanı istekleri göndermenizi, çok framelı ISO-TP trafiğini incelemenizi ve otomatik yanıt veren simüle edilmiş bir ECU yapılandırmanızı sağlar.
+
+#### Terminali Açma
+
+CAN Gösterge Paneli'nde **Diagnostics** sekmesini (6. sekme) seçin. Panel; solda yapılandırma kenar çubuğuna, sağda ise canlı ISO-TP frame günlüğüne ayrılmıştır.
+
+#### CAN ID'lerini Yapılandırma
+
+| Alan | Varsayılan | Notlar |
+|------|-----------|--------|
+| İstek ID | `0x7E0` | Test cihazı (bu uygulama) tarafından kullanılan CAN ID'si |
+| Yanıt ID | `0x7E8` | Simüle edilen ECU tarafından kullanılan CAN ID'si |
+
+İstek ID'si standart `0x7E0`–`0x7E7` aralığındaysa, alandan çıkıldığında Yanıt ID'si otomatik olarak türetilir (`requestId + 8`).
+
+#### İstek Gönderme
+
+Bir ön ayar seçin ve **Send UDS Request** düğmesine tıklayın (bus çalışıyor olmalıdır):
+
+| Ön Ayar | SID | Payload |
+|---------|-----|---------|
+| `0x10` Oturum Kontrolü | `0x10` | Yapılandırılabilir oturum türü (Varsayılan / Programlama / Genişletilmiş) |
+| `0x22` DID Oku | `0x22` | 16-bit Veri Tanımlayıcısı (hex, ör. VIN için `F190`) |
+| `0x19` DTC Oku | `0x19` | Alt fonksiyon `0x02`, yapılandırılabilir durum maskesi |
+| Ham | — | Boşluklarla ayrılmış herhangi bir hex byte dizisi |
+
+Çok framelı payload'lar ISO-TP kullanılarak otomatik olarak segmentlere ayrılır (İlk Frame + Ardışık Frameler). İlk Frame'den sonra bir Akış Kontrol frame'i enjekte edilir.
+
+#### Symphony — Otomatik ECU Yanıtları
+
+Simüle edilen ECU'yu etkinleştirmek için **Symphony On** seçeneğini açın. Etkin olduğunda:
+
+1. Çok framelı istekler alınır ve yeniden birleştirilir.
+2. UDS Servis Tanımlayıcısı (SID) işlenir.
+3. ISO-TP yanıtı otomatik olarak iletilir.
+
+Desteklenen SID'ler ve yanıtları:
+
+| SID | Servis | Olumlu Yanıt |
+|-----|--------|--------------|
+| `0x10` | Tanı Oturum Kontrolü | `0x50` + oturum parametreleri |
+| `0x22` | Tanımlayıcıya Göre Veri Oku | `0x62` + DID + değer byte'ları |
+| `0x19` | DTC Bilgisi Oku (SF `0x02`) | `0x59` + DTC kayıtları |
+| Diğer | — | `0x7F` NRC `0x11` (hizmet desteklenmiyor) |
+
+#### DID Yanıt Tablosu
+
+Her DID için döndürülecek değeri yapılandırın:
+
+| Kodlama | Davranış |
+|---------|----------|
+| **ASCII** | Değer dizesi ham ASCII byte'ları olarak iletilir |
+| **Hex** | Hex dizesi (ör. `DEADBEEF`) byte'lara bölünür |
+| **Vitals** | Canlı vital değer (ör. `heartRate`, `spO2`), yanıt anında hedef düğümden okunur, ×10 ölçeklenerek 2 byte'lık big-endian tam sayı olarak döndürülür |
+
+Vital yanıtlarını belirli bir simülasyon düğümüne sabitlemek için **Hedef Düğüm** seçeneğini kullanın. Motor, istek CAN ID'si ofsetinden düğümü kendiliğinden belirlesin istiyorsanız **İstek ID'sinden otomatik** seçeneğini bırakın.
+
+#### ISO-TP Frame Günlüğü
+
+Sağ panel, tanı CAN ID'lerindeki tüm frameleri gösterir:
+
+| Sütun | İçerik |
+|-------|--------|
+| Zaman | ISO zaman damgası (ms hassasiyetinde) |
+| ID | CAN arbitrasyon ID'si |
+| PCI | Frame türü: **SF** (Tek Frame), **FF** (İlk Frame), **CF** (Ardışık Frame), **FC** (Akış Kontrol) |
+| Veri | Ham hex payload (8 byte, sıfır dolgulu) |
+
+Tester frameleri siyan arka plana, ECU frameleri zümrüt arka plana sahiptir.
 
 ---
 

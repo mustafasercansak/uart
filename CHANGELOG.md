@@ -2,20 +2,34 @@
 
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
-## [Unreleased] — CAN Smart Listen
+## [v1.6.0] — 2026-05-19
+### 🚌 CAN Bus Simulator & UX Enhancements
 
-### CAN Auto Baud Detection & Protocol Sniffer
+#### UDS (ISO 14229) Diagnostic Layer over CAN
+- **ISO-TP transport (ISO 15765-2)**: Full segmentation and reassembly of multi-frame messages. Supports Single Frame (SF), First Frame (FF), Consecutive Frame (CF), and Flow Control (FC) PCI types. Configurable `blockSize` and `STmin` (separation time).
+- **UDS service support**:
+  - `0x10` Diagnostic Session Control — responds with session parameters (P2/P2* timing).
+  - `0x22` Read Data By Identifier — supports multiple DIDs per request, three response encodings: ASCII, Hex bytes, and live Vitals (reads from the simulation engine in real time).
+  - `0x19` Read DTC Information (sub-function `0x02`) — returns configured mock DTC codes with a status mask byte.
+  - Unknown SIDs — returns `0x7F` NRC `0x11` (serviceNotSupported).
+- **Symphony auto-responder**: The ECU side of the diagnostic session can be toggled on/off. When enabled, the engine automatically generates and transmits ISO-TP responses; when disabled, requests are still transmitted but go unanswered (useful for passive logging).
+- **Diagnostic Terminal UI**: New dedicated tab on the CAN Dashboard with:
+  - Request builder presets: Session Control (`0x10`), Read DID (`0x22`), Read DTC (`0x19`), Raw payload.
+  - Configurable tester/ECU CAN IDs (auto-derives ECU response ID from standard `0x7E0`–`0x7E7` range).
+  - Symphony DID response table — add, edit, enable/disable, or remove DID entries at runtime.
+  - Target Node selector — bind vitals responses to a specific simulated node or let the engine choose automatically from the request ID.
+  - ISO-TP frame log panel — displays all diagnostic traffic with colour-coded PCI type labels (SF/FF/CF/FC).
+- **Worker integration**: Added `CAN_SEND_UDS_REQUEST` and `CAN_SET_UDS_CONFIG` message types to the CAN Web Worker.
+- **State management**: `udsConfig` field added to `CANBusState`; `SET_UDS_CONFIG` action added to `canReducer`; `sendUDSRequest` and `setUDSConfig` exposed through `CANContext`.
+- **Tests**: Three focused tests added for the UDS layer — multi-frame `0x22` segmentation and flow control sequence, multi-frame request reassembly via `sendCustomFrame`, and `0x19` DTC response content validation.
+
+#### CAN Auto Baud Detection & Protocol Sniffer
 - **Smart Listen overlay**: Added a passive discovery overlay to the CAN Dashboard. It scans observed bus traffic without transmitting frames or changing existing traffic.
 - **CAN protocol identification**: Detects Standard 11-bit and Extended 29-bit CAN traffic from captured frames and arbitration identifiers.
 - **Baud rate locking**: Estimates and locks to common CAN bit rates (`125k`, `250k`, `500k`, `1M`) with a 5% margin requirement before enabling synchronization.
 - **Sync and Connect flow**: Shows a **Sync and Connect** button once the detector has sufficient confidence, then applies the detected CAN baud rate and returns the user to the Bus Monitor.
 - **Shared detector tests**: Added focused test coverage for baud estimation, CAN Standard/Extended detection, Modbus RTU signature detection, and lock criteria.
 - **i18n**: Added `smartListen.*` translations in English and Turkish.
-
----
-
-## [v1.6.0] — 2026-05-19
-### 🚌 CAN Bus Simulator & UX Enhancements
 
 #### CAN Bus Module (New)
 - **CAN Dashboard**: Fully featured dashboard for real-time CAN bus simulation. Powered by an independent Web Worker-based simulation engine (`can.worker.ts`), utilizing a `CANProvider` context completely decoupled from the UART module.
