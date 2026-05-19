@@ -12,6 +12,7 @@ import {
   HeartPulse,
   Zap,
   ShieldCheck,
+  Stethoscope,
 } from 'lucide-react';
 import { useCANContext } from '../../../can/store/CANContext';
 import { NodeCard } from './components/NodeCard';
@@ -27,6 +28,7 @@ import { NodesTab } from './components/NodesTab';
 import { ArbitrationTab } from './components/ArbitrationTab';
 import { LogTab } from './components/LogTab';
 import { CANAutomationTab } from './components/CANAutomationTab';
+import { DiagnosticTerminal } from './components/DiagnosticTerminal';
 import { CANKeyboardShortcutsModal } from './components/CANKeyboardShortcutsModal';
 import { useTranslation } from '../../../i18n/context';
 import { detectCANTraffic } from '../../../engines/SmartListen';
@@ -36,10 +38,11 @@ import type { CANArbitrationEvent } from '../../../can/types/CANFrame';
 import { MEDICAL_PROFILE_COLORS, type CANNode } from '../../../can/types/CANNode';
 import { loadCANProfiles, type CANProfile } from '../../../can/store/canProfileStorage';
 
-type CenterTab = 'bus' | 'nodes' | 'arbitration' | 'log' | 'fault' | 'automation' | 'compliance';
+type CenterTab = 'bus' | 'nodes' | 'arbitration' | 'log' | 'fault' | 'diagnostics' | 'automation' | 'compliance';
 type RightPanel = 'inspector' | 'vitals';
 
 const BAUD_RATES: CANBaudRate[] = [125, 250, 500, 1000];
+const TAB_ORDER: CenterTab[] = ['bus', 'nodes', 'arbitration', 'log', 'fault', 'diagnostics', 'automation', 'compliance'];
 
 
 
@@ -53,6 +56,7 @@ export default function CANDashboard() {
     injectFault, recoverNode, setOutputMode,
     connectSerial, disconnectSerial, connectNetwork, disconnectNetwork,
     startRecording, stopRecording, sendFrame,
+    sendUDSRequest, setUDSConfig,
     setErrorInjectionConfig, armErrorInjection
   } = useCANContext();
 
@@ -146,8 +150,6 @@ export default function CANDashboard() {
     setIsSmartListenActive(false);
   }, [setBaudRate, smartListenResult.baudRate]);
 
-  const TAB_ORDER: CenterTab[] = ['bus', 'nodes', 'arbitration', 'log', 'fault', 'automation', 'compliance'];
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -174,7 +176,7 @@ export default function CANDashboard() {
         case 'c': case 'C':
           clearFrames();
           break;
-        case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+        case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8':
           setActiveTab(TAB_ORDER[parseInt(e.key) - 1]);
           break;
       }
@@ -189,6 +191,7 @@ export default function CANDashboard() {
     { id: 'arbitration', icon: Shuffle,      label: t('can.arbitration'),      color: 'bg-purple-600',  shadow: 'shadow-purple-900/40' },
     { id: 'log',         icon: ScrollText,   label: t('can.log'),              color: 'bg-gray-600',    shadow: 'shadow-gray-900/40' },
     { id: 'fault',       icon: Zap,          label: t('can.faultInjection'),   color: 'bg-red-700',     shadow: 'shadow-red-900/40' },
+    { id: 'diagnostics', icon: Stethoscope,  label: 'Diagnostics',             color: 'bg-cyan-700',    shadow: 'shadow-cyan-900/40' },
     { id: 'automation',  icon: Zap,          label: t('can.automation') ?? 'Automation', color: 'bg-purple-700',  shadow: 'shadow-purple-900/40' },
     { id: 'compliance',  icon: ShieldCheck,  label: t('can.compliance'),       color: 'bg-emerald-700', shadow: 'shadow-emerald-900/40' },
   ];
@@ -448,6 +451,16 @@ export default function CANDashboard() {
                   onSetErrorInjectionConfig={setErrorInjectionConfig}
                   onArmErrorInjection={armErrorInjection}
                   isRunning={isRunning}
+                />
+              )}
+              {activeTab === 'diagnostics' && (
+                <DiagnosticTerminal
+                  frames={state.recentFrames}
+                  nodes={state.nodes}
+                  isRunning={isRunning}
+                  config={state.udsConfig}
+                  onSendRequest={sendUDSRequest}
+                  onSetConfig={setUDSConfig}
                 />
               )}
               {activeTab === 'automation' && (

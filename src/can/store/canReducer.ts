@@ -2,6 +2,7 @@ import type { CANBusState, CANLogEntry, CANFaultEvent } from '../types/CANBusSta
 import type { CANFrame, CANArbitrationEvent } from '../types/CANFrame';
 import type { CANNode } from '../types/CANNode';
 import { DEFAULT_CAN_ERROR_INJECTION_STATE } from '../types/CANErrorInjection';
+import { DEFAULT_UDS_DIAGNOSTIC_CONFIG, type UDSDiagnosticConfig } from '../types/UDS';
 
 const MAX_RECENT_FRAMES = 200;
 const MAX_LOG_ENTRIES = 500;
@@ -32,6 +33,7 @@ export const INITIAL_CAN_STATE: CANBusState = {
   showArbitrationEvents: true,
   showErrorFrames: true,
   errorInjection: DEFAULT_CAN_ERROR_INJECTION_STATE,
+  udsConfig: DEFAULT_UDS_DIAGNOSTIC_CONFIG,
 };
 
 export type CANAction =
@@ -50,6 +52,7 @@ export type CANAction =
   | { type: 'CAN_CLEAR_FRAMES' }
   | { type: 'CAN_SET_BAUD_RATE'; baudRate: CANBusState['baudRate'] }
   | { type: 'CAN_SET_OUTPUT_MODE'; mode: CANBusState['outputMode'] }
+  | { type: 'CAN_SET_UDS_CONFIG'; config: UDSDiagnosticConfig }
   | { type: 'CAN_SET_SERIAL_CONNECTED'; connected: boolean }
   | { type: 'CAN_SET_NETWORK_CONNECTED'; connected: boolean }
   | { type: 'CAN_SET_RECORDING'; isRecording: boolean }
@@ -127,6 +130,9 @@ export function canReducer(state: CANBusState, action: CANAction): CANBusState {
 
     case 'CAN_SET_OUTPUT_MODE':
       return { ...state, outputMode: action.mode };
+
+    case 'CAN_SET_UDS_CONFIG':
+      return { ...state, udsConfig: action.config };
 
     case 'CAN_SET_SERIAL_CONNECTED':
       return { ...state, serialConnected: action.connected };

@@ -3,6 +3,7 @@ import type { CANFrame, CANArbitrationEvent } from '../types/CANFrame';
 import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANBusState, CANBaudRate, CANLogEntry, CANFaultEvent } from '../types/CANBusState';
 import type { CANErrorInjectionConfig, CANInjectedErrorType } from '../types/CANErrorInjection';
+import type { UDSDiagnosticConfig } from '../types/UDS';
 import { CAN_INJECTED_ERROR_LABELS } from '../types/CANErrorInjection';
 
 function t(key: string): string {
@@ -32,6 +33,14 @@ const MAX_RECENT_FRAMES = 200;
 const MAX_LOG_ENTRIES = 500;
 const BUS_LOAD_WINDOW_MS = 1000;
 
+interface IsoTpRxSession {
+  totalLength: number;
+  payload: number[];
+  nextSequence: number;
+  responseId: number;
+  startedAt: number;
+}
+
 // Approximate bit count per standard CAN frame at given DLC (worst case with bit stuffing)
 function estimateFrameBits(dlc: number, isExtended: boolean): number {
   const headerBits = isExtended ? 67 : 47;
@@ -52,6 +61,7 @@ export class CANSimulationEngine {
 
   // Active noise-burst timers keyed by nodeId
   private noiseBurstTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
+  private isotpRxSessions: Map<number, IsoTpRxSession> = new Map();
 
   // Bus load tracking
   private recentFrameBits: Array<{ ts: number; bits: number }> = [];
@@ -154,6 +164,32 @@ export class CANSimulationEngine {
     this.state.errorInjection = { ...this.state.errorInjection, oneTimeArmed: true };
     this.log('info', 'CAN Error Injection armed for next matching packet');
     this.emitStateUpdate({ errorInjection: this.state.errorInjection });
+  }
+
+  public setUDSConfig(config: UDSDiagnosticConfig): void {
+    this.state.udsConfig = {
+      ...config,
+      testerRequestId: this.clampCanId(config.testerRequestId),
+      ecuResponseId: this.clampCanId(config.ecuResponseId),
+      blockSize: Math.max(0, Math.min(255, config.blockSize)),
+      stMinMs: Math.max(0, Math.min(127, config.stMinMs)),
+      didResponses: config.didResponses.map(entry => ({
+        ...entry,
+        did: Math.max(0, Math.min(0xffff, entry.did)),
+      })),
+      dtcCodes: config.dtcCodes.map(code => Math.max(0, Math.min(0xffffff, code))),
+    };
+    this.log('info', `UDS Symphony configured on 0x${this.hexId(this.state.udsConfig.testerRequestId)} -> 0x${this.hexId(this.state.udsConfig.ecuResponseId)}`);
+    this.emitStateUpdate({ udsConfig: this.state.udsConfig });
+  }
+
+  public sendUDSRequest(requestId: number, payload: number[]): void {
+    const normalizedPayload = payload.map(byte => byte & 0xff);
+    const responseId = this.responseIdForRequest(requestId);
+    this.transmitIsoTpPayload(requestId, normalizedPayload, 'tester');
+    const cfCount = normalizedPayload.length > 7 ? Math.ceil((normalizedPayload.length - 6) / 7) : 0;
+    const responseDelay = cfCount > 0 ? (cfCount + 1) * this.state.udsConfig.stMinMs : 0;
+    setTimeout(() => this.processUdsPayload(requestId, responseId, normalizedPayload), responseDelay);
   }
 
   public clearFrames(): void {
@@ -332,135 +368,171 @@ export class CANSimulationEngine {
     this.onFrame?.(frame);
     this.log('tx', `Tester TX [0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}] DLC=${dlc} ${frameData.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
 
-    this.processUdsRequest(arbitrationId, frameData);
+    this.handleIsoTpFrame(arbitrationId, frameData);
   }
 
-  private udsTxBuffer: number[] = [];
-  private udsTxResponseId = 0x7E8;
-  private udsTxSequence = 1;
+  private transmitIsoTpPayload(arbitrationId: number, payload: number[], sender: 'tester' | 'ecu'): void {
+    if (payload.length <= 7) {
+      this.transmitDiagnosticFrame(arbitrationId, [payload.length, ...payload], sender);
+      return;
+    }
 
-  private processUdsRequest(id: number, data: number[]): void {
-    const isPhysical = id >= 0x7E0 && id <= 0x7E7;
-    const isBroadcast = id === 0x7DF;
+    const length = Math.min(payload.length, 0xfff);
+    this.transmitDiagnosticFrame(arbitrationId, [
+      0x10 | ((length >> 8) & 0x0f),
+      length & 0xff,
+      ...payload.slice(0, 6),
+    ], sender);
 
-    if (!isPhysical && !isBroadcast) {
-      if (id >= 0x7E0 && id <= 0x7E7 && (data[0] & 0xF0) === 0x30) {
-        this.sendUdsConsecutiveFrames();
+    const flowControlId = sender === 'tester' ? this.responseIdForRequest(arbitrationId) : this.state.udsConfig.testerRequestId;
+    this.transmitDiagnosticFrame(flowControlId, [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs], sender === 'tester' ? 'ecu' : 'tester');
+
+    let offset = 6;
+    let sequence = 1;
+    const sendNext = () => {
+      if (offset >= length) return;
+      const chunk = payload.slice(offset, offset + 7);
+      this.transmitDiagnosticFrame(arbitrationId, [0x20 | (sequence & 0x0f), ...chunk], sender);
+      offset += chunk.length;
+      sequence = (sequence + 1) & 0x0f;
+      if (offset < length) setTimeout(sendNext, this.state.udsConfig.stMinMs);
+    };
+
+    setTimeout(sendNext, this.state.udsConfig.stMinMs);
+  }
+
+  private handleIsoTpFrame(arbitrationId: number, data: number[]): void {
+    if (data.length === 0) return;
+    const pciType = (data[0] & 0xf0) >> 4;
+    const responseId = this.responseIdForRequest(arbitrationId);
+
+    if (pciType === 0) {
+      const payloadLength = data[0] & 0x0f;
+      const payload = data.slice(1, 1 + payloadLength);
+      this.log('rx', `ISO-TP SF request len=${payload.length} SID=0x${this.hexByte(payload[0] ?? 0)}`);
+      this.processUdsPayload(arbitrationId, responseId, payload);
+      return;
+    }
+
+    if (pciType === 1) {
+      const totalLength = ((data[0] & 0x0f) << 8) | data[1];
+      const payload = data.slice(2, Math.min(8, 2 + totalLength));
+      this.isotpRxSessions.set(arbitrationId, {
+        totalLength,
+        payload,
+        nextSequence: 1,
+        responseId,
+        startedAt: Date.now(),
+      });
+      this.log('rx', `ISO-TP FF request len=${totalLength}; sending Flow Control`);
+      this.transmitDiagnosticFrame(responseId, [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs], 'ecu');
+      if (payload.length >= totalLength) {
+        this.isotpRxSessions.delete(arbitrationId);
+        this.processUdsPayload(arbitrationId, responseId, payload.slice(0, totalLength));
       }
       return;
     }
 
-    const nodeIndex = isPhysical ? (id - 0x7E0) : 0;
-    const targetNode = this.state.nodes[nodeIndex] || this.state.nodes[0];
-    if (!targetNode) return;
+    if (pciType === 2) {
+      const session = this.isotpRxSessions.get(arbitrationId);
+      if (!session) return;
+      const sequence = data[0] & 0x0f;
+      if (sequence !== session.nextSequence) {
+        this.log('error', `ISO-TP sequence error on 0x${this.hexId(arbitrationId)} expected ${session.nextSequence} got ${sequence}`);
+        this.isotpRxSessions.delete(arbitrationId);
+        return;
+      }
+      session.payload.push(...data.slice(1));
+      session.nextSequence = (session.nextSequence + 1) & 0x0f;
+      if (session.payload.length >= session.totalLength) {
+        this.isotpRxSessions.delete(arbitrationId);
+        const payload = session.payload.slice(0, session.totalLength);
+        this.log('rx', `ISO-TP reassembled len=${payload.length} SID=0x${this.hexByte(payload[0] ?? 0)}`);
+        this.processUdsPayload(arbitrationId, session.responseId, payload);
+      }
+      return;
+    }
 
-    const responseId = isPhysical ? (id + 8) : 0x7E8;
-    const type = (data[0] & 0xF0) >> 4;
-
-    if (type === 0) { // Single Frame
-      const len = data[0] & 0x0F;
-      const sid = data[1];
-      
-      if (sid === 0x10) { // Diagnostic Session Control
-        const sub = data[2];
-        this.sendUdsResponse(responseId, [0x50, sub, 0x00, 0x32, 0x01, 0xF4]);
-      } 
-      else if (sid === 0x11) { // ECU Reset
-        const sub = data[2];
-        setTimeout(() => {
-          this.log('nmt', `UDS ECU Reset triggered on Node ${targetNode.id}`);
-          this.recoverNode(targetNode.id);
-        }, 100);
-        this.sendUdsResponse(responseId, [0x51, sub]);
-      }
-      else if (sid === 0x22) { // Read Data By Identifier
-        const did = (data[2] << 8) | data[3];
-        if (did === 0xF190) { // VIN
-          const vin = "MOCKVIN1234567890";
-          const vinBytes = Array.from(vin).map(c => c.charCodeAt(0));
-          this.sendUdsResponse(responseId, [0x62, 0xF1, 0x90, ...vinBytes]);
-        } else if (did === 0xF18C) { // ECU Serial Number
-          const sn = `MOCK-SN-NODE${targetNode.id}`;
-          const snBytes = Array.from(sn).map(c => c.charCodeAt(0));
-          this.sendUdsResponse(responseId, [0x62, 0xF1, 0x8C, ...snBytes]);
-        } else if (did === 0xF197) { // System Name
-          const nameBytes = Array.from(targetNode.name).map(c => c.charCodeAt(0));
-          this.sendUdsResponse(responseId, [0x62, 0xF1, 0x97, ...nameBytes]);
-        } else {
-          this.sendUdsResponse(responseId, [0x7F, 0x22, 0x31]);
-        }
-      }
-      else if (sid === 0x2E) { // Write Data By Identifier
-        const did = (data[2] << 8) | data[3];
-        if (did === 0xF197) {
-          const newName = String.fromCharCode(...data.slice(4, 4 + len - 3)).trim();
-          if (newName) {
-            this.updateNode(targetNode.id, { name: newName });
-            this.log('nmt', `UDS Write DID 0xF197: Updated Node ${targetNode.id} name to "${newName}"`);
-            this.sendUdsResponse(responseId, [0x6E, 0xF1, 0x97]);
-          } else {
-            this.sendUdsResponse(responseId, [0x7F, 0x2E, 0x13]);
-          }
-        } else {
-          this.sendUdsResponse(responseId, [0x7F, 0x2E, 0x31]);
-        }
-      }
-      else {
-        this.sendUdsResponse(responseId, [0x7F, sid, 0x11]);
-      }
+    if (pciType === 3) {
+      this.log('rx', `ISO-TP Flow Control on 0x${this.hexId(arbitrationId)} FS=${data[0] & 0x0f} BS=${data[1] ?? 0} STmin=${data[2] ?? 0}ms`);
     }
   }
 
-  private sendUdsResponse(responseId: number, payload: number[]): void {
-    if (payload.length <= 7) {
-      const data = [payload.length, ...payload];
-      while (data.length < 8) data.push(0x00);
-      this.transmitECUFrame(responseId, data);
+  private processUdsPayload(requestId: number, responseId: number, payload: number[]): void {
+    if (!this.state.udsConfig.autoRespond || payload.length === 0) return;
+
+    const targetNode = this.getDiagnosticTargetNode(requestId);
+    const sid = payload[0];
+    let response: number[];
+
+    if (sid === 0x10) {
+      const subFunction = payload[1] ?? 0x01;
+      response = [0x50, subFunction, 0x00, 0x32, 0x01, 0xf4];
+    } else if (sid === 0x22) {
+      response = this.buildReadDidResponse(payload, targetNode);
+    } else if (sid === 0x19) {
+      response = this.buildReadDtcResponse(payload);
     } else {
-      const len = payload.length;
-      const ffByte0 = 0x10 | ((len >> 8) & 0x0F);
-      const ffByte1 = len & 0xFF;
-      const firstChunk = payload.slice(0, 6);
-      const data = [ffByte0, ffByte1, ...firstChunk];
-      
-      this.udsTxBuffer = payload.slice(6);
-      this.udsTxResponseId = responseId;
-      this.udsTxSequence = 1;
-
-      this.transmitECUFrame(responseId, data);
+      response = [0x7f, sid, 0x11];
     }
+
+    this.log('rx', `UDS ${this.describeSid(sid)} request on 0x${this.hexId(requestId)} -> response 0x${this.hexId(responseId)}`);
+    this.transmitIsoTpPayload(responseId, response, 'ecu');
   }
 
-  private sendUdsConsecutiveFrames(): void {
-    if (this.udsTxBuffer.length === 0) return;
+  private buildReadDidResponse(payload: number[], targetNode: CANNode | undefined): number[] {
+    if (payload.length < 3 || payload.length % 2 === 0) return [0x7f, 0x22, 0x13];
 
-    let seq = this.udsTxSequence;
-    const responseId = this.udsTxResponseId;
-    const delay = 20;
-
-    const sendNext = () => {
-      if (this.udsTxBuffer.length === 0) return;
-
-      const chunk = this.udsTxBuffer.splice(0, 7);
-      const cfByte = 0x20 | (seq & 0x0F);
-      const data = [cfByte, ...chunk];
-      while (data.length < 8) data.push(0x00);
-
-      this.transmitECUFrame(responseId, data);
-      seq++;
-      
-      if (this.udsTxBuffer.length > 0) {
-        setTimeout(sendNext, delay);
-      }
-    };
-
-    setTimeout(sendNext, delay);
+    const response: number[] = [0x62];
+    for (let i = 1; i < payload.length; i += 2) {
+      const did = (payload[i] << 8) | payload[i + 1];
+      const configured = this.state.udsConfig.didResponses.find(entry => entry.enabled && entry.did === did);
+      const value = configured ? this.encodeDidValue(configured, targetNode) : null;
+      if (!value) return [0x7f, 0x22, 0x31];
+      response.push((did >> 8) & 0xff, did & 0xff, ...value);
+    }
+    return response;
   }
 
-  private transmitECUFrame(arbitrationId: number, data: number[]): void {
+  private buildReadDtcResponse(payload: number[]): number[] {
+    const subFunction = payload[1] ?? 0x02;
+    const statusMask = payload[2] ?? 0xff;
+    if (subFunction !== 0x02) return [0x7f, 0x19, 0x12];
+
+    const response = [0x59, subFunction, 0xff];
+    for (const code of this.state.udsConfig.dtcCodes) {
+      response.push((code >> 16) & 0xff, (code >> 8) & 0xff, code & 0xff, statusMask);
+    }
+    return response;
+  }
+
+  private encodeDidValue(entry: UDSDiagnosticConfig['didResponses'][number], targetNode: CANNode | undefined): number[] | null {
+    if (entry.encoding === 'hex') {
+      const clean = entry.value.replace(/[^0-9a-fA-F]/g, '');
+      if (clean.length % 2 !== 0) return null;
+      const bytes: number[] = [];
+      for (let i = 0; i < clean.length; i += 2) bytes.push(parseInt(clean.slice(i, i + 2), 16));
+      return bytes;
+    }
+
+    if (entry.encoding === 'vitals') {
+      const vitals = targetNode?.vitals ?? this.state.nodes[0]?.vitals;
+      const numeric = vitals && entry.value in vitals
+        ? Number(vitals[entry.value as keyof typeof vitals])
+        : 0;
+      const scaled = Math.max(0, Math.min(0xffff, Math.round(numeric * 10)));
+      return [(scaled >> 8) & 0xff, scaled & 0xff];
+    }
+
+    return Array.from(entry.value).map(char => char.charCodeAt(0) & 0xff);
+  }
+
+  private transmitDiagnosticFrame(arbitrationId: number, data: number[], sender: 'tester' | 'ecu'): void {
     const now = Date.now();
     const dlc = 8;
-    const crc = computeCANCRC(data, arbitrationId, dlc, 'standard');
+    const frameData = data.slice(0, 8);
+    while (frameData.length < 8) frameData.push(0x00);
+    const crc = computeCANCRC(frameData, arbitrationId, dlc, 'standard');
 
     const frame: CANFrame = {
       uid: uuidv4(),
@@ -469,10 +541,10 @@ export class CANSimulationEngine {
       frameType: 'data',
       isRTR: false,
       dlc,
-      data,
+      data: frameData,
       crc,
       timestamp: now,
-      nodeId: -2,
+      nodeId: sender === 'tester' ? -1 : -2,
       busLoadPercent: this.state.busLoadPercent,
       errors: [],
       cobId: arbitrationId,
@@ -485,7 +557,8 @@ export class CANSimulationEngine {
     this.state.recentFrames = [frame, ...this.state.recentFrames].slice(0, MAX_RECENT_FRAMES);
     this.state.frameCount++;
     this.onFrame?.(frame);
-    this.log('rx', `ECU Response [0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}] DLC=8 ${data.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
+    const label = sender === 'tester' ? 'Tester TX' : 'ECU RX';
+    this.log(sender === 'tester' ? 'tx' : 'rx', `${label} ISO-TP [0x${this.hexId(arbitrationId)}] ${frameData.map(b => this.hexByte(b)).join(' ')}`);
   }
 
   private transmitFrame(node: CANNode, data: number[], now: number): void {
@@ -625,6 +698,43 @@ export class CANSimulationEngine {
 
   private emitStateUpdate(patch: Partial<CANBusState>): void {
     this.onStateUpdate?.(patch);
+  }
+
+  private responseIdForRequest(requestId: number): number {
+    if (requestId === this.state.udsConfig.testerRequestId || requestId === 0x7df) {
+      return this.state.udsConfig.ecuResponseId;
+    }
+    if (requestId >= 0x7e0 && requestId <= 0x7e7) return requestId + 8;
+    return this.state.udsConfig.ecuResponseId;
+  }
+
+  private getDiagnosticTargetNode(requestId: number): CANNode | undefined {
+    const configuredId = this.state.udsConfig.targetNodeId;
+    if (configuredId !== null) return this.state.nodes.find(node => node.id === configuredId) ?? this.state.nodes[0];
+    if (requestId >= 0x7e0 && requestId <= 0x7e7) {
+      const index = requestId - 0x7e0;
+      return this.state.nodes[index] ?? this.state.nodes[0];
+    }
+    return this.state.nodes[0];
+  }
+
+  private describeSid(sid: number): string {
+    if (sid === 0x10) return 'Diagnostic Session Control';
+    if (sid === 0x22) return 'Read Data By Identifier';
+    if (sid === 0x19) return 'Read DTC Information';
+    return `SID 0x${this.hexByte(sid)}`;
+  }
+
+  private clampCanId(id: number): number {
+    return Math.max(0, Math.min(0x7ff, Math.round(id)));
+  }
+
+  private hexId(id: number): string {
+    return id.toString(16).toUpperCase().padStart(3, '0');
+  }
+
+  private hexByte(byte: number): string {
+    return (byte & 0xff).toString(16).toUpperCase().padStart(2, '0');
   }
 
   private emitFaultEvent(nodeId: number, nodeName: string, fault: CANFaultType | 'recover'): void {
