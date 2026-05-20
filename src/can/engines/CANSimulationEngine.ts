@@ -368,7 +368,9 @@ export class CANSimulationEngine {
     this.onFrame?.(frame);
     this.log('tx', `Tester TX [0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}] DLC=${dlc} ${frameData.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
 
-    this.handleIsoTpFrame(arbitrationId, frameData);
+    if (this.isDiagnosticAddress(arbitrationId)) {
+      this.handleIsoTpFrame(arbitrationId, frameData);
+    }
   }
 
   private transmitIsoTpPayload(arbitrationId: number, payload: number[], sender: 'tester' | 'ecu'): void {
@@ -698,6 +700,12 @@ export class CANSimulationEngine {
 
   private emitStateUpdate(patch: Partial<CANBusState>): void {
     this.onStateUpdate?.(patch);
+  }
+
+  private isDiagnosticAddress(id: number): boolean {
+    return id === this.state.udsConfig.testerRequestId ||
+      id === 0x7df ||
+      (id >= 0x7e0 && id <= 0x7e7);
   }
 
   private responseIdForRequest(requestId: number): number {
