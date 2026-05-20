@@ -28,6 +28,20 @@
 17. [Klavye Kısayolları](#shortcuts)
 18. [Sorun Giderme ve Optimizasyon](#troubleshooting)
 19. [Sözlük](#glossary)
+20. [CAN Bus Simülatörü](#can-bus)
+    - [20.1 Mimari Genel Bakış](#can-arch)
+    - [20.2 Gösterge Paneli Düzeni](#can-layout)
+    - [20.3 Düğüm Ekleme ve Yapılandırma](#can-nodes)
+    - [20.4 Simülasyonu Çalıştırma](#can-run)
+    - [20.5 Bus Monitörü ve Frame Enjeksiyonu](#can-monitor)
+    - [20.6 Hata Enjeksiyonu](#can-errors)
+    - [20.7 Uyumluluk Paneli](#can-compliance)
+    - [20.8 CAN Profilleri](#can-profiles)
+    - [20.9 Akıllı Dinleme](#can-smart-listen)
+    - [20.10 Klavye Kısayolları](#can-shortcuts)
+    - [20.11 UDS Tanı Terminali (ISO 14229 / ISO-TP)](#can-uds)
+    - [20.12 DBC Dosyası İçe Aktarma ve Sinyal Çözümleyici](#can-dbc)
+    - [20.13 J1939 Çerçeve Çözümleyici](#can-j1939)
 
 ---
 
@@ -983,6 +997,7 @@ Canlı Tanı Paneli şunları gösterir:
 
 ---
 
+<a name="can-bus"></a>
 ## 20. CAN Bus Simülatörü
 
 CAN Bus modülü, **ISO 11898-1 CAN 2.0A** ağları için tamamen tarayıcı tabanlı, bağımsız bir simülasyon ortamıdır. UART motorundan tamamen izole edilmiş ayrı bir **Web Worker** thread'i üzerinde çalışır; 125 / 250 / 500 / 1000 kbps baud hızlarında 127 adede kadar düğümü destekler.
@@ -1243,6 +1258,88 @@ Sağ panel, tanı CAN ID'lerindeki tüm frameleri gösterir:
 | Veri | Ham hex payload (8 byte, sıfır dolgulu) |
 
 Tester frameleri siyan arka plana, ECU frameleri zümrüt arka plana sahiptir.
+
+---
+
+<a name="can-dbc"></a>
+### 20.12 DBC Dosyası İçe Aktarma ve Sinyal Çözümleyici
+
+**.dbc** dosyaları, CAN mesaj ve sinyal tanımlarını depolayan endüstri standardı formattır (CANdb++ / Vector). UART Pro Lab v1.6.0 tam DBC ayrıştırma desteği sunar.
+
+#### DBC İçe Aktarma
+
+1. Kenar çubuğundan **CAN → Profiller** sayfasına gidin.
+2. Araç çubuğundaki **DBC** düğmesine tıklayın.
+3. `.dbc` uzantılı dosyanızı seçin — mesajlar otomatik olarak CAN profiline dönüştürülür.
+
+#### Desteklenen DBC Öğeleri
+
+| Öğe | Açıklama |
+|-----|----------|
+| `BO_` | Mesaj tanımı (ID, DLC, gönderici) |
+| `SG_` | Sinyal tanımı — başlangıç bit, uzunluk, byte sırası, faktör/ofset, min/max, birim |
+| Çoklama (Mux) | `M` (çoklayıcı sinyal) ve `m<değer>` (çoklanan sinyal) desteklenir |
+| `VAL_` | Sinyal değer/enum tabloları |
+
+#### Byte Sırası
+
+| Sembol | Tür | Açıklama |
+|--------|-----|----------|
+| `@1` | Intel (little-endian) | LSB önce; `startBit` en düşük bit konumudur |
+| `@0` | Motorola (big-endian) | MSB önce; `startBit` en yüksek bit konumudur |
+
+#### Frame Inspector'da Sinyal Görüntüleme
+
+DBC içe aktarıldıktan sonra Bus Monitörü'nde bir frame seçin. **Frame Inspector** paneli **Signal Decoder** bölümünde çözümlenen sinyal değerlerini gösterir — ham baytlar faktör ve ofset uygulanarak fiziksel değerlere (rpm, °C, km/h vb.) dönüştürülür.
+
+---
+
+<a name="can-j1939"></a>
+### 20.13 J1939 Çerçeve Çözümleyici
+
+**SAE J1939**, ağır vasıta araçları ve tarım makineleri için 29-bit genişletilmiş CAN ID'si üzerine inşa edilmiş endüstri standardıdır. UART Pro Lab, genişletilmiş frame seçildiğinde J1939 alanlarını otomatik olarak çözümler.
+
+#### 29-bit ID Düzeni
+
+```
+Bit 28-26 │ Bit 25 │ Bit 24 │ Bit 23-16 │ Bit 15-8 │ Bit 7-0
+ Öncelik  │  Rsrv  │   DP   │    PF     │    PS    │   SA
+ (3 bit)  │        │        │ PDU Format│PDU Specif│ Kaynak
+```
+
+| Alan | Açıklama |
+|------|----------|
+| **Öncelik** | 0–7 (düşük = yüksek öncelik). `≤ 2` ⚡ kritik olarak işaretlenir |
+| **DP** | Veri Sayfası — PGN uzayını genişletir |
+| **PGN** | Parametre Grubu Numarası — mesajın içeriğini tanımlar |
+| **PF** | PDU Format — `< 240` ise eşler arası (Peer-to-Peer), `≥ 240` ise yayın (Broadcast) |
+| **PS** | PDU Specific — PF < 240'ta hedef adres; PF ≥ 240'ta grup uzantısı |
+| **SA** | Kaynak Adres — gönderen ECU adresi |
+
+#### PDU Türleri
+
+| Tür | Koşul | Açıklama |
+|-----|-------|----------|
+| **PDU1** | PF < 240 | Eşler arası — PS = hedef adres |
+| **PDU2** | PF ≥ 240 | Yayın — PS PGN'nin parçası |
+
+#### Yaygın PGN'ler
+
+| PGN | İsim |
+|-----|------|
+| `0xFECA` | DM1 — Aktif Hata Kodları |
+| `0xFEEE` | Motor Sıcaklığı |
+| `0xFEF1` | Hız Sabitleyici / Araç Hızı |
+| `0xFEF2` | Yakıt Ekonomisi |
+| `0xF004` | Elektronik Motor Kontrolcüsü 1 |
+
+#### Frame Inspector'da J1939
+
+29-bit genişletilmiş bir frame seçildiğinde Frame Inspector turuncu renkli **J1939** panelini otomatik olarak gösterir:
+- PGN adı ve sayısal değeri
+- Öncelik, PF, PS, Kaynak Adres
+- Hedef Adres (PDU1 ise)
+- PDU Türü (eşler arası / yayın)
 
 ---
 

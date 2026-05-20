@@ -2,8 +2,33 @@
 
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
-## [v1.6.0] — 2026-05-19
+## [v1.6.0] — 2026-05-20
 ### 🚌 CAN Bus Simulator & UX Enhancements
+
+#### DBC File Parser — Full Signal Support
+- **Signal definitions (`SG_`)**: Parser now fully extracts all signal fields — start bit, length, byte order (Intel/Motorola), sign, factor, offset, min, max, unit, and receivers. Previously only message metadata (`BO_`) was parsed; signals were silently discarded.
+- **Multiplexing**: Multiplexer signals (`M`) and multiplexed signals (`m<value>`) are parsed and stored with `muxIndicator` / `muxValue` fields.
+- **Value tables (`VAL_`)**: Enum/value-map tables are parsed and returned as `DBCValueTable[]` in the parse result.
+- **`extractSignalValue()`**: New utility function decodes a signal's physical value from a raw CAN data byte array, handling both Intel (little-endian) and Motorola (big-endian) bit ordering, sign extension, and factor/offset scaling.
+
+#### J1939 Frame Decoder
+- **`parseJ1939Id()`**: New function in `CANFrameParser.ts` that decodes all SAE J1939 fields from a 29-bit extended CAN arbitration ID — priority, Data Page, PGN, PF, PS, source address, destination address, and PDU type (peer-to-peer vs broadcast).
+- **`j1939PgnName()`**: Lookup table for common J1939 Parameter Group Numbers (DM1, Engine Temperature, Vehicle Speed, Fuel Economy, EEC1, etc.).
+- **`J1939Info` type**: Added to `CANFrame.ts`; optional `j1939?` field added to the `CANFrame` interface.
+- **Frame Inspector integration**: When a 29-bit extended frame is selected in the CAN Dashboard, the Frame Inspector automatically shows a J1939 panel with decoded PGN name, priority, PF/PS bytes, source and destination addresses, and PDU type.
+
+#### Light Mode — Soft Blue-Gray Theme
+- Replaced the harsh pure-white light mode palette with a professional cool blue-gray scale (`#eef3f8` base).
+- Updated `html.light` CSS variable overrides in `index.css`: backgrounds now range from `#eef3f8` (page) → `#e4ecf3` (content panels) → `#d4e0ea` (cards), with matching text and accent color adjustments for readability on light backgrounds.
+- Scrollbar colors now use CSS variables and adapt correctly in both themes.
+
+#### Housekeeping
+- `findings.json` (i18n audit snapshot) added to `.gitignore`.
+
+#### Documentation
+- Added **Section 20 (CAN Bus Simulator)** to the Table of Contents in both `GUIDE_TR.md` and `GUIDE_EN.md`.
+- Added **§20.12 DBC File Import & Signal Decoder** — covers supported DBC elements, byte order modes, and signal viewing in Frame Inspector.
+- Added **§20.13 J1939 Frame Decoder** — covers 29-bit ID layout, PDU types, common PGNs, and Frame Inspector integration.
 
 #### UDS (ISO 14229) Diagnostic Layer over CAN
 - **ISO-TP transport (ISO 15765-2)**: Full segmentation and reassembly of multi-frame messages. Supports Single Frame (SF), First Frame (FF), Consecutive Frame (CF), and Flow Control (FC) PCI types. Configurable `blockSize` and `STmin` (separation time).

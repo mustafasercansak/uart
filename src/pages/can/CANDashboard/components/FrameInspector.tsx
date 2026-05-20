@@ -2,6 +2,7 @@ import type { CANFrame } from '../../../../can/types/CANFrame';
 import type { CANNode } from '../../../../can/types/CANNode';
 import { MEDICAL_PROFILE_LABELS } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
+import { parseJ1939Id, j1939PgnName } from '../../../../can/engines/CANFrameParser';
 
 interface FrameInspectorProps {
   frame: CANFrame | null;
@@ -119,6 +120,31 @@ export function FrameInspector({ frame, node }: FrameInspectorProps) {
           ))}
         </div>
       )}
+
+      {/* J1939 Decoded Fields */}
+      {frame.idFormat === 'extended' && (() => {
+        const j = frame.j1939 ?? parseJ1939Id(frame.arbitrationId);
+        return (
+          <div className="glass-panel rounded-lg p-3 border border-orange-800/30 space-y-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[9px] text-orange-400 uppercase tracking-widest font-bold">J1939</span>
+              <span className="text-[8px] text-gray-500 bg-orange-900/20 px-1.5 py-0.5 rounded border border-orange-800/30">
+                {j1939PgnName(j.pgn)}
+              </span>
+            </div>
+            <Row label="PGN"              value={`0x${j.pgn.toString(16).toUpperCase().padStart(4, '0')} (${j.pgn})`} />
+            <Row label="Priority"         value={`${j.priority} ${j.priority <= 2 ? '⚡' : ''}`} />
+            <Row label="PF (PDU Format)"  value={`0x${j.pf.toString(16).toUpperCase().padStart(2, '0')}`} />
+            <Row label="PS (PDU Specific)" value={`0x${j.ps.toString(16).toUpperCase().padStart(2, '0')}`} />
+            <Row label="Source Address"   value={`0x${j.sourceAddress.toString(16).toUpperCase().padStart(2, '0')} (${j.sourceAddress})`} />
+            {j.isPeer2Peer && j.destinationAddress !== undefined && (
+              <Row label="Destination"    value={`0x${j.destinationAddress.toString(16).toUpperCase().padStart(2, '0')} (${j.destinationAddress})`} />
+            )}
+            <Row label="PDU Type"         value={j.isPeer2Peer ? 'PDU1 (Peer-to-Peer)' : 'PDU2 (Broadcast)'} />
+            <Row label="Data Page"        value={j.dataPage.toString()} />
+          </div>
+        );
+      })()}
 
       {/* Physical Layer Scope */}
       <div className="glass-panel rounded-lg p-3 border border-white/5 overflow-hidden">

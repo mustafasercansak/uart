@@ -1,4 +1,4 @@
-import type { CANFrame } from '../types/CANFrame';
+import type { CANFrame, J1939Info } from '../types/CANFrame';
 
 /** Compute CAN 15-bit CRC using the standard CAN polynomial 0x4599. */
 export function computeCANCRC(data: number[], arbitrationId: number, dlc: number, idFormat: 'standard' | 'extended'): number {
@@ -101,4 +101,64 @@ export function encodeCANFrame(frame: Pick<CANFrame, 'arbitrationId' | 'idFormat
 export function formatArbitrationId(id: number, format: 'standard' | 'extended'): string {
   if (format === 'standard') return `0x${id.toString(16).toUpperCase().padStart(3, '0')}`;
   return `0x${id.toString(16).toUpperCase().padStart(8, '0')}`;
+}
+
+/**
+ * Decode SAE J1939 fields from a 29-bit extended CAN arbitration ID.
+ * J1939 ID layout (MSB→LSB):
+ *   [28:26] Priority (3 bits)
+ *   [25]    Reserved
+ *   [24]    Data Page
+ *   [23:16] PF – PDU Format
+ *   [15:8]  PS – PDU Specific (destination address if PF < 240, else group extension)
+ *   [7:0]   SA – Source Address
+ */
+export function parseJ1939Id(arbitrationId: number): J1939Info {
+  const priority      = (arbitrationId >> 26) & 0x07;
+  const dataPage      = (arbitrationId >> 24) & 0x01;
+  const pf            = (arbitrationId >> 16) & 0xFF;
+  const ps            = (arbitrationId >>  8) & 0xFF;
+  const sourceAddress =  arbitrationId        & 0xFF;
+  const isPeer2Peer   = pf < 240;
+  // PGN omits SA; for peer-to-peer (PF < 240) the destination (PS) is not part of the PGN
+  const pgn = isPeer2Peer
+    ? (dataPage << 17) | (pf << 8)
+    : (dataPage << 17) | (pf << 8) | ps;
+
+  return {
+    priority,
+    dataPage,
+    pgn,
+    pf,
+    ps,
+    sourceAddress,
+    destinationAddress: isPeer2Peer ? ps : undefined,
+    isPeer2Peer,
+  };
+}
+
+/** Well-known J1939 PGN names for common parameter groups. */
+const J1939_PGN_NAMES: Record<number, string> = {
+  0xFECA: 'DM1 – Active DTCs',
+  0xFECB: 'DM2 – Previously Active DTCs',
+  0xFECC: 'DM3 – Clear DTCs',
+  0xFECD: 'DM4 – Freeze Frame',
+  0xFECE: 'DM5 – Readiness',
+  0xFEEE: 'Engine Temperature',
+  0xFEEF: 'Engine Fluid Level / Pressure',
+  0xFEF1: 'Cruise Control / Vehicle Speed',
+  0xFEF2: 'Fuel Economy',
+  0xFEE5: 'Engine Hours / Revolutions',
+  0xFEEC: 'Vehicle Identification',
+  0xFEEB: 'Software Identification',
+  0xFEDA: 'Cab Message 1',
+  0xFEF0: 'Power Takeoff Information',
+  0xF004: 'Electronic Engine Controller 1',
+  0xF003: 'Electronic Engine Controller 2',
+  0xFE6B: 'Battery Main Switch Info',
+  0x0000: 'Torque/Speed Control 1',
+};
+
+export function j1939PgnName(pgn: number): string {
+  return J1939_PGN_NAMES[pgn] ?? `PGN 0x${pgn.toString(16).toUpperCase().padStart(4, '0')}`;
 }

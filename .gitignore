@@ -34,3 +34,6 @@ recordings/
 
 # Tauri signing key (private - repoya girmesin)
 src-tauri/uart.key
+
+# Analysis/audit output files
+findings.json

@@ -28,6 +28,20 @@
 17. [Keyboard Shortcuts](#shortcuts)
 18. [Troubleshooting & Optimization](#troubleshooting)
 19. [Glossary](#glossary)
+20. [CAN Bus Simulator](#can-bus)
+    - [20.1 Architecture Overview](#can-arch)
+    - [20.2 Dashboard Layout](#can-layout)
+    - [20.3 Adding & Configuring Nodes](#can-nodes)
+    - [20.4 Running the Simulation](#can-run)
+    - [20.5 Bus Monitor & Frame Injection](#can-monitor)
+    - [20.6 Fault Injection](#can-errors)
+    - [20.7 Compliance Panel](#can-compliance)
+    - [20.8 CAN Profiles](#can-profiles)
+    - [20.9 Smart Listen](#can-smart-listen)
+    - [20.10 Keyboard Shortcuts](#can-shortcuts)
+    - [20.11 UDS Diagnostic Terminal (ISO 14229 / ISO-TP)](#can-uds)
+    - [20.12 DBC File Import & Signal Decoder](#can-dbc)
+    - [20.13 J1939 Frame Decoder](#can-j1939)
 
 ---
 
@@ -983,6 +997,7 @@ The live Diagnostics Panel shows:
 
 ---
 
+<a name="can-bus"></a>
 ## 20. CAN Bus Simulator
 
 The CAN Bus module is a standalone, browser-native simulation environment for **ISO 11898-1 CAN 2.0A** networks. It runs on a dedicated **Web Worker** thread, completely isolated from the UART engine, and supports up to 127 nodes at baud rates of 125 / 250 / 500 / 1000 kbps.
@@ -1243,6 +1258,88 @@ The right panel shows all frames on the diagnostic CAN IDs:
 | Data | Raw hex payload (8 bytes, zero-padded) |
 
 Tester frames have a cyan background; ECU frames have an emerald background.
+
+---
+
+<a name="can-dbc"></a>
+### 20.12 DBC File Import & Signal Decoder
+
+**.dbc** files are the industry-standard format (CANdb++ / Vector) for storing CAN message and signal definitions. UART Pro Lab v1.6.0 provides full DBC parsing support.
+
+#### Importing a DBC File
+
+1. Navigate to **CAN → Profiles** in the sidebar.
+2. Click the **DBC** button in the toolbar.
+3. Select your `.dbc` file — messages are automatically converted into a CAN profile.
+
+#### Supported DBC Elements
+
+| Element | Description |
+|---------|-------------|
+| `BO_` | Message definition (ID, DLC, transmitter) |
+| `SG_` | Signal definition — start bit, length, byte order, factor/offset, min/max, unit |
+| Multiplexing | `M` (multiplexer signal) and `m<value>` (multiplexed signal) supported |
+| `VAL_` | Signal value/enum tables |
+
+#### Byte Order
+
+| Symbol | Type | Description |
+|--------|------|-------------|
+| `@1` | Intel (little-endian) | LSB first; `startBit` is the least significant bit position |
+| `@0` | Motorola (big-endian) | MSB first; `startBit` is the most significant bit position |
+
+#### Viewing Signals in Frame Inspector
+
+After importing a DBC file, select any frame in the Bus Monitor. The **Frame Inspector** panel shows decoded signal values in the **Signal Decoder** section — raw bytes are converted to physical values (rpm, °C, km/h, etc.) using the signal's factor and offset.
+
+---
+
+<a name="can-j1939"></a>
+### 20.13 J1939 Frame Decoder
+
+**SAE J1939** is the heavy-duty vehicle and agricultural machinery standard built on top of 29-bit extended CAN IDs. UART Pro Lab automatically decodes J1939 fields whenever an extended frame is selected.
+
+#### 29-bit ID Layout
+
+```
+Bits 28-26 │ Bit 25 │ Bit 24 │ Bits 23-16 │ Bits 15-8 │ Bits 7-0
+  Priority │  Rsrv  │   DP   │     PF     │    PS     │    SA
+  (3 bits) │        │        │ PDU Format │PDU Specific│  Source
+```
+
+| Field | Description |
+|-------|-------------|
+| **Priority** | 0–7 (lower = higher priority). `≤ 2` ⚡ flagged as critical |
+| **DP** | Data Page — extends the PGN address space |
+| **PGN** | Parameter Group Number — identifies the message content |
+| **PF** | PDU Format — `< 240` means peer-to-peer; `≥ 240` means broadcast |
+| **PS** | PDU Specific — destination address when PF < 240; group extension when PF ≥ 240 |
+| **SA** | Source Address — transmitting ECU address |
+
+#### PDU Types
+
+| Type | Condition | Description |
+|------|-----------|-------------|
+| **PDU1** | PF < 240 | Peer-to-peer — PS = destination address |
+| **PDU2** | PF ≥ 240 | Broadcast — PS is part of the PGN |
+
+#### Common PGNs
+
+| PGN | Name |
+|-----|------|
+| `0xFECA` | DM1 — Active Diagnostic Trouble Codes |
+| `0xFEEE` | Engine Temperature |
+| `0xFEF1` | Cruise Control / Vehicle Speed |
+| `0xFEF2` | Fuel Economy |
+| `0xF004` | Electronic Engine Controller 1 |
+
+#### J1939 in Frame Inspector
+
+When a 29-bit extended frame is selected, the Frame Inspector automatically shows an orange **J1939** panel with:
+- PGN name and numeric value
+- Priority, PF, PS, Source Address
+- Destination Address (PDU1 only)
+- PDU type (peer-to-peer / broadcast)
 
 ---
 
