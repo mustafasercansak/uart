@@ -3,6 +3,7 @@ import { Activity, Plus, Send, Trash2, Wand2 } from 'lucide-react';
 import type { CANFrame } from '../../../../can/types/CANFrame';
 import type { CANNode } from '../../../../can/types/CANNode';
 import type { UDSDiagnosticConfig, UDSDidResponse } from '../../../../can/types/UDS';
+import { useTranslation } from '../../../../i18n/context';
 
 interface DiagnosticTerminalProps {
   frames: CANFrame[];
@@ -16,12 +17,13 @@ interface DiagnosticTerminalProps {
 type RequestPreset = 'session' | 'read-did' | 'read-dtc' | 'raw';
 
 export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendRequest, onSetConfig }: DiagnosticTerminalProps) {
+  const { t } = useTranslation();
   const [preset, setPreset] = useState<RequestPreset>('read-did');
   const [requestId, setRequestId] = useState(formatId(config.testerRequestId));
   const [sessionType, setSessionType] = useState('03');
   const [did, setDid] = useState('F190');
   const [dtcMask, setDtcMask] = useState('FF');
-  const [rawPayload, setRawPayload] = useState('22 F1 90');
+  const [rawPayload, setRawPayload] = useState(t('uds.defaultRawPayload'));
   const [error, setError] = useState('');
 
   const diagnosticFrames = useMemo(
@@ -39,13 +41,13 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
     setError('');
     const parsedRequestId = parseHex(requestId);
     if (parsedRequestId === null || parsedRequestId > 0x7ff) {
-      setError('Request ID must be an 11-bit CAN ID.');
+      setError(t('uds.errorInvalidId'));
       return;
     }
 
     const payload = buildPayload(preset, sessionType, did, dtcMask, rawPayload);
     if (!payload) {
-      setError('Payload contains invalid hex bytes.');
+      setError(t('uds.errorInvalidPayload'));
       return;
     }
 
@@ -74,7 +76,7 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
         {
           id: Math.random().toString(36).slice(2),
           did: 0xf1a0,
-          label: 'Custom DID',
+          label: t('uds.customDid'),
           encoding: 'ascii',
           value: 'OK',
           enabled: true,
@@ -87,6 +89,13 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
     updateConfig({ didResponses: config.didResponses.filter(entry => entry.id !== id) });
   };
 
+  const presets = [
+    ['session', '0x10'],
+    ['read-did', '0x22'],
+    ['read-dtc', '0x19'],
+    ['raw', t('uds.presetRaw')],
+  ] as const;
+
   return (
     <div className="h-full min-h-0 bg-gray-950 text-gray-200 font-mono text-[11px] grid grid-cols-[minmax(320px,420px)_1fr] overflow-hidden">
       <div className="min-h-0 overflow-y-auto border-r border-gray-800 bg-gray-900/30">
@@ -94,15 +103,15 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
           <div>
             <h3 className="text-gray-100 font-bold uppercase tracking-widest flex items-center gap-2">
               <Activity size={14} className="text-cyan-400" />
-              Diagnostic Terminal
+              {t('uds.title')}
             </h3>
-            <p className="text-gray-500 text-[9px] mt-0.5">UDS over ISO-TP, ISO 15765-2 transport</p>
+            <p className="text-gray-500 text-[9px] mt-0.5">{t('uds.transport')}</p>
           </div>
           <button
             onClick={() => updateConfig({ autoRespond: !config.autoRespond })}
             className={`px-2 py-1 rounded border text-[10px] font-bold ${config.autoRespond ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60' : 'bg-gray-950 text-gray-500 border-gray-700'}`}
           >
-            Symphony {config.autoRespond ? 'On' : 'Off'}
+            {config.autoRespond ? t('uds.symphonyOn') : t('uds.symphonyOff')}
           </button>
         </div>
 
@@ -110,11 +119,11 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
           <section className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
-                <span className="text-gray-500 uppercase text-[9px]">Request ID</span>
+                <span className="text-gray-500 uppercase text-[9px]">{t('uds.requestId')}</span>
                 <input value={requestId} onChange={e => setRequestId(e.target.value)} onBlur={syncIds} className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-yellow-400 outline-none focus:border-cyan-600" />
               </label>
               <label className="space-y-1">
-                <span className="text-gray-500 uppercase text-[9px]">Response ID</span>
+                <span className="text-gray-500 uppercase text-[9px]">{t('uds.responseId')}</span>
                 <input
                   value={formatId(config.ecuResponseId)}
                   onChange={e => {
@@ -127,12 +136,7 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
             </div>
 
             <div className="grid grid-cols-4 gap-1">
-              {([
-                ['session', '0x10'],
-                ['read-did', '0x22'],
-                ['read-dtc', '0x19'],
-                ['raw', 'Raw'],
-              ] as const).map(([id, label]) => (
+              {presets.map(([id, label]) => (
                 <button key={id} onClick={() => setPreset(id)} className={`px-2 py-1.5 rounded border font-bold ${preset === id ? 'bg-cyan-950/40 text-cyan-300 border-cyan-700' : 'bg-gray-950 text-gray-500 border-gray-800 hover:text-gray-300'}`}>
                   {label}
                 </button>
@@ -141,39 +145,39 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
 
             {preset === 'session' && (
               <label className="space-y-1 block">
-                <span className="text-gray-500 uppercase text-[9px]">Session Type</span>
+                <span className="text-gray-500 uppercase text-[9px]">{t('uds.sessionType')}</span>
                 <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-gray-200 outline-none focus:border-cyan-600">
-                  <option value="01">Default Session</option>
-                  <option value="02">Programming Session</option>
-                  <option value="03">Extended Diagnostic Session</option>
+                  <option value="01">{t('uds.sessionDefault')}</option>
+                  <option value="02">{t('uds.sessionProgramming')}</option>
+                  <option value="03">{t('uds.sessionExtended')}</option>
                 </select>
               </label>
             )}
 
             {preset === 'read-did' && (
               <label className="space-y-1 block">
-                <span className="text-gray-500 uppercase text-[9px]">Data Identifier</span>
+                <span className="text-gray-500 uppercase text-[9px]">{t('uds.dataIdentifier')}</span>
                 <input value={did} onChange={e => setDid(e.target.value)} placeholder="F190" className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-green-400 outline-none focus:border-cyan-600" />
               </label>
             )}
 
             {preset === 'read-dtc' && (
               <label className="space-y-1 block">
-                <span className="text-gray-500 uppercase text-[9px]">DTC Status Mask</span>
+                <span className="text-gray-500 uppercase text-[9px]">{t('uds.dtcStatusMask')}</span>
                 <input value={dtcMask} onChange={e => setDtcMask(e.target.value)} placeholder="FF" className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-green-400 outline-none focus:border-cyan-600" />
               </label>
             )}
 
             {preset === 'raw' && (
               <label className="space-y-1 block">
-                <span className="text-gray-500 uppercase text-[9px]">UDS Payload</span>
-                <input value={rawPayload} onChange={e => setRawPayload(e.target.value)} placeholder="22 F1 90" className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-green-400 outline-none focus:border-cyan-600" />
+                <span className="text-gray-500 uppercase text-[9px]">{t('uds.payload')}</span>
+                <input value={rawPayload} onChange={e => setRawPayload(e.target.value)} placeholder={t('uds.defaultRawPayload')} className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-green-400 outline-none focus:border-cyan-600" />
               </label>
             )}
 
             <button onClick={send} disabled={!isRunning} className="w-full flex items-center justify-center gap-2 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded px-3 py-2 font-bold">
               <Send size={13} />
-              Send UDS Request
+              {t('uds.sendRequest')}
             </button>
             {error && <div className="text-red-400 text-[10px]">{error}</div>}
           </section>
@@ -182,21 +186,21 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
             <div className="flex items-center justify-between">
               <h4 className="text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <Wand2 size={12} className="text-emerald-400" />
-                Symphony DID Responses
+                {t('uds.symphonyResponses')}
               </h4>
-              <button onClick={addDidResponse} className="p-1.5 text-gray-500 hover:text-emerald-400 rounded hover:bg-gray-800" title="Add DID">
+              <button onClick={addDidResponse} className="p-1.5 text-gray-500 hover:text-emerald-400 rounded hover:bg-gray-800" title={t('uds.addDid')}>
                 <Plus size={13} />
               </button>
             </div>
 
             <label className="space-y-1 block">
-              <span className="text-gray-500 uppercase text-[9px]">Target Node</span>
+              <span className="text-gray-500 uppercase text-[9px]">{t('uds.targetNode')}</span>
               <select
                 value={config.targetNodeId ?? ''}
                 onChange={e => updateConfig({ targetNodeId: e.target.value ? Number(e.target.value) : null })}
                 className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-gray-200 outline-none focus:border-emerald-600"
               >
-                <option value="">Auto from request ID</option>
+                <option value="">{t('uds.autoFromRequestId')}</option>
                 {nodes.map(node => <option key={node.id} value={node.id}>{node.name}</option>)}
               </select>
             </label>
@@ -220,14 +224,14 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
                   </div>
                   <div className="grid grid-cols-[88px_1fr_56px] gap-2">
                     <select value={entry.encoding} onChange={e => updateDidResponse(entry.id, { encoding: e.target.value as UDSDidResponse['encoding'] })} className="bg-gray-900 border border-gray-800 rounded px-2 py-1 text-gray-300 outline-none">
-                      <option value="ascii">ASCII</option>
-                      <option value="hex">Hex</option>
-                      <option value="vitals">Vitals</option>
+                      <option value="ascii">{t('uds.encodingAscii')}</option>
+                      <option value="hex">{t('uds.encodingHex')}</option>
+                      <option value="vitals">{t('uds.encodingVitals')}</option>
                     </select>
                     <input value={entry.value} onChange={e => updateDidResponse(entry.id, { value: e.target.value })} className="bg-gray-900 border border-gray-800 rounded px-2 py-1 text-green-400 outline-none focus:border-emerald-600" />
                     <label className="flex items-center justify-center gap-1 text-gray-500">
                       <input type="checkbox" checked={entry.enabled} onChange={e => updateDidResponse(entry.id, { enabled: e.target.checked })} />
-                      On
+                      {t('uds.enabledLabel')}
                     </label>
                   </div>
                 </div>
@@ -239,14 +243,14 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
 
       <div className="min-h-0 flex flex-col">
         <div className="grid grid-cols-[84px_82px_58px_1fr] gap-2 px-3 py-2 border-b border-gray-800 bg-gray-950/90 text-gray-600 uppercase tracking-widest text-[10px]">
-          <span>Time</span>
-          <span>ID</span>
-          <span>PCI</span>
-          <span>Data</span>
+          <span>{t('uds.colTime')}</span>
+          <span>{t('uds.colId')}</span>
+          <span>{t('uds.colPci')}</span>
+          <span>{t('uds.colData')}</span>
         </div>
         <div className="flex-1 min-h-0 overflow-auto">
           {diagnosticFrames.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-gray-600">No diagnostic traffic yet</div>
+            <div className="h-full flex items-center justify-center text-gray-600">{t('uds.noTraffic')}</div>
           ) : diagnosticFrames.map(frame => (
             <div key={frame.uid} className={`grid grid-cols-[84px_82px_58px_1fr] gap-2 px-3 py-1 border-b border-gray-900 ${frame.nodeId === -2 ? 'bg-emerald-950/10' : 'bg-cyan-950/10'}`}>
               <span className="text-gray-600">{new Date(frame.timestamp).toISOString().slice(11, 23)}</span>
