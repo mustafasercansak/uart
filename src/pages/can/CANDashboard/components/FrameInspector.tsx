@@ -127,21 +127,21 @@ export function FrameInspector({ frame, node }: FrameInspectorProps) {
         return (
           <div className="glass-panel rounded-lg p-3 border border-orange-800/30 space-y-1">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[9px] text-orange-400 uppercase tracking-widest font-bold">J1939</span>
+              <span className="text-[9px] text-orange-400 uppercase tracking-widest font-bold">{t('uds.j1939Label')}</span>
               <span className="text-[8px] text-gray-500 bg-orange-900/20 px-1.5 py-0.5 rounded border border-orange-800/30">
                 {j1939PgnName(j.pgn)}
               </span>
             </div>
-            <Row label="PGN"              value={`0x${j.pgn.toString(16).toUpperCase().padStart(4, '0')} (${j.pgn})`} />
-            <Row label="Priority"         value={`${j.priority} ${j.priority <= 2 ? '⚡' : ''}`} />
-            <Row label="PF (PDU Format)"  value={`0x${j.pf.toString(16).toUpperCase().padStart(2, '0')}`} />
-            <Row label="PS (PDU Specific)" value={`0x${j.ps.toString(16).toUpperCase().padStart(2, '0')}`} />
-            <Row label="Source Address"   value={`0x${j.sourceAddress.toString(16).toUpperCase().padStart(2, '0')} (${j.sourceAddress})`} />
+            <Row label="PGN"                       value={`0x${j.pgn.toString(16).toUpperCase().padStart(4, '0')} (${j.pgn})`} />
+            <Row label={t('uds.j1939Priority')}    value={`${j.priority} ${j.priority <= 2 ? '⚡' : ''}`} />
+            <Row label={t('uds.j1939PfFormat')}    value={`0x${j.pf.toString(16).toUpperCase().padStart(2, '0')}`} />
+            <Row label={t('uds.j1939PsSpecific')}  value={`0x${j.ps.toString(16).toUpperCase().padStart(2, '0')}`} />
+            <Row label={t('uds.j1939SrcAddress')}  value={`0x${j.sourceAddress.toString(16).toUpperCase().padStart(2, '0')} (${j.sourceAddress})`} />
             {j.isPeer2Peer && j.destinationAddress !== undefined && (
-              <Row label="Destination"    value={`0x${j.destinationAddress.toString(16).toUpperCase().padStart(2, '0')} (${j.destinationAddress})`} />
+              <Row label={t('uds.j1939Destination')} value={`0x${j.destinationAddress.toString(16).toUpperCase().padStart(2, '0')} (${j.destinationAddress})`} />
             )}
-            <Row label="PDU Type"         value={j.isPeer2Peer ? 'PDU1 (Peer-to-Peer)' : 'PDU2 (Broadcast)'} />
-            <Row label="Data Page"        value={j.dataPage.toString()} />
+            <Row label={t('uds.j1939PduType')}    value={j.isPeer2Peer ? t('uds.j1939Pdu1') : t('uds.j1939Pdu2')} />
+            <Row label={t('uds.j1939DataPage')}   value={j.dataPage.toString()} />
           </div>
         );
       })()}
