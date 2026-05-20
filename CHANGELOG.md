@@ -22,6 +22,17 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 - Updated `html.light` CSS variable overrides in `index.css`: backgrounds now range from `#eef3f8` (page) → `#e4ecf3` (content panels) → `#d4e0ea` (cards), with matching text and accent color adjustments for readability on light backgrounds.
 - Scrollbar colors now use CSS variables and adapt correctly in both themes.
 
+#### i18n — DiagnosticTerminal & J1939 Full Compliance
+- **DiagnosticTerminal.tsx**: Replaced 28 hardcoded English strings with `t()` calls. Added `useTranslation` import. Strings covered: title, transport description, Symphony toggle, Request/Response ID labels, preset buttons, session type options, Data Identifier, DTC Status Mask, UDS Payload, Send Request button, Symphony DID Responses section, Add DID, Target Node, Auto from request ID, encoding options (ASCII / Hex / Vitals), enabled label, log column headers (Time / ID / PCI / Data), empty-state message, and both validation error messages.
+- **FrameInspector.tsx**: Replaced 9 hardcoded J1939 field labels with `t()` calls: J1939 panel label, Priority, PF (PDU Format), PS (PDU Specific), Source Address, Destination, PDU Type, PDU1/PDU2 values, and Data Page.
+- **`uds.*` namespace**: Added 43 new keys to `en.json` and `tr.json` covering all DiagnosticTerminal and J1939 UI strings.
+- **I18n compliance test**: `I18nCompliance` suite now passes with **0 findings** (BASELINE = 0).
+
+#### Bug Fix — CANErrorInjection Test (Issue #37)
+- **Root cause**: `sendCustomFrame` unconditionally called `handleIsoTpFrame`, so any frame whose first byte had a top nibble of `0x0` was interpreted as an ISO-TP Single Frame and triggered a UDS auto-response — emitting a second frame and breaking the test assertion `toHaveLength(1)`.
+- **Fix**: Added `isDiagnosticAddress()` guard; `handleIsoTpFrame` is now only invoked when the arbitration ID is in the UDS functional address range (`0x7DF`, `0x7E0–0x7E7`, or the configured tester request ID). Non-diagnostic CAN IDs (e.g. `0x321`) no longer trigger ISO-TP processing.
+- **Tests**: All 537 tests pass across 34 test files.
+
 #### Housekeeping
 - `findings.json` (i18n audit snapshot) added to `.gitignore`.
 
