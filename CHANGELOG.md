@@ -2,6 +2,15 @@
 
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
+## [Unreleased]
+### 🧪 Test Infrastructure
+#### Bug Fix — Vitest 4 setupFiles Context Error (Issue #43)
+- **Root cause**: `src/setupTests.ts` explicitly imported `expect`, `afterEach`, and `vi` from `vitest`. In Vitest 4 with `globals: true`, re-importing these symbols in a `setupFiles` module creates a context conflict and throws *"Vitest failed to find the current suite"* — causing all 34 test files to fail with 0 tests run.
+- **Fix**: Removed the explicit `vitest` imports and the redundant `afterEach(() => cleanup())` call (React Testing Library v16 auto-cleans after each test). Added `"vitest/globals"` to `tsconfig.json` `types` so TypeScript resolves the injected globals.
+- **Tests**: All 537 tests pass across 34 test files.
+
+---
+
 ## [v1.6.0] — 2026-05-20
 ### 🚌 CAN Bus Simulator & UX Enhancements
 
