@@ -4,6 +4,14 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ## [Unreleased]
 ### 🧪 Test Infrastructure
+#### Community Template Library Smoke Coverage
+- **`CommunityTemplates.test.tsx`** (4 tests): Added smoke and interaction coverage for the Community Template Library component.
+  - Verifies the component renders successfully after loading the community index.
+  - Uses the real `docs/community-templates/index.json` fixture shape to assert template cards display.
+  - Confirms favorite toggles persist and remove template IDs in `localStorage`.
+  - Confirms the "★ Favorites" filter shows only starred templates.
+- **Tests**: Focused suite passes with `npm run test -- run src/components/CommunityTemplates/__tests__/CommunityTemplates.test.tsx`.
+
 #### Unit Tests — CANMedicalVitals & CANErrorStateMachine (Issue #47)
 - **`CANMedicalVitals.test.ts`** (42 tests): Full coverage of `tickVitals` and `encodeVitalsToCANData`.
   - All 8 medical profiles exercised: `vital-monitor`, `ecg-monitor`, `pulse-oximeter`, `iv-pump`, `infusion-pump`, `ventilator`, `defibrillator`, `custom`.
