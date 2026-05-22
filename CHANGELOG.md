@@ -4,6 +4,17 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ## [Unreleased]
 ### 🧪 Test Infrastructure
+#### CAN State & Frame Parser Regression Coverage
+- **`canReducer.test.ts`** (5 tests): Added focused coverage for CAN reducer state transitions and storage-safe behavior.
+  - Exercises every current reducer action, including status, node replacement, frame/log/arbitration/fault event appenders, selectors, filters, display toggles, baud/output mode, serial/network flags, recording, recording clear, and `CAN_SET_UDS_CONFIG`.
+  - Verifies frame/error counters, recording append behavior, bounded history caps, `CAN_CLEAR_FRAMES` reset behavior, and unknown-action identity fallback.
+- **`CANFrameParser.test.ts`** (10 tests): Added regression coverage for CAN frame parsing and v1.6.0 J1939 helpers.
+  - Covers standard and extended frame encode/parse paths, frame type decoding, malformed raw frame rejection, CRC usage, and arbitration ID formatting.
+  - Verifies `parseJ1939Id()` for PDU1 peer-to-peer and PDU2 broadcast IDs, plus known/unknown `j1939PgnName()` output.
+  - Covers `extractSignalValue()` for Intel little-endian and Motorola big-endian DBC signal extraction, including signed/scaled values.
+- **Coverage**: Focused coverage now reports `canReducer.ts` 100% statements and `CANFrameParser.ts` 96.34% statements.
+- **Tests**: Focused suites pass with `npm run test -- run src/can/store/__tests__/canReducer.test.ts src/can/engines/__tests__/CANFrameParser.test.ts`.
+
 #### Community Template Library Smoke Coverage
 - **`CommunityTemplates.test.tsx`** (4 tests): Added smoke and interaction coverage for the Community Template Library component.
   - Verifies the component renders successfully after loading the community index.
