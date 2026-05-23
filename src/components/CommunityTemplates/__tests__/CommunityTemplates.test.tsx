@@ -4,24 +4,38 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CommunityTemplates from '../index';
 import { LanguageProvider } from '../../../i18n/LanguageProvider';
 import communityIndex from '../../../../docs/community-templates/index.json';
+import { open } from '@tauri-apps/plugin-shell';
+import { getProfile, loadScenarios, saveProfile, saveScenario } from '../../../store/storage';
 
 const mockSetProfile = vi.fn();
 const mockUpdateLayout = vi.fn();
 const mockSetScenario = vi.fn();
 const mockNavigate = vi.fn();
+let mockProfileId: string | null = null;
 
 vi.mock('../../../hooks/useSimulation', () => ({
   useSimulation: () => ({
     setProfile: mockSetProfile,
     updateLayout: mockUpdateLayout,
     setScenario: mockSetScenario,
-    state: { profileId: null },
+    state: { profileId: mockProfileId },
   }),
 }));
 
 vi.mock('@tauri-apps/plugin-shell', () => ({
   open: vi.fn(),
 }));
+
+vi.mock('../../../store/storage', async () => {
+  const actual = await vi.importActual<typeof import('../../../store/storage')>('../../../store/storage');
+  return {
+    ...actual,
+    getProfile: vi.fn(),
+    loadScenarios: vi.fn(),
+    saveProfile: vi.fn(),
+    saveScenario: vi.fn(),
+  };
+});
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -55,6 +69,8 @@ describe('CommunityTemplates', () => {
     localStorage.clear();
     localStorage.setItem('uart_locale', 'en');
     vi.clearAllMocks();
+    vi.useRealTimers();
+    mockProfileId = null;
     mockIndexFetch();
   });
 
@@ -99,5 +115,115 @@ describe('CommunityTemplates', () => {
       expect(screen.getByText(firstTemplate.name)).toBeInTheDocument();
       expect(screen.queryByText(secondTemplate.name)).not.toBeInTheDocument();
     });
+  });
+
+  it('shows the error state and retries the community index fetch', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, json: vi.fn() })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(communityIndex) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderCommunityTemplates();
+
+    expect(await screen.findByText('Could not load templates')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText('Templates shared by the community')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the empty state and disables submit when no profile is active', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ ...communityIndex, templates: [] }),
+    }));
+
+    renderCommunityTemplates();
+
+    expect(await screen.findByText('No community templates yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit Active Profile' })).toBeDisabled();
+  });
+
+  it('opens a prefilled submission issue for the active profile', async () => {
+    mockProfileId = 'profile-1';
+    vi.mocked(getProfile).mockReturnValue({
+      id: 'profile-1',
+      name: 'Bed Monitor 1',
+      description: 'ICU monitor',
+      baudRate: 115200,
+      dataBits: 8,
+      parity: 'None',
+      stopBits: 1,
+      sendIntervalMs: 1000,
+      framing: { mode: 'fixed' },
+      fields: [],
+      createdAt: 'now',
+      updatedAt: 'now',
+    });
+    vi.mocked(loadScenarios).mockReturnValue([
+      {
+        id: 'scenario-1',
+        profileId: 'profile-1',
+        name: 'Baseline',
+        description: '',
+        loop: false,
+        steps: [],
+        createdAt: 'now',
+        updatedAt: 'now',
+      },
+    ]);
+
+    renderCommunityTemplates();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit Active Profile' }));
+
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('Community%20Template%3A%20Bed%20Monitor%201'));
+  });
+
+  it('imports a community template, saves scenarios, applies layout, and navigates home', async () => {
+    const [entry] = communityIndex.templates;
+    const template = {
+      id: entry.id,
+      name: entry.name,
+      description: entry.description,
+      icon: entry.icon,
+      category: entry.category,
+      profile: {
+        name: 'Imported Profile',
+        description: 'Imported',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'None',
+        stopBits: 1,
+        sendIntervalMs: 100,
+        framing: { mode: 'fixed' },
+        fields: [],
+      },
+      scenarios: [
+        {
+          name: 'Imported Scenario',
+          description: '',
+          loop: false,
+          steps: [{ id: 'old-step', atMs: 0, target: 'field:spo2', action: 'set' as const, actionConfig: { value: 98 } }],
+        },
+      ],
+      defaultLayout: { widgets: [{ id: 'w1', type: 'frame-monitor', x: 0, y: 0, w: 1, h: 1 }] },
+    };
+    vi.stubGlobal('fetch', vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(communityIndex) })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(template) }));
+
+    renderCommunityTemplates();
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Import' }))[0]);
+    await waitFor(() => expect(saveProfile).toHaveBeenCalledWith(expect.objectContaining({ name: 'Imported Profile' })));
+    expect(saveScenario).toHaveBeenCalledWith(expect.objectContaining({ name: 'Imported Scenario' }));
+    expect(mockSetProfile).toHaveBeenCalled();
+    expect(mockUpdateLayout).toHaveBeenCalledWith(template.defaultLayout.widgets);
+    expect(mockSetScenario).toHaveBeenCalled();
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'), { timeout: 1500 });
   });
 });

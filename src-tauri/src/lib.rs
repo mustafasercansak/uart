@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
+use std::ffi::CString;
 use std::io::{Read, Write};
 use std::net::TcpStream;
+#[cfg(target_os = "linux")]
+use std::os::fd::RawFd;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 
@@ -22,6 +25,12 @@ struct TcpState {
 struct TcpServerState {
     stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     active_stream: Arc<Mutex<Option<TcpStream>>>,
+}
+
+struct SocketCanState {
+    stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    #[cfg(target_os = "linux")]
+    write_fd: Mutex<Option<RawFd>>,
 }
 
 fn recordings_dir() -> PathBuf {
@@ -400,6 +409,289 @@ fn write_tcp_server(bytes: Vec<u8>, state: tauri::State<'_, TcpServerState>) -> 
     }
 }
 
+// ── SOCKETCAN COMMANDS ────────────────────────────────────────────────────────
+
+#[cfg(target_os = "linux")]
+const CAN_EFF_FLAG: u32 = 0x8000_0000;
+#[cfg(target_os = "linux")]
+const CAN_RTR_FLAG: u32 = 0x4000_0000;
+#[cfg(target_os = "linux")]
+const CAN_EFF_MASK: u32 = 0x1FFF_FFFF;
+#[cfg(target_os = "linux")]
+const CAN_SFF_MASK: u32 = 0x0000_07FF;
+
+#[cfg(target_os = "linux")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct LinuxCanFrame {
+    can_id: u32,
+    can_dlc: u8,
+    __pad: u8,
+    __res0: u8,
+    len8_dlc: u8,
+    data: [u8; 8],
+}
+
+#[cfg(target_os = "linux")]
+#[repr(C)]
+struct SockAddrCan {
+    can_family: libc::sa_family_t,
+    can_ifindex: libc::c_int,
+    addr: [u8; 8],
+}
+
+#[cfg(target_os = "linux")]
+fn open_socketcan_fd(interface: &str) -> Result<RawFd, String> {
+    let if_name = CString::new(interface).map_err(|_| "Geçersiz SocketCAN arayüz adı".to_string())?;
+    let if_index = unsafe { libc::if_nametoindex(if_name.as_ptr()) };
+    if if_index == 0 {
+        return Err(format!("SocketCAN arayüzü bulunamadı: {}", interface));
+    }
+
+    let fd = unsafe { libc::socket(libc::AF_CAN, libc::SOCK_RAW, libc::CAN_RAW) };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+
+    let addr = SockAddrCan {
+        can_family: libc::AF_CAN as libc::sa_family_t,
+        can_ifindex: if_index as libc::c_int,
+        addr: [0; 8],
+    };
+    let bind_result = unsafe {
+        libc::bind(
+            fd,
+            &addr as *const SockAddrCan as *const libc::sockaddr,
+            std::mem::size_of::<SockAddrCan>() as libc::socklen_t,
+        )
+    };
+    if bind_result < 0 {
+        let err = std::io::Error::last_os_error().to_string();
+        unsafe { libc::close(fd) };
+        return Err(err);
+    }
+
+    Ok(fd)
+}
+
+#[cfg(target_os = "linux")]
+fn decode_linux_can_frame(frame: LinuxCanFrame) -> serde_json::Value {
+    let is_extended = (frame.can_id & CAN_EFF_FLAG) != 0;
+    let is_rtr = (frame.can_id & CAN_RTR_FLAG) != 0;
+    let arbitration_id = if is_extended {
+        frame.can_id & CAN_EFF_MASK
+    } else {
+        frame.can_id & CAN_SFF_MASK
+    };
+    let dlc = frame.can_dlc.min(8);
+    let data = frame.data[..dlc as usize].to_vec();
+
+    serde_json::json!({
+        "arbitrationId": arbitration_id,
+        "idFormat": if is_extended { "extended" } else { "standard" },
+        "isRTR": is_rtr,
+        "dlc": dlc,
+        "data": data,
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn build_linux_can_frame(
+    arbitration_id: u32,
+    data: Vec<u8>,
+    is_extended: bool,
+    is_rtr: bool,
+) -> LinuxCanFrame {
+    let dlc = data.len().min(8);
+    let mut can_id = if is_extended {
+        (arbitration_id & CAN_EFF_MASK) | CAN_EFF_FLAG
+    } else {
+        arbitration_id & CAN_SFF_MASK
+    };
+    if is_rtr {
+        can_id |= CAN_RTR_FLAG;
+    }
+
+    let mut frame = LinuxCanFrame {
+        can_id,
+        can_dlc: dlc as u8,
+        __pad: 0,
+        __res0: 0,
+        len8_dlc: 0,
+        data: [0; 8],
+    };
+    frame.data[..dlc].copy_from_slice(&data[..dlc]);
+    frame
+}
+
+#[cfg(target_os = "linux")]
+fn write_socketcan_fd(
+    fd: RawFd,
+    arbitration_id: u32,
+    data: Vec<u8>,
+    is_extended: bool,
+    is_rtr: bool,
+) -> Result<(), String> {
+    let frame = build_linux_can_frame(arbitration_id, data, is_extended, is_rtr);
+    let written = unsafe {
+        libc::write(
+            fd,
+            &frame as *const LinuxCanFrame as *const libc::c_void,
+            std::mem::size_of::<LinuxCanFrame>(),
+        )
+    };
+    if written < 0 {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn connect_socketcan(
+    interface: String,
+    state: tauri::State<'_, SocketCanState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    {
+        let mut tx = state.stop_tx.lock().unwrap();
+        if let Some(sender) = tx.take() {
+            let _ = sender.send(());
+        }
+    }
+
+    let read_fd = open_socketcan_fd(&interface).map_err(|e| {
+        let _ = app.emit("socketcan-status", serde_json::json!({ "connected": false, "error": e }));
+        e
+    })?;
+    unsafe {
+        let flags = libc::fcntl(read_fd, libc::F_GETFL, 0);
+        if flags >= 0 {
+            libc::fcntl(read_fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
+    }
+    let write_fd = open_socketcan_fd(&interface).map_err(|e| {
+        unsafe { libc::close(read_fd) };
+        let _ = app.emit("socketcan-status", serde_json::json!({ "connected": false, "error": e }));
+        e
+    })?;
+
+    {
+        let mut fd = state.write_fd.lock().unwrap();
+        *fd = Some(write_fd);
+    }
+
+    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    {
+        let mut tx = state.stop_tx.lock().unwrap();
+        *tx = Some(stop_tx);
+    }
+
+    let app_clone = app.clone();
+    thread::spawn(move || {
+        app_clone
+            .emit("socketcan-status", serde_json::json!({ "connected": true, "interface": interface }))
+            .ok();
+
+        loop {
+            if stop_rx.try_recv().is_ok() {
+                break;
+            }
+
+            let mut frame = LinuxCanFrame {
+                can_id: 0,
+                can_dlc: 0,
+                __pad: 0,
+                __res0: 0,
+                len8_dlc: 0,
+                data: [0; 8],
+            };
+            let read_len = unsafe {
+                libc::read(
+                    read_fd,
+                    &mut frame as *mut LinuxCanFrame as *mut libc::c_void,
+                    std::mem::size_of::<LinuxCanFrame>(),
+                )
+            };
+            if read_len == std::mem::size_of::<LinuxCanFrame>() as isize {
+                app_clone.emit("socketcan-frame", decode_linux_can_frame(frame)).ok();
+            } else if read_len < 0 {
+                let err = std::io::Error::last_os_error();
+                if err.kind() == std::io::ErrorKind::WouldBlock {
+                    thread::sleep(Duration::from_millis(10));
+                    continue;
+                }
+                app_clone
+                    .emit("socketcan-status", serde_json::json!({ "connected": false, "error": err.to_string() }))
+                    .ok();
+                break;
+            }
+        }
+
+        unsafe { libc::close(read_fd) };
+        app_clone
+            .emit("socketcan-status", serde_json::json!({ "connected": false }))
+            .ok();
+    });
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn connect_socketcan(_interface: String) -> Result<(), String> {
+    Err("SocketCAN yalnızca Linux üzerinde desteklenir".to_string())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn disconnect_socketcan(state: tauri::State<'_, SocketCanState>, app: AppHandle) -> Result<(), String> {
+    let mut tx = state.stop_tx.lock().unwrap();
+    if let Some(sender) = tx.take() {
+        let _ = sender.send(());
+    }
+    let mut fd = state.write_fd.lock().unwrap();
+    if let Some(write_fd) = fd.take() {
+        unsafe { libc::close(write_fd) };
+    }
+    app.emit("socketcan-status", serde_json::json!({ "connected": false }))
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn disconnect_socketcan() -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn write_socketcan_frame(
+    arbitration_id: u32,
+    data: Vec<u8>,
+    is_extended: bool,
+    is_rtr: bool,
+    state: tauri::State<'_, SocketCanState>,
+) -> Result<(), String> {
+    let fd = state.write_fd.lock().unwrap();
+    if let Some(write_fd) = *fd {
+        write_socketcan_fd(write_fd, arbitration_id, data, is_extended, is_rtr)
+    } else {
+        Err("SocketCAN bağlı değil".to_string())
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn write_socketcan_frame(
+    _arbitration_id: u32,
+    _data: Vec<u8>,
+    _is_extended: bool,
+    _is_rtr: bool,
+) -> Result<(), String> {
+    Err("SocketCAN yalnızca Linux üzerinde desteklenir".to_string())
+}
+
 // ── RECORDING FILE COMMANDS ───────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize)]
@@ -520,6 +812,11 @@ pub fn run() {
             stop_tx: Mutex::new(None),
             active_stream: Arc::new(Mutex::new(None)),
         })
+        .manage(SocketCanState {
+            stop_tx: Mutex::new(None),
+            #[cfg(target_os = "linux")]
+            write_fd: Mutex::new(None),
+        })
         .invoke_handler(tauri::generate_handler![
             list_serial_ports,
             connect_serial,
@@ -531,6 +828,9 @@ pub fn run() {
             start_tcp_server,
             stop_tcp_server,
             write_tcp_server,
+            connect_socketcan,
+            disconnect_socketcan,
+            write_socketcan_frame,
             list_recordings,
             save_recording,
             load_recording,
@@ -538,4 +838,50 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("Tauri uygulaması başlatılamadı");
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn socketcan_standard_frame_round_trips_to_json() {
+        let frame = build_linux_can_frame(0x123, vec![0x11, 0x22, 0x33], false, false);
+
+        assert_eq!(frame.can_id, 0x123);
+        assert_eq!(frame.can_dlc, 3);
+        assert_eq!(&frame.data[..3], &[0x11, 0x22, 0x33]);
+
+        let decoded = decode_linux_can_frame(frame);
+        assert_eq!(decoded["arbitrationId"], 0x123);
+        assert_eq!(decoded["idFormat"], "standard");
+        assert_eq!(decoded["isRTR"], false);
+        assert_eq!(decoded["dlc"], 3);
+        assert_eq!(decoded["data"], serde_json::json!([0x11, 0x22, 0x33]));
+    }
+
+    #[test]
+    fn socketcan_extended_rtr_frame_sets_flags_and_masks_id() {
+        let frame = build_linux_can_frame(0x3FFF_FFFF, vec![0xAA], true, true);
+
+        assert_ne!(frame.can_id & CAN_EFF_FLAG, 0);
+        assert_ne!(frame.can_id & CAN_RTR_FLAG, 0);
+
+        let decoded = decode_linux_can_frame(frame);
+        assert_eq!(decoded["arbitrationId"], CAN_EFF_MASK);
+        assert_eq!(decoded["idFormat"], "extended");
+        assert_eq!(decoded["isRTR"], true);
+    }
+
+    #[test]
+    fn socketcan_frame_truncates_payload_to_classic_can_dlc() {
+        let frame = build_linux_can_frame(0x7FF, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], false, false);
+
+        assert_eq!(frame.can_dlc, 8);
+        assert_eq!(frame.data, [1, 2, 3, 4, 5, 6, 7, 8]);
+
+        let decoded = decode_linux_can_frame(frame);
+        assert_eq!(decoded["dlc"], 8);
+        assert_eq!(decoded["data"], serde_json::json!([1, 2, 3, 4, 5, 6, 7, 8]));
+    }
 }

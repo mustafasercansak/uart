@@ -44,6 +44,49 @@ For a detailed breakdown of all modules and architectural metrics, see [SHOWCASE
 
 ---
 
+## ✅ Test & Coverage Procedure
+
+### Frontend / TypeScript
+
+```bash
+npm test
+npm run test:coverage
+npx tsc --noEmit
+```
+
+The frontend coverage report uses Vitest V8 coverage and is written to `coverage/`.
+The default coverage gate is 95% statements, 90% branches, 95% functions, and 95% lines.
+
+### Rust / Tauri
+
+```bash
+npm run test:rust
+cargo check --manifest-path src-tauri/Cargo.toml
+```
+
+Rust coverage is not built into Cargo by default. Use `cargo-llvm-cov` when a line/HTML report is needed:
+
+```bash
+cargo install cargo-llvm-cov
+npm run test:rust:coverage
+```
+
+The HTML report is written to `src-tauri/target/llvm-cov/html/index.html`. For SocketCAN changes, run the Rust tests first, then validate the Linux virtual bus manually:
+
+```bash
+sudo modprobe vcan
+sudo ip link add dev vcan0 type vcan
+sudo ip link set up vcan0
+candump vcan0
+cansend vcan0 123#1122334455667788
+```
+
+In the app, select `SocketCAN (Linux)`, connect to `vcan0`, and confirm the frame appears in the CAN Bus Monitor.
+
+`SocketCAN (Linux)` depends on the Linux kernel CAN stack and is not available on Windows. On Windows, use `SLCAN (Serial)` with a USB-CAN/SLCAN adapter; selecting SocketCAN will fail gracefully instead of breaking the app.
+
+---
+
 ## 📜 Legal & Compliance
 
 Developed by **Mustafa Sercan Sak** ([Connect on LinkedIn](https://www.linkedin.com/in/mustafa-sercan-sak-30190684/)).  

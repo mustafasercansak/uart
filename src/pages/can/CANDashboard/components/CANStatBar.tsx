@@ -33,8 +33,7 @@ export function CANStatBar({
   const navigate = useNavigate();
 
   const [selectedPort, setSelectedPort] = useState('COM1');
-  const [tcpHost, setTcpHost] = useState('127.0.0.1');
-  const [tcpPort, setTcpPort] = useState('2000');
+  const [socketCanInterface, setSocketCanInterface] = useState('vcan0');
 
   const elapsed = state.elapsedMs;
   const h = Math.floor(elapsed / 3600000).toString().padStart(2, '0');
@@ -160,24 +159,15 @@ export function CANStatBar({
             <>
               <input 
                 type="text" 
-                value={tcpHost}
-                onChange={(e) => setTcpHost(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-16 focus:border-cyan-500"
-                placeholder="127.0.0.1"
-                disabled={state.status !== 'stopped'}
-              />
-              <span className="text-[8.5px] text-gray-500 font-mono">:</span>
-              <input 
-                type="text" 
-                value={tcpPort}
-                onChange={(e) => setTcpPort(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-10 focus:border-cyan-500"
-                placeholder="2000"
+                value={socketCanInterface}
+                onChange={(e) => setSocketCanInterface(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-20 focus:border-cyan-500"
+                placeholder="vcan0"
                 disabled={state.status !== 'stopped'}
               />
               <button 
-                onClick={() => onConnectNetwork(`tcp://${tcpHost}:${tcpPort}`)}
-                disabled={state.status !== 'stopped' || !tcpPort || !tcpHost}
+                onClick={() => onConnectNetwork(socketCanInterface)}
+                disabled={state.status !== 'stopped' || !socketCanInterface}
                 className="px-1.5 py-0.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-30 text-white text-[8.5px] font-mono rounded font-bold transition-all"
               >
                 {t('dashboard.connect')}

@@ -6,6 +6,8 @@ import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANFrame } from '../types/CANFrame';
 import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
 import type { UDSDiagnosticConfig } from '../types/UDS';
+import { computeCANCRC } from '../engines/CANFrameParser';
+import { invoke, listen } from '../../lib/tauri-bridge';
 
 interface CANContextValue {
   state: CANBusState;
@@ -38,6 +40,14 @@ interface CANContextValue {
   setUDSConfig: (config: UDSDiagnosticConfig) => void;
   setErrorInjectionConfig: (config: CANErrorInjectionConfig) => void;
   armErrorInjection: () => void;
+}
+
+interface SocketCANFramePayload {
+  arbitrationId: number;
+  idFormat: 'standard' | 'extended';
+  isRTR: boolean;
+  dlc: number;
+  data: number[];
 }
 
 const CANContext = createContext<CANContextValue | null>(null);
@@ -84,7 +94,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         if (!msg?.type) return;
 
         switch (msg.type) {
-      case 'CAN_FRAME':
+          case 'CAN_FRAME':
             // Buffer frames; drain in RAF to avoid flooding React renders
             frameBatchRef.current.push(msg.frame as CANFrame);
             if (stateRef.current.serialConnected && serialWriterRef.current) {
@@ -96,6 +106,15 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
               const dataHex = frame.data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join('');
               const slcanPacket = `${prefix}${idHex}${dlc}${dataHex}\r`;
               serialWriterRef.current.write(slcanPacket).catch(() => {});
+            }
+            if (stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected) {
+              const frame = msg.frame as CANFrame;
+              invoke('write_socketcan_frame', {
+                arbitrationId: frame.arbitrationId,
+                data: frame.data,
+                isExtended: frame.idFormat === 'extended',
+                isRtr: frame.isRTR,
+              }).catch(() => {});
             }
             break;
 
@@ -163,6 +182,51 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
   // ── Worker command helpers ──────────────────────────────────────────────────
   const send = useCallback((msg: object) => workerRef.current?.postMessage(msg), []);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlistenFrame: (() => void) | undefined;
+    let unlistenStatus: (() => void) | undefined;
+
+    listen('socketcan-frame', (payload) => {
+      const frame = socketCANPayloadToFrame(payload as SocketCANFramePayload, stateRef.current.busLoadPercent);
+      dispatch({ type: 'CAN_ADD_FRAME', frame });
+      dispatch({
+        type: 'CAN_ADD_LOG',
+        entry: {
+          time: now(),
+          text: `SocketCAN RX 0x${frame.arbitrationId.toString(16).toUpperCase()}`,
+          type: 'rx',
+        },
+      });
+    }).then((unlisten) => {
+      if (disposed) unlisten();
+      else unlistenFrame = unlisten;
+    });
+
+    listen('socketcan-status', (payload) => {
+      const status = payload as { connected?: boolean; interface?: string; error?: string };
+      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: Boolean(status.connected) });
+      if (status.error) {
+        dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN error: ${status.error}`, type: 'error' } });
+        return;
+      }
+      if (status.connected) {
+        dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connected: ${status.interface ?? 'can'}`, type: 'info' } });
+      } else {
+        dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: t('can.disconnectedFromSock'), type: 'info' } });
+      }
+    }).then((unlisten) => {
+      if (disposed) unlisten();
+      else unlistenStatus = unlisten;
+    });
+
+    return () => {
+      disposed = true;
+      unlistenFrame?.();
+      unlistenStatus?.();
+    };
+  }, [t]);
 
   // ── Public API ──────────────────────────────────────────────────────────────
   const start = useCallback(() => {
@@ -339,15 +403,23 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Disconnected from SLCAN`, type: 'info' } });
   }, []);
 
-  const connectNetwork = useCallback((url: string) => {
-    dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: true });
-    dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Mock connected to SocketCAN at ${url}`, type: 'info' } });
+  const connectNetwork = useCallback(async (interfaceName: string) => {
+    const normalizedInterface = interfaceName.replace(/^socketcan:\/\//, '').trim() || 'vcan0';
+    dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SocketCAN ${normalizedInterface}...`, type: 'info' } });
+    try {
+      await invoke('connect_socketcan', { interface: normalizedInterface });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
+      dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connect failed: ${msg}`, type: 'error' } });
+    }
   }, []);
 
   const disconnectNetwork = useCallback(() => {
+    invoke('disconnect_socketcan').catch(console.error);
     dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
-    dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Disconnected from SocketCAN`, type: 'info' } });
-  }, []);
+    dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: t('can.disconnectedFromSock'), type: 'info' } });
+  }, [t]);
 
   const startRecording = useCallback(() => {
     dispatch({ type: 'CAN_CLEAR_RECORDING' });
@@ -405,4 +477,36 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 function now(): string {
   const d = new Date();
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}.${d.getMilliseconds().toString().padStart(3, '0')}`;
+}
+
+function socketCANPayloadToFrame(payload: SocketCANFramePayload, busLoadPercent: number): CANFrame {
+  const data = Array.isArray(payload.data) ? payload.data.slice(0, 8) : [];
+  const dlc = Math.min(payload.dlc ?? data.length, 8);
+  const idFormat = payload.idFormat === 'extended' ? 'extended' : 'standard';
+
+  return {
+    uid: makeSocketCANFrameUid(),
+    arbitrationId: payload.arbitrationId,
+    idFormat,
+    frameType: payload.isRTR ? 'remote' : 'data',
+    isRTR: Boolean(payload.isRTR),
+    dlc,
+    data: data.slice(0, dlc),
+    crc: computeCANCRC(data, payload.arbitrationId, dlc, idFormat),
+    timestamp: Date.now(),
+    nodeId: 0,
+    busLoadPercent,
+    errors: [],
+  };
+}
+
+function makeSocketCANFrameUid(): string {
+  const bytes = new Uint32Array(2);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    bytes[0] = Date.now() >>> 0;
+    bytes[1] = Math.floor(Math.random() * 0xffffffff);
+  }
+  return `socketcan-${Date.now()}-${bytes[0].toString(16)}${bytes[1].toString(16)}`;
 }
