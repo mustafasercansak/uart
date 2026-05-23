@@ -155,6 +155,33 @@ describe('StatBar', () => {
     expect(screen.queryByText('Scenario B')).not.toBeInTheDocument();
   });
 
+  it('calls onSetScenario when scenario select changes', () => {
+    const onSetScenario = vi.fn();
+    const scenarios: Scenario[] = [
+      { id: 's1', name: 'Scenario A', profileId: 'p1', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
+      { id: 's2', name: 'Scenario B', profileId: 'p1', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
+    ];
+
+    render(
+      <StatBar
+        {...defaultProps}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+        scenarios={scenarios}
+        onSetScenario={onSetScenario}
+      />,
+      { wrapper }
+    );
+
+    const scenarioSelect = screen
+      .getAllByRole('combobox')
+      .find((select) => Array.from((select as HTMLSelectElement).options).some((opt) => opt.textContent === 'Scenario A'));
+
+    expect(scenarioSelect).toBeTruthy();
+    fireEvent.change(scenarioSelect as HTMLSelectElement, { target: { value: 's2' } });
+    expect(onSetScenario).toHaveBeenCalledWith('s2');
+  });
+
   it('shows baud rate badge when a profile is selected', () => {
     render(
       <StatBar {...defaultProps} profiles={[sampleProfile]} selectedProfileId="p1" />,

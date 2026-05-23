@@ -256,8 +256,8 @@ export function generateFrame(
   // Apply signal integrity noise (random bit flips)
   let finalBytes = [...allBytes];
 
-  if (state.signalIntegrity?.bitFlipsEnabled && state.signalIntegrity?.noiseLevel > 0) {
-    finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel);
+  if (state.signalIntegrity?.bitFlipsEnabled) {
+    finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel ?? 0);
   }
 
   // Apply error injection (one-shot logic errors)

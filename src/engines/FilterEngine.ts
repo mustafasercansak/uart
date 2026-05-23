@@ -80,8 +80,9 @@ export class FilterEngine {
   }
 
   private static evaluateCondition(exchange: Exchange, condition: string, profile?: FrameProfile): boolean {
-    const operators = ['==', '!=', '>=', '<=', '>', '<', 'contains'];
-    let operator = '';
+    const operators = ['==', '!=', '>=', '<=', '>', '<', 'contains'] as const;
+    type FilterOperator = typeof operators[number];
+    let operator: FilterOperator | null = null;
     let left = '';
     let right = '';
 
@@ -133,7 +134,6 @@ export class FilterEngine {
             const sTarget = String(right).toLowerCase().replace(/[ "']+/g, '').replace(/\s+/g, '');
             return sVal.includes(sTarget);
         }
-        default: return false;
     }
   }
 

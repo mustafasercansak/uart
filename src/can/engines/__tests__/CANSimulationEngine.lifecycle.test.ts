@@ -205,6 +205,110 @@ describe('CANSimulationEngine lifecycle and bus behavior', () => {
     expect(logs.some(text => text.includes('Diagnostic Session Control'))).toBe(true);
     expect(logs.some(text => text.includes('SID 0x99'))).toBe(true);
   });
+
+  it('covers segmented ISO-TP requests, flow control, clear, and one-time injection paths', () => {
+    const { engine, frames, patches, logs } = createEngine();
+    engine.addNode(makeNodeInput(1));
+    engine.addNode(makeNodeInput(2));
+
+    engine.setErrorInjectionConfig({
+      enabledTypes: { 'crc-corruption': true, 'form-error': true, 'ack-error': false, 'bit-stuffing': false },
+      triggerMode: 'one-time',
+      periodicEvery: 3,
+      randomRate: 0,
+    });
+    engine.armOneTimeErrorInjection();
+    engine.sendCustomFrame(0x123, [1, 2, 3]);
+    expect(frames[frames.length - 1]?.errors).toEqual(expect.arrayContaining(['CRC Corruption', 'Form/Framing Error']));
+    expect(engine.getState().errorInjection.oneTimeArmed).toBe(false);
+
+    engine.setErrorInjectionConfig({
+      enabledTypes: { 'crc-corruption': false, 'form-error': false, 'ack-error': true, 'bit-stuffing': false },
+      triggerMode: 'periodic',
+      periodicEvery: 2,
+      randomRate: 0,
+    });
+    engine.sendCustomFrame(0x124, [1]);
+    expect(frames[frames.length - 1]?.errors).toContain('ACK Error');
+    engine.sendCustomFrame(0x125, [1]);
+    expect(frames[frames.length - 1]?.errors).toEqual([]);
+
+    engine.sendUDSRequest(0x7e0, [0x22, 0x10, 0x01, 0x10, 0x04, 0x10, 0x05, 0x10, 0x06, 0x10, 0x07]);
+    vi.runAllTimers();
+    expect(frames.some(frame => frame.data[0] === 0x30)).toBe(true);
+    expect(logs.some(text => text.includes('ISO-TP'))).toBe(true);
+
+    engine.sendCustomFrame(0x7e0, []);
+    engine.sendCustomFrame(0x7e0, [0x30, 0x00, 0x00]);
+
+    engine.clearFrames();
+    expect(engine.getState()).toMatchObject({ recentFrames: [], frameCount: 0, errorCount: 0 });
+    expect(patches.some(patch => patch.recentFrames && patch.frameCount === 0)).toBe(true);
+  });
+
+  it('auto-recovers noise bursts and covers diagnostic target fallbacks', () => {
+    const { engine, faults, frames } = createEngine();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    engine.addNode(makeNodeInput(1, { vitals: { ...DEFAULT_VITALS, alarmFlags: 0x04 } }));
+    engine.addNode(makeNodeInput(2));
+    engine.injectFault(1, 'noise-burst');
+
+    engine.start();
+    vi.advanceTimersByTime(60);
+    expect(frames[0].errors).toContain('Noise burst bit error');
+
+    engine.injectFault(2, 'noise-burst');
+    vi.advanceTimersByTime(3000);
+    expect(engine.getState().nodes.find(node => node.id === 2)?.activeFault).toBeNull();
+    expect(faults).toContain('2:recover');
+
+    engine.setUDSConfig({ ...engine.getState().udsConfig, targetNodeId: 999 });
+    engine.sendCustomFrame(0x7e1, [0x03, 0x22, 0xf1, 0x90]);
+    vi.runOnlyPendingTimers();
+    expect(frames.some(frame => frame.arbitrationId === 0x7e9 || frame.arbitrationId === 0x7e8)).toBe(true);
+  });
+
+  it('covers ISO-TP immediate, malformed, sequence-error, and reassembly branches', () => {
+    const { engine, frames, logs } = createEngine();
+    engine.addNode(makeNodeInput(1, { vitals: { ...DEFAULT_VITALS, heartRate: 72 } }));
+    engine.setUDSConfig({
+      ...engine.getState().udsConfig,
+      didResponses: [
+        { id: 'hr', did: 0x1001, label: 'Heart', encoding: 'vitals', value: 'heartRate', enabled: true },
+      ],
+      dtcCodes: [0x010203],
+    });
+
+    engine.sendCustomFrame(0x7e0, [0x10, 0x03, 0x22, 0x10, 0x01]);
+    engine.sendCustomFrame(0x7e0, [0x02, 0x22]);
+    engine.sendCustomFrame(0x7e0, [0x01, 0x19]);
+    engine.sendCustomFrame(0x7e0, [0x10, 0x08, 0x22, 0x10, 0x01, 0x22, 0x10, 0x01]);
+    engine.sendCustomFrame(0x7e0, [0x21, 0x22, 0x10]);
+    engine.sendCustomFrame(0x7e0, [0x10, 0x08, 0x22, 0x10, 0x01, 0x22, 0x10, 0x01]);
+    engine.sendCustomFrame(0x7e0, [0x22, 0x22, 0x10]);
+    engine.sendUDSRequest(0x123, [0x10]);
+    vi.runOnlyPendingTimers();
+
+    expect(frames.some(frame => frame.data[1] === 0x7f && frame.data[2] === 0x22 && frame.data[3] === 0x13)).toBe(true);
+    expect(frames.some(frame => frame.data[1] === 0x59)).toBe(true);
+    expect(logs.some(text => text.includes('ISO-TP reassembled'))).toBe(true);
+    expect(logs.some(text => text.includes('ISO-TP sequence error'))).toBe(true);
+  });
+
+  it('marks alarm frames when no other frame error exists', () => {
+    const { engine, frames, logs } = createEngine();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+    engine.addNode(makeNodeInput(1, {
+      vitals: { ...DEFAULT_VITALS, temperature: 39, alarmFlags: 0 },
+      sendIntervalMs: 10,
+    }));
+
+    engine.start();
+    vi.advanceTimersByTime(60);
+
+    expect(frames[0].errors).toContain('Alarm flags: 0x08');
+    expect(logs.some(text => text.includes('alarm: flags=0x8'))).toBe(true);
+  });
 });
 
 function makeNodeInput(id: number, patch: Record<string, unknown> = {}) {

@@ -22,6 +22,8 @@ describe('FilterEngine', () => {
             expect(FilterEngine.validate('bpm > 100').isValid).toBe(true);
             expect(FilterEngine.validate('status == error').isValid).toBe(true);
             expect(FilterEngine.validate('data contains "AA"').isValid).toBe(true);
+            expect(FilterEngine.validate('').isValid).toBe(true);
+            expect(FilterEngine.validate('label == "value with spaces"').isValid).toBe(true);
         });
 
         it('identifies invalid tokens', () => {
@@ -37,7 +39,9 @@ describe('FilterEngine', () => {
     describe('evaluate', () => {
         it('filters by basic status', () => {
             expect(FilterEngine.evaluate(mockExchange, 'error')).toBe(true);
+            expect(FilterEngine.evaluate({ ...mockExchange, isLoopbackMatch: true }, 'err')).toBe(false);
             expect(FilterEngine.evaluate(mockExchange, 'tx')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'rx-only', rx: mockExchange.rx } as unknown as Exchange, 'rx')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, '!error')).toBe(false);
         });
 
@@ -67,13 +71,17 @@ describe('FilterEngine', () => {
         it('filters by additional standard fields', () => {
             expect(FilterEngine.evaluate(mockExchange, 'id == ex1')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'status == ok')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'nostatus', tx: { rawHex: 'AA' } } as unknown as Exchange, 'status == ok')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'rx-only', rx: { rawHex: 'DD EE', status: 'ok' } } as unknown as Exchange, 'src == rx')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'hex contains "AA BB"')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'data contains "11 22"')).toBe(false);
             expect(FilterEngine.evaluate(mockExchange, 'rx')).toBe(true);
         });
 
         it('handles unknown fields and fallback search', () => {
              // Unknown field should return false
              expect(FilterEngine.evaluate(mockExchange, 'unknown_field == 1')).toBe(false);
+             expect(FilterEngine.evaluate({ id: 'empty' } as unknown as Exchange, 'latency == 0')).toBe(false);
              
              // Fallback search via evaluateCondition (bypassing shortcut with logical op)
              // mockExchange.tx.rawHex is 'AA BB CC'
@@ -88,6 +96,7 @@ describe('FilterEngine', () => {
 
         it('handles logical OR (||)', () => {
             expect(FilterEngine.evaluate(mockExchange, 'latency > 20 || src == tx')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency > 20 || src == rx')).toBe(false);
         });
 
         it('filters by profile fields', () => {

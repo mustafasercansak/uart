@@ -32,11 +32,8 @@ export default function TemplateBrowser() {
     ? SENSOR_TEMPLATES
     : SENSOR_TEMPLATES.filter((tmpl) => tmpl.category === selectedCategory);
 
-  const applyTemplate = async (templateId: string) => {
-    const template = SENSOR_TEMPLATES.find((t) => t.id === templateId);
-    if (!template) return;
-
-    setApplying(templateId);
+  const applyTemplate = async (template: (typeof SENSOR_TEMPLATES)[number]) => {
+    setApplying(template.id);
     const now = new Date().toISOString();
 
     // Create profile
@@ -50,20 +47,16 @@ export default function TemplateBrowser() {
     saveProfile(profile);
 
     // Create scenarios
-    let firstScenarioId: string | null = null;
-    for (const scenarioDef of template.scenarios) {
-      const sId = uuidv4();
-      if (!firstScenarioId) firstScenarioId = sId;
-      const scenario: Scenario = {
-        ...scenarioDef,
-        id: sId,
-        profileId,
-        steps: scenarioDef.steps.map((s) => ({ ...s, id: uuidv4() })),
-        createdAt: now,
-        updatedAt: now,
-      };
-      saveScenario(scenario);
-    }
+    const scenarios: Scenario[] = template.scenarios.map((scenarioDef) => ({
+      ...scenarioDef,
+      id: uuidv4(),
+      profileId,
+      steps: scenarioDef.steps.map((s) => ({ ...s, id: uuidv4() })),
+      createdAt: now,
+      updatedAt: now,
+    }));
+    scenarios.forEach((scenario) => saveScenario(scenario));
+    const firstScenarioId = scenarios[0]?.id;
 
     // Apply to current simulation state
     setProfile(profileId);
@@ -74,7 +67,7 @@ export default function TemplateBrowser() {
       setScenario(firstScenarioId);
     }
 
-    setApplied(templateId);
+    setApplied(template.id);
     setApplying(null);
     
     // Auto-navigate to dashboard
@@ -179,7 +172,7 @@ export default function TemplateBrowser() {
                   <div className="flex-1 text-center text-green-400 text-xs font-mono py-1.5">{t('templateBrowser.created')}</div>
                 ) : (
                   <button
-                    onClick={() => applyTemplate(template.id)}
+                    onClick={() => applyTemplate(template)}
                     disabled={applying === template.id}
                     className="flex-1 py-2 bg-green-900/30 border border-green-800/50 text-green-400 text-xs font-mono rounded hover:bg-green-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold"
                   >

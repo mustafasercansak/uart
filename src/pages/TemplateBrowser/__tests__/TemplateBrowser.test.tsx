@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import TemplateBrowser from '../index';
 import { BrowserRouter } from 'react-router-dom';
 import { LanguageProvider } from '../../../i18n/LanguageProvider';
@@ -14,7 +14,8 @@ vi.mock('../../../hooks/useSimulation', () => ({
   useSimulation: () => ({
     setProfile: mockSetProfile,
     updateLayout: mockUpdateLayout,
-    setScenario: mockSetScenario
+    setScenario: mockSetScenario,
+    state: { profileId: null },
   })
 }));
 
@@ -27,6 +28,13 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('TemplateBrowser Component', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('uart_locale', 'tr');
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
   it('should render template cards correctly', () => {
     render(
       <LanguageProvider>
@@ -58,6 +66,7 @@ describe('TemplateBrowser Component', () => {
     expect(mockSetProfile).toHaveBeenCalled();
     expect(mockUpdateLayout).toHaveBeenCalled();
     expect(mockSetScenario).toHaveBeenCalled();
+    expect(screen.getByText('Simülasyona Uygulandı')).toBeInTheDocument();
 
     // Advance timers for navigation
     vi.advanceTimersByTime(1000);
@@ -101,5 +110,24 @@ describe('TemplateBrowser Component', () => {
     fireEvent.click(profileButtons[0]);
 
     expect(mockNavigate).toHaveBeenCalledWith('/profiles');
+  });
+
+  it('should switch to the community templates tab', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ format: 'uart-community-templates', version: '1', updatedAt: 'now', templates: [] }),
+    }));
+
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Topluluk' }));
+
+    expect(await screen.findByText('Henüz topluluk şablonu yok')).toBeInTheDocument();
   });
 });

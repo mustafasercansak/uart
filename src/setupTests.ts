@@ -5,6 +5,7 @@ expect.extend(matchers as unknown as Parameters<typeof expect.extend>[0]);
 
 // scrollIntoView not implemented in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
+window.HTMLAnchorElement.prototype.click = vi.fn();
 
 // Mock Web Workers (jsdom doesn't support them)
 class MockWorker {

@@ -104,6 +104,14 @@ describe('CommunityTemplates', () => {
     expect(JSON.parse(localStorage.getItem('uart_community_favorites') ?? '[]')).toEqual([]);
   });
 
+  it('ignores malformed favorite storage and starts with an empty favorite set', async () => {
+    localStorage.setItem('uart_community_favorites', '{bad json');
+
+    renderCommunityTemplates();
+
+    expect(await screen.findByRole('button', { name: /Favorites \(0\)/ })).toBeInTheDocument();
+  });
+
   it('shows only starred templates when the Favorites filter is active', async () => {
     renderCommunityTemplates();
 
@@ -181,6 +189,17 @@ describe('CommunityTemplates', () => {
     expect(open).toHaveBeenCalledWith(expect.stringContaining('Community%20Template%3A%20Bed%20Monitor%201'));
   });
 
+  it('does not open a submission issue when the active profile is missing from storage', async () => {
+    mockProfileId = 'missing-profile';
+    vi.mocked(getProfile).mockReturnValue(null);
+
+    renderCommunityTemplates();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit Active Profile' }));
+
+    expect(open).not.toHaveBeenCalled();
+  });
+
   it('imports a community template, saves scenarios, applies layout, and navigates home', async () => {
     const [entry] = communityIndex.templates;
     const template = {
@@ -207,6 +226,12 @@ describe('CommunityTemplates', () => {
           loop: false,
           steps: [{ id: 'old-step', atMs: 0, target: 'field:spo2', action: 'set' as const, actionConfig: { value: 98 } }],
         },
+        {
+          name: 'Follow-up Scenario',
+          description: '',
+          loop: false,
+          steps: [],
+        },
       ],
       defaultLayout: { widgets: [{ id: 'w1', type: 'frame-monitor', x: 0, y: 0, w: 1, h: 1 }] },
     };
@@ -225,5 +250,64 @@ describe('CommunityTemplates', () => {
     expect(mockSetScenario).toHaveBeenCalled();
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'), { timeout: 1500 });
+  });
+
+  it('renders unknown community categories with the fallback chip style', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        ...communityIndex,
+        templates: [{ ...communityIndex.templates[0], id: 'unknown-category', category: 'space-lab' }],
+      }),
+    }));
+
+    renderCommunityTemplates();
+
+    expect(await screen.findByText('templateBrowser.categories.space-lab')).toBeInTheDocument();
+  });
+
+  it('shows importing state while a community template fetch is pending', async () => {
+    const [entry] = communityIndex.templates;
+    let resolveTemplate!: (value: unknown) => void;
+    const pendingTemplate = new Promise((resolve) => {
+      resolveTemplate = resolve;
+    });
+    vi.stubGlobal('fetch', vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(communityIndex) })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn(() => pendingTemplate) }));
+
+    renderCommunityTemplates();
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Import' }))[0]);
+    expect(await screen.findByRole('button', { name: 'Importing...' })).toBeDisabled();
+
+    resolveTemplate({
+      id: entry.id,
+      name: entry.name,
+      description: entry.description,
+      icon: entry.icon,
+      category: entry.category,
+      profile: { name: 'Pending Profile', description: '', baudRate: 9600, dataBits: 8, parity: 'None', stopBits: 1, sendIntervalMs: 100, framing: { mode: 'fixed' }, fields: [] },
+      scenarios: [],
+    });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Applied!' })).toBeDisabled());
+    expect(mockUpdateLayout).not.toHaveBeenCalled();
+    expect(mockSetScenario).not.toHaveBeenCalled();
+  });
+
+  it('returns to idle import state when a community template fetch fails', async () => {
+    vi.stubGlobal('fetch', vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(communityIndex) })
+      .mockResolvedValueOnce({ ok: false, json: vi.fn() }));
+
+    renderCommunityTemplates();
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Import' }))[0]);
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Import' })[0]).toBeEnabled());
+    expect(saveProfile).not.toHaveBeenCalled();
   });
 });
