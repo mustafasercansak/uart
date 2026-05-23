@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { generateFrame } from '../FrameGenerator';
 import type { FrameProfile, SimulationState, ErrorType, FieldType, Parity } from '../../types';
 
 describe('FrameGenerator', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const mockProfile: FrameProfile = {
     id: 'test-profile',
     name: 'Test Profile',
@@ -282,6 +286,22 @@ describe('FrameGenerator', () => {
     expect(frame.rawBytes[frame.rawBytes.length - 1]).toBe(0x0A);
   });
 
+  it('applies default delimiter and fixed header/footer framing', () => {
+    const defaultDelimiterProfile = {
+      ...mockProfile,
+      framing: { mode: 'delimiter' }
+    } as unknown as FrameProfile;
+    const defaultDelimiterFrame = generateFrame(defaultDelimiterProfile, mockState, 1);
+    expect(defaultDelimiterFrame.rawBytes[defaultDelimiterFrame.rawBytes.length - 1]).toBe(0x0A);
+
+    const fixedProfile = {
+      ...mockProfile,
+      framing: { mode: 'fixed', header: [0x02], footer: [0x03] }
+    } as unknown as FrameProfile;
+    const fixedFrame = generateFrame(fixedProfile, mockState, 1);
+    expect(fixedFrame.rawBytes).toEqual([0x02, 0xAB, 0xCD, 0x55, 0x03]);
+  });
+
   it('syncs waveforms with medical metrics (BPM/HR/RR)', () => {
     const medicalProfile: FrameProfile = {
       ...mockProfile,
@@ -503,6 +523,58 @@ describe('FrameGenerator', () => {
       expect(frame.rawBytes[1]).toBeLessThanOrEqual(255);
     });
 
+    it('handles alternate waveform frequency fallbacks and zero frequency sources', () => {
+      const profile = {
+        ...mockProfile,
+        fields: [
+          { id: 'hr', name: 'HR', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 72 }, endianness: 'big' },
+          { id: 'ecg', name: 'ECG', byteWidth: 1, order: 1, type: 'waveform', typeConfig: { shape: 'ecg', frequency: 0.1, amplitude: 10, offset: 128 }, endianness: 'big' },
+          { id: 'respiration', name: 'Respiration', byteWidth: 1, order: 2, type: 'fixed', typeConfig: { value: 18 }, endianness: 'big' },
+          { id: 'flow', name: 'Flow', byteWidth: 1, order: 3, type: 'waveform', typeConfig: { shape: 'resp_flow', frequency: 0.1, amplitude: 10, offset: 128 }, endianness: 'big' },
+          { id: 'driver', name: 'Driver', byteWidth: 1, order: 4, type: 'fixed', typeConfig: { value: 0 }, endianness: 'big' },
+          { id: 'src', name: 'SrcWave', byteWidth: 1, order: 5, type: 'waveform', typeConfig: { shape: 'sine', frequency: 0.1, frequencySource: 'Driver', amplitude: 10, offset: 128 }, endianness: 'big' }
+        ]
+      } as unknown as FrameProfile;
+
+      expect(generateFrame(profile, mockState, 1).rawBytes).toHaveLength(6);
+    });
+
+    it('keeps flag bits cleared when an override is false', () => {
+      const flagsProfile = {
+        ...mockProfile,
+        fields: [{
+          id: 'f', name: 'Flags', byteWidth: 1, order: 0,
+          type: 'flags',
+          typeConfig: { bits: [{ name: 'OFF', index: 0, defaultValue: 1 }] },
+          endianness: 'big'
+        }]
+      } as unknown as FrameProfile;
+
+      const frame = generateFrame(flagsProfile, {
+        ...mockState,
+        bitOverrides: { 'f.OFF': 0 }
+      }, 1);
+
+      expect(frame.rawBytes[0]).toBe(0);
+    });
+
+    it('skips checksum fields while collecting checksum scope bytes', () => {
+      const profile = {
+        ...mockProfile,
+        fields: [
+          {
+            id: 'cs', name: 'CS', byteWidth: 1, order: 0, type: 'checksum',
+            typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'a', endFieldId: 'b' } },
+            endianness: 'big'
+          },
+          { id: 'a', name: 'A', byteWidth: 1, order: 1, type: 'fixed', typeConfig: { value: 1 }, endianness: 'big' },
+          { id: 'b', name: 'B', byteWidth: 1, order: 2, type: 'fixed', typeConfig: { value: 2 }, endianness: 'big' }
+        ]
+      } as unknown as FrameProfile;
+
+      expect(generateFrame(profile, mockState, 1).rawBytes).toEqual([3, 1, 2]);
+    });
+
     it('covers gaussian clamp limits', () => {
       const clampProfile = {
         ...mockProfile,
@@ -516,6 +588,42 @@ describe('FrameGenerator', () => {
       // clampValue uses byteWidth (1) -> max is 255. 
       // Gaussian mean 500 with stddev 1 will definitely hit 255.
       expect(frame.rawBytes[0]).toBe(255); 
+    });
+
+    it('handles signal noise disabled, zero noise, and no-flip random branches', () => {
+      const noSignalIntegrityState = { ...mockState, signalIntegrity: undefined };
+      expect(generateFrame(mockProfile, noSignalIntegrityState as unknown as SimulationState, 1).rawBytes).toEqual([0xAB, 0xCD, 0x55]);
+
+      const zeroNoiseState = {
+        ...mockState,
+        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: 0, jitterMs: 0 }
+      };
+      expect(generateFrame(mockProfile, zeroNoiseState, 1).rawBytes).toEqual([0xAB, 0xCD, 0x55]);
+
+      vi.spyOn(Math, 'random').mockReturnValue(1);
+      const noFlipState = {
+        ...mockState,
+        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: 0.5, jitterMs: 0 }
+      };
+      expect(generateFrame(mockProfile, noFlipState, 1).rawBytes).toEqual([0xAB, 0xCD, 0x55]);
+    });
+
+    it('handles checksum and sync errors on empty frames', () => {
+      const emptyProfile = { ...mockProfile, fields: [] } as unknown as FrameProfile;
+
+      const corruptChecksumFrame = generateFrame(emptyProfile, {
+        ...mockState,
+        pendingErrors: ['corrupt_checksum' as ErrorType]
+      }, 1);
+      expect(corruptChecksumFrame.rawBytes).toEqual([]);
+      expect(corruptChecksumFrame.errors).toHaveLength(1);
+
+      const wrongSyncFrame = generateFrame(emptyProfile, {
+        ...mockState,
+        pendingErrors: ['wrong_sync' as ErrorType]
+      }, 1);
+      expect(wrongSyncFrame.rawBytes).toEqual([]);
+      expect(wrongSyncFrame.errors).toHaveLength(1);
     });
   });
 });

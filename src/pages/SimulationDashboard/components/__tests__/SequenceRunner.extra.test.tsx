@@ -470,7 +470,7 @@ describe('SequenceRunner — handleImportFile', () => {
     renderRunner('en');
     const json = JSON.stringify({
       format: 'uart-sequences',
-      sequences: [{ id: 'imp1', name: 'Imported', group: 'IG', steps: [] }],
+      sequences: [{ id: 'imp1', name: 'Imported', group: 'IG', steps: [{ id: 'old', type: 'send', payload: 'AA', status: 'success' }] }],
     });
     const file = new File([json], 'seqs.json', { type: 'application/json' });
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -625,16 +625,44 @@ describe('SequenceRunner — printPdf with pass result', () => {
 
   it('printPdf on pass result covers pass branch in buildHtml', async () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     renderRunner('en');
     fireEvent.click(screen.getByText('Test Series'));
     fireEvent.click(screen.getByText('PDF Pass'));
     vi.useFakeTimers();
     fireEvent.click(screen.getByRole('button', { name: /Run Series/i }));
     await act(async () => { await vi.runAllTimersAsync(); });
-    vi.useRealTimers();
     // Modal is open with a pass result
     expect(screen.getByText('Test Series Report')).toBeInTheDocument();
     expect(() => fireEvent.click(screen.getByText('Download PDF'))).not.toThrow();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('JUnit XML download handles pass results and blob failures', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:url').mockImplementationOnce(() => {
+      throw new Error('blob failed');
+    });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    renderRunner('en');
+    fireEvent.click(screen.getByText('Test Series'));
+    fireEvent.click(screen.getByText('PDF Pass'));
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: /Run Series/i }));
+    await act(async () => { await vi.runAllTimersAsync(); });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('JUnit XML'));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('JUnit XML'));
+      await Promise.resolve();
+    });
+
+    vi.useRealTimers();
+    expect(screen.getByText(/Download failed/i)).toBeInTheDocument();
     vi.restoreAllMocks();
   });
 });
@@ -656,5 +684,39 @@ describe('SequenceRunner — saveSequence with no activeId', () => {
     expect(saved.id).toBeTruthy();
     // setActiveSequence is called with the new id
     expect(mockAutomation.setActiveSequence).toHaveBeenCalledWith(saved.id);
+  });
+});
+
+describe('SequenceRunner — active sequence createdAt reuse', () => {
+  const activeSeq = mkSeq('active-created', 'Active Created', 'ExistingGroup', [
+    { id: 'ac1', type: 'send', payload: 'AB', status: 'success' },
+  ]);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    mockStateRef = buildState([activeSeq], 'active-created');
+  });
+
+  it('save with activeId preserves the existing createdAt value', () => {
+    renderRunner('en');
+    fireEvent.click(screen.getByTitle('Save Scenario'));
+
+    expect(mockAutomation.saveSequence).toHaveBeenCalledTimes(1);
+    expect(mockAutomation.saveSequence.mock.calls[0][0].createdAt).toBe(activeSeq.createdAt);
+    expect(mockAutomation.setActiveSequence).not.toHaveBeenCalled();
+  });
+
+  it('export current sequence with activeId preserves existing createdAt', async () => {
+    const spy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    renderRunner('en');
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Export JSON'));
+    });
+    await act(async () => {});
+
+    expect(spy).toHaveBeenCalled();
   });
 });

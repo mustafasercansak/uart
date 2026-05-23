@@ -6,6 +6,10 @@ expect.extend(matchers as unknown as Parameters<typeof expect.extend>[0]);
 // scrollIntoView not implemented in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
+// Download helpers create temporary anchors and click them. In jsdom that can
+// try to navigate the document, which is outside the test environment.
+HTMLAnchorElement.prototype.click = vi.fn();
+
 // Mock Web Workers (jsdom doesn't support them)
 class MockWorker {
   onmessage: ((e: MessageEvent) => void) | null = null;

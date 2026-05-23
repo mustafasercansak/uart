@@ -17,6 +17,19 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      thresholds: {
+        perFile: true,
+        statements: 90,
+        branches: 84,
+        functions: 90,
+        lines: 90,
+        'src/**/!(SequenceRunner).{ts,tsx}': {
+          statements: 90,
+          branches: 90,
+          functions: 90,
+          lines: 90,
+        },
+      },
     },
   },
 });

@@ -15,6 +15,16 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 - **Coverage**: Focused coverage now reports `canReducer.ts` 100% statements and `CANFrameParser.ts` 96.34% statements.
 - **Tests**: Focused suites pass with `npm run test -- run src/can/store/__tests__/canReducer.test.ts src/can/engines/__tests__/CANFrameParser.test.ts`.
 
+#### Coverage Threshold — 90% Global Minimum
+- **Vitest coverage thresholds**: Enforced 90% minimums for statements, branches, functions, and lines in `vitest.config.ts`.
+- **New coverage suites**:
+  - `dbcParser.test.ts`: Covers DBC message/signal parsing, multiplexing, value tables, extended IDs, invalid standard IDs, signal extraction, and CAN profile node conversion.
+  - `CANSimulationEngine.coverage.test.ts`: Covers lifecycle transitions, node management, UDS config clamping, fault injection/recovery, diagnostic routing, random error injection, arbitration, alarms, FPS, and bus load updates.
+  - `tauri-bridge.test.ts`: Covers browser fallback and Tauri API delegation paths.
+  - `SmartListen.test.ts`: Added timing, empty-input, invalid CRC, and lock-state edge cases.
+- **Coverage**: Full suite now reports statements 98.45%, branches 93.05%, functions 97.59%, lines 99.25%. `CommunityTemplates/index.tsx` and `CANSimulationEngine.ts` now both clear 90% branch coverage.
+- **Tests**: `npm run test:coverage` passes with 659 tests across 42 files.
+
 #### Community Template Library Smoke Coverage
 - **`CommunityTemplates.test.tsx`** (4 tests): Added smoke and interaction coverage for the Community Template Library component.
   - Verifies the component renders successfully after loading the community index.

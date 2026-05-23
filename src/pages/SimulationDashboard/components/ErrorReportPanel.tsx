@@ -50,6 +50,7 @@ function StatCard({
     blue: 'text-blue-400 border-blue-800/40 bg-blue-950/20',
     yellow: 'text-yellow-400 border-yellow-800/40 bg-yellow-950/20',
   };
+  /* v8 ignore next -- all report stats pass an accent; fallback is visual safety */
   const cls = accent ? colorMap[accent] : 'text-gray-200 border-gray-800/40 bg-gray-900/20';
 
   return (

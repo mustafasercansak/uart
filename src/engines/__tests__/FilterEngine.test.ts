@@ -28,6 +28,10 @@ describe('FilterEngine', () => {
             expect(FilterEngine.validate('bpm @#$ 100').isValid).toBe(false);
         });
 
+        it('allows invalid-looking text when it is inside quoted values', () => {
+            expect(FilterEngine.validate('data contains "AA @#$ BB"').isValid).toBe(true);
+        });
+
         it('handles unexpected types in validate', () => {
             // Trigger catch in validate
             expect(FilterEngine.validate({} as unknown as string).isValid).toBe(false);
@@ -46,6 +50,12 @@ describe('FilterEngine', () => {
             expect(FilterEngine.evaluate(mockExchange, 'CC DD')).toBe(false);
         });
 
+        it('searches tx-only, rx-only, and empty exchanges with shortcut filters', () => {
+            expect(FilterEngine.evaluate({ tx: { rawHex: 'AB CD' } } as unknown as Exchange, 'AB')).toBe(true);
+            expect(FilterEngine.evaluate({ rx: { rawHex: '12 34' } } as unknown as Exchange, '1234')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'empty' } as unknown as Exchange, 'AB')).toBe(false);
+        });
+
         it('evaluates comparison expressions', () => {
             expect(FilterEngine.evaluate(mockExchange, 'latency > 10')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'latency < 10')).toBe(false);
@@ -62,6 +72,7 @@ describe('FilterEngine', () => {
 
         it('evaluates "contains" operator', () => {
             expect(FilterEngine.evaluate(mockExchange, 'data contains "AA BB"')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'data contains "FF"')).toBe(false);
         });
 
         it('filters by additional standard fields', () => {
@@ -79,6 +90,34 @@ describe('FilterEngine', () => {
              // mockExchange.tx.rawHex is 'AA BB CC'
              expect(FilterEngine.evaluate(mockExchange, 'tx && AA BB')).toBe(true);
              expect(FilterEngine.evaluate(mockExchange, 'tx && ZZ ZZ')).toBe(false);
+        });
+
+        it('handles rx-only exchanges and default field values', () => {
+            const rxOnlyExchange: Exchange = {
+                id: 'rx1',
+                rx: { rawHex: '11 22' }
+            } as unknown as Exchange;
+
+            expect(FilterEngine.evaluate(rxOnlyExchange, 'src == rx')).toBe(true);
+            expect(FilterEngine.evaluate(rxOnlyExchange, 'status == ok')).toBe(true);
+            expect(FilterEngine.evaluate(rxOnlyExchange, 'latency == 0')).toBe(true);
+            expect(FilterEngine.evaluate(rxOnlyExchange, 'tx')).toBe(false);
+            expect(FilterEngine.evaluate(rxOnlyExchange, 'rx')).toBe(true);
+        });
+
+        it('returns false for operator filters when no frame entry exists', () => {
+            expect(FilterEngine.evaluate({ id: 'empty' } as unknown as Exchange, 'data contains "AA"')).toBe(false);
+        });
+
+        it('does not treat loopback fail status as a filter error', () => {
+            const loopbackExchange: Exchange = {
+                id: 'loop1',
+                tx: { rawHex: 'AA', status: 'fail' },
+                isLoopbackMatch: true
+            } as unknown as Exchange;
+
+            expect(FilterEngine.evaluate(loopbackExchange, 'error')).toBe(false);
+            expect(FilterEngine.evaluate(loopbackExchange, '!error')).toBe(true);
         });
 
         it('handles logical AND (&&)', () => {

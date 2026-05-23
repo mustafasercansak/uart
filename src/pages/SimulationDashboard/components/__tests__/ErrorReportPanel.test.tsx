@@ -1,8 +1,25 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import type React from 'react';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { LanguageProvider } from '../../../../i18n/LanguageProvider';
 import type { FrameProfile, GeneratedFrame } from '../../../../types';
 import ErrorReportPanel from '../ErrorReportPanel';
+
+vi.mock('recharts', () => {
+  const Component = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+  return {
+    BarChart: Component,
+    Bar: Component,
+    XAxis: Component,
+    YAxis: Component,
+    CartesianGrid: Component,
+    Tooltip: Component,
+    ResponsiveContainer: Component,
+    LineChart: Component,
+    Line: Component,
+    Cell: Component,
+  };
+});
 
 const sampleProfile: FrameProfile = {
   id: 'demo-profile',
@@ -86,6 +103,18 @@ describe('ErrorReportPanel — empty state', () => {
         </LanguageProvider>
       )
     ).not.toThrow();
+  });
+
+  it('builds sorted timeline buckets for multi-frame reports', () => {
+    const frames: GeneratedFrame[] = [
+      { uId: 'late', frameNumber: 3, timestampMs: 1200, rawHex: 'CC', rawBytes: [0xcc], fields: [], errors: [] },
+      { uId: 'early', frameNumber: 1, timestampMs: 0, rawHex: 'AA', rawBytes: [0xaa], fields: [], errors: [] },
+      { uId: 'err', frameNumber: 2, timestampMs: 600, rawHex: 'BB', rawBytes: [0xbb], fields: [], errors: ['CRC error'] },
+    ];
+
+    renderPanel({ frames, elapsedMs: 1200, frameCount: frames.length, errorCount: 1 });
+
+    expect(screen.getByText('Error Analysis Report')).toBeInTheDocument();
   });
 });
 

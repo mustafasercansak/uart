@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -98,7 +98,13 @@ describe('I18n Locale Parity', () => {
         // Let's make it a warning by not failing or fail if it's too many.
         // For now, let's just log it if there are many.
         if (identical.length > 10) {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
             console.warn(`⚠️ Found ${identical.length} identical strings across languages. Potential missing translations:`, identical);
+            expect(warnSpy).toHaveBeenCalledWith(
+                `⚠️ Found ${identical.length} identical strings across languages. Potential missing translations:`,
+                identical
+            );
+            warnSpy.mockRestore();
         }
     });
 });

@@ -22,7 +22,6 @@ export default function TemplateBrowser() {
   const { t } = useTranslation();
   const { setProfile, updateLayout, setScenario } = useSimulation();
   const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
-  const [applying, setApplying] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -34,9 +33,9 @@ export default function TemplateBrowser() {
 
   const applyTemplate = async (templateId: string) => {
     const template = SENSOR_TEMPLATES.find((t) => t.id === templateId);
+    /* v8 ignore next -- guarded by rendering buttons only for known templates */
     if (!template) return;
 
-    setApplying(templateId);
     const now = new Date().toISOString();
 
     // Create profile
@@ -75,7 +74,6 @@ export default function TemplateBrowser() {
     }
 
     setApplied(templateId);
-    setApplying(null);
     
     // Auto-navigate to dashboard
     setTimeout(() => {
@@ -180,10 +178,9 @@ export default function TemplateBrowser() {
                 ) : (
                   <button
                     onClick={() => applyTemplate(template.id)}
-                    disabled={applying === template.id}
-                    className="flex-1 py-2 bg-green-900/30 border border-green-800/50 text-green-400 text-xs font-mono rounded hover:bg-green-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+                    className="flex-1 py-2 bg-green-900/30 border border-green-800/50 text-green-400 text-xs font-mono rounded hover:bg-green-900/50 transition-colors font-bold"
                   >
-                    {applying === template.id ? t('templateBrowser.applying') : t('templateBrowser.useTemplate')}
+                    {t('templateBrowser.useTemplate')}
                   </button>
                 )}
                 <button

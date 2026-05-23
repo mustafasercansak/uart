@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import TemplateBrowser from '../index';
 import { BrowserRouter } from 'react-router-dom';
 import { LanguageProvider } from '../../../i18n/LanguageProvider';
@@ -27,6 +27,10 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('TemplateBrowser Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('should render template cards correctly', () => {
     render(
       <LanguageProvider>
@@ -66,6 +70,44 @@ describe('TemplateBrowser Component', () => {
     vi.useRealTimers();
   });
 
+  it('should apply a template without scenarios or default layout', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    const nibpCard = screen.getByText('NIBP Modülü').closest('div[class*="bg-gray-800"]');
+    expect(nibpCard).toBeTruthy();
+
+    fireEvent.click(within(nibpCard as HTMLElement).getByRole('button', { name: /Bu Şablonu Kullan/i }));
+
+    expect(mockSetProfile).toHaveBeenCalled();
+    expect(mockUpdateLayout).not.toHaveBeenCalled();
+    expect(mockSetScenario).not.toHaveBeenCalled();
+  });
+
+  it('should apply every scenario from a multi-scenario template', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    const monitorCard = screen.getByText('YS2000A Patient Monitor').closest('div[class*="bg-gray-800"]');
+    expect(monitorCard).toBeTruthy();
+
+    fireEvent.click(within(monitorCard as HTMLElement).getByRole('button', { name: /Bu Şablonu Kullan/i }));
+
+    expect(mockSetProfile).toHaveBeenCalled();
+    expect(mockUpdateLayout).toHaveBeenCalled();
+    expect(mockSetScenario).toHaveBeenCalledTimes(1);
+  });
+
   it('should filter templates by category', () => {
     render(
       <LanguageProvider>
@@ -86,6 +128,21 @@ describe('TemplateBrowser Component', () => {
     const allFilter = screen.getByText(/Tümü/i);
     fireEvent.click(allFilter);
     expect(screen.getByText('Açık Kaynak Ventilatör')).toBeInTheDocument();
+  });
+
+  it('should render community templates tab', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <TemplateBrowser />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /topluluk/i }));
+
+    expect(screen.queryByText('Açık Kaynak Ventilatör')).not.toBeInTheDocument();
+    expect(screen.getByText('Şablonlar yükleniyor...')).toBeInTheDocument();
   });
 
   it('should navigate to profiles when arrow button is clicked', () => {

@@ -155,6 +155,31 @@ describe('StatBar', () => {
     expect(screen.queryByText('Scenario B')).not.toBeInTheDocument();
   });
 
+  it('calls onSetScenario when scenario select changes', () => {
+    const onSetScenario = vi.fn();
+    const scenarios: Scenario[] = [
+      { id: 's1', name: 'Scenario A', profileId: 'p1', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
+    ];
+
+    render(
+      <StatBar
+        {...defaultProps}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+        scenarios={scenarios}
+        onSetScenario={onSetScenario}
+      />,
+      { wrapper }
+    );
+
+    const scenarioSelect = screen.getAllByRole('combobox').find((select) =>
+      Array.from((select as HTMLSelectElement).options).some((option) => option.value === 's1')
+    ) as HTMLSelectElement;
+
+    fireEvent.change(scenarioSelect, { target: { value: 's1' } });
+    expect(onSetScenario).toHaveBeenCalledWith('s1');
+  });
+
   it('shows baud rate badge when a profile is selected', () => {
     render(
       <StatBar {...defaultProps} profiles={[sampleProfile]} selectedProfileId="p1" />,
@@ -450,6 +475,18 @@ describe('StatBar', () => {
     expect(portInput).toBeTruthy();
   });
 
+  it('keeps an already selected available serial port', () => {
+    const { rerender } = render(
+      <StatBar {...defaultProps} outputMode="serial" availablePorts={[{ path: 'COM5' }]} />,
+      { wrapper }
+    );
+    const portInput = screen.getByPlaceholderText(/COM1/i);
+    expect((portInput as HTMLInputElement).value).toBe('COM5');
+
+    rerender(<StatBar {...defaultProps} outputMode="serial" availablePorts={[{ path: 'COM5' }, { path: 'COM6' }]} />);
+    expect((portInput as HTMLInputElement).value).toBe('COM5');
+  });
+
   // --- Export Report button ---
 
   it('calls handleExport when Export Report button is clicked', () => {
@@ -483,6 +520,15 @@ describe('StatBar', () => {
     const onlineBtn = screen.getAllByRole('button').find(b => b.textContent?.includes('ONLINE'));
     if (onlineBtn) fireEvent.click(onlineBtn);
     expect(onDisconnectNetwork).toHaveBeenCalled();
+  });
+
+  it('shows tcp-server online label in backend status', () => {
+    render(
+      <StatBar {...defaultProps} outputMode="tcp-server" networkConnected={true} />,
+      { wrapper }
+    );
+
+    expect(screen.getByRole('button', { name: /TCP SERVER:\s*LISTENING/i })).toBeInTheDocument();
   });
 
   // --- Language switcher & help ---

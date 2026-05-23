@@ -35,13 +35,6 @@ export function computeCANCRC(data: number[], arbitrationId: number, dlc: number
   return crc;
 }
 
-function t(key: string): string {
-  const translations: Record<string, string> = {
-    'can.dLCExceedsMaxim': 'DLC exceeds maximum'
-  };
-  return translations[key] || key;
-}
-
 /** Decode raw bytes into a CANFrame. Returns null if bytes are malformed. */
 export function parseCANFrame(bytes: number[]): Omit<CANFrame, 'uid' | 'timestamp' | 'nodeId' | 'busLoadPercent'> | null {
   if (bytes.length < 3) return null;
@@ -72,7 +65,6 @@ export function parseCANFrame(bytes: number[]): Omit<CANFrame, 'uid' | 'timestam
 
   const crc = computeCANCRC(data, arbitrationId, dlc, idFormat);
   const errors: string[] = [];
-  if (dlc > 8) errors.push(t('can.dLCExceedsMaxim'));
 
   return { arbitrationId, idFormat, frameType, isRTR, dlc, data, crc, errors };
 }

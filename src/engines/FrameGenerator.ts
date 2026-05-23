@@ -445,8 +445,6 @@ function calculateCRC16(bytes: number[]): number {
  * Simulates physical layer noise by flipping bits randomly based on noiseLevel.
  */
 function applySignalNoise(bytes: number[], noiseLevel: number): number[] {
-  if (noiseLevel <= 0) return bytes;
-
   return bytes.map(byte => {
     let corruptedByte = byte;
     for (let bit = 0; bit < 8; bit++) {
