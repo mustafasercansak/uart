@@ -3,52 +3,19 @@
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
 ## [Unreleased]
-### 🧪 Test Infrastructure
-#### CAN State & Frame Parser Regression Coverage
-- **`canReducer.test.ts`** (5 tests): Added focused coverage for CAN reducer state transitions and storage-safe behavior.
-  - Exercises every current reducer action, including status, node replacement, frame/log/arbitration/fault event appenders, selectors, filters, display toggles, baud/output mode, serial/network flags, recording, recording clear, and `CAN_SET_UDS_CONFIG`.
-  - Verifies frame/error counters, recording append behavior, bounded history caps, `CAN_CLEAR_FRAMES` reset behavior, and unknown-action identity fallback.
-- **`CANFrameParser.test.ts`** (10 tests): Added regression coverage for CAN frame parsing and v1.6.0 J1939 helpers.
-  - Covers standard and extended frame encode/parse paths, frame type decoding, malformed raw frame rejection, CRC usage, and arbitration ID formatting.
-  - Verifies `parseJ1939Id()` for PDU1 peer-to-peer and PDU2 broadcast IDs, plus known/unknown `j1939PgnName()` output.
-  - Covers `extractSignalValue()` for Intel little-endian and Motorola big-endian DBC signal extraction, including signed/scaled values.
-- **Coverage**: Focused coverage now reports `canReducer.ts` 100% statements and `CANFrameParser.ts` 96.34% statements.
-- **Tests**: Focused suites pass with `npm run test -- run src/can/store/__tests__/canReducer.test.ts src/can/engines/__tests__/CANFrameParser.test.ts`.
-
-#### Community Template Library Smoke Coverage
-- **`CommunityTemplates.test.tsx`** (4 tests): Added smoke and interaction coverage for the Community Template Library component.
-  - Verifies the component renders successfully after loading the community index.
-  - Uses the real `docs/community-templates/index.json` fixture shape to assert template cards display.
-  - Confirms favorite toggles persist and remove template IDs in `localStorage`.
-  - Confirms the "★ Favorites" filter shows only starred templates.
-- **Tests**: Focused suite passes with `npm run test -- run src/components/CommunityTemplates/__tests__/CommunityTemplates.test.tsx`.
-
-#### Unit Tests — CANMedicalVitals & CANErrorStateMachine (Issue #47)
-- **`CANMedicalVitals.test.ts`** (42 tests): Full coverage of `tickVitals` and `encodeVitalsToCANData`.
-  - All 8 medical profiles exercised: `vital-monitor`, `ecg-monitor`, `pulse-oximeter`, `iv-pump`, `infusion-pump`, `ventilator`, `defibrillator`, `custom`.
-  - All 8 physiological fault types verified for convergence direction: `cardiac-arrest`, `bradycardia`, `tachycardia`, `hypoxia`, `hypotension`, `hypertension`, `fever`, `hypothermia`.
-  - All 3 network fault types (`bus-off`, `freeze`, `noise-burst`) verified to leave vitals unchanged.
-  - Every alarm flag bit (HR, SpO₂, BP, Temp, RR) tested for both threshold edges.
-  - CAN payload encoding verified byte-by-byte for all profile variants including optional-field defaults.
-  - `Math.random` mocked via Box-Muller near-zero technique for deterministic drift/seek direction assertions.
-- **`CANErrorStateMachine.test.ts`** (30 tests): Full coverage of all 6 exported ISO 11898-1 functions.
-  - `computeNodeState`: all three state regions (error-active / error-passive / bus-off) including boundary values.
-  - `applyTransmitError` / `applyReceiveError`: increment logic, TEC cap at 255, REC cap at 127, state transitions, immutability.
-  - `applySuccessfulTx` / `applySuccessfulRx`: decrement, floor at 0, passive → active recovery.
-  - `recoverBusOff`: full reset on bus-off, no-op on any other state, immutability.
-  - End-to-end sequence: idle → error-passive → bus-off → recovery.
-- **Coverage**: `CANErrorStateMachine.ts` 100% stmt / 100% branch; `CANMedicalVitals.ts` 100% stmt / 97.5% branch (2 unreachable null-coalescing fallbacks on line 107).
-- **Tests**: 72 new tests added; all 72 pass.
-
-#### Bug Fix — Vitest 4 setupFiles Context Error (Issue #43)
-- **Root cause**: `src/setupTests.ts` explicitly imported `expect`, `afterEach`, and `vi` from `vitest`. In Vitest 4 with `globals: true`, re-importing these symbols in a `setupFiles` module creates a context conflict and throws *"Vitest failed to find the current suite"* — causing all 34 test files to fail with 0 tests run.
-- **Fix**: Removed the explicit `vitest` imports and the redundant `afterEach(() => cleanup())` call (React Testing Library v16 auto-cleans after each test). Added `"vitest/globals"` to `tsconfig.json` `types` so TypeScript resolves the injected globals.
-- **Tests**: All 537 tests pass across 34 test files.
+- No changes yet.
 
 ---
 
 ## [v1.6.0] — 2026-05-20
 ### 🚌 CAN Bus Simulator & UX Enhancements
+
+### 🧪 Test Infrastructure
+
+#### Bug Fix — Vitest 4 setupFiles Context Error (Issue #43)
+- **Root cause**: `src/setupTests.ts` explicitly imported `expect`, `afterEach`, and `vi` from `vitest`. In Vitest 4 with `globals: true`, re-importing these symbols in a `setupFiles` module creates a context conflict and throws *"Vitest failed to find the current suite"* — causing all 34 test files to fail with 0 tests run.
+- **Fix**: Removed the explicit `vitest` imports and the redundant `afterEach(() => cleanup())` call (React Testing Library v16 auto-cleans after each test). Added `"vitest/globals"` to `tsconfig.json` `types` so TypeScript resolves the injected globals.
+- **Tests**: All 537 tests pass across 34 test files.
 
 #### DBC File Parser — Full Signal Support
 - **Signal definitions (`SG_`)**: Parser now fully extracts all signal fields — start bit, length, byte order (Intel/Motorola), sign, factor, offset, min, max, unit, and receivers. Previously only message metadata (`BO_`) was parsed; signals were silently discarded.
