@@ -83,6 +83,8 @@ cansend vcan0 123#1122334455667788
 
 In the app, select `SocketCAN (Linux)`, connect to `vcan0`, and confirm the frame appears in the CAN Bus Monitor.
 
+For manual TX/RX validation, start the app in SocketCAN mode, connect to `vcan0`, send a frame from the Bus Monitor injection bar, and confirm it is shown as `TX`. Then run `cansend vcan0 123#1122334455667788` from a terminal and confirm the incoming frame is shown as `RX`.
+
 `SocketCAN (Linux)` depends on the Linux kernel CAN stack and is not available on Windows. On Windows, use `SLCAN (Serial)` with a USB-CAN/SLCAN adapter; selecting SocketCAN will fail gracefully instead of breaking the app.
 
 ---
