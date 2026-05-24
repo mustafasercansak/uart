@@ -50,6 +50,14 @@ interface SocketCANFramePayload {
   data: number[];
 }
 
+interface PendingSocketCANTx {
+  arbitrationId: number;
+  data: number[];
+  dlc: number;
+  idFormat: 'standard' | 'extended';
+  createdAt: number;
+}
+
 const CANContext = createContext<CANContextValue | null>(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -62,6 +70,7 @@ export function useCANContext(): CANContextValue {
 
 const MAX_RESTARTS = 3;
 const RESTART_DELAY_MS = 1500;
+const SOCKETCAN_TX_ECHO_WINDOW_MS = 2000;
 
 export function CANProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -75,6 +84,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
   // Buffer for high-frequency frame updates — drained by RAF loop
   const frameBatchRef = useRef<CANFrame[]>([]);
+  const pendingSocketCANTxRef = useRef<PendingSocketCANTx[]>([]);
 
   // ── Worker lifecycle ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -193,14 +203,16 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     let unlistenStatus: (() => void) | undefined;
 
     listen('socketcan-frame', (payload) => {
-      const frame = socketCANPayloadToFrame(payload as SocketCANFramePayload, stateRef.current.busLoadPercent);
+      const socketPayload = payload as SocketCANFramePayload;
+      const isLocalEcho = consumePendingSocketCANTx(pendingSocketCANTxRef.current, socketPayload);
+      const frame = socketCANPayloadToFrame(socketPayload, stateRef.current.busLoadPercent, isLocalEcho ? -1 : 0);
       dispatch({ type: 'CAN_ADD_FRAME', frame });
       dispatch({
         type: 'CAN_ADD_LOG',
         entry: {
           time: now(),
-          text: `SocketCAN RX 0x${frame.arbitrationId.toString(16).toUpperCase()}`,
-          type: 'rx',
+          text: `SocketCAN ${isLocalEcho ? 'TX' : 'RX'} 0x${frame.arbitrationId.toString(16).toUpperCase()}`,
+          type: isLocalEcho ? 'tx' : 'rx',
         },
       });
     }).then((unlisten) => {
@@ -441,6 +453,16 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const sendFrame = useCallback((arbitrationId: number, data: number[]) => {
+    if (stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected) {
+      const dlc = Math.min(data.length, 8);
+      pendingSocketCANTxRef.current.push({
+        arbitrationId,
+        data: data.slice(0, dlc),
+        dlc,
+        idFormat: arbitrationId > 0x7ff ? 'extended' : 'standard',
+        createdAt: Date.now(),
+      });
+    }
     send({ type: 'CAN_SEND_FRAME', arbitrationId, data });
   }, [send]);
 
@@ -483,7 +505,7 @@ function now(): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}.${d.getMilliseconds().toString().padStart(3, '0')}`;
 }
 
-function socketCANPayloadToFrame(payload: SocketCANFramePayload, busLoadPercent: number): CANFrame {
+function socketCANPayloadToFrame(payload: SocketCANFramePayload, busLoadPercent: number, nodeId = 0): CANFrame {
   const data = Array.isArray(payload.data) ? payload.data.slice(0, 8) : [];
   const dlc = Math.min(payload.dlc ?? data.length, 8);
   const idFormat = payload.idFormat === 'extended' ? 'extended' : 'standard';
@@ -498,10 +520,34 @@ function socketCANPayloadToFrame(payload: SocketCANFramePayload, busLoadPercent:
     data: data.slice(0, dlc),
     crc: computeCANCRC(data, payload.arbitrationId, dlc, idFormat),
     timestamp: Date.now(),
-    nodeId: 0,
+    nodeId,
     busLoadPercent,
     errors: [],
   };
+}
+
+function consumePendingSocketCANTx(pending: PendingSocketCANTx[], payload: SocketCANFramePayload): boolean {
+  const nowMs = Date.now();
+  const payloadData = Array.isArray(payload.data) ? payload.data.slice(0, Math.min(payload.dlc ?? payload.data.length, 8)) : [];
+  const payloadDlc = Math.min(payload.dlc ?? payloadData.length, 8);
+  const payloadIdFormat = payload.idFormat === 'extended' ? 'extended' : 'standard';
+
+  for (let index = pending.length - 1; index >= 0; index--) {
+    if (nowMs - pending[index].createdAt > SOCKETCAN_TX_ECHO_WINDOW_MS) {
+      pending.splice(index, 1);
+    }
+  }
+
+  const matchIndex = pending.findIndex(item =>
+    item.arbitrationId === payload.arbitrationId &&
+    item.dlc === payloadDlc &&
+    item.idFormat === payloadIdFormat &&
+    item.data.every((byte, index) => byte === payloadData[index])
+  );
+
+  if (matchIndex === -1) return false;
+  pending.splice(matchIndex, 1);
+  return true;
 }
 
 function makeSocketCANFrameUid(): string {

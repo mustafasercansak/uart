@@ -11,7 +11,6 @@ interface ReportProfile {
 
 interface CANAutomationReportProps {
   results: CANStepResult[];
-  steps: CANAutoStep[];
   profiles: ReportProfile[];
   groups: CANAutomationGroup[];
   runAt: number;
@@ -27,7 +26,7 @@ function stepTypeIcon(type: CANAutoStep['type']) {
   }
 }
 
-export function CANAutomationReport({ results, steps, profiles, groups, runAt, onClose }: CANAutomationReportProps) {
+export function CANAutomationReport({ results, profiles, groups, runAt, onClose }: CANAutomationReportProps) {
   const { t } = useTranslation();
 
   const passCount = results.filter(r => r.passed).length;

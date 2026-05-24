@@ -1504,6 +1504,7 @@
     "orClickOutside": "tuşuna bas veya dışarı tıkla"
   },
   "can": {
+    "idHex": "ID (Hex)",
     "startedRecordingCANT": "CAN trafiği kaydı başlatıldı",
     "disconnectedFromSock": "SocketCAN bağlantısı kesildi",
     "disconnectedFromSLCA": "SLCAN bağlantısı kesildi",

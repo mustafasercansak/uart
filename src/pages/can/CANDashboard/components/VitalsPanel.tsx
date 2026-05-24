@@ -89,16 +89,12 @@ export function VitalsPanel({ nodes, focusNodeId, onEdit }: VitalsPanelProps) {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // focusNodeId from outside overrides internal selection
-  useEffect(() => {
-    if (focusNodeId != null && nodes.some(n => n.id === focusNodeId)) {
-      setSelectedId(focusNodeId);
-    }
-  }, [focusNodeId, nodes]);
-
   // Auto-select first active node when nodes change
   const activeNodes = nodes.filter(n => n.isActive && n.state !== 'bus-off');
-  const effectiveId = selectedId !== null && nodes.some(n => n.id === selectedId)
+  const validFocusId = focusNodeId != null && nodes.some(n => n.id === focusNodeId) ? focusNodeId : null;
+  const effectiveId = validFocusId !== null
+    ? validFocusId
+    : selectedId !== null && nodes.some(n => n.id === selectedId)
     ? selectedId
     : (activeNodes[0]?.id ?? null);
 

@@ -1504,6 +1504,7 @@
     "orClickOutside": "or click outside to close"
   },
   "can": {
+    "idHex": "ID (Hex)",
     "startedRecordingCANT": "Started recording CAN traffic",
     "disconnectedFromSock": "Disconnected from SocketCAN",
     "disconnectedFromSLCA": "Disconnected from SLCAN",

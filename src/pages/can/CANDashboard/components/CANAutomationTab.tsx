@@ -89,6 +89,20 @@ function framesMatch(frame: CANFrame, arbId: number, dataPattern: number[]): boo
   return true;
 }
 
+function getNodeNameFromList(nodeId: number, sourceNodes: CANNode[]) {
+  return sourceNodes.find(n => n.id === nodeId)?.name ?? `Node ${nodeId}`;
+}
+
+function formatStepLabel(step: CANAutoStep, sourceNodes: CANNode[]): string {
+  if (step.label) return step.label;
+  switch (step.type) {
+    case 'fault':        return `Fault -> ${getNodeNameFromList(step.nodeId, sourceNodes)}`;
+    case 'recover':      return `Recover -> ${getNodeNameFromList(step.nodeId, sourceNodes)}`;
+    case 'send-frame':   return `Send ${hexStr(step.sendArbId ?? 0)}`;
+    case 'expect-frame': return `Expect ${hexStr(step.expectArbId ?? 0)}`;
+  }
+}
+
 function formatTime(ms: number): string {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
@@ -102,13 +116,17 @@ function loadProfiles(): CANAutomationProfile[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); } catch { return []; }
 }
 function saveProfiles(p: CANAutomationProfile[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch {
+    return;
+  }
 }
 function loadGroups(): CANAutomationGroup[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY_GROUPS) ?? '[]'); } catch { return []; }
 }
 function saveGroups(g: CANAutomationGroup[]) {
-  try { localStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(g)); } catch {}
+  try { localStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(g)); } catch {
+    return;
+  }
 }
 function makeId() { return Math.random().toString(36).substring(2, 9); }
 
@@ -117,6 +135,12 @@ function getGroupProfileIds(groupId: string, allProfiles: CANAutomationProfile[]
   const children = allGroups.filter(g => g.parentId === groupId);
   return [...direct, ...children.flatMap(cg => getGroupProfileIds(cg.id, allProfiles, allGroups))];
 }
+function isGroupInSubtree(ancestorId: string, nodeId: string, allGroups: CANAutomationGroup[]): boolean {
+  if (ancestorId === nodeId) return true;
+  return allGroups
+    .filter(g => g.parentId === ancestorId)
+    .some(child => isGroupInSubtree(child.id, nodeId, allGroups));
+}
 function newProfile(name: string, groupId?: string): CANAutomationProfile {
   return { id: makeId(), name, mode: 'sequential', steps: [], groupId };
 }
@@ -124,8 +148,8 @@ function newProfile(name: string, groupId?: string): CANAutomationProfile {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function CANAutomationTab({
-  nodes, elapsedMs, status, frames,
-  networkConnected, serialConnected,
+  nodes, elapsedMs, status: _status, frames,
+  networkConnected: _networkConnected, serialConnected: _serialConnected,
   onInjectFault, onRecoverNode, onSendFrame,
 }: CANAutomationTabProps) {
   const { t } = useTranslation();
@@ -172,7 +196,11 @@ export function CANAutomationTab({
   const toggleSelect = (id: string) => {
     setSelectedForRun(prev => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) {
+        n.delete(id);
+      } else {
+        n.add(id);
+      }
       return n;
     });
   };
@@ -180,16 +208,14 @@ export function CANAutomationTab({
   const toggleGroupExpanded = (id: string) => {
     setExpandedGroups(prev => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) {
+        n.delete(id);
+      } else {
+        n.add(id);
+      }
       return n;
     });
   };
-
-  // Check if targetId is a descendant of ancestorId (cycle prevention)
-  const isInSubtree = useCallback((ancestorId: string, nodeId: string, allGroups: CANAutomationGroup[]): boolean => {
-    if (ancestorId === nodeId) return true;
-    return allGroups.filter(g => g.parentId === ancestorId).some(c => isInSubtree(c.id, nodeId, allGroups));
-  }, []);
 
   const addGroup = (parentId?: string) => {
     const g: CANAutomationGroup = { id: makeId(), name: `Grup ${groups.length + 1}`, parentId };
@@ -226,7 +252,7 @@ export function CANAutomationTab({
       updateProfile(pId, { groupId: targetGroupId });
       setExpandedGroups(prev => new Set([...prev, targetGroupId]));
     } else if (gId && gId !== targetGroupId) {
-      if (!isInSubtree(gId, targetGroupId, groups)) {
+      if (!isGroupInSubtree(gId, targetGroupId, groups)) {
         setGroups(prev => prev.map(g => g.id === gId ? { ...g, parentId: targetGroupId } : g));
         setExpandedGroups(prev => new Set([...prev, targetGroupId]));
       }
@@ -273,18 +299,8 @@ export function CANAutomationTab({
   const nodesRef = useRef(nodes);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
 
-  const getNodeName = (nodeId: number) =>
-    nodesRef.current.find(n => n.id === nodeId)?.name ?? `Node ${nodeId}`;
-
-  const stepLabel = (step: CANAutoStep): string => {
-    if (step.label) return step.label;
-    switch (step.type) {
-      case 'fault':        return `Fault → ${getNodeName(step.nodeId)}`;
-      case 'recover':      return `Recover → ${getNodeName(step.nodeId)}`;
-      case 'send-frame':   return `Send ${hexStr(step.sendArbId ?? 0)}`;
-      case 'expect-frame': return `Expect ${hexStr(step.expectArbId ?? 0)}`;
-    }
-  };
+  const getNodeName = (nodeId: number) => getNodeNameFromList(nodeId, nodesRef.current);
+  const stepLabel = (step: CANAutoStep): string => formatStepLabel(step, nodesRef.current);
 
   // ── State helpers ──────────────────────────────────────────────────────────
   const updateRunState = useCallback((profileId: string, patch: Partial<ProfileRunState>) => {
@@ -299,6 +315,7 @@ export function CANAutomationTab({
   }, []);
 
   // ── Sequential runner ─────────────────────────────────────────────────────
+  const runSequentialRef = useRef<(profile: CANAutomationProfile, iteration?: number) => void>(() => {});
   const runSequential = useCallback((profile: CANAutomationProfile, iteration = 0) => {
     const pid = profile.id;
     const rt = runtimeRef.current[pid];
@@ -312,7 +329,7 @@ export function CANAutomationTab({
         const nextIteration = iteration + 1;
         if (nextIteration < maxIterations) {
           rt.executedSteps.clear();
-          runSequential(profile, nextIteration);
+          runSequentialRef.current(profile, nextIteration);
         } else {
           updateRunState(pid, { activeStepId: null, done: true });
           setRunStates(prev => {
@@ -361,11 +378,16 @@ export function CANAutomationTab({
         }
       };
 
-      step.timeMs > 0 ? setTimeout(execute, step.timeMs) : execute();
+      if (step.timeMs > 0) {
+        setTimeout(execute, step.timeMs);
+      } else {
+        execute();
+      }
     };
 
     runNext();
-  }, [updateRunState, addRunResult]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [updateRunState, addRunResult]);
+  useEffect(() => { runSequentialRef.current = runSequential; }, [runSequential]);
 
   // ── Frames effect ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -446,7 +468,7 @@ export function CANAutomationTab({
       });
     }, 100);
     return () => clearInterval(interval);
-  }, [globalRunning, updateRunState, addRunResult]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [globalRunning, updateRunState, addRunResult]);
 
   // ── Controls ───────────────────────────────────────────────────────────────
   const startAll = () => {
@@ -505,10 +527,8 @@ export function CANAutomationTab({
 
   const removeStep = (id: string) => setSteps(prev => prev.filter(s => s.id !== id));
 
-  const runningProfiles = profiles.filter(p => runStates[p.id] && !runStates[p.id].done || (globalRunning && selectedForRun.has(p.id)));
   const allResults = Object.values(runStates).flatMap(s => s.results);
   const allDone = Object.keys(runStates).length > 0 && Object.values(runStates).every(s => s.done);
-  const gridCols = runningProfiles.length >= 3 ? 'grid-cols-3' : runningProfiles.length === 2 ? 'grid-cols-2' : 'grid-cols-1';
 
   // ── Sidebar profile item (render function, not React component — avoids remount on drag state changes) ──
   const renderProfile = (p: CANAutomationProfile, indent = 0): React.ReactNode => {
@@ -809,7 +829,7 @@ export function CANAutomationTab({
                           'text-gray-600'
                         }`}>
                           {isActive ? <span className="animate-pulse">⏳</span> : result ? (result.passed ? '✓' : '✗') : '○'}
-                          <span className="truncate">{stepLabel(step)}</span>
+                          <span className="truncate">{formatStepLabel(step, nodes)}</span>
                         </div>
                       );
                     })}
@@ -923,14 +943,12 @@ export function CANAutomationTab({
       {showReport && (() => {
         const targetProfile = reportProfileId ? profiles.find(p => p.id === reportProfileId) : null;
         const reportResults = reportProfileId ? (runStates[reportProfileId]?.results ?? []) : allResults;
-        const reportSteps = targetProfile ? targetProfile.steps : profiles.filter(p => runStates[p.id]).flatMap(p => p.steps);
         const reportProfiles = targetProfile
           ? [{ id: targetProfile.id, name: targetProfile.name, groupId: targetProfile.groupId }]
           : profiles.filter(p => runStates[p.id]).map(p => ({ id: p.id, name: p.name, groupId: p.groupId }));
         return (
           <CANAutomationReport
             results={reportResults}
-            steps={reportSteps}
             profiles={reportProfiles}
             groups={groups}
             runAt={runAt}
