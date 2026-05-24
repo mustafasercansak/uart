@@ -432,9 +432,10 @@ export default function CANDashboard() {
                   filter={state.displayFilter}
                   selectedFrameUid={state.selectedFrameUid}
                   showErrorFrames={state.showErrorFrames}
-                  isRunning={isRunning}
+                  canSend={isRunning || state.networkConnected || state.serialConnected}
                   onSelectFrame={selectFrame}
                   onSendFrame={sendFrame}
+                  onClear={clearFrames}
                 />
               )}
               {activeTab === 'nodes' && <NodesTab state={state} updateNode={updateNode} removeNode={removeNode} selectNode={selectNode} onEdit={setEditingNode} />}
@@ -468,8 +469,12 @@ export default function CANDashboard() {
                   nodes={state.nodes}
                   elapsedMs={state.elapsedMs}
                   status={state.status}
+                  frames={state.recentFrames}
+                  networkConnected={state.networkConnected}
+                  serialConnected={state.serialConnected}
                   onInjectFault={injectFault}
                   onRecoverNode={recoverNode}
+                  onSendFrame={sendFrame}
                 />
               )}
               {activeTab === 'compliance' && <CompliancePanel state={state} />}

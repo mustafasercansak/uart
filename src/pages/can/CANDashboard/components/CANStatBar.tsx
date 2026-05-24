@@ -165,13 +165,18 @@ export function CANStatBar({
                 placeholder="vcan0"
                 disabled={state.status !== 'stopped'}
               />
-              <button 
+              <button
                 onClick={() => onConnectNetwork(socketCanInterface)}
                 disabled={state.status !== 'stopped' || !socketCanInterface}
                 className="px-1.5 py-0.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-30 text-white text-[8.5px] font-mono rounded font-bold transition-all"
               >
                 {t('dashboard.connect')}
               </button>
+              {state.networkError && (
+                <span className="text-[8px] text-rose-400 font-mono max-w-32 truncate" title={state.networkError}>
+                  ✗ {state.networkError}
+                </span>
+              )}
             </>
           ) : (
             <button 

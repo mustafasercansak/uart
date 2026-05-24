@@ -94,11 +94,15 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         if (!msg?.type) return;
 
         switch (msg.type) {
-          case 'CAN_FRAME':
-            // Buffer frames; drain in RAF to avoid flooding React renders
-            frameBatchRef.current.push(msg.frame as CANFrame);
+          case 'CAN_FRAME': {
+            const frame = msg.frame as CANFrame;
+            const isSocketCAN = stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected;
+            // In SocketCAN mode, manually sent frames (nodeId: -1) are echoed back by vcan
+            // as INJECT frames — skip the internal copy to avoid duplicates in the monitor
+            if (!(isSocketCAN && frame.nodeId === -1)) {
+              frameBatchRef.current.push(frame);
+            }
             if (stateRef.current.serialConnected && serialWriterRef.current) {
-              const frame = msg.frame as CANFrame;
               const isExt = frame.idFormat === 'extended';
               const prefix = isExt ? 'T' : 't';
               const idHex = frame.arbitrationId.toString(16).toUpperCase().padStart(isExt ? 8 : 3, '0');
@@ -107,8 +111,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
               const slcanPacket = `${prefix}${idHex}${dlc}${dataHex}\r`;
               serialWriterRef.current.write(slcanPacket).catch(() => {});
             }
-            if (stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected) {
-              const frame = msg.frame as CANFrame;
+            if (isSocketCAN) {
               invoke('write_socketcan_frame', {
                 arbitrationId: frame.arbitrationId,
                 data: frame.data,
@@ -117,6 +120,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
               }).catch(() => {});
             }
             break;
+          }
 
           case 'CAN_ARBITRATION':
             dispatch({ type: 'CAN_ADD_ARBITRATION', event: msg.event });
@@ -410,7 +414,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       await invoke('connect_socketcan', { interface: normalizedInterface });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
+      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false, error: msg });
       dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connect failed: ${msg}`, type: 'error' } });
     }
   }, []);

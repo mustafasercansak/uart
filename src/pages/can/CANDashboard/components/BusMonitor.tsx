@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Trash2 } from 'lucide-react';
 import type { CANFrame } from '../../../../can/types/CANFrame';
 import type { CANNode } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
@@ -10,12 +10,13 @@ interface BusMonitorProps {
   filter: string;
   selectedFrameUid: string | null;
   showErrorFrames: boolean;
-  isRunning: boolean;
+  canSend: boolean;
   onSelectFrame: (uid: string) => void;
   onSendFrame: (arbitrationId: number, data: number[]) => void;
+  onClear: () => void;
 }
 
-export function BusMonitor({ frames, nodes, filter, selectedFrameUid, showErrorFrames, isRunning, onSelectFrame, onSendFrame }: BusMonitorProps) {
+export function BusMonitor({ frames, nodes, filter, selectedFrameUid, showErrorFrames, canSend, onSelectFrame, onSendFrame, onClear }: BusMonitorProps) {
   const { t } = useTranslation();
   const nodeMap = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
 
@@ -43,7 +44,7 @@ export function BusMonitor({ frames, nodes, filter, selectedFrameUid, showErrorF
     setSendError('');
     const idStr = arbId.trim().replace(/^0[xX]/, '');
     const id = parseInt(idStr, 16);
-    if (isNaN(id) || id < 0 || id > 0x7ff) {
+    if (isNaN(id) || id < 0 || id > 0x1fffffff) {
       setSendError(t('can.arbIdRange'));
       return;
     }
@@ -71,7 +72,7 @@ export function BusMonitor({ frames, nodes, filter, selectedFrameUid, showErrorF
           onChange={e => setArbId(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="0x200"
-          className="w-20 bg-gray-800/60 border border-white/10 text-yellow-400 font-mono text-[11px] px-2 py-1 rounded focus:border-cyan-600 outline-none"
+          className="w-32 bg-gray-800/60 border border-white/10 text-yellow-400 font-mono text-[11px] px-2 py-1 rounded focus:border-cyan-600 outline-none"
           title={t('can.arbitrationId')}
         />
         <input
@@ -85,12 +86,21 @@ export function BusMonitor({ frames, nodes, filter, selectedFrameUid, showErrorF
         />
         <button
           onClick={handleSend}
-          disabled={!isRunning}
+          disabled={!canSend}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-mono text-[10px] font-bold transition-colors shrink-0"
-          title={isRunning ? t('can.injectSend') : t('can.injectNeedsRunning')}
+          title={canSend ? t('can.injectSend') : t('can.injectNeedsRunning')}
         >
           <Send size={11} />
           {t('can.injectSend')}
+        </button>
+        <button
+          onClick={onClear}
+          disabled={frames.length === 0}
+          className="flex items-center gap-1 px-2 py-1 rounded border border-gray-700/50 hover:border-red-700/60 text-gray-500 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed font-mono text-[10px] transition-colors shrink-0"
+          title={t('can.clear')}
+        >
+          <Trash2 size={11} />
+          {t('can.clear')}
         </button>
         {sendError && <span className="text-red-400 font-mono text-[10px]">{sendError}</span>}
       </div>

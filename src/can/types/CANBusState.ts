@@ -27,6 +27,7 @@ export interface CANBusState {
   outputMode: OutputMode;
   serialConnected: boolean;
   networkConnected: boolean;
+  networkError: string | null;
   isRecording: boolean;
   recordedFrames: CANFrame[];
   baudRate: CANBaudRate;

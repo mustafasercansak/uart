@@ -209,7 +209,7 @@ function NodeForm({ form, onChange, onSave, onCancel, saveLabel, autoFocus = tru
           onClick={() => onChange({ ...form, isActive: !form.isActive })}
           className={`text-[9px] font-bold px-2 py-1 rounded border transition-colors ${form.isActive ? 'bg-green-900/40 text-green-400 border-green-700' : 'bg-gray-800 text-gray-500 border-gray-700'}`}
         >
-          {form.isActive ? 'ACTIVE' : 'INACTIVE'}
+          {form.isActive ? t('canProfiles.active') : t('canProfiles.inactive')}
         </button>
         <div className="flex items-center gap-1.5">
           <button onClick={onCancel} className="p-1.5 text-gray-500 hover:text-gray-300 border border-gray-700 rounded-lg transition-colors">
@@ -256,7 +256,7 @@ function NodeCard({ node, onEdit, onRemove, t }: {
         {node.priority !== undefined && <span>{t('canProfiles.priority')}: {node.priority}</span>}
       </div>
       <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded w-fit ${node.isActive ? 'bg-green-900/40 text-green-400' : 'bg-gray-800 text-gray-500'}`}>
-        {node.isActive ? 'ACTIVE' : 'INACTIVE'}
+        {node.isActive ? t('canProfiles.active') : t('canProfiles.inactive')}
       </div>
     </div>
   );

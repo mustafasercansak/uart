@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../../../../i18n/context';
 
 interface LedIndicatorProps {
   active: boolean;
@@ -7,6 +8,7 @@ interface LedIndicatorProps {
 }
 
 const LedIndicator: React.FC<LedIndicatorProps> = ({ active, color, label }) => {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-900/40 rounded-lg select-none">
       <div 
@@ -26,7 +28,7 @@ const LedIndicator: React.FC<LedIndicatorProps> = ({ active, color, label }) => 
       <div className="mt-3 text-center">
         <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest leading-none mb-1">{label}</div>
         <div className={`text-[9px] font-black font-mono transition-colors ${active ? 'text-white' : 'text-gray-700'}`}>
-          {active ? 'ACTIVE' : 'IDLE'}
+          {active ? t('hardware.active') : t('hardware.idle')}
         </div>
       </div>
     </div>

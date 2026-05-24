@@ -343,10 +343,11 @@ export class CANSimulationEngine {
     const frameData = data.slice(0, dlc);
     const crc = computeCANCRC(frameData, arbitrationId, dlc, 'standard');
 
+    const idFormat = arbitrationId > 0x7ff ? 'extended' : 'standard';
     const frame: CANFrame = {
       uid: uuidv4(),
       arbitrationId,
-      idFormat: 'standard',
+      idFormat,
       frameType: 'data',
       isRTR: false,
       dlc,

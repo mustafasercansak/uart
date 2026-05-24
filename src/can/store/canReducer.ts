@@ -13,6 +13,7 @@ export const INITIAL_CAN_STATE: CANBusState = {
   outputMode: 'log',
   serialConnected: false,
   networkConnected: false,
+  networkError: null,
   isRecording: false,
   recordedFrames: [],
   baudRate: 500,
@@ -54,7 +55,7 @@ export type CANAction =
   | { type: 'CAN_SET_OUTPUT_MODE'; mode: CANBusState['outputMode'] }
   | { type: 'CAN_SET_UDS_CONFIG'; config: UDSDiagnosticConfig }
   | { type: 'CAN_SET_SERIAL_CONNECTED'; connected: boolean }
-  | { type: 'CAN_SET_NETWORK_CONNECTED'; connected: boolean }
+  | { type: 'CAN_SET_NETWORK_CONNECTED'; connected: boolean; error?: string }
   | { type: 'CAN_SET_RECORDING'; isRecording: boolean }
   | { type: 'CAN_CLEAR_RECORDING' };
 
@@ -138,7 +139,7 @@ export function canReducer(state: CANBusState, action: CANAction): CANBusState {
       return { ...state, serialConnected: action.connected };
 
     case 'CAN_SET_NETWORK_CONNECTED':
-      return { ...state, networkConnected: action.connected };
+      return { ...state, networkConnected: action.connected, networkError: action.error ?? null };
 
     case 'CAN_SET_RECORDING':
       return { ...state, isRecording: action.isRecording };

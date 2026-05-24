@@ -84,6 +84,8 @@ const IGNORE_VALUES = new Set([
     'info', 'tx', 'rx', 'error', 'pending', 'running', 'stopped', 'paused', 'Started', 'Progress', 'Finished',
     'Disconnected from SLCAN', 'Disconnected from SocketCAN', 'fontFamily=', 'fontWeight=',
     'HR', 'SpO2', 'spO2', 'systolicBP', 'RR', 'Temp', 'Pleth', 'BPM', 'Rate', 'Volume', 'Remaining', 'PI', 'FiO2', 'PEEP', 'Tidal Vol', 'Lead-I', 'Lead-II', 'SPO2-Wave',
+    'MISO', 'MOSI', 'PARITY', 'COM1', 'F190', 'DATA', 'CRCD', 'ACKD', 'TEXTAREA',
+    'ID:', 'Data:', 'Timeout:', '01 02 …', '01 02 03 04',
     'INIT_STATE', 'SET_PROFILE', 'SET_SCENARIO', 'SET_OUTPUT_MODE', 'START', 'STOP', 'PAUSE', 'RESUME',
     'SET:', 'RAMP:', 'INJECT_ERROR:', 'Mustafa Sercan Sak', '© 2026 Mustafa Sercan Sak',
     'SpO₂', 'Math.*', 'struct MyData { uint32_t id; ... };', 'BPM > 150',
@@ -223,7 +225,10 @@ function scanFile(filePath: string): HardcodedString[] {
                 !/[A-Z]/.test(text) &&
                 !/[ğüşıöçĞÜŞİÖÇ]/.test(text);
 
-            const isTechnical = /^[A-Z0-9_]+$/.test(text) ||
+            // All-caps: only treat as technical if it's an acronym (≤3 chars) or an action-type with underscores.
+            // Longer all-caps words without underscores (e.g. ACTIVE, INACTIVE) are UI labels and should be flagged.
+            const isAllCapsTechnical = /^[A-Z0-9_]+$/.test(text) && (text.includes('_') || text.length <= 3);
+            const isTechnical = isAllCapsTechnical ||
                 IGNORE_VALUES.has(text) ||
                 IGNORE_VALUES.has(text.toLowerCase()) ||
                 /^[a-z]+[A-Z][a-z]+$/.test(text) || // camelCase
