@@ -553,5 +553,3 @@ export default function CANDashboard() {
     </div>
   );
 }
-
-

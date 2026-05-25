@@ -8,6 +8,7 @@ import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
 import type { UDSDiagnosticConfig } from '../types/UDS';
 import { computeCANCRC } from '../engines/CANFrameParser';
 import { invoke, listen } from '../../lib/tauri-bridge';
+import { translateBackendError } from '../../utils/backendError';
 
 interface CANContextValue {
   state: CANBusState;
@@ -427,9 +428,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false, error: msg });
-      dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connect failed: ${msg}`, type: 'error' } });
+      dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connect failed: ${translateBackendError(t, msg)}`, type: 'error' } });
     }
-  }, []);
+  }, [t]);
 
   const disconnectNetwork = useCallback(() => {
     invoke('disconnect_socketcan').catch(console.error);

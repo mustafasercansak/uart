@@ -220,11 +220,11 @@ function decodeCANDataToSignals(data: number[], profile: CANNode['profile'], t: 
         break;
 
       case 'ventilator':
-        if (data.length >= 2) signals.push({ name: t('can.tidalVolume'), value: view.getUint16(0, true).toString(), unit: 'mL', raw: `0x${view.getUint16(0, true).toString(16)}` });
-        if (data.length >= 3) signals.push({ name: 'PEEP', value: (buf[2] / 10).toFixed(1), unit: 'cmH2O', raw: `0x${buf[2].toString(16)}` });
+        if (data.length >= 2) signals.push({ name: t('can.tidalVolume'), value: view.getUint16(0, true).toString(), unit: t('common.unitMl'), raw: `0x${view.getUint16(0, true).toString(16)}` });
+        if (data.length >= 3) signals.push({ name: 'PEEP', value: (buf[2] / 10).toFixed(1), unit: t('common.unitCmh2o'), raw: `0x${buf[2].toString(16)}` });
         if (data.length >= 4) signals.push({ name: 'FiO2', value: buf[3].toString(), unit: '%', raw: `0x${buf[3].toString(16)}` });
-        if (data.length >= 5) signals.push({ name: t('can.respRate'), value: buf[4].toString(), unit: 'BPM', raw: `0x${buf[4].toString(16)}` });
-        if (data.length >= 6) signals.push({ name: t('can.peakPressure'), value: (buf[5] / 10).toFixed(1), unit: 'cmH2O', raw: `0x${buf[5].toString(16)}` });
+        if (data.length >= 5) signals.push({ name: t('can.respRate'), value: buf[4].toString(), unit: t('common.unitBpm'), raw: `0x${buf[4].toString(16)}` });
+        if (data.length >= 6) signals.push({ name: t('can.peakPressure'), value: (buf[5] / 10).toFixed(1), unit: t('common.unitCmh2o'), raw: `0x${buf[5].toString(16)}` });
         if (data.length >= 8) signals.push({ name: 'Alarm Flags', value: `0x${view.getUint16(6, true).toString(16).padStart(4, '0')}`, unit: '', raw: `0x${view.getUint16(6, true).toString(16)}` });
         break;
 

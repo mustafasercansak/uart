@@ -77,12 +77,12 @@ function Sparkline({ history, color, min, max, warnLow, warnHigh, isAlarm }: {
 export function VitalsPanel({ nodes, focusNodeId, onEdit }: VitalsPanelProps) {
   const { t } = useTranslation();
   const VITAL_CONFIGS = [
-    { key: 'heartRate'       as keyof VitalHistory, label: t('can.heartRate'),  unit: 'bpm',    color: '#ef4444', min: 20,  max: 200, warnLow: 50,  warnHigh: 120, alarmBit: 0x01, decimals: 0 },
-    { key: 'spO2'            as keyof VitalHistory, label: 'SpO₂',        unit: '%',      color: '#3b82f6', min: 60,  max: 100, warnLow: 94,  warnHigh: 100, alarmBit: 0x02, decimals: 1 },
-    { key: 'systolicBP'      as keyof VitalHistory, label: t('can.systolicBP'), unit: 'mmHg',   color: '#f97316', min: 60,  max: 200, warnLow: 90,  warnHigh: 160, alarmBit: 0x04, decimals: 0 },
-    { key: 'temperature'     as keyof VitalHistory, label: 'Temp',        unit: '°C',     color: '#22c55e', min: 34,  max: 41,  warnLow: 35,  warnHigh: 39,  alarmBit: 0x08, decimals: 1 },
-    { key: 'respiratoryRate' as keyof VitalHistory, label: t('can.respRate'),  unit: '/min',   color: '#a855f7', min: 0,   max: 40,  warnLow: 8,   warnHigh: 30,  alarmBit: 0x10, decimals: 0 },
-  ] as const;
+    { key: 'heartRate'       as keyof VitalHistory, label: t('can.heartRate'),  unit: t('common.unitBpm'),    color: '#ef4444', min: 20,  max: 200, warnLow: 50,  warnHigh: 120, alarmBit: 0x01, decimals: 0 },
+    { key: 'spO2'            as keyof VitalHistory, label: 'SpO₂',              unit: '%',                    color: '#3b82f6', min: 60,  max: 100, warnLow: 94,  warnHigh: 100, alarmBit: 0x02, decimals: 1 },
+    { key: 'systolicBP'      as keyof VitalHistory, label: t('can.systolicBP'), unit: t('common.unitMmhg'),   color: '#f97316', min: 60,  max: 200, warnLow: 90,  warnHigh: 160, alarmBit: 0x04, decimals: 0 },
+    { key: 'temperature'     as keyof VitalHistory, label: 'Temp',              unit: t('common.unitDegC'),   color: '#22c55e', min: 34,  max: 41,  warnLow: 35,  warnHigh: 39,  alarmBit: 0x08, decimals: 1 },
+    { key: 'respiratoryRate' as keyof VitalHistory, label: t('can.respRate'),   unit: t('common.unitPerMin'), color: '#a855f7', min: 0,   max: 40,  warnLow: 8,   warnHigh: 30,  alarmBit: 0x10, decimals: 0 },
+  ];
 
   // Maintain per-node history keyed by node.id
   const historiesRef = useRef<Map<number, VitalHistory>>(new Map());
@@ -249,16 +249,16 @@ export function VitalsPanel({ nodes, focusNodeId, onEdit }: VitalsPanelProps) {
             {(selectedNode.profile === 'iv-pump' || selectedNode.profile === 'infusion-pump') && (
               <div className="rounded-xl p-3 bg-gray-900/50 border border-gray-800/40 space-y-2">
                 <div className="text-[10px] font-mono text-gray-500 uppercase tracking-wide">{t('can.pumpParams')}</div>
-                <PumpRow label={t('can.flowRate')}     value={selectedNode.vitals.flowRateMlHr?.toFixed(1) ?? '—'}     unit="mL/h" />
-                <PumpRow label={t('can.infusedVolume')} value={selectedNode.vitals.volumeInfusedMl?.toFixed(0) ?? '—'} unit="mL" />
-                <PumpRow label={t('can.pressure')}              value={selectedNode.vitals.pressureMmHg?.toFixed(1) ?? '—'}     unit="mmHg" />
+                <PumpRow label={t('can.flowRate')}      value={selectedNode.vitals.flowRateMlHr?.toFixed(1) ?? '—'}    unit={t('common.unitMlPerH')} />
+                <PumpRow label={t('can.infusedVolume')} value={selectedNode.vitals.volumeInfusedMl?.toFixed(0) ?? '—'} unit={t('common.unitMl')} />
+                <PumpRow label={t('can.pressure')}      value={selectedNode.vitals.pressureMmHg?.toFixed(1) ?? '—'}    unit={t('common.unitMmhg')} />
               </div>
             )}
 
             {selectedNode.profile === 'ventilator' && (
               <div className="rounded-xl p-3 bg-gray-900/50 border border-gray-800/40 space-y-2">
                 <div className="text-[10px] font-mono text-gray-500 uppercase tracking-wide">{t('can.ventParams')}</div>
-                <PumpRow label="Tidal Vol" value={selectedNode.vitals.tidalVolumeMl?.toFixed(0) ?? '—'}  unit="mL" />
+                <PumpRow label="Tidal Vol" value={selectedNode.vitals.tidalVolumeMl?.toFixed(0) ?? '—'}  unit={t('common.unitMl')} />
                 <PumpRow label="PEEP"      value={selectedNode.vitals.peepCmH2O?.toFixed(1) ?? '—'}     unit={t('can.cmHO')} />
                 <PumpRow label={t('can.fiO')}     value={selectedNode.vitals.fio2Percent?.toFixed(0) ?? '—'}    unit="%" />
                 <PumpRow label={t('can.peakP')}  value={selectedNode.vitals.peakPressure?.toFixed(1) ?? '—'}   unit={t('can.cmHO')} />

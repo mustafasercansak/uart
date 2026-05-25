@@ -3,6 +3,7 @@ import {
   Play, Square, Plus, Trash2, Clock,
   CheckCircle2, XCircle, FileText, Send, Radio, Pencil,
   Check, X as XIcon, FolderPlus, Folder, FolderOpen, ChevronRight, ChevronDown,
+  Download, Upload, ChevronUp, Timer,
 } from 'lucide-react';
 import { useTranslation } from '../../../../i18n/context';
 import type { CANNode, CANFaultType } from '../../../../can/types/CANNode';
@@ -15,7 +16,7 @@ import { CANAutomationReport } from './CANAutomationReport';
 export interface CANAutoStep {
   id: string;
   timeMs: number;
-  type: 'fault' | 'recover' | 'send-frame' | 'expect-frame';
+  type: 'fault' | 'recover' | 'send-frame' | 'expect-frame' | 'wait';
   nodeId: number;
   faultType?: CANFaultType;
   sendArbId?: number;
@@ -74,19 +75,51 @@ interface CANAutomationTabProps {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function parseHex(hex: string): number[] {
-  return (hex ?? '').trim().split(/\s+/).map(h => parseInt(h, 16)).filter(n => !isNaN(n));
+  const input = (hex ?? '').trim();
+  if (!input) return [];
+
+  return input
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .flatMap(token => {
+      const clean = token.replace(/^0x/i, '');
+      if (!/^[\da-f]+$/i.test(clean)) return [];
+      if (clean.length <= 2) return [clean];
+      const evenLength = clean.length % 2 === 0 ? clean : `0${clean}`;
+      return evenLength.match(/.{1,2}/g) ?? [];
+    })
+    .map(h => parseInt(h, 16))
+    .filter(n => Number.isInteger(n) && n >= 0 && n <= 0xff);
 }
 
 function hexStr(id: number, pad = 3): string {
   return `0x${id.toString(16).toUpperCase().padStart(pad, '0')}`;
 }
 
+function dataStr(bytes: number[]): string {
+  return `[${bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}]`;
+}
+
+function expectedFrameStr(id: number, data: number[]): string {
+  return `${hexStr(id)} ${data.length > 0 ? dataStr(data) : '[any data]'}`;
+}
+
 function framesMatch(frame: CANFrame, arbId: number, dataPattern: number[]): boolean {
   if (frame.arbitrationId !== arbId) return false;
+  if (dataPattern.length > frame.data.length) return false;
   for (let i = 0; i < dataPattern.length; i++) {
     if (frame.data[i] !== dataPattern[i]) return false;
   }
   return true;
+}
+
+function isValidHex(hex: string): boolean {
+  const input = (hex ?? '').trim();
+  if (!input) return true;
+  return input.split(/[\s,]+/).filter(Boolean).every(token => {
+    const clean = token.replace(/^0x/i, '');
+    return clean.length > 0 && /^[\da-f]+$/i.test(clean);
+  });
 }
 
 function getNodeNameFromList(nodeId: number, sourceNodes: CANNode[]) {
@@ -100,6 +133,7 @@ function formatStepLabel(step: CANAutoStep, sourceNodes: CANNode[]): string {
     case 'recover':      return `Recover -> ${getNodeNameFromList(step.nodeId, sourceNodes)}`;
     case 'send-frame':   return `Send ${hexStr(step.sendArbId ?? 0)}`;
     case 'expect-frame': return `Expect ${hexStr(step.expectArbId ?? 0)}`;
+    case 'wait':         return `Wait ${step.timeMs}ms`;
   }
 }
 
@@ -111,6 +145,8 @@ function formatTime(ms: number): string {
 
 const STORAGE_KEY = 'can-automation-profiles-v1';
 const STORAGE_KEY_GROUPS = 'can-automation-groups-v1';
+const STORAGE_KEY_EXPANDED = 'can-automation-expanded-v1';
+const DEFAULT_FAULT_TYPE: CANFaultType = 'bus-off';
 
 function loadProfiles(): CANAutomationProfile[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); } catch { return []; }
@@ -127,6 +163,12 @@ function saveGroups(g: CANAutomationGroup[]) {
   try { localStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(g)); } catch {
     return;
   }
+}
+function loadExpandedGroups(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_EXPANDED) ?? '[]')); } catch { return new Set(); }
+}
+function saveExpandedGroups(s: Set<string>) {
+  try { localStorage.setItem(STORAGE_KEY_EXPANDED, JSON.stringify([...s])); } catch { return; }
 }
 function makeId() { return Math.random().toString(36).substring(2, 9); }
 
@@ -160,7 +202,7 @@ export function CANAutomationTab({
     return s.length ? s : [newProfile(`${t('can.autoReportScenario')} 1`)];
   });
   const [groups, setGroups] = useState<CANAutomationGroup[]>(() => loadGroups());
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => loadExpandedGroups());
   const [editingId, setEditingId] = useState<string>(() => {
     const s = loadProfiles();
     return s.length ? s[0].id : '';
@@ -173,6 +215,8 @@ export function CANAutomationTab({
   const [nameInput, setNameInput] = useState('');
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [groupNameInput, setGroupNameInput] = useState('');
+  const importFileRef = useRef<HTMLInputElement>(null);
+
   // Use refs so drag-source IDs don't trigger re-renders during drag (re-renders can cancel the browser drag)
   const dragProfileIdRef = useRef<string | null>(null);
   const dragGroupIdRef = useRef<string | null>(null);
@@ -181,6 +225,29 @@ export function CANAutomationTab({
 
   useEffect(() => { saveProfiles(profiles); }, [profiles]);
   useEffect(() => { saveGroups(groups); }, [groups]);
+  useEffect(() => { saveExpandedGroups(expandedGroups); }, [expandedGroups]);
+
+  // Auto-fix stale nodeIds when nodes are added/changed
+  useEffect(() => {
+    if (nodes.length === 0) return;
+    const validIds = new Set(nodes.map(n => n.id));
+    setProfiles(prev => {
+      let anyChanged = false;
+      const next = prev.map(p => {
+        let profileChanged = false;
+        const steps = p.steps.map(s => {
+          if ((s.type === 'fault' || s.type === 'recover') && !validIds.has(s.nodeId)) {
+            profileChanged = true;
+            anyChanged = true;
+            return { ...s, nodeId: nodes[0].id };
+          }
+          return s;
+        });
+        return profileChanged ? { ...p, steps } : p;
+      });
+      return anyChanged ? next : prev;
+    });
+  }, [nodes]);
 
   const editingProfile = profiles.find(p => p.id === editingId) ?? profiles[0];
 
@@ -217,6 +284,36 @@ export function CANAutomationTab({
     });
   };
 
+  const exportScenarios = () => {
+    const data = JSON.stringify({ profiles, groups }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `can-scenarios-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importScenarios = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.profiles && Array.isArray(data.profiles)) {
+          setProfiles(data.profiles);
+          if (data.groups && Array.isArray(data.groups)) setGroups(data.groups);
+          const first = data.profiles[0];
+          if (first) { setEditingId(first.id); setSelectedForRun(new Set([first.id])); }
+        }
+      } catch { /* ignore invalid files */ }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const addGroup = (parentId?: string) => {
     const g: CANAutomationGroup = { id: makeId(), name: `Grup ${groups.length + 1}`, parentId };
     setGroups(prev => [...prev, g]);
@@ -226,14 +323,16 @@ export function CANAutomationTab({
   };
 
   const deleteGroup = (gid: string) => {
-    // Collect all descendant group IDs
     const collectDescendants = (id: string, all: CANAutomationGroup[]): string[] => {
       const children = all.filter(g => g.parentId === id);
       return [id, ...children.flatMap(c => collectDescendants(c.id, all))];
     };
     const toDelete = new Set(collectDescendants(gid, groups));
+    // Profiles in deleted groups become ungrouped (not deleted), keep them in selectedForRun
     setGroups(prev => prev.filter(g => !toDelete.has(g.id)));
     setProfiles(prev => prev.map(p => p.groupId && toDelete.has(p.groupId) ? { ...p, groupId: undefined } : p));
+    // Collapse any deleted groups that were expanded
+    setExpandedGroups(prev => { const n = new Set(prev); toDelete.forEach(id => n.delete(id)); return n; });
   };
 
   const addProfileToGroup = (groupId?: string) => {
@@ -299,7 +398,6 @@ export function CANAutomationTab({
   const nodesRef = useRef(nodes);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
 
-  const getNodeName = (nodeId: number) => getNodeNameFromList(nodeId, nodesRef.current);
   const stepLabel = (step: CANAutoStep): string => formatStepLabel(step, nodesRef.current);
 
   // ── State helpers ──────────────────────────────────────────────────────────
@@ -345,30 +443,87 @@ export function CANAutomationTab({
       const step = steps[idx++];
       rt.executedSteps.add(step.id);
       updateRunState(pid, { activeStepId: step.id });
+      const stepStartMs = Date.now();
 
       const execute = () => {
         if (rt.aborted) return;
-        if (step.type === 'fault' && step.faultType) {
+        if (step.type === 'wait') {
+          setTimeout(() => {
+            if (rt.aborted) return;
+            addRunResult(pid, {
+              stepId: step.id, type: step.type, label: stepLabel(step),
+              timeMs: step.timeMs, passed: true,
+              expected: `${step.timeMs}ms`, actual: `Waited ${step.timeMs}ms`,
+            });
+            runNext();
+          }, step.timeMs);
+        } else if (step.type === 'fault') {
+          const node = nodesRef.current.find(n => n.id === step.nodeId);
+          if (!node || !step.faultType) {
+            addRunResult(pid, {
+              stepId: step.id,
+              type: step.type,
+              label: stepLabel(step),
+              timeMs: step.timeMs,
+              passed: false,
+              expected: step.faultType ? tRef.current(FAULT_LABELS[step.faultType]) : tRef.current('can.injectFault'),
+              actual: !node ? tRef.current('can.autoFaultNoNode') : tRef.current('can.autoFaultNoType'),
+            });
+            runNext();
+            return;
+          }
           cbRefs.current.onInjectFault(step.nodeId, step.faultType);
-          addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: `${step.faultType} on ${getNodeName(step.nodeId)}` });
+          addRunResult(pid, {
+            stepId: step.id,
+            type: step.type,
+            label: stepLabel(step),
+            timeMs: step.timeMs,
+            passed: true,
+            expected: `${tRef.current(FAULT_LABELS[step.faultType])} -> ${node.name}`,
+            actual: tRef.current('can.autoFaultInjected'),
+          });
           runNext();
         } else if (step.type === 'recover') {
+          const node = nodesRef.current.find(n => n.id === step.nodeId);
+          if (!node) {
+            addRunResult(pid, {
+              stepId: step.id,
+              type: step.type,
+              label: stepLabel(step),
+              timeMs: step.timeMs,
+              passed: false,
+              expected: tRef.current('can.recoverNode'),
+              actual: tRef.current('can.autoFaultNoNode'),
+            });
+            runNext();
+            return;
+          }
           cbRefs.current.onRecoverNode(step.nodeId);
-          addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: getNodeName(step.nodeId) });
+          addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: node.name, actual: tRef.current('can.autoFaultRecovered') });
           runNext();
         } else if (step.type === 'send-frame') {
           const id = step.sendArbId ?? 0;
           const data = parseHex(step.sendDataHex ?? '');
           cbRefs.current.onSendFrame(id, data);
-          addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: `${hexStr(id)} [${data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}]` });
+          addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoFrameSent') });
           runNext();
         } else if (step.type === 'expect-frame') {
-          const startMs = Date.now();
+          const startMs = stepStartMs;
           const timeout = step.expectTimeoutMs ?? 2000;
           const arbId = step.expectArbId ?? 0;
+          const dataPattern = parseHex(step.expectDataHex ?? '');
           const onDone = (passed: boolean, actual?: string) => {
             if (rt.aborted) return;
-            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed, expected: hexStr(arbId), actual: passed ? actual : tRef.current('can.autoExpectTimeout') });
+            const waitedMs = Math.max(0, Date.now() - startMs);
+            addRunResult(pid, {
+              stepId: step.id,
+              type: step.type,
+              label: stepLabel(step),
+              timeMs: step.timeMs,
+              passed,
+              expected: `${expectedFrameStr(arbId, dataPattern)} ${tRef.current('can.autoWithinMs', { ms: timeout })}`,
+              actual: passed ? actual : `${tRef.current('can.autoExpectTimeout')} ${tRef.current('can.autoAfterMs', { ms: waitedMs })}`,
+            });
             runNext();
           };
           const timeoutHandle = setTimeout(() => {
@@ -378,11 +533,7 @@ export function CANAutomationTab({
         }
       };
 
-      if (step.timeMs > 0) {
-        setTimeout(execute, step.timeMs);
-      } else {
-        execute();
-      }
+      execute();
     };
 
     runNext();
@@ -400,7 +551,7 @@ export function CANAutomationTab({
       if (match) {
         clearTimeout(timeoutHandle);
         rt.pendingExpect = null;
-        onDone(true, `${hexStr(match.arbitrationId)} [${match.data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}]`);
+        onDone(true, `${expectedFrameStr(match.arbitrationId, match.data)} ${tRef.current('can.autoAfterMs', { ms: Math.max(0, Date.now() - startMs) })}`);
       }
     });
   }, [frames]);
@@ -422,17 +573,51 @@ export function CANAutomationTab({
           if (currentMs < step.timeMs || rt.executedSteps.has(step.id)) return;
           rt.executedSteps.add(step.id);
           updateRunState(pid, { activeStepId: step.id });
-          if (step.type === 'fault' && step.faultType) {
+          if (step.type === 'fault') {
+            const node = nodesRef.current.find(n => n.id === step.nodeId);
+            if (!node || !step.faultType) {
+              addRunResult(pid, {
+                stepId: step.id,
+                type: step.type,
+                label: stepLabel(step),
+                timeMs: step.timeMs,
+                passed: false,
+                expected: step.faultType ? tRef.current(FAULT_LABELS[step.faultType]) : tRef.current('can.injectFault'),
+                actual: !node ? tRef.current('can.autoFaultNoNode') : tRef.current('can.autoFaultNoType'),
+              });
+              return;
+            }
             cbRefs.current.onInjectFault(step.nodeId, step.faultType);
-            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true });
+            addRunResult(pid, {
+              stepId: step.id,
+              type: step.type,
+              label: stepLabel(step),
+              timeMs: step.timeMs,
+              passed: true,
+              expected: `${tRef.current(FAULT_LABELS[step.faultType])} -> ${node.name}`,
+              actual: tRef.current('can.autoFaultInjected'),
+            });
           } else if (step.type === 'recover') {
+            const node = nodesRef.current.find(n => n.id === step.nodeId);
+            if (!node) {
+              addRunResult(pid, {
+                stepId: step.id,
+                type: step.type,
+                label: stepLabel(step),
+                timeMs: step.timeMs,
+                passed: false,
+                expected: tRef.current('can.recoverNode'),
+                actual: tRef.current('can.autoFaultNoNode'),
+              });
+              return;
+            }
             cbRefs.current.onRecoverNode(step.nodeId);
-            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true });
+            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: node.name, actual: tRef.current('can.autoFaultRecovered') });
           } else if (step.type === 'send-frame') {
             const id = step.sendArbId ?? 0;
             const data = parseHex(step.sendDataHex ?? '');
             cbRefs.current.onSendFrame(id, data);
-            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: `${hexStr(id)} [${data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}]` });
+            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoFrameSent') });
           } else if (step.type === 'expect-frame') {
             rt.timelinePending.set(step.id, { step, triggerWallMs: now, framesAtTrigger: framesRef.current.length });
           }
@@ -447,14 +632,30 @@ export function CANAutomationTab({
           const match = newFrames.find(f => framesMatch(f, arbId, dataPattern));
           if (match) {
             rt.timelinePending.delete(stepId);
-            addRunResult(pid, { stepId, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: hexStr(arbId), actual: `${hexStr(match.arbitrationId)} [${match.data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}]` });
+            addRunResult(pid, {
+              stepId,
+              type: step.type,
+              label: stepLabel(step),
+              timeMs: step.timeMs,
+              passed: true,
+              expected: `${expectedFrameStr(arbId, dataPattern)} ${tRef.current('can.autoWithinMs', { ms: step.expectTimeoutMs ?? 2000 })}`,
+              actual: `${expectedFrameStr(match.arbitrationId, match.data)} ${tRef.current('can.autoAfterMs', { ms: elapsed })}`,
+            });
           } else if (elapsed > (step.expectTimeoutMs ?? 2000)) {
             rt.timelinePending.delete(stepId);
-            addRunResult(pid, { stepId, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: false, expected: hexStr(arbId), actual: tRef.current('can.autoExpectTimeout') });
+            addRunResult(pid, {
+              stepId,
+              type: step.type,
+              label: stepLabel(step),
+              timeMs: step.timeMs,
+              passed: false,
+              expected: `${expectedFrameStr(arbId, dataPattern)} ${tRef.current('can.autoWithinMs', { ms: step.expectTimeoutMs ?? 2000 })}`,
+              actual: `${tRef.current('can.autoExpectTimeout')} ${tRef.current('can.autoAfterMs', { ms: elapsed })}`,
+            });
           }
         });
-        // Check completion
-        if (rt.executedSteps.size === profile.steps.length && rt.timelinePending.size === 0 && profile.steps.length > 0) {
+        // Check completion (profile.steps.length === 0 also triggers immediately on first tick)
+        if (rt.executedSteps.size === profile.steps.length && rt.timelinePending.size === 0) {
           rt.aborted = true;
           setTimeout(() => {
             updateRunState(pid, { activeStepId: null, done: true });
@@ -518,17 +719,70 @@ export function CANAutomationTab({
       type: 'send-frame', nodeId: nodes[0]?.id ?? 0,
       sendArbId: 0x100, sendDataHex: '01 02 03 04', sendExtended: false, expectTimeoutMs: 2000,
     };
-    setSteps(prev => [...prev, newStep].sort((a, b) => a.timeMs - b.timeMs));
+    if (mode === 'sequential') {
+      setSteps(prev => [...prev, newStep]);
+    } else {
+      setSteps(prev => [...prev, newStep].sort((a, b) => a.timeMs - b.timeMs));
+    }
   };
 
   const updateStep = (id: string, patch: Partial<CANAutoStep>) => {
-    setSteps(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s).sort((a, b) => a.timeMs - b.timeMs));
+    const mode = editingProfile?.mode;
+    setSteps(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, ...patch } : s);
+      return mode === 'timeline' ? updated.sort((a, b) => a.timeMs - b.timeMs) : updated;
+    });
+  };
+
+  const moveStep = (id: string, dir: 'up' | 'down') => {
+    setSteps(prev => {
+      const idx = prev.findIndex(s => s.id === id);
+      if (dir === 'up' && idx === 0) return prev;
+      if (dir === 'down' && idx === prev.length - 1) return prev;
+      const next = [...prev];
+      const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
+    });
+  };
+
+  const updateStepType = (step: CANAutoStep, type: CANAutoStep['type']) => {
+    const firstNodeId = nodes[0]?.id ?? step.nodeId;
+    const patch: Partial<CANAutoStep> = { type };
+    if (type === 'fault') {
+      patch.nodeId = firstNodeId;
+      patch.faultType = step.faultType ?? DEFAULT_FAULT_TYPE;
+    } else if (type === 'recover') {
+      patch.nodeId = firstNodeId;
+    }
+    updateStep(step.id, patch);
   };
 
   const removeStep = (id: string) => setSteps(prev => prev.filter(s => s.id !== id));
 
   const allResults = Object.values(runStates).flatMap(s => s.results);
   const allDone = Object.keys(runStates).length > 0 && Object.values(runStates).every(s => s.done);
+  const allProfileIds = profiles.map(p => p.id);
+  const selectedProfileCount = allProfileIds.filter(id => selectedForRun.has(id)).length;
+  const allProfilesSelected = allProfileIds.length > 0 && selectedProfileCount === allProfileIds.length;
+  const someProfilesSelected = selectedProfileCount > 0 && !allProfilesSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedForRun(prev => {
+      if (allProfilesSelected) return new Set();
+      const next = new Set(prev);
+      allProfileIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const expandAllGroups = () => {
+    setExpandedGroups(new Set(groups.map(g => g.id)));
+  };
+
+  const collapseAllGroups = () => {
+    setExpandedGroups(new Set());
+  };
 
   // ── Sidebar profile item (render function, not React component — avoids remount on drag state changes) ──
   const renderProfile = (p: CANAutomationProfile, indent = 0): React.ReactNode => {
@@ -730,7 +984,7 @@ export function CANAutomationTab({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-row h-full bg-gray-950 font-mono text-[11px] overflow-hidden">
+    <div className="flex flex-row flex-1 min-h-0 bg-gray-950 font-mono text-[11px] overflow-hidden">
 
       {/* ── Left sidebar: scenario list ── */}
       <div className="w-48 shrink-0 flex flex-col border-r border-gray-800 bg-gray-900/30 overflow-hidden">
@@ -738,8 +992,52 @@ export function CANAutomationTab({
         <div className="flex items-center justify-between px-2 py-2 border-b border-gray-800 shrink-0">
           <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">{t('can.autoScenarios')}</span>
           <div className="flex items-center gap-1">
+            <button onClick={exportScenarios} disabled={globalRunning} title={t('can.autoExportScenarios')} className="p-0.5 text-gray-600 hover:text-emerald-400 disabled:opacity-30"><Download size={11} /></button>
+            <button onClick={() => importFileRef.current?.click()} disabled={globalRunning} title={t('can.autoImportScenarios')} className="p-0.5 text-gray-600 hover:text-blue-400 disabled:opacity-30"><Upload size={11} /></button>
+            <input ref={importFileRef} type="file" accept=".json" className="hidden" onChange={importScenarios} />
             <button onClick={() => addGroup()} disabled={globalRunning} title={t('can.autoGroupAdd')} className="p-0.5 text-gray-600 hover:text-cyan-400 disabled:opacity-30"><FolderPlus size={11} /></button>
             <button onClick={() => addProfileToGroup(undefined)} disabled={globalRunning} title={t('can.autoNewScenario')} className="p-0.5 text-gray-600 hover:text-purple-400 disabled:opacity-30"><Plus size={11} /></button>
+          </div>
+        </div>
+        <div className={`flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-800/70 shrink-0 transition-colors ${
+          globalRunning || profiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-800/30'
+        }`}>
+          <input
+            type="checkbox"
+            checked={allProfilesSelected}
+            ref={el => { if (el) el.indeterminate = someProfilesSelected; }}
+            onChange={toggleSelectAll}
+            disabled={globalRunning || profiles.length === 0}
+            className="accent-purple-500 cursor-pointer shrink-0"
+          />
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            disabled={globalRunning || profiles.length === 0}
+            className="flex-1 min-w-0 text-left text-[9px] text-gray-400 uppercase tracking-wider font-bold truncate disabled:cursor-not-allowed"
+          >
+            {t('can.autoSelectAll')}
+          </button>
+          <span className="text-[9px] text-purple-400 font-mono tabular-nums">
+            {selectedProfileCount}/{profiles.length}
+          </span>
+          <div className="ml-1 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={expandAllGroups}
+              disabled={globalRunning || groups.length === 0}
+              title={t('can.autoExpandAll')}
+              className="p-0.5 text-gray-600 hover:text-cyan-400 disabled:opacity-30"
+            >
+              <ChevronDown size={10} />
+            </button>
+            <button
+              onClick={collapseAllGroups}
+              disabled={globalRunning || groups.length === 0}
+              title={t('can.autoCollapseAll')}
+              className="p-0.5 text-gray-600 hover:text-cyan-400 disabled:opacity-30"
+            >
+              <ChevronRight size={10} />
+            </button>
           </div>
         </div>
 
@@ -854,78 +1152,135 @@ export function CANAutomationTab({
             </div>
           ) : editingProfile.steps.map((step, idx) => {
             const mode = editingProfile.mode;
+            const totalSteps = editingProfile.steps.length;
             return (
               <div key={step.id} className="p-3 rounded-lg border bg-gray-900/50 border-gray-800">
                 <div className="flex items-start gap-3">
-                  <div className="text-gray-500 font-bold w-14 shrink-0 pt-1.5 text-center text-[10px]">
-                    {mode === 'sequential' ? `#${idx + 1}` : formatTime(step.timeMs)}
-                  </div>
+                  {/* Index + reorder buttons (sequential) / time label (timeline) */}
+                  {mode === 'sequential' ? (
+                    <div className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5">
+                      <button onClick={() => moveStep(step.id, 'up')} disabled={globalRunning || idx === 0}
+                        className="p-0.5 text-gray-600 hover:text-gray-300 disabled:opacity-20 disabled:cursor-not-allowed">
+                        <ChevronUp size={12} />
+                      </button>
+                      <span className="text-gray-500 font-bold text-[10px] tabular-nums w-6 text-center">#{idx + 1}</span>
+                      <button onClick={() => moveStep(step.id, 'down')} disabled={globalRunning || idx === totalSteps - 1}
+                        className="p-0.5 text-gray-600 hover:text-gray-300 disabled:opacity-20 disabled:cursor-not-allowed">
+                        <ChevronDown size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 font-bold w-14 shrink-0 pt-1.5 text-center text-[10px]">
+                      {formatTime(step.timeMs)}
+                    </div>
+                  )}
                   <div className="flex-1 space-y-2 min-w-0">
                     <div className="flex gap-2 flex-wrap items-center">
-                      <select value={step.type} onChange={e => updateStep(step.id, { type: e.target.value as CANAutoStep['type'] })} disabled={globalRunning}
+                      <select value={step.type} onChange={e => updateStepType(step, e.target.value as CANAutoStep['type'])} disabled={globalRunning}
                         className="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 outline-none focus:border-purple-500">
                         <option value="send-frame">{t('can.autoSendFrame')}</option>
                         <option value="expect-frame">{t('can.autoExpectFrame')}</option>
+                        <option value="wait">Wait</option>
                         <option value="fault">{t('can.injectFault')}</option>
                         <option value="recover">{t('can.recoverNode')}</option>
                       </select>
-                      <div className="flex items-center gap-1">
-                        <input type="number" value={step.timeMs} min={0} step={mode === 'sequential' ? 100 : 1000}
-                          onChange={e => updateStep(step.id, { timeMs: Math.max(0, Number(e.target.value)) })} disabled={globalRunning}
-                          className="w-20 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-400 outline-none focus:border-purple-500 tabular-nums" />
-                        <span className="text-gray-600 text-[9px]">{mode === 'sequential' ? 'ms gecikme' : 'ms'}</span>
-                      </div>
+                      {/* Timeline mode: show absolute time input */}
+                      {mode === 'timeline' && (
+                        <div className="flex items-center gap-1">
+                          <input type="number" value={step.timeMs} min={0} step={1000}
+                            onChange={e => updateStep(step.id, { timeMs: Math.max(0, Number(e.target.value)) })} disabled={globalRunning}
+                            title={t('can.autoTimelineAtHint')}
+                            className="w-20 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-400 outline-none focus:border-purple-500 tabular-nums" />
+                          <span className="text-gray-600 text-[9px]">{t('can.autoTimelineAt')}</span>
+                        </div>
+                      )}
                     </div>
 
                     {(step.type === 'fault' || step.type === 'recover') && (
                       <div className="flex gap-2 flex-wrap">
-                        <select value={step.nodeId} onChange={e => updateStep(step.id, { nodeId: Number(e.target.value) })} disabled={globalRunning}
+                        <select value={nodes.some(n => n.id === step.nodeId) ? step.nodeId : ''} onChange={e => updateStep(step.id, { nodeId: Number(e.target.value) })} disabled={globalRunning || nodes.length === 0}
                           className="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 outline-none focus:border-purple-500">
+                          {nodes.length === 0 && <option value="">{t('can.noNodesConfigured')}</option>}
                           {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
                         </select>
                         {step.type === 'fault' ? (
-                          <select value={step.faultType} onChange={e => updateStep(step.id, { faultType: e.target.value as CANFaultType })} disabled={globalRunning}
+                          <select value={step.faultType ?? DEFAULT_FAULT_TYPE} onChange={e => updateStep(step.id, { faultType: e.target.value as CANFaultType })} disabled={globalRunning || nodes.length === 0}
                             className="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-rose-400 outline-none focus:border-rose-500">
                             {Object.entries(FAULT_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
                           </select>
                         ) : (
                           <span className="flex items-center gap-1 text-emerald-500 bg-emerald-950/30 border border-emerald-900/50 rounded px-2 py-1 text-[10px]">✓ {t('can.normalOperation')}</span>
                         )}
+                        {nodes.length === 0 && (
+                          <span className="text-[9px] text-amber-500 border border-amber-900/40 bg-amber-950/20 rounded px-2 py-1">
+                            {t('can.autoFaultNeedsNode')}
+                          </span>
+                        )}
                       </div>
                     )}
 
-                    {step.type === 'send-frame' && (
-                      <div className="flex gap-2 flex-wrap items-center">
-                        <Send size={11} className="text-cyan-600 shrink-0" />
-                        <span className="text-gray-600 text-[9px]">ID:</span>
-                        <input value={`0x${(step.sendArbId ?? 0).toString(16).toUpperCase().padStart(3, '0')}`}
-                          onChange={e => { const v = parseInt(e.target.value.replace(/^0x/i, ''), 16); if (!isNaN(v)) updateStep(step.id, { sendArbId: v }); }}
-                          disabled={globalRunning} className="w-24 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-cyan-400 outline-none focus:border-cyan-600" />
-                        <span className="text-gray-600 text-[9px]">Data:</span>
-                        <input value={step.sendDataHex ?? ''} onChange={e => updateStep(step.id, { sendDataHex: e.target.value })}
-                          disabled={globalRunning} placeholder="01 02 03 04"
-                          className="flex-1 min-w-24 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 outline-none focus:border-cyan-600" />
-                      </div>
-                    )}
+                    {step.type === 'send-frame' && (() => {
+                      const arbIdOob = !step.sendExtended && (step.sendArbId ?? 0) > 0x7FF;
+                      const hexInvalid = !isValidHex(step.sendDataHex ?? '');
+                      return (
+                        <div className="flex gap-2 flex-wrap items-center">
+                          <Send size={11} className="text-cyan-600 shrink-0" />
+                          <span className="text-gray-600 text-[9px]">{t('common.labelId')}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <input value={`0x${(step.sendArbId ?? 0).toString(16).toUpperCase().padStart(3, '0')}`}
+                              onChange={e => { const v = parseInt(e.target.value.replace(/^0x/i, ''), 16); if (!isNaN(v) && v >= 0 && v <= 0x1FFFFFFF) updateStep(step.id, { sendArbId: v }); }}
+                              disabled={globalRunning}
+                              className={`w-24 bg-gray-950 border rounded px-2 py-1 text-cyan-400 outline-none focus:border-cyan-600 ${arbIdOob ? 'border-amber-600' : 'border-gray-800'}`} />
+                            {arbIdOob && <span className="text-[8px] text-amber-500">{t('can.autoArbIdRange')}</span>}
+                          </div>
+                          <span className="text-gray-600 text-[9px]">{t('common.labelData')}</span>
+                          <div className="flex flex-col gap-0.5 flex-1 min-w-24">
+                            <input value={step.sendDataHex ?? ''} onChange={e => updateStep(step.id, { sendDataHex: e.target.value })}
+                              disabled={globalRunning} placeholder="01 02 03 04"
+                              className={`w-full bg-gray-950 border rounded px-2 py-1 text-gray-300 outline-none focus:border-cyan-600 ${hexInvalid ? 'border-red-600' : 'border-gray-800'}`} />
+                            {hexInvalid && <span className="text-[8px] text-red-500">{t('can.autoHexInvalid')}</span>}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
-                    {step.type === 'expect-frame' && (
-                      <div className="flex gap-2 flex-wrap items-center">
-                        <Radio size={11} className="text-amber-500 shrink-0" />
-                        <span className="text-gray-600 text-[9px]">ID:</span>
-                        <input value={`0x${(step.expectArbId ?? 0).toString(16).toUpperCase().padStart(3, '0')}`}
-                          onChange={e => { const v = parseInt(e.target.value.replace(/^0x/i, ''), 16); if (!isNaN(v)) updateStep(step.id, { expectArbId: v }); }}
-                          disabled={globalRunning} className="w-24 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-amber-400 outline-none focus:border-amber-600" />
-                        <span className="text-gray-600 text-[9px]">Data:</span>
-                        <input value={step.expectDataHex ?? ''} onChange={e => updateStep(step.id, { expectDataHex: e.target.value })}
-                          disabled={globalRunning} placeholder="01 02 …"
-                          className="flex-1 min-w-20 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 outline-none focus:border-amber-600" />
-                        <span className="text-gray-600 text-[9px]">Timeout:</span>
-                        <input type="number" value={step.expectTimeoutMs ?? 2000} min={500} step={500}
-                          onChange={e => updateStep(step.id, { expectTimeoutMs: Number(e.target.value) })} disabled={globalRunning}
-                          className="w-16 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-400 outline-none focus:border-amber-600" />
+                    {step.type === 'wait' && (
+                      <div className="flex items-center gap-2">
+                        <Timer size={11} className="text-yellow-500 shrink-0" />
+                        <span className="text-gray-600 text-[9px]">Duration:</span>
+                        <input type="number" value={step.timeMs} min={0} step={100}
+                          onChange={e => updateStep(step.id, { timeMs: Math.max(0, Number(e.target.value)) })} disabled={globalRunning}
+                          className="w-24 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-yellow-400 outline-none focus:border-yellow-600 tabular-nums" />
                         <span className="text-gray-600 text-[9px]">ms</span>
                       </div>
                     )}
+
+                    {step.type === 'expect-frame' && (() => {
+                      const hexInvalid = !isValidHex(step.expectDataHex ?? '');
+                      return (
+                        <div className="flex gap-2 flex-wrap items-center">
+                          <Radio size={11} className="text-amber-500 shrink-0" />
+                          <span className="text-gray-600 text-[9px]">{t('common.labelId')}</span>
+                          <input value={`0x${(step.expectArbId ?? 0).toString(16).toUpperCase().padStart(3, '0')}`}
+                            onChange={e => { const v = parseInt(e.target.value.replace(/^0x/i, ''), 16); if (!isNaN(v) && v >= 0 && v <= 0x1FFFFFFF) updateStep(step.id, { expectArbId: v }); }}
+                            disabled={globalRunning} className="w-24 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-amber-400 outline-none focus:border-amber-600" />
+                          <span className="text-gray-600 text-[9px]">{t('common.labelData')}</span>
+                          <div className="flex flex-col gap-0.5 flex-1 min-w-20">
+                            <input value={step.expectDataHex ?? ''} onChange={e => updateStep(step.id, { expectDataHex: e.target.value })}
+                              disabled={globalRunning} placeholder="01 02 …"
+                              className={`w-full bg-gray-950 border rounded px-2 py-1 text-gray-300 outline-none focus:border-amber-600 ${hexInvalid ? 'border-red-600' : 'border-gray-800'}`} />
+                            {hexInvalid && <span className="text-[8px] text-red-500">{t('can.autoHexInvalid')}</span>}
+                          </div>
+                          <span className="text-gray-600 text-[9px]">{t('can.autoTimeout')}:</span>
+                          <input type="number" value={step.expectTimeoutMs ?? 2000} min={500} step={500}
+                            onChange={e => updateStep(step.id, { expectTimeoutMs: Math.max(500, Number(e.target.value) || 2000) })} disabled={globalRunning}
+                            title={t('can.autoExpectTimeoutHint')}
+                            className="w-28 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-400 outline-none focus:border-amber-600 tabular-nums" />
+                          <span className="text-gray-600 text-[9px]">{t('common.unitMs')}</span>
+                        </div>
+                      );
+                    })()}
+
                   </div>
 
                   <button onClick={() => removeStep(step.id)} disabled={globalRunning}
@@ -944,8 +1299,8 @@ export function CANAutomationTab({
         const targetProfile = reportProfileId ? profiles.find(p => p.id === reportProfileId) : null;
         const reportResults = reportProfileId ? (runStates[reportProfileId]?.results ?? []) : allResults;
         const reportProfiles = targetProfile
-          ? [{ id: targetProfile.id, name: targetProfile.name, groupId: targetProfile.groupId }]
-          : profiles.filter(p => runStates[p.id]).map(p => ({ id: p.id, name: p.name, groupId: p.groupId }));
+          ? [{ id: targetProfile.id, name: targetProfile.name, groupId: targetProfile.groupId, stepCount: targetProfile.steps.length }]
+          : profiles.filter(p => runStates[p.id]).map(p => ({ id: p.id, name: p.name, groupId: p.groupId, stepCount: p.steps.length }));
         return (
           <CANAutomationReport
             results={reportResults}

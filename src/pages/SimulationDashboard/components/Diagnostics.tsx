@@ -60,7 +60,7 @@ const Diagnostics = memo(({ timingStats, errorCount, frameCount }: DiagnosticsPr
             <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">{t('diagnostics.avgLatency')}</span>
             <div className="p-1.5 bg-blue-500/10 rounded-lg"><Timer size={14} className="text-blue-500" /></div>
           </div>
-          <div className="text-2xl font-black font-mono text-gray-100">{timingStats.averageLatencyMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">ms</span></div>
+          <div className="text-2xl font-black font-mono text-gray-100">{timingStats.averageLatencyMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">{t('common.unitMs')}</span></div>
           <div className="text-[9px] font-mono text-gray-600 mt-1">{t('diagnostics.minMax', { min: timingStats.minLatencyMs, max: timingStats.maxLatencyMs })}</div>
         </div>
 
@@ -69,7 +69,7 @@ const Diagnostics = memo(({ timingStats, errorCount, frameCount }: DiagnosticsPr
             <span className="text-[10px] font-mono font-black text-gray-500 uppercase tracking-widest">{t('diagnostics.jitter')}</span>
             <div className="p-1.5 bg-purple-500/10 rounded-lg"><Activity size={14} className="text-purple-500" /></div>
           </div>
-          <div className="text-2xl font-black font-mono text-gray-100">{timingStats.jitterMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">ms</span></div>
+          <div className="text-2xl font-black font-mono text-gray-100">{timingStats.jitterMs.toFixed(1)}<span className="text-xs ml-1 opacity-40">{t('common.unitMs')}</span></div>
           <div className="text-[9px] font-mono text-gray-600 mt-1">{t('diagnostics.timingStability')}</div>
         </div>
 

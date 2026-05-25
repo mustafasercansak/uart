@@ -5,6 +5,7 @@ import type { OutputMode } from '../../../../types';
 import type { CANBusState } from '../../../../can/types/CANBusState';
 import type { CANProfile } from '../../../../can/store/canProfileStorage';
 import { useTranslation } from '../../../../i18n/context';
+import { translateBackendError } from '../../../../utils/backendError';
 
 interface CANStatBarProps {
   state: CANBusState;
@@ -173,8 +174,8 @@ export function CANStatBar({
                 {t('dashboard.connect')}
               </button>
               {state.networkError && (
-                <span className="text-[8px] text-rose-400 font-mono max-w-32 truncate" title={state.networkError}>
-                  ✗ {state.networkError}
+                <span className="text-[8px] text-rose-400 font-mono max-w-32 truncate" title={translateBackendError(t, state.networkError)}>
+                  ✗ {translateBackendError(t, state.networkError)}
                 </span>
               )}
             </>

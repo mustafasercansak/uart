@@ -119,9 +119,9 @@ export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdi
       {/* Vitals preview */}
       {node.isActive && (
         <div className="grid grid-cols-3 gap-1">
-          <VitalChip label={t('can.heartRate')} value={node.vitals.heartRate.toFixed(0)} unit="bpm" warn={!!(node.vitals.alarmFlags & 0x01)} />
+          <VitalChip label={t('can.heartRate')} value={node.vitals.heartRate.toFixed(0)} unit={t('common.unitBpm')} warn={!!(node.vitals.alarmFlags & 0x01)} />
           <VitalChip label={t('can.spO2')} value={node.vitals.spO2.toFixed(1)} unit="%" warn={!!(node.vitals.alarmFlags & 0x02)} />
-          <VitalChip label={t('can.temp')} value={node.vitals.temperature.toFixed(1)} unit="°C" warn={!!(node.vitals.alarmFlags & 0x08)} />
+          <VitalChip label={t('can.temp')} value={node.vitals.temperature.toFixed(1)} unit={t('common.unitDegC')} warn={!!(node.vitals.alarmFlags & 0x08)} />
         </div>
       )}
     </div>

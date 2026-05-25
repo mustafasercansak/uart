@@ -3,7 +3,59 @@
 All notable milestones of the UART Sensor Simulator's evolution toward a "Medical Simulation & Certification Suite" are tracked in this file.
 
 ## [Unreleased]
-- No changes yet.
+
+---
+
+## [v1.6.0] — 2026-05-24 (patch)
+### 🤖 CAN Automation Tab — Bug Fixes & Enhancements
+
+#### Bug Fixes
+- **`nodeId = 0` stale reference**: Steps created before any CAN node was added stored `nodeId: 0`, causing fault/recover steps to silently fail at runtime (`Node not found`). A `useEffect` now auto-patches stale `nodeId` values to `nodes[0].id` whenever the node list changes.
+- **`framesMatch()` bounds check**: When the expected data pattern was longer than the received frame's data array, `frame.data[i]` returned `undefined`, producing false negatives on every match. Added an early-exit guard (`dataPattern.length > frame.data.length → false`).
+- **`expectTimeoutMs` negative value**: The `min={500}` HTML attribute was not enforced in the `onChange` handler — users could type negative or zero values. Now clamped with `Math.max(500, ...)`.
+- **Empty profile stuck in timeline mode**: A timeline profile with zero steps would never complete because the completion check required `profile.steps.length > 0`. Removed the guard; an empty profile now finishes on the first ticker interval (~100 ms).
+- **Group deletion leftover expand state**: Deleting a group no longer leaves its child group IDs in `expandedGroups`, preventing phantom expand/collapse states.
+
+#### New Features
+- **Export / Import scenarios**: Added **Export** (↓) and **Import** (↑) buttons to the scenario sidebar header. Export serialises all profiles and groups to a timestamped `.json` file; Import merges them back in, replacing the current state.
+- **Expanded group state persistence**: The sidebar's group expand/collapse state is now saved to `localStorage` (`can-automation-expanded-v1`) and restored on page reload.
+- **Hex input validation**: Send Frame and Expect Frame data fields now show a red border and an inline `"Geçersiz hex"` / `"Invalid hex"` warning when the input contains non-hex characters.
+- **Arbitration ID range validation**: ID inputs reject values outside the 29-bit CAN range (`> 0x1FFFFFFF`). For standard (non-extended) frames, values above `0x7FF` show an amber `"ID > 0x7FF — use extended"` hint.
+- **Timeline mode label clarification**: The step timing label in timeline mode now reads `ms @start` / `ms @başlangıç` instead of the ambiguous `ms`, making it clear the value is an absolute offset from scenario start.
+
+#### i18n
+- Added keys `autoExportScenarios`, `autoImportScenarios`, `autoTimelineAt`, `autoHexInvalid`, `autoArbIdRange` to `en.json` and `tr.json`.
+
+---
+
+## [v1.6.0] — 2026-05-24 (patch 2)
+### 🌐 i18n — Unit Labels & Compliance Script Cleanup
+
+#### Hardcoded Unit Labels → i18n
+Previously `ID:`, `Data:`, `ms`, `bpm`, `mmHg`, `°C`, `/min`, `mL/h`, `mL`, `cmH2O` appeared as hardcoded strings in components. All are now routed through the translation system under the `common.*` namespace so future languages can override them.
+
+| Key | EN | TR |
+|---|---|---|
+| `common.unitMs` | `ms` | `ms` |
+| `common.unitBpm` | `bpm` | `bpm` |
+| `common.unitMmhg` | `mmHg` | `mmHg` |
+| `common.unitDegC` | `°C` | `°C` |
+| `common.unitPerMin` | `/min` | `/dak` |
+| `common.unitMlPerH` | `mL/h` | `mL/sa` |
+| `common.unitMl` | `mL` | `mL` |
+| `common.unitCmh2o` | `cmH2O` | `cmH2O` |
+| `common.labelId` | `ID:` | `ID:` |
+| `common.labelData` | `Data:` | `Veri:` |
+
+**Files updated:** `CANAutomationTab.tsx`, `VitalsPanel.tsx`, `NodeCard.tsx`, `Visualizer3D.tsx`, `FrameInspector.tsx`, `Diagnostics.tsx`, `ScenarioEditor/index.tsx`
+
+#### I18n Compliance Script — IGNORE_VALUES Refactor
+- Removed **duplicate entries** (`borderRadius`, `fontSize`, `fontWeight`, `lineHeight`, `padding`, `margin`, `transparent`, `none`, `top`, `bottom` etc. — each appeared twice).
+- Removed **phantom Turkish abbreviations** (`sa`, `dk`, `sn`) that were never present in the source code.
+- Removed **phantom unit entries** (`Hz`, `MHz`, `kHz`, `sec`, `min`, `L/min`) that were suppressed defensively but do not appear as JSX text in the codebase.
+- Removed units now covered by i18n (`ms`, `mmHg`, `cmH2O`, `mL`, `mL/h`, `bpm`, `ID:`, `Data:`).
+- Re-organised remaining entries into labelled comment sections (MUI variants, CSS values, medical identifiers, hardware/protocol identifiers, Redux action types, keyboard keys, code false-positives).
+- **I18n Compliance test still passes at BASELINE = 0.**
 
 ---
 

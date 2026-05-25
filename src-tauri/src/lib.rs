@@ -79,7 +79,7 @@ fn connect_serial(
         .open()
         .map_err(|e| {
             let msg = if e.to_string().contains("Access denied") || e.to_string().contains(" Permission denied") {
-                "Port kilitli (Başka bir program kullanıyor olabilir)".to_string()
+                "ERR_PORT_LOCKED".to_string()
             } else {
                 e.to_string()
             };
@@ -184,7 +184,7 @@ fn write_serial(bytes: Vec<u8>, state: tauri::State<'_, SerialState>) -> Result<
     if let Some(port) = wp.as_mut() {
         port.write_all(&bytes).map_err(|e| e.to_string())
     } else {
-        Err("Seri port bağlı değil".to_string())
+        Err("ERR_SERIAL_NOT_CONNECTED".to_string())
     }
 }
 
@@ -299,7 +299,7 @@ fn write_tcp(bytes: Vec<u8>, state: tauri::State<'_, TcpState>) -> Result<(), St
     if let Some(stream) = ws.as_mut() {
         stream.write_all(&bytes).map_err(|e| e.to_string())
     } else {
-        Err("TCP bağlı değil".to_string())
+        Err("ERR_TCP_NOT_CONNECTED".to_string())
     }
 }
 
@@ -405,7 +405,7 @@ fn write_tcp_server(bytes: Vec<u8>, state: tauri::State<'_, TcpServerState>) -> 
     if let Some(stream) = ws.as_mut() {
         stream.write_all(&bytes).map_err(|e| e.to_string())
     } else {
-        Err("Bağlı bir istemci (client) yok".to_string())
+        Err("ERR_NO_CONNECTED_CLIENT".to_string())
     }
 }
 
@@ -442,10 +442,10 @@ struct SockAddrCan {
 
 #[cfg(target_os = "linux")]
 fn open_socketcan_fd(interface: &str) -> Result<RawFd, String> {
-    let if_name = CString::new(interface).map_err(|_| "Geçersiz SocketCAN arayüz adı".to_string())?;
+    let if_name = CString::new(interface).map_err(|_| "ERR_INVALID_SOCKETCAN_INTERFACE".to_string())?;
     let if_index = unsafe { libc::if_nametoindex(if_name.as_ptr()) };
     if if_index == 0 {
-        return Err(format!("SocketCAN arayüzü bulunamadı: {}", interface));
+        return Err(format!("ERR_SOCKETCAN_INTERFACE_NOT_FOUND:{}", interface));
     }
 
     let fd = unsafe { libc::socket(libc::AF_CAN, libc::SOCK_RAW, libc::CAN_RAW) };
@@ -640,7 +640,7 @@ fn connect_socketcan(
 #[cfg(not(target_os = "linux"))]
 #[tauri::command]
 fn connect_socketcan(_interface: String) -> Result<(), String> {
-    Err("SocketCAN yalnızca Linux üzerinde desteklenir".to_string())
+    Err("ERR_SOCKETCAN_LINUX_ONLY".to_string())
 }
 
 #[cfg(target_os = "linux")]
@@ -677,7 +677,7 @@ fn write_socketcan_frame(
     if let Some(write_fd) = *fd {
         write_socketcan_fd(write_fd, arbitration_id, data, is_extended, is_rtr)
     } else {
-        Err("SocketCAN bağlı değil".to_string())
+        Err("ERR_SOCKETCAN_NOT_CONNECTED".to_string())
     }
 }
 
@@ -689,7 +689,7 @@ fn write_socketcan_frame(
     _is_extended: bool,
     _is_rtr: bool,
 ) -> Result<(), String> {
-    Err("SocketCAN yalnızca Linux üzerinde desteklenir".to_string())
+    Err("ERR_SOCKETCAN_LINUX_ONLY".to_string())
 }
 
 // ── RECORDING FILE COMMANDS ───────────────────────────────────────────────────
@@ -787,7 +787,7 @@ fn delete_recording(id: String) -> Result<(), String> {
     if path.exists() {
         std::fs::remove_file(&path).map_err(|e| e.to_string())
     } else {
-        Err(format!("Kayıt bulunamadı: {}", id))
+        Err(format!("ERR_RECORDING_NOT_FOUND:{}", id))
     }
 }
 

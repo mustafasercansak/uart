@@ -675,7 +675,7 @@ export default function Visualizer3D({ lastFrame }: Visualizer3DProps) {
 
               <div className="flex gap-3">
                 <SecondaryVital label={t('visualizer.rr')}   value={hudData.resp}                                 unit={t('visualizer.rrUnit')} color="amber"  />
-                <SecondaryVital label={t('visualizer.temp')} value={hudData.temp ? (hudData.temp / 10).toFixed(1) : null} unit="°C"                   color="purple" />
+                <SecondaryVital label={t('visualizer.temp')} value={hudData.temp ? (hudData.temp / 10).toFixed(1) : null} unit={t('common.unitDegC')} color="purple" />
               </div>
             </div>
 

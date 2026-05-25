@@ -7,6 +7,7 @@ interface ReportProfile {
   id: string;
   name: string;
   groupId?: string;
+  stepCount?: number;
 }
 
 interface CANAutomationReportProps {
@@ -29,11 +30,6 @@ function stepTypeIcon(type: CANAutoStep['type']) {
 export function CANAutomationReport({ results, profiles, groups, runAt, onClose }: CANAutomationReportProps) {
   const { t } = useTranslation();
 
-  const passCount = results.filter(r => r.passed).length;
-  const failCount = results.filter(r => !r.passed).length;
-  const passRate = results.length > 0 ? Math.round((passCount / results.length) * 100) : 0;
-  const isOverallPass = failCount === 0 && results.length > 0;
-
   const formatTime = (ms: number) => {
     const s = Math.floor(ms / 1000);
     const m = Math.floor(s / 60);
@@ -49,19 +45,39 @@ export function CANAutomationReport({ results, profiles, groups, runAt, onClose 
     }
   };
 
-  // Group profiles by group, then ungrouped
+  const resultProfileIds = new Set(results.map(r => r.profileId));
+  const profilesWithResults = profiles.filter(p => resultProfileIds.has(p.id));
+
+  const getProfileResults = (profileId: string) => results.filter(r => r.profileId === profileId);
+  const isProfilePassed = (profileId: string) => {
+    const profileResults = getProfileResults(profileId);
+    return profileResults.length > 0 && profileResults.every(r => r.passed);
+  };
+  const getSectionResults = (sectionProfiles: ReportProfile[]) => {
+    const ids = new Set(sectionProfiles.map(p => p.id));
+    return results.filter(r => ids.has(r.profileId));
+  };
+
+  const stepPassCount = results.filter(r => r.passed).length;
+  const stepFailCount = results.filter(r => !r.passed).length;
+  const scenarioPassCount = profilesWithResults.filter(p => isProfilePassed(p.id)).length;
+  const scenarioFailCount = profilesWithResults.length - scenarioPassCount;
+  const scenarioPassRate = profilesWithResults.length > 0 ? Math.round((scenarioPassCount / profilesWithResults.length) * 100) : 0;
+  const isOverallPass = scenarioFailCount === 0 && profilesWithResults.length > 0;
+
+  // Group executed profiles by group, then ungrouped. Empty scenarios are omitted.
   const groupedSections: { group: CANAutomationGroup | null; profiles: ReportProfile[] }[] = [];
   const usedGroupIds = new Set<string>();
-  profiles.forEach(p => {
+  profilesWithResults.forEach(p => {
     if (p.groupId) {
       const g = groups.find(g => g.id === p.groupId);
       if (g && !usedGroupIds.has(g.id)) {
         usedGroupIds.add(g.id);
-        groupedSections.push({ group: g, profiles: profiles.filter(x => x.groupId === g.id) });
+        groupedSections.push({ group: g, profiles: profilesWithResults.filter(x => x.groupId === g.id) });
       }
     }
   });
-  const ungrouped = profiles.filter(p => !p.groupId);
+  const ungrouped = profilesWithResults.filter(p => !p.groupId);
   if (ungrouped.length > 0) groupedSections.push({ group: null, profiles: ungrouped });
 
   return (
@@ -91,7 +107,7 @@ export function CANAutomationReport({ results, profiles, groups, runAt, onClose 
           <div>
             <div className="flex items-center gap-2 text-purple-700 mb-1">
               <ShieldCheck size={18} />
-              <h1 className="text-sm font-black tracking-tight uppercase">{t('can.autoReportTitle')}</h1>
+              <h6 className="text-sm font-black tracking-tight uppercase">{t('can.autoReportTitle')}</h6>
             </div>
             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.3em]">{t('can.autoReportDesc')}</p>
           </div>
@@ -112,24 +128,29 @@ export function CANAutomationReport({ results, profiles, groups, runAt, onClose 
         {/* Summary stats */}
         <div className="bg-gray-50 rounded-xl p-4 mb-6 flex justify-around border border-gray-100">
           <div className="text-center">
-            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoReportTotal')}</span>
-            <span className="text-2xl font-black text-gray-900">{results.length}</span>
+            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoReportScenarios')}</span>
+            <span className="text-2xl font-black text-gray-900">{profilesWithResults.length}</span>
           </div>
           <div className="w-px bg-gray-200" />
           <div className="text-center">
-            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoPassed')}</span>
-            <span className="text-2xl font-black text-emerald-600">{passCount}</span>
+            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoReportScenarioPassed')}</span>
+            <span className="text-2xl font-black text-emerald-600">{scenarioPassCount}</span>
           </div>
           <div className="w-px bg-gray-200" />
           <div className="text-center">
-            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoFailed')}</span>
-            <span className="text-2xl font-black text-rose-600">{failCount}</span>
+            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoReportScenarioFailed')}</span>
+            <span className="text-2xl font-black text-rose-600">{scenarioFailCount}</span>
           </div>
           <div className="w-px bg-gray-200" />
           <div className="text-center">
             <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('can.autoReportPassRate')}</span>
-            <span className="text-2xl font-black text-gray-900">{passRate}%</span>
+            <span className="text-2xl font-black text-gray-900">{scenarioPassRate}%</span>
           </div>
+        </div>
+        <div className="mb-6 -mt-3 flex justify-center gap-4 text-[9px] font-black uppercase tracking-widest text-gray-400">
+          <span>{t('can.autoReportStepResults')}: {results.length}</span>
+          <span className="text-emerald-600">✓ {stepPassCount}</span>
+          <span className="text-rose-600">✗ {stepFailCount}</span>
         </div>
 
         {/* Results grouped by group → scenario */}
@@ -139,35 +160,63 @@ export function CANAutomationReport({ results, profiles, groups, runAt, onClose 
             {t('can.autoResults')}
           </h3>
 
-          {groupedSections.map((section, sIdx) => (
-            <div key={sIdx} className="mb-4">
-              {/* Group header */}
-              {section.group && (
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px flex-1 bg-purple-100" />
-                  <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest px-3 py-1 bg-purple-50 rounded-full border border-purple-100">
-                    {t('can.autoReportGroup')}: {section.group.name}
-                  </span>
-                  <div className="h-px flex-1 bg-purple-100" />
-                </div>
-              )}
+          {groupedSections.map((section, sIdx) => {
+            const sectionResults = getSectionResults(section.profiles);
+            const sectionStepPassed = sectionResults.filter(r => r.passed).length;
+            const sectionStepFailed = sectionResults.filter(r => !r.passed).length;
+            const sectionScenarioPassed = section.profiles.filter(p => isProfilePassed(p.id)).length;
+            const sectionScenarioFailed = section.profiles.length - sectionScenarioPassed;
+            const sectionStatus = sectionScenarioFailed === 0 && section.profiles.length > 0;
+            const sectionStepTotal = section.profiles.reduce((sum, p) => sum + (p.stepCount ?? getProfileResults(p.id).length), 0);
 
-              {/* Profiles in this section */}
-              {section.profiles.map((profile, pIdx) => {
-                const profileResults = results.filter(r => r.profileId === profile.id);
+            return (
+              <div key={section.group?.id ?? `ungrouped-${sIdx}`} className="mb-6 break-inside-avoid">
+                {/* Group header */}
+                <div className={`mb-3 rounded-xl border px-4 py-3 ${
+                  sectionStatus
+                    ? 'border-emerald-100 bg-emerald-50/60'
+                    : 'border-rose-100 bg-rose-50/60'
+                }`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${
+                        sectionStatus ? 'text-emerald-700' : 'text-rose-700'
+                      }`}>
+                        {t('can.autoReportGroup')}
+                      </p>
+                      <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider">
+                        {section.group?.name ?? t('can.autoUngrouped')}
+                      </h4>
+                    </div>
+                    <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-wider">
+                      <span className="text-gray-500">{t('can.autoReportScenarios')}: {sectionScenarioPassed}/{section.profiles.length}</span>
+                      <span className="text-gray-500">{t('can.autoReportStepResults')}: {sectionStepPassed}/{sectionStepTotal}</span>
+                      <span className="text-rose-600">✗ {sectionScenarioFailed}</span>
+                      {sectionStepFailed > 0 && <span className="text-rose-500">{t('can.autoReportStepFailed')}: {sectionStepFailed}</span>}
+                      <span className={sectionStatus ? 'text-emerald-700' : 'text-rose-700'}>
+                        {sectionStatus ? t('can.autoReportPassed') : t('can.autoReportFailed')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profiles in this group */}
+                {section.profiles.map((profile, pIdx) => {
+                const profileResults = getProfileResults(profile.id);
                 const profilePassed = profileResults.filter(r => r.passed).length;
                 const profileFailed = profileResults.filter(r => !r.passed).length;
 
                 return (
-                  <div key={profile.id} className={pIdx > 0 ? 'mt-6' : ''}>
+                  <div key={profile.id} className={pIdx > 0 ? 'mt-5' : ''}>
                     {/* Scenario header */}
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2 border-b border-gray-100 pb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">
                           {t('can.autoReportScenario')}: {profile.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-[9px] font-bold">
+                        <span className="text-gray-500">{t('can.autoReportTotal')}: {profileResults.length}</span>
                         <span className="text-emerald-600">✓ {profilePassed}</span>
                         <span className="text-rose-600">✗ {profileFailed}</span>
                         {profileFailed === 0 && profileResults.length > 0 ? (
@@ -190,8 +239,8 @@ export function CANAutomationReport({ results, profiles, groups, runAt, onClose 
                         </tr>
                       </thead>
                       <tbody className="border border-gray-100">
-                        {profileResults.length > 0 ? profileResults.map((result, idx) => (
-                          <tr key={result.stepId} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        {profileResults.map((result, idx) => (
+                          <tr key={`${result.stepId}-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                             <td className="py-3 px-3 border-b border-gray-100 font-mono text-gray-500">{formatTime(result.timeMs)}</td>
                             <td className="py-3 px-3 border-b border-gray-100">
                               <div className="flex items-center gap-1">
@@ -214,18 +263,15 @@ export function CANAutomationReport({ results, profiles, groups, runAt, onClose 
                               )}
                             </td>
                           </tr>
-                        )) : (
-                          <tr>
-                            <td colSpan={6} className="py-4 px-3 text-center text-gray-400 text-[9px]">—</td>
-                          </tr>
-                        )}
+                        ))}
                       </tbody>
                     </table>
                   </div>
                 );
-              })}
-            </div>
-          ))}
+                })}
+              </div>
+            );
+          })}
         </div>
 
         {/* Footer */}
