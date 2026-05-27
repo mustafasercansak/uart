@@ -7,8 +7,80 @@ use std::os::fd::RawFd;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+/// Returns the current wall-clock time in milliseconds.
+/// On Linux uses CLOCK_REALTIME at nanosecond precision;
+/// independent of the OS scheduler granularity.
+fn now_ms() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+        * 1000.0
+}
+
+/// Waits up to `timeout_ms` milliseconds for `fd` to become readable.
+/// Returns > 0 when data is ready, 0 on timeout, < 0 on error.
+#[cfg(target_os = "linux")]
+fn poll_readable(fd: RawFd, timeout_ms: i32) -> i32 {
+    let mut pfd = libc::pollfd {
+        fd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    unsafe { libc::poll(&mut pfd, 1, timeout_ms) }
+}
+
+/// Reads a single CAN frame via `recvmsg`.
+/// If SO_TIMESTAMP is enabled on the socket, extracts a µs-precision kernel timestamp;
+/// otherwise falls back to a userspace `now_ms()` timestamp.
+#[cfg(target_os = "linux")]
+fn recv_can_frame(fd: RawFd) -> Result<(LinuxCanFrame, f64), std::io::Error> {
+    let mut frame: LinuxCanFrame = unsafe { std::mem::zeroed() };
+    let mut iov = libc::iovec {
+        iov_base: &mut frame as *mut LinuxCanFrame as *mut libc::c_void,
+        iov_len: std::mem::size_of::<LinuxCanFrame>(),
+    };
+    // 128 bytes: more than enough for a single timeval cmsg.
+    let mut ctrl_buf = [0u8; 128];
+    let mut msg: libc::msghdr = unsafe { std::mem::zeroed() };
+    msg.msg_iov = &mut iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = ctrl_buf.as_mut_ptr() as *mut libc::c_void;
+    msg.msg_controllen = ctrl_buf.len() as _;
+
+    let n = unsafe { libc::recvmsg(fd, &mut msg, 0) };
+    if n < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    if n as usize != std::mem::size_of::<LinuxCanFrame>() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "unexpected frame size",
+        ));
+    }
+
+    // Parse SO_TIMESTAMP from ancillary control messages.
+    let mut ts_ms = now_ms();
+    let mut cmsg = unsafe { libc::CMSG_FIRSTHDR(&msg) };
+    while !cmsg.is_null() {
+        let h = unsafe { &*cmsg };
+        if h.cmsg_level == libc::SOL_SOCKET && h.cmsg_type == libc::SO_TIMESTAMP {
+            let tv = unsafe {
+                std::ptr::read_unaligned(libc::CMSG_DATA(cmsg) as *const libc::timeval)
+            };
+            ts_ms = (tv.tv_sec as f64) * 1000.0 + (tv.tv_usec as f64) / 1000.0;
+            break;
+        }
+        cmsg = unsafe { libc::CMSG_NXTHDR(&msg, cmsg) };
+    }
+
+    Ok((frame, ts_ms))
+}
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 
@@ -24,6 +96,7 @@ struct TcpState {
 
 struct TcpServerState {
     stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    /// Used for writes only; reads are performed via a thread-local read_stream.
     active_stream: Arc<Mutex<Option<TcpStream>>>,
 }
 
@@ -78,12 +151,17 @@ fn connect_serial(
         .timeout(Duration::from_millis(100))
         .open()
         .map_err(|e| {
-            let msg = if e.to_string().contains("Access denied") || e.to_string().contains(" Permission denied") {
+            let msg = if e.to_string().contains("Access denied")
+                || e.to_string().contains("Permission denied")
+            {
                 "ERR_PORT_LOCKED".to_string()
             } else {
                 e.to_string()
             };
-            let _ = app.emit("serial-status", serde_json::json!({ "connected": false, "error": msg }));
+            let _ = app.emit(
+                "serial-status",
+                serde_json::json!({ "connected": false, "error": msg }),
+            );
             msg
         })?;
 
@@ -119,14 +197,7 @@ fn connect_serial(
                 Ok(n) if n > 0 => {
                     rx_buffer.extend_from_slice(&buf[..n]);
 
-                    // Emit after small gap — collect bytes up to 50ms
-                    thread::sleep(Duration::from_millis(10));
-                    if let Ok(extra) = port.read(&mut buf) {
-                        if extra > 0 {
-                            rx_buffer.extend_from_slice(&buf[..extra]);
-                        }
-                    }
-
+                    // Port timeout(100ms) already accumulates extra bytes; no additional sleep needed.
                     let hex = rx_buffer
                         .iter()
                         .map(|b| format!("{:02X}", b))
@@ -134,7 +205,14 @@ fn connect_serial(
                         .join(" ");
 
                     app_clone
-                        .emit("serial-data", serde_json::json!({ "hex": hex, "bytes": rx_buffer }))
+                        .emit(
+                            "serial-data",
+                            serde_json::json!({
+                                "hex": hex,
+                                "bytes": rx_buffer,
+                                "timestamp": now_ms()
+                            }),
+                        )
                         .ok();
 
                     rx_buffer.clear();
@@ -212,7 +290,9 @@ fn connect_tcp(
         e.to_string()
     })?;
 
-    stream.set_read_timeout(Some(Duration::from_millis(100))).ok();
+    stream
+        .set_read_timeout(Some(Duration::from_millis(100)))
+        .ok();
 
     let write_stream = stream.try_clone().map_err(|e| e.to_string())?;
     {
@@ -256,7 +336,14 @@ fn connect_tcp(
                         .collect::<Vec<_>>()
                         .join(" ");
                     app_clone
-                        .emit("tcp-data", serde_json::json!({ "hex": hex, "bytes": bytes }))
+                        .emit(
+                            "tcp-data",
+                            serde_json::json!({
+                                "hex": hex,
+                                "bytes": bytes,
+                                "timestamp": now_ms()
+                            }),
+                        )
                         .ok();
                 }
                 Err(ref e)
@@ -311,7 +398,7 @@ fn start_tcp_server(
     state: tauri::State<'_, TcpServerState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    // Mevcut sunucuyu durdur
+    // Stop any existing server
     {
         let mut tx = state.stop_tx.lock().unwrap();
         if let Some(sender) = tx.take() {
@@ -319,7 +406,9 @@ fn start_tcp_server(
         }
     }
 
-    let listener = std::net::TcpListener::bind(format!("0.0.0.0:{}", port)).map_err(|e| e.to_string())?;
+    let listener =
+        std::net::TcpListener::bind(format!("0.0.0.0:{}", port)).map_err(|e| e.to_string())?;
+    // Listener stays nonblocking; a 5 ms sleep prevents busy-waiting when no client is connected.
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
 
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
@@ -331,10 +420,19 @@ fn start_tcp_server(
     let active_stream_arc = state.active_stream.clone();
     let app_clone = app.clone();
 
-    app_clone.emit("tcp-server-status", serde_json::json!({ "status": "listening", "port": port })).ok();
+    app_clone
+        .emit(
+            "tcp-server-status",
+            serde_json::json!({ "status": "listening", "port": port }),
+        )
+        .ok();
 
     thread::spawn(move || {
         let mut buf = vec![0u8; 1024];
+        // The read stream is kept thread-local; writes go through active_stream_arc.
+        // This avoids holding the mutex during a blocking read.
+        let mut read_stream: Option<std::net::TcpStream> = None;
+
         loop {
             if stop_rx.try_recv().is_ok() {
                 let mut ws = active_stream_arc.lock().unwrap();
@@ -342,46 +440,84 @@ fn start_tcp_server(
                 break;
             }
 
-            // Yeni bağlantı bekle (eğer mevcut yoksa)
-            match listener.accept() {
-                Ok((stream, addr)) => {
-                    stream.set_nonblocking(true).ok();
-                    let mut ws = active_stream_arc.lock().unwrap();
-                    *ws = Some(stream.try_clone().unwrap()); 
-                    app_clone.emit("tcp-server-status", serde_json::json!({ "status": "connected", "client": addr.to_string() })).ok();
+            // No active client — try to accept a new connection.
+            if read_stream.is_none() {
+                match listener.accept() {
+                    Ok((stream, addr)) => {
+                        // 100 ms read timeout: blocking but does not stall the loop.
+                        stream
+                            .set_read_timeout(Some(Duration::from_millis(100)))
+                            .ok();
+                        // Clone for writing: write_tcp_server accesses it through the mutex.
+                        if let Ok(write_clone) = stream.try_clone() {
+                            let mut ws = active_stream_arc.lock().unwrap();
+                            *ws = Some(write_clone);
+                        }
+                        app_clone
+                            .emit(
+                                "tcp-server-status",
+                                serde_json::json!({ "status": "connected", "client": addr.to_string() }),
+                            )
+                            .ok();
+                        read_stream = Some(stream);
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        // Waiting for a client — a short sleep is sufficient.
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(_) => {}
                 }
-                Err(_) => {}
+                continue;
             }
 
-            // Aktif bağlantıdan veri oku
+            // Read from the active client (100 ms blocking timeout; mutex is not held).
             let mut disconnected = false;
-            {
-                let mut ws = active_stream_arc.lock().unwrap();
-                if let Some(stream) = ws.as_mut() {
-                    match stream.read(&mut buf) {
-                        Ok(0) => {
-                            disconnected = true; // İstemci koptu
-                        }
-                        Ok(n) => {
-                            let bytes = buf[..n].to_vec();
-                            let hex = bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ");
-                            app_clone.emit("tcp-server-data", serde_json::json!({ "hex": hex, "bytes": bytes })).ok();
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                        Err(_) => {
-                            disconnected = true;
-                        }
+            if let Some(ref mut stream) = read_stream {
+                match stream.read(&mut buf) {
+                    Ok(0) => {
+                        disconnected = true;
+                    }
+                    Ok(n) => {
+                        let bytes = buf[..n].to_vec();
+                        let hex = bytes
+                            .iter()
+                            .map(|b| format!("{:02X}", b))
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        app_clone
+                            .emit(
+                                "tcp-server-data",
+                                serde_json::json!({
+                                    "hex": hex,
+                                    "bytes": bytes,
+                                    "timestamp": now_ms()
+                                }),
+                            )
+                            .ok();
+                    }
+                    Err(ref e)
+                        if e.kind() == std::io::ErrorKind::TimedOut
+                            || e.kind() == std::io::ErrorKind::WouldBlock =>
+                    {
+                        // Timeout — loop back so stop_rx can be checked.
+                    }
+                    Err(_) => {
+                        disconnected = true;
                     }
                 }
             }
 
             if disconnected {
+                read_stream = None;
                 let mut ws = active_stream_arc.lock().unwrap();
                 *ws = None;
-                app_clone.emit("tcp-server-status", serde_json::json!({ "status": "listening", "port": port })).ok();
+                app_clone
+                    .emit(
+                        "tcp-server-status",
+                        serde_json::json!({ "status": "listening", "port": port }),
+                    )
+                    .ok();
             }
-
-            thread::sleep(Duration::from_millis(20));
         }
     });
 
@@ -396,11 +532,18 @@ fn stop_tcp_server(state: tauri::State<'_, TcpServerState>, app: AppHandle) -> R
     }
     let mut ws = state.active_stream.lock().unwrap();
     *ws = None;
-    app.emit("tcp-server-status", serde_json::json!({ "status": "stopped" })).map_err(|e| e.to_string())
+    app.emit(
+        "tcp-server-status",
+        serde_json::json!({ "status": "stopped" }),
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn write_tcp_server(bytes: Vec<u8>, state: tauri::State<'_, TcpServerState>) -> Result<(), String> {
+fn write_tcp_server(
+    bytes: Vec<u8>,
+    state: tauri::State<'_, TcpServerState>,
+) -> Result<(), String> {
     let mut ws = state.active_stream.lock().unwrap();
     if let Some(stream) = ws.as_mut() {
         stream.write_all(&bytes).map_err(|e| e.to_string())
@@ -442,10 +585,14 @@ struct SockAddrCan {
 
 #[cfg(target_os = "linux")]
 fn open_socketcan_fd(interface: &str) -> Result<RawFd, String> {
-    let if_name = CString::new(interface).map_err(|_| "ERR_INVALID_SOCKETCAN_INTERFACE".to_string())?;
+    let if_name =
+        CString::new(interface).map_err(|_| "ERR_INVALID_SOCKETCAN_INTERFACE".to_string())?;
     let if_index = unsafe { libc::if_nametoindex(if_name.as_ptr()) };
     if if_index == 0 {
-        return Err(format!("ERR_SOCKETCAN_INTERFACE_NOT_FOUND:{}", interface));
+        return Err(format!(
+            "ERR_SOCKETCAN_INTERFACE_NOT_FOUND:{}",
+            interface
+        ));
     }
 
     let fd = unsafe { libc::socket(libc::AF_CAN, libc::SOCK_RAW, libc::CAN_RAW) };
@@ -561,18 +708,32 @@ fn connect_socketcan(
     }
 
     let read_fd = open_socketcan_fd(&interface).map_err(|e| {
-        let _ = app.emit("socketcan-status", serde_json::json!({ "connected": false, "error": e }));
+        let _ = app.emit(
+            "socketcan-status",
+            serde_json::json!({ "connected": false, "error": e }),
+        );
         e
     })?;
+
+    // SO_TIMESTAMP: request µs-precision hardware timestamps from the kernel.
+    // O_NONBLOCK intentionally omitted — poll_readable() provides event-driven waiting.
     unsafe {
-        let flags = libc::fcntl(read_fd, libc::F_GETFL, 0);
-        if flags >= 0 {
-            libc::fcntl(read_fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
-        }
+        let enable: libc::c_int = 1;
+        libc::setsockopt(
+            read_fd,
+            libc::SOL_SOCKET,
+            libc::SO_TIMESTAMP,
+            &enable as *const libc::c_int as *const libc::c_void,
+            std::mem::size_of::<libc::c_int>() as libc::socklen_t,
+        );
     }
+
     let write_fd = open_socketcan_fd(&interface).map_err(|e| {
         unsafe { libc::close(read_fd) };
-        let _ = app.emit("socketcan-status", serde_json::json!({ "connected": false, "error": e }));
+        let _ = app.emit(
+            "socketcan-status",
+            serde_json::json!({ "connected": false, "error": e }),
+        );
         e
     })?;
 
@@ -590,7 +751,10 @@ fn connect_socketcan(
     let app_clone = app.clone();
     thread::spawn(move || {
         app_clone
-            .emit("socketcan-status", serde_json::json!({ "connected": true, "interface": interface }))
+            .emit(
+                "socketcan-status",
+                serde_json::json!({ "connected": true, "interface": interface }),
+            )
             .ok();
 
         loop {
@@ -598,33 +762,42 @@ fn connect_socketcan(
                 break;
             }
 
-            let mut frame = LinuxCanFrame {
-                can_id: 0,
-                can_dlc: 0,
-                __pad: 0,
-                __res0: 0,
-                len8_dlc: 0,
-                data: [0; 8],
-            };
-            let read_len = unsafe {
-                libc::read(
-                    read_fd,
-                    &mut frame as *mut LinuxCanFrame as *mut libc::c_void,
-                    std::mem::size_of::<LinuxCanFrame>(),
-                )
-            };
-            if read_len == std::mem::size_of::<LinuxCanFrame>() as isize {
-                app_clone.emit("socketcan-frame", decode_linux_can_frame(frame)).ok();
-            } else if read_len < 0 {
+            // Block up to 100 ms — no CPU spin; stop signals are detected promptly.
+            let ready = poll_readable(read_fd, 100);
+            if ready < 0 {
                 let err = std::io::Error::last_os_error();
-                if err.kind() == std::io::ErrorKind::WouldBlock {
-                    thread::sleep(Duration::from_millis(10));
-                    continue;
+                if err.raw_os_error() == Some(libc::EINTR) {
+                    continue; // interrupted by signal — retry
                 }
                 app_clone
-                    .emit("socketcan-status", serde_json::json!({ "connected": false, "error": err.to_string() }))
+                    .emit(
+                        "socketcan-status",
+                        serde_json::json!({ "connected": false, "error": err.to_string() }),
+                    )
                     .ok();
                 break;
+            }
+            if ready == 0 {
+                continue; // poll timed out — check stop_rx
+            }
+
+            match recv_can_frame(read_fd) {
+                Ok((frame, ts_ms)) => {
+                    let mut decoded = decode_linux_can_frame(frame);
+                    if let Some(map) = decoded.as_object_mut() {
+                        map.insert("timestamp".to_string(), serde_json::json!(ts_ms));
+                    }
+                    app_clone.emit("socketcan-frame", decoded).ok();
+                }
+                Err(e) => {
+                    app_clone
+                        .emit(
+                            "socketcan-status",
+                            serde_json::json!({ "connected": false, "error": e.to_string() }),
+                        )
+                        .ok();
+                    break;
+                }
             }
         }
 
@@ -645,7 +818,10 @@ fn connect_socketcan(_interface: String) -> Result<(), String> {
 
 #[cfg(target_os = "linux")]
 #[tauri::command]
-fn disconnect_socketcan(state: tauri::State<'_, SocketCanState>, app: AppHandle) -> Result<(), String> {
+fn disconnect_socketcan(
+    state: tauri::State<'_, SocketCanState>,
+    app: AppHandle,
+) -> Result<(), String> {
     let mut tx = state.stop_tx.lock().unwrap();
     if let Some(sender) = tx.take() {
         let _ = sender.send(());
@@ -722,11 +898,7 @@ fn list_recordings() -> Result<Vec<RecordingMeta>, String> {
         }
 
         let id = path.file_name().unwrap().to_string_lossy().to_string();
-        let name = path
-            .file_stem()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
+        let name = path.file_stem().unwrap().to_string_lossy().to_string();
 
         let meta = entry.metadata().map_err(|e| e.to_string())?;
         let created_at = meta
@@ -765,7 +937,13 @@ fn save_recording(name: String, data: serde_json::Value) -> Result<(), String> {
 
     let safe_name = name
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect::<String>();
     let file_name = format!("{}.json", safe_name);
     let path = dir.join(&file_name);
@@ -837,7 +1015,7 @@ pub fn run() {
             delete_recording,
         ])
         .run(tauri::generate_context!())
-        .expect("Tauri uygulaması başlatılamadı");
+        .expect("failed to start Tauri application");
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -875,7 +1053,8 @@ mod tests {
 
     #[test]
     fn socketcan_frame_truncates_payload_to_classic_can_dlc() {
-        let frame = build_linux_can_frame(0x7FF, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], false, false);
+        let frame =
+            build_linux_can_frame(0x7FF, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], false, false);
 
         assert_eq!(frame.can_dlc, 8);
         assert_eq!(frame.data, [1, 2, 3, 4, 5, 6, 7, 8]);
