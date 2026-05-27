@@ -154,14 +154,14 @@ describe('storage.ts', () => {
         });
 
         const file = new File([''], 'test.json');
-        await expect(importFromJson(file)).rejects.toThrow('Dosya okunamadı');
+        await expect(importFromJson(file)).rejects.toThrow('File could not be read');
 
         readSpy.mockRestore();
     });
 
     it('handles invalid JSON in importFromJson', async () => {
         const file = new File(['invalid json'], 'test.json', { type: 'application/json' });
-        await expect(importFromJson(file)).rejects.toThrow('Geçersiz JSON dosyası');
+        await expect(importFromJson(file)).rejects.toThrow('Invalid JSON file');
     });
 
     describe('Migration & Normalization Edge Cases', () => {

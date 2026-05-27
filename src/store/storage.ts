@@ -432,10 +432,10 @@ export function importFromJson<T>(file: File): Promise<T> {
         const data = JSON.parse(e.target?.result as string);
         resolve(data as T);
       } catch {
-        reject(new Error('Geçersiz JSON dosyası'));
+        reject(new Error('Invalid JSON file'));
       }
     };
-    reader.onerror = () => reject(new Error('Dosya okunamadı'));
+    reader.onerror = () => reject(new Error('File could not be read'));
     reader.readAsText(file);
   });
 }

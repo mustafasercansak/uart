@@ -419,8 +419,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         await serialPortRef.current.close();
         serialPortRef.current = null;
       }
-    } catch {
-      // ignore disconnect errors
+    } catch (e) {
+      // Port/writer may already be closed — log for debugging but don't surface to user
+      console.warn('[SLCAN] disconnect error (non-critical):', e);
     }
     dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Disconnected from SLCAN`, type: 'info' } });
