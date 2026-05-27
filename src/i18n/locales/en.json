@@ -1836,6 +1836,8 @@
     "autoTimelineAt": "ms @start",
     "autoHexInvalid": "Invalid hex",
     "autoArbIdRange": "ID > 0x7FF — use extended",
+    "autoWait": "Wait",
+    "autoDuration": "Duration:",
     "timestampID_Hex": "Timestamp,ID_Hex,DLC,Data_Hex,Errors",
     "status": "Status",
     "baudRate": "Baud Rate",

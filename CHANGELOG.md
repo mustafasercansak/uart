@@ -6,6 +6,25 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.6.0] — 2026-05-27 (patch)
+### ⚙️ Rust Backend — High-Resolution Timing & i18n Fix
+
+#### Rust Backend Improvements
+- **High-resolution timestamps**: All events (`serial-data`, `tcp-data`, `tcp-server-data`, `socketcan-frame`) now include a `"timestamp"` field populated on the Rust side via `SystemTime::now()` (nanosecond precision via `CLOCK_REALTIME`), eliminating IPC-induced timestamp drift.
+- **SocketCAN `SO_TIMESTAMP`**: The CAN read socket now enables the `SO_TIMESTAMP` socket option. Frames are read via `recvmsg` instead of `read`, extracting the kernel-level hardware timestamp (µs precision) from the ancillary control message. Falls back to userspace `now_ms()` if the cmsg is absent.
+- **SocketCAN event-driven loop**: Removed `O_NONBLOCK` + busy-wait `sleep(10 ms)` on `WouldBlock`. Replaced with `poll()` (100 ms timeout), eliminating CPU spin and reducing frame latency to sub-millisecond.
+- **TCP Server — deadlock-safe read/write split**: The reader thread now owns its own `TcpStream` (thread-local); `active_stream_arc` holds only the write clone for `write_tcp_server`. This removes the architectural deadlock risk that forced the previous nonblocking + `sleep(20 ms)` polling design. Reads now block up to 100 ms via `set_read_timeout`.
+- **Serial port**: Removed the redundant `sleep(10 ms)` + second `port.read()` batching call. The port's existing 100 ms `timeout()` already accumulates bytes; the extra sleep only added latency.
+- **All source comments translated to English**.
+
+#### Bug Fixes
+- **i18n compliance**: `CANAutomationTab` had three hardcoded strings (`Wait`, `Duration:`, `ms`) not routed through the translation system. Fixed via new keys `can.autoWait`, `can.autoDuration`, and existing `common.unitMs`.
+
+#### i18n
+- Added `can.autoWait` (`Wait` / `Bekle`) and `can.autoDuration` (`Duration:` / `Süre:`) to `en.json` and `tr.json`.
+
+---
+
 ## [v1.6.0] — 2026-05-24 (patch)
 ### 🤖 CAN Automation Tab — Bug Fixes & Enhancements
 

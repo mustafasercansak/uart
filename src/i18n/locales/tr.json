@@ -1836,6 +1836,8 @@
     "autoTimelineAt": "ms @başlangıç",
     "autoHexInvalid": "Geçersiz hex",
     "autoArbIdRange": "ID > 0x7FF — extended kullan",
+    "autoWait": "Bekle",
+    "autoDuration": "Süre:",
     "timestampID_Hex": "Zaman,ID_Hex,DLC,Veri_Hex,Hatalar",
     "status": "Durum",
     "baudRate": "Baud Hızı",

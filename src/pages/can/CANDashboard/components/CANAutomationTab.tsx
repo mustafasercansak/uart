@@ -1180,7 +1180,7 @@ export function CANAutomationTab({
                         className="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 outline-none focus:border-purple-500">
                         <option value="send-frame">{t('can.autoSendFrame')}</option>
                         <option value="expect-frame">{t('can.autoExpectFrame')}</option>
-                        <option value="wait">Wait</option>
+                        <option value="wait">{t('can.autoWait')}</option>
                         <option value="fault">{t('can.injectFault')}</option>
                         <option value="recover">{t('can.recoverNode')}</option>
                       </select>
@@ -1247,11 +1247,11 @@ export function CANAutomationTab({
                     {step.type === 'wait' && (
                       <div className="flex items-center gap-2">
                         <Timer size={11} className="text-yellow-500 shrink-0" />
-                        <span className="text-gray-600 text-[9px]">Duration:</span>
+                        <span className="text-gray-600 text-[9px]">{t('can.autoDuration')}</span>
                         <input type="number" value={step.timeMs} min={0} step={100}
                           onChange={e => updateStep(step.id, { timeMs: Math.max(0, Number(e.target.value)) })} disabled={globalRunning}
                           className="w-24 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-yellow-400 outline-none focus:border-yellow-600 tabular-nums" />
-                        <span className="text-gray-600 text-[9px]">ms</span>
+                        <span className="text-gray-600 text-[9px]">{t('common.unitMs')}</span>
                       </div>
                     )}
 
