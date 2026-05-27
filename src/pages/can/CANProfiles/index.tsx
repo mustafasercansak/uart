@@ -8,6 +8,7 @@ import {
 } from '../../../can/store/canProfileStorage';
 import { MEDICAL_PROFILE_LABELS, MEDICAL_PROFILE_COLORS, type CANMedicalProfile } from '../../../can/types/CANNode';
 import { parseDBC, dbcToProfileNodes } from '../../../can/utils/dbcParser';
+import { resolveNodeName } from '../../../can/utils/nodeNameResolver';
 import { useTranslation } from '../../../i18n/context';
 
 // ─── Form type ───────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ function NodeCard({ node, onEdit, onRemove, t }: {
     <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4 space-y-2">
       <div className="flex items-center gap-2">
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: MEDICAL_PROFILE_COLORS[node.profile] }} />
-        <span className="font-bold text-sm text-white truncate">{node.name}</span>
+        <span className="font-bold text-sm text-white truncate">{resolveNodeName(node.name, t)}</span>
         <span className="text-[10px] text-gray-600 ml-auto">#{node.nodeId ?? node.id}</span>
         <button onClick={onEdit} className="text-gray-600 hover:text-cyan-400 p-0.5 transition-colors" title={t('can.editNode')}>
           <Pencil size={11} />
@@ -479,7 +480,7 @@ export default function CANProfiles() {
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold truncate flex-1">{p.name}</span>
+                <span className="text-xs font-bold truncate flex-1">{resolveNodeName(p.name, t)}</span>
                 <ChevronRight size={12} className="shrink-0 opacity-40" />
               </div>
               <div className="text-[9px] text-gray-600 mt-0.5">{p.baudRate}k · {p.nodes.length} {t('canProfiles.nodes')}</div>
@@ -583,10 +584,10 @@ export default function CANProfiles() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <button onClick={startRename} className="text-lg font-bold text-white hover:text-cyan-400 transition-colors text-left">
-                    {selectedProfile.name}
+                    {resolveNodeName(selectedProfile.name, t)}
                   </button>
                   {selectedProfile.description && (
-                    <p className="text-sm text-gray-500 mt-0.5">{selectedProfile.description}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{t(selectedProfile.description)}</p>
                   )}
                   <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-600">
                     <span>{selectedProfile.baudRate}k bps</span>

@@ -696,7 +696,14 @@
     "socketCANInterfaceNotFound": "SocketCAN arayüzü bulunamadı: {{interface}}",
     "socketCANLinuxOnly": "SocketCAN yalnızca Linux'ta desteklenir",
     "socketCANNotConnected": "SocketCAN bağlı değil",
-    "recordingNotFound": "Kayıt bulunamadı: {{id}}"
+    "recordingNotFound": "Kayıt bulunamadı: {{id}}",
+    "serialPortError": "Seri port hatası: {error}",
+    "tcpServerError": "TCP Sunucu hatası: {error}",
+    "tcpError": "TCP hatası: {error}",
+    "recordingSaveFailed": "Kayıt kaydedilemedi: {error}",
+    "recordingDeleteFailed": "Kayıt silinemedi: {error}",
+    "engineError": "Motor hatası: {error}",
+    "engineMessageError": "Motor mesaj hatası"
   },
   "time": {
     "hour": "sa",
@@ -1726,6 +1733,7 @@
     "startedRecordin": "CAN trafiği kaydediliyor",
     "iCUIntensiveCar": "YBÜ — Yoğun Bakım Ünitesi",
     "standardICUMoni": "Standart YBÜ izleme senaryosu",
+    "bed": "Yatak",
     "bed1Monitor": "Yatak 1 · Vital Monitör",
     "bed1IVPump": "Yatak 1 · IV Pompa",
     "bed1Vent": "Yatak 1 · Ventilatör",
@@ -1973,5 +1981,10 @@
     "j1939Pdu2": "PDU2 (Yayın)",
     "j1939DataPage": "Veri Sayfası",
     "j1939Label": "J1939"
+  },
+  "tcpStatus": {
+    "clientConnected": "TCP İstemci bağlandı: {client}",
+    "serverListening": "TCP Sunucu dinliyor (Port: {port})",
+    "serverStopped": "TCP Sunucu durduruldu"
   }
 }

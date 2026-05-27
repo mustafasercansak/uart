@@ -676,7 +676,14 @@
     "socketCANInterfaceNotFound": "SocketCAN interface not found: {{interface}}",
     "socketCANLinuxOnly": "SocketCAN is only supported on Linux",
     "socketCANNotConnected": "SocketCAN not connected",
-    "recordingNotFound": "Recording not found: {{id}}"
+    "recordingNotFound": "Recording not found: {{id}}",
+    "serialPortError": "Serial port error: {error}",
+    "tcpServerError": "TCP server error: {error}",
+    "tcpError": "TCP error: {error}",
+    "recordingSaveFailed": "Failed to save recording: {error}",
+    "recordingDeleteFailed": "Failed to delete recording: {error}",
+    "engineError": "Engine error: {error}",
+    "engineMessageError": "Engine message error"
   },
   "time": {
     "hour": "h",
@@ -1726,6 +1733,7 @@
     "startedRecordin": "Started recording CAN traffic",
     "iCUIntensiveCar": "ICU — Intensive Care Unit",
     "standardICUMoni": "Standard ICU monitoring scenario",
+    "bed": "Bed",
     "bed1Monitor": "Bed 1 · Vital Monitor",
     "bed1IVPump": "Bed 1 · IV Pump",
     "bed1Vent": "Bed 1 · Ventilator",
@@ -1973,5 +1981,10 @@
     "j1939Pdu2": "PDU2 (Broadcast)",
     "j1939DataPage": "Data Page",
     "j1939Label": "J1939"
+  },
+  "tcpStatus": {
+    "clientConnected": "TCP client connected: {client}",
+    "serverListening": "TCP server listening (Port: {port})",
+    "serverStopped": "TCP server stopped"
   }
 }

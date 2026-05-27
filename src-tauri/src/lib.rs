@@ -679,6 +679,23 @@ fn write_socketcan_fd(
     is_extended: bool,
     is_rtr: bool,
 ) -> Result<(), String> {
+    // Validate arbitration ID range.
+    let id_limit = if is_extended { CAN_EFF_MASK } else { CAN_SFF_MASK };
+    if arbitration_id > id_limit {
+        return Err(format!(
+            "ERR_CAN_ID_OUT_OF_RANGE: 0x{:X} exceeds {} limit 0x{:X}",
+            arbitration_id,
+            if is_extended { "extended" } else { "standard" },
+            id_limit
+        ));
+    }
+    // Classic CAN data frame is limited to 8 bytes.
+    if data.len() > 8 {
+        return Err(format!(
+            "ERR_CAN_DLC_TOO_LARGE: {} bytes (max 8)",
+            data.len()
+        ));
+    }
     let frame = build_linux_can_frame(arbitration_id, data, is_extended, is_rtr);
     let written = unsafe {
         libc::write(

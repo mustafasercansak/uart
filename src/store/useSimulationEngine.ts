@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type React from 'react';
 import type { SimAction } from './simulationReducer';
 import { listen, invoke } from '../lib/tauri-bridge';
+import { useTranslation } from '../i18n/context';
 
 const MAX_RESTARTS = 5;
 const RESTART_DELAY_MS = 1500;
@@ -16,6 +17,7 @@ export function useSimulationEngine(
   msgBufferRef: React.MutableRefObject<string[]>,
   stateRef: React.MutableRefObject<{ outputMode: string }>
 ) {
+  const { t } = useTranslation();
   const workerRef = useRef<Worker | null>(null);
   const serialConnectedRef = useRef(false);
   const networkConnectedRef = useRef(false);
@@ -73,9 +75,9 @@ export function useSimulationEngine(
       networkConnectedRef.current = connected;
       workerRef.current?.postMessage({ type: 'SET_NETWORK_CONNECTED', connected });
       
-      const msgText = p.status === 'connected' ? `TCP İstemci bağlandı: ${p.client}` 
-                    : p.status === 'listening' ? `TCP Sunucu dinliyor (Port: ${p.port})`
-                    : `TCP Sunucu durduruldu`;
+      const msgText = p.status === 'connected' ? t('tcpStatus.clientConnected', { client: p.client })
+                    : p.status === 'listening' ? t('tcpStatus.serverListening', { port: p.port })
+                    : t('tcpStatus.serverStopped');
                     
       pushMsg({ type: 'NETWORK_STATUS', connected, error: p.error, customMessage: msgText });
     }).then(u => unlisteners.push(u));
@@ -114,12 +116,12 @@ export function useSimulationEngine(
       };
 
       worker.onerror = (e) => {
-        console.error('[Worker] Hata:', e.message);
-        handleWorkerCrash(`Motor hatası: ${e.message}`);
+        console.error('[Worker] error:', e.message);
+        handleWorkerCrash(t('errors.engineError', { error: e.message }));
       };
 
       worker.onmessageerror = () => {
-        handleWorkerCrash('Motor mesaj hatası');
+        handleWorkerCrash(t('errors.engineMessageError'));
       };
     };
 

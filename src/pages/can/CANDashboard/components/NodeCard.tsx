@@ -2,6 +2,7 @@ import { Pencil, HeartPulse } from 'lucide-react';
 import type { CANNode } from '../../../../can/types/CANNode';
 import { MEDICAL_PROFILE_LABELS } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
+import { resolveNodeName } from '../../../../can/utils/nodeNameResolver';
 
 interface NodeCardProps {
   node: CANNode;
@@ -44,7 +45,7 @@ export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdi
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: node.color }} />
-          <span className="text-xs font-mono font-bold text-white">{node.name}</span>
+          <span className="text-xs font-mono font-bold text-white">{resolveNodeName(node.name, t)}</span>
           <span className="text-[10px] font-mono text-gray-500">#{node.id}</span>
         </div>
         <div className="flex items-center gap-1">
