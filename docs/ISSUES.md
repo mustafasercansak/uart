@@ -1,62 +1,62 @@
 # 📋 Issue Tracker
 
-Bu dosya proje genelindeki bilinen sorunları ve çözülen maddeleri takip eder.  
-GitHub Issues açılmadan önce burada değerlendirilir.
+This file tracks known issues and resolved items across the project.  
+Issues are evaluated here before opening on GitHub.
 
 ---
 
-## ✅ 1.6.0'da Kapatıldı
+## ✅ Closed in 1.6.0
 
-| # | Başlık | Alan |
-|---|--------|------|
-| 1 | SocketCAN: busy-wait sleep → `poll()` + `SO_TIMESTAMP` kernel timestamps | Rust / Performans |
-| 2 | TCP Server: nonblocking+sleep(20ms) → deadlock-safe read/write stream ayrımı | Rust / Güvenilirlik |
-| 3 | Serial: batching sleep(10ms) kaldırıldı | Rust / Gecikme |
-| 4 | Tüm Rust eventlerine (`serial-data`, `tcp-data`, `socketcan-frame`) Rust-side timestamp eklendi | Rust |
-| 5 | `Cargo.toml` edition `"2024"` → `"2021"` (geçersiz edition) | Rust / Altyapı |
-| 6 | `SimulationContext` + `useSimulationEngine`: 10 Türkçe hardcoded string → i18n | i18n |
-| 7 | CAN frame validation: arbitration ID range ve DLC ≤ 8 byte bounds check eklendi | Rust / Güvenlik |
-| 8 | `NodeCard` + `CANProfiles`: `node.name` / `p.name` `t()` geçmiyordu — ham key gösteriyordu | i18n / UI |
-| 9 | `resolveNodeName()`: `can.bed{N}{Suffix}` pattern-based dinamik çeviri — yeni node için key eklemeye gerek kalmaz | i18n / DX |
-| 10 | `CANAutomationTab`: `Wait`, `Duration:`, `ms` hardcoded string → i18n | i18n |
-| 11 | Rust kayıt hata mesajları Türkçe kalmış → i18n | i18n |
+| # | Title | Area |
+|---|-------|------|
+| 1 | SocketCAN: busy-wait sleep → `poll()` + `SO_TIMESTAMP` kernel timestamps | Rust / Performance |
+| 2 | TCP Server: nonblocking+sleep(20ms) → deadlock-safe read/write stream split | Rust / Reliability |
+| 3 | Serial: redundant batching sleep(10ms) removed | Rust / Latency |
+| 4 | Rust-side timestamps added to all events (`serial-data`, `tcp-data`, `socketcan-frame`) | Rust |
+| 5 | `Cargo.toml` edition `"2024"` → `"2021"` (invalid edition value) | Rust / Infrastructure |
+| 6 | `SimulationContext` + `useSimulationEngine`: 10 hardcoded Turkish strings → i18n | i18n |
+| 7 | CAN frame validation: arbitration ID range and DLC ≤ 8 byte bounds check added | Rust / Safety |
+| 8 | `NodeCard` + `CANProfiles`: `node.name` / `p.name` bypassed `t()` — raw key shown in UI | i18n / UI |
+| 9 | `resolveNodeName()`: pattern-based dynamic translation for `can.bed{N}{Suffix}` — no new keys needed for additional nodes | i18n / DX |
+| 10 | `CANAutomationTab`: hardcoded `Wait`, `Duration:`, `ms` strings → i18n | i18n |
+| 11 | Rust recording error messages were hardcoded in Turkish → i18n | i18n |
 
 ---
 
-## 🔵 Açık — Hedef: 1.6.0
+## 🔵 Open — Target: 1.6.0
 
 ### TypeScript
 
-| # | Başlık | Dosya |
-|---|--------|-------|
-| 12 | `as unknown as GeneratedFrame` — 2 adet gereksiz cast | `CommunicationTimeline.tsx` |
-| 13 | `as unknown as GeneratedFrame` — proper type ile değiştir | `PacketInspector.tsx` |
-| 14 | `displayData as unknown as Record<string, number>` — type guard ekle | `MedicalRoomScene.tsx` |
-| 15 | `INITIAL_PROFILES as unknown as T[]` — generic sınırlandırma ile düzelt | `storage.ts` |
-| 16 | `CANContext.tsx` Web Serial API casts — API tip tanımları iyileştirilebilir | `CANContext.tsx` |
-| 17 | `tsconfig.json` `strict: true` enforce edilmiyor | Altyapı |
+| # | Title | File |
+|---|-------|------|
+| 12 | `as unknown as GeneratedFrame` — 2 unnecessary casts | `CommunicationTimeline.tsx` |
+| 13 | `as unknown as GeneratedFrame` — replace with proper type | `PacketInspector.tsx` |
+| 14 | `displayData as unknown as Record<string, number>` — add type guard | `MedicalRoomScene.tsx` |
+| 15 | `INITIAL_PROFILES as unknown as T[]` — fix with generic constraint | `storage.ts` |
+| 16 | `CANContext.tsx` Web Serial API casts — improve API type definitions | `CANContext.tsx` |
+| 17 | `tsconfig.json` `strict: true` not enforced | Infrastructure |
 
-### Hata Yönetimi
+### Error Handling
 
-| # | Başlık | Dosya |
-|---|--------|-------|
-| 18 | Tutarsız `.catch(() => {})` — silent error swallowing, en az `console.error` ekle | Çeşitli |
+| # | Title | File |
+|---|-------|------|
+| 18 | Inconsistent `.catch(() => {})` — silent error swallowing, add at least `console.error` | Various |
 
-### Test
+### Testing
 
-| # | Başlık |
-|---|--------|
-| 19 | Network bağlantı akışları için E2E test yok (Serial, TCP, SocketCAN) |
-
----
-
-## 💡 Değerlendirme Bekleyen Fikirler
-
-| # | Fikir |
+| # | Title |
 |---|-------|
-| 20 | CAN profil verilerini localStorage yerine Tauri dosya sistemine taşı (custom profiller localStorage silinince kaybolur) |
-| 21 | CANAutomationTab'a loop/repeat özelliği ekle (şu an senaryo tek seferlik çalışıyor) |
+| 19 | No E2E tests for network connection flows (Serial, TCP, SocketCAN) |
 
 ---
 
-*Son güncelleme: 2026-05-27*
+## 💡 Ideas Under Consideration
+
+| # | Idea |
+|---|------|
+| 20 | Persist CAN profiles to Tauri file system instead of localStorage (custom profiles are lost on localStorage clear) |
+| 21 | Add loop/repeat option to CAN Automation tab (scenarios currently run once) |
+
+---
+
+*Last updated: 2026-05-27*
