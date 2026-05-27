@@ -1164,9 +1164,10 @@ export default function MedicalRoomScene({ lastFrame, activeProfileId, profiles 
             {/* Live values */}
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(selectedCfg.fieldMap).map(([label, keys]) => {
+                const dataRecord = displayData as LiveData & Record<string, number>;
                 const val = keys.reduce((acc: number, k) => {
                   if (acc !== 0) return acc;
-                  return (displayData as unknown as Record<string, number>)[k] || 0;
+                  return dataRecord[k] ?? 0;
                 }, 0);
                 const isBpmField  = keys.some(k => ['bpm', 'hr', 'heartrate'].includes(k));
                 const isSpo2Field = keys.some(k => ['spo2', 'oxygen'].includes(k));

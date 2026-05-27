@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { 
-  loadProfiles, saveProfile, deleteProfile, getProfile, 
-  saveScenario, getScenario, deleteScenario, 
+import {
+  loadProfiles, saveProfile, deleteProfile, getProfile,
+  saveProfiles, initProfileStorage,
+  saveScenario, getScenario, deleteScenario,
   exportAsJson, importFromJson,
   saveSequence, loadSequences, deleteSequence
 } from '../storage';
@@ -252,4 +253,105 @@ describe('storage.ts', () => {
             expect(loadSequences().find(s => s.id === 'seq1')).toBeUndefined();
         });
     });
+});
+
+// ── Tauri FS persistence (initProfileStorage + saveProfiles mirror) ───────────
+
+const mockInvokeFs = vi.fn();
+vi.mock('../../lib/tauri-bridge', () => ({
+  isTauri: () => true,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  invoke: (cmd: string, args?: unknown) => (mockInvokeFs as any)(cmd, args),
+  listen: vi.fn().mockResolvedValue(() => {}),
+}));
+
+describe('Tauri FS profile persistence', () => {
+  const mockProfile: FrameProfile = {
+    id: 'tauri-test',
+    name: 'Tauri Profile',
+    description: '',
+    baudRate: 115200,
+    dataBits: 8,
+    parity: 'None',
+    stopBits: 1,
+    sendIntervalMs: 100,
+    fields: [],
+    framing: { mode: 'fixed' },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    const store: Record<string, string> = {};
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => store[key] || null),
+      setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
+      clear: vi.fn(() => { for (const key in store) delete store[key]; }),
+      removeItem: vi.fn((key: string) => { delete store[key]; }),
+    });
+    localStorage.clear();
+    mockInvokeFs.mockReset();
+  });
+
+  it('initProfileStorage — first run: migrates localStorage data to Tauri FS', async () => {
+    // Seed localStorage with a profile
+    saveProfiles([mockProfile]);
+    // Simulate Tauri FS returning null (no file yet)
+    mockInvokeFs.mockImplementation((cmd: string) => {
+      if (cmd === 'load_can_profiles') return Promise.resolve(null);
+      if (cmd === 'save_can_profiles') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected command: ${cmd}`));
+    });
+
+    await initProfileStorage();
+
+    // Should have called save_can_profiles with the migrated data
+    expect(mockInvokeFs).toHaveBeenCalledWith('save_can_profiles', expect.objectContaining({
+      data: expect.arrayContaining([expect.objectContaining({ id: 'tauri-test' })]),
+    }));
+  });
+
+  it('initProfileStorage — subsequent run: FS data overwrites localStorage cache', async () => {
+    // localStorage has stale/different data
+    saveProfiles([{ ...mockProfile, name: 'Stale Name' }]);
+
+    const fsProfile = { ...mockProfile, name: 'FS Authoritative', schemaVersion: 2 };
+    mockInvokeFs.mockImplementation((cmd: string) => {
+      if (cmd === 'load_can_profiles') return Promise.resolve([fsProfile]);
+      return Promise.reject(new Error(`unexpected: ${cmd}`));
+    });
+
+    await initProfileStorage();
+
+    // localStorage cache should now reflect the FS version
+    const profiles = loadProfiles();
+    expect(profiles.find(p => p.id === 'tauri-test')?.name).toBe('FS Authoritative');
+  });
+
+  it('saveProfiles — mirrors to Tauri FS', () => {
+    mockInvokeFs.mockResolvedValue(undefined);
+
+    saveProfiles([mockProfile]);
+
+    // The fire-and-forget call is async; verify it was scheduled
+    // (mockInvokeFs will be called with save_can_profiles in the next microtask)
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        expect(mockInvokeFs).toHaveBeenCalledWith('save_can_profiles', expect.objectContaining({
+          data: expect.arrayContaining([expect.objectContaining({ id: 'tauri-test' })]),
+        }));
+        resolve();
+      }, 20);
+    });
+  });
+
+  it('initProfileStorage — gracefully handles FS load error (falls back to migration path)', async () => {
+    saveProfiles([mockProfile]);
+    mockInvokeFs
+      .mockRejectedValueOnce(new Error('disk error'))  // load_can_profiles fails
+      .mockResolvedValue(undefined);                    // save_can_profiles succeeds
+
+    // Should not throw
+    await expect(initProfileStorage()).resolves.toBeUndefined();
+  });
 });

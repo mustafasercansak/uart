@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { ArrowRight, ArrowLeft, Clock, WifiOff, Trash2, Send, Type, Hash } from 'lucide-react';
-import type { GeneratedFrame, Exchange } from '../../../types';
+import type { GeneratedFrame, Exchange, ParsedField } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 interface TimelineProps {
@@ -126,9 +126,9 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                         timestampMs: ex.startTime,
                         rawHex: ex.tx?.rawHex || '',
                         rawBytes: (ex.tx?.rawHex || '').split(' ').map((h: string) => parseInt(h, 16)),
-                        fields: [],
-                        errors: [],
-                      } as unknown as GeneratedFrame)}
+                        fields: [] as ParsedField[],
+                        errors: [] as string[],
+                      })}
                       className="bg-blue-900/20 border border-blue-800/50 hover:border-blue-500/50 p-2.5 rounded-xl transition-all hover:bg-blue-900/40 text-left max-w-[280px] relative group/btn"
                     >
                       <div className="text-[8px] font-mono font-black text-blue-400 mb-1 uppercase tracking-tighter opacity-60">{t('timeline.txOut')}</div>
@@ -159,9 +159,9 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                           timestampMs: ex.rx?.timestamp || ex.startTime || 0,
                           rawHex: ex.rx?.rawHex || '',
                           rawBytes: (ex.rx?.rawHex || '').split(' ').map((h: string) => parseInt(h, 16)),
-                          fields: [],
-                          errors: [],
-                        } as unknown as GeneratedFrame)}
+                          fields: [] as ParsedField[],
+                          errors: [] as string[],
+                        })}
                         className="bg-emerald-900/20 border border-emerald-800/50 hover:border-emerald-500/50 p-2.5 rounded-xl transition-all hover:bg-emerald-900/40 text-left max-w-[280px] relative group/btn"
                       >
                         <div className="text-[8px] font-mono font-black text-emerald-400 mb-1 uppercase tracking-tighter opacity-60">

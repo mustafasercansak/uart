@@ -20,42 +20,23 @@ Issues are evaluated here before opening on GitHub.
 | 9 | `resolveNodeName()`: pattern-based dynamic translation for `can.bed{N}{Suffix}` — no new keys needed for additional nodes | i18n / DX |
 | 10 | `CANAutomationTab`: hardcoded `Wait`, `Duration:`, `ms` strings → i18n | i18n |
 | 11 | Rust recording error messages were hardcoded in Turkish → i18n | i18n |
+| 12 | `CommunicationTimeline.tsx`: 2x `as unknown as GeneratedFrame` → `fields: [] as ParsedField[]`, `errors: [] as string[]` | TypeScript |
+| 13 | `PacketInspector.tsx`: `as unknown as GeneratedFrame` → proper `toFrame()` mapper with `uId`/`timestampMs` mapping | TypeScript |
+| 14 | `MedicalRoomScene.tsx`: `displayData as unknown as Record<string, number>` → intersection type `LiveData & Record<string, number>` | TypeScript |
+| 15 | `storage.ts`: `INITIAL_PROFILES as unknown as T[]` → `load<T>(key, fallback)` optional default parameter | TypeScript |
+| 16 | `CANContext.tsx`: Web Serial API casts — interfaces moved to module level; `TextDecoderStream` narrowed via `Uint8ArrayDecoder` type; unnecessary cast on `port.writable` removed | TypeScript |
+| 17 | `tsconfig.json` `strict: true` — already enforced (confirmed) | Infrastructure |
+| 18 | Silent `.catch(() => {})` → `console.error` added in `CANContext.tsx` SLCAN/SocketCAN writes and `SimulationContext.tsx` `list_recordings` | Error Handling |
+| 19 | E2E tests for network connection flows — 14 new tests covering Serial, TCP client, TCP server, SocketCAN, WebSocket, and port validation paths | Testing |
 
 ---
 
-## 🔵 Open — Target: 1.6.0
+## ✅ Ideas Implemented / Resolved
 
-### TypeScript
-
-| # | Title | File |
-|---|-------|------|
-| 12 | `as unknown as GeneratedFrame` — 2 unnecessary casts | `CommunicationTimeline.tsx` |
-| 13 | `as unknown as GeneratedFrame` — replace with proper type | `PacketInspector.tsx` |
-| 14 | `displayData as unknown as Record<string, number>` — add type guard | `MedicalRoomScene.tsx` |
-| 15 | `INITIAL_PROFILES as unknown as T[]` — fix with generic constraint | `storage.ts` |
-| 16 | `CANContext.tsx` Web Serial API casts — improve API type definitions | `CANContext.tsx` |
-| 17 | `tsconfig.json` `strict: true` not enforced | Infrastructure |
-
-### Error Handling
-
-| # | Title | File |
-|---|-------|------|
-| 18 | Inconsistent `.catch(() => {})` — silent error swallowing, add at least `console.error` | Various |
-
-### Testing
-
-| # | Title |
-|---|-------|
-| 19 | No E2E tests for network connection flows (Serial, TCP, SocketCAN) |
-
----
-
-## 💡 Ideas Under Consideration
-
-| # | Idea |
-|---|------|
-| 20 | Persist CAN profiles to Tauri file system instead of localStorage (custom profiles are lost on localStorage clear) |
-| 21 | Add loop/repeat option to CAN Automation tab (scenarios currently run once) |
+| # | Idea | Status |
+|---|------|--------|
+| 20 | Persist CAN profiles to Tauri file system | **Done** — `load_can_profiles` / `save_can_profiles` Rust commands + `initProfileStorage()` in `storage.ts`; localStorage remains fast sync cache, Tauri FS is durable mirror. `main.tsx` awaits init before first render so `loadProfiles()` stays synchronous. |
+| 21 | Add loop/repeat option to CAN Automation tab | **Already existed** — `repeatCount` field + `×[N]` UI input + runner loop in `CANAutomationTab.tsx` (sequential mode, max 99 iterations). |
 
 ---
 

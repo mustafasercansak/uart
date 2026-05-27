@@ -113,6 +113,38 @@ fn recordings_dir() -> PathBuf {
     home.join("uart_recordings")
 }
 
+fn can_profiles_dir() -> PathBuf {
+    let home = dirs_next::document_dir()
+        .or_else(dirs_next::home_dir)
+        .unwrap_or_else(|| PathBuf::from("."));
+    home.join("uart_profiles")
+}
+
+// ── CAN PROFILES PERSISTENCE ──────────────────────────────────────────────────
+
+/// Load all CAN profiles from disk. Returns `null` (None) when no file exists yet,
+/// so the frontend can detect a first-run and migrate from localStorage.
+#[tauri::command]
+fn load_can_profiles() -> Result<Option<serde_json::Value>, String> {
+    let path = can_profiles_dir().join("profiles.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(Some(data))
+}
+
+/// Persist all CAN profiles to disk as a single JSON file.
+#[tauri::command]
+fn save_can_profiles(data: serde_json::Value) -> Result<(), String> {
+    let dir = can_profiles_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("profiles.json");
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
 // ── SERIAL PORT COMMANDS ──────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -1030,6 +1062,8 @@ pub fn run() {
             save_recording,
             load_recording,
             delete_recording,
+            load_can_profiles,
+            save_can_profiles,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start Tauri application");

@@ -10,6 +10,21 @@ import { computeCANCRC } from '../engines/CANFrameParser';
 import { invoke, listen } from '../../lib/tauri-bridge';
 import { translateBackendError } from '../../utils/backendError';
 
+// ── Web Serial API types ────────────────────────────────────────────────────
+interface SerialPortLike {
+  open(options: { baudRate: number }): Promise<void>;
+  close(): Promise<void>;
+  readable: ReadableStream<Uint8Array>;
+  writable: WritableStream<Uint8Array>;
+  getInfo(): { usbProductId?: number };
+}
+
+interface SerialInterface {
+  getPorts(): Promise<SerialPortLike[]>;
+  requestPort(): Promise<SerialPortLike>;
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 interface CANContextValue {
   state: CANBusState;
   start: () => void;
@@ -120,7 +135,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
               const dlc = frame.dlc.toString();
               const dataHex = frame.data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join('');
               const slcanPacket = `${prefix}${idHex}${dlc}${dataHex}\r`;
-              serialWriterRef.current.write(slcanPacket).catch(() => {});
+              serialWriterRef.current.write(slcanPacket).catch((e) => console.error('[SLCAN] write failed:', e));
             }
             if (isSocketCAN) {
               invoke('write_socketcan_frame', {
@@ -128,7 +143,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
                 data: frame.data,
                 isExtended: frame.idFormat === 'extended',
                 isRtr: frame.isRTR,
-              }).catch(() => {});
+              }).catch((e) => console.error('[SocketCAN] write failed:', e));
             }
             break;
           }
@@ -305,18 +320,6 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     if (mode !== 'tcp' && mode !== 'tcp-server') dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
   }, []);
 
-  interface SerialPortLike {
-    open(options: { baudRate: number }): Promise<void>;
-    close(): Promise<void>;
-    readable: ReadableStream<Uint8Array>;
-    writable: WritableStream<Uint8Array>;
-    getInfo(): { usbProductId?: number };
-  }
-  interface SerialInterface {
-    getPorts(): Promise<SerialPortLike[]>;
-    requestPort(): Promise<SerialPortLike>;
-  }
-
   const serialPortRef = useRef<SerialPortLike | null>(null);
   const serialReaderRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
   const serialWriterRef = useRef<WritableStreamDefaultWriter<string> | null>(null);
@@ -342,12 +345,15 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         serialPortRef.current = port;
 
         const textEncoder = new TextEncoderStream();
-        textEncoder.readable.pipeTo(port.writable as unknown as WritableStream<Uint8Array>);
+        textEncoder.readable.pipeTo(port.writable);
         // eslint-disable-next-line react-hooks/immutability
         serialWriterRef.current = textEncoder.writable.getWriter();
 
-        const textDecoder = new TextDecoderStream();
-        port.readable.pipeTo(textDecoder.writable as unknown as WritableStream<Uint8Array>);
+        // TextDecoderStream.writable is typed as WritableStream<BufferSource> in DOM lib;
+        // Uint8Array satisfies BufferSource at runtime, so we narrow the writable type here.
+        type Uint8ArrayDecoder = Omit<TextDecoderStream, 'writable'> & { writable: WritableStream<Uint8Array> };
+        const textDecoder = new TextDecoderStream() as unknown as Uint8ArrayDecoder;
+        port.readable.pipeTo(textDecoder.writable);
         const reader = textDecoder.readable.getReader();
         serialReaderRef.current = reader;
 

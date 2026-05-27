@@ -376,7 +376,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [dispatch]);
 
   const refreshRecordings = useCallback(async () => {
-    const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch(() => []);
+    const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch((e) => { console.error('[recordings] list failed:', e); return []; });
     msgBufferRef.current.push(JSON.stringify({ type: 'RECORDINGS_LIST', recordings }));
   }, [msgBufferRef]);
 
