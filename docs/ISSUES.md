@@ -101,4 +101,23 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v3 Code Review (2026-05-28)
+
+10 findings from 7-angle automated review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 56 | 🔴 Blocker | Rust `write_fd` Arc race: dying read thread's `take()` closes brand-new `write_fd` stored by a concurrent `connect_socketcan` call | Rust / Race | Fixed: thread no longer closes `write_fd`; frontend `socketcan-status` error handler calls `disconnect_socketcan` to clean up; `write_fd` reverted to `Mutex` |
+| 57 | 🔴 Blocker | `connectSerial` catch block dispatches `CAN_SET_SERIAL_CONNECTED: false` but never resets `serialConnectedRef` — ref permanently `true` after partial failure | Serial / State | Fixed: `serialConnectedRef.current = false` added to catch block |
+| 58 | 🔴 Blocker | `contextValue` useMemo includes `customLabels` in deps — all 173 `useTranslation()` consumers still re-render on every label save, defeating the `t`-ref optimization | Performance | Fixed: split into two contexts — stable `LanguageContext` (`t`, `locale`) and `CustomLabelsContext` (`customLabels`, mutators); only Translations page subscribes to the labels context |
+| 59 | 🟠 High | `disconnectNetwork` eager dispatch + Tauri event double-dispatch race: stale `connected: false` event can overwrite a new connection's `connected: true` | SocketCAN / Race | Fixed: eager dispatch removed from `disconnectNetwork`; state driven solely by the Tauri `socketcan-status` event |
+| 60 | 🟠 High | `connectSerial` dispatches `CAN_SET_SERIAL_CONNECTED: true` unconditionally at start; non-Web-Serial else branch never rolls back — Redux permanently shows connected | Serial / State | Fixed: dispatch moved inside the success path; else branch dispatches `connected: false` |
+| 61 | 🟡 Medium | `bulkSetCustomLabels` additive merge means importing a pruned export file cannot delete existing custom label keys | i18n / UX | Fixed: new `replaceCustomLabels` method (full replace, not merge); `handleImport` uses it |
+| 62 | 🟡 Medium | `consumePendingSocketCANTx` called on every SocketCAN RX frame with no early-exit when the pending list is empty | Performance | Fixed: `if (pending.length === 0) return false` guard added |
+| 63 | 🔵 Low | `setOutputMode` calls `invoke('disconnect_socketcan')` unconditionally on every mode switch even when SocketCAN was never connected | Efficiency | Fixed: guarded by `stateRef.current.networkConnected` |
+| 64 | 🔵 Low | `socketcan-status` error payload never forwarded to `networkError` state — background Rust disconnect errors invisible to UI banners | State / UX | Fixed: error field forwarded in `CAN_SET_NETWORK_CONNECTED` dispatch |
+| 65 | 🔵 Low | `customLabelsRef` synced via `useEffect` — 1-render stale window where `t()` reads old labels | i18n | Fixed: ref updated synchronously inside each `setCustomLabels` updater; `useEffect` removed |
+
+---
+
 *Last updated: 2026-05-28*

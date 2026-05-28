@@ -242,9 +242,12 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
     listen('socketcan-status', (payload) => {
       const status = payload as { connected?: boolean; interface?: string; error?: string };
-      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: Boolean(status.connected) });
+      // Forward error to state so UI banners can display background disconnect errors.
+      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: Boolean(status.connected), error: status.error });
       if (status.error) {
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN error: ${status.error}`, type: 'error' } });
+        // Background error disconnect — clean up write_fd since the read thread cannot.
+        invoke('disconnect_socketcan').catch(() => {});
         return;
       }
       if (status.connected) {
@@ -332,9 +335,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       serialConnectedRef.current = false;
       dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
     }
-    if (mode !== 'tcp' && mode !== 'tcp-server') {
+    if (mode !== 'tcp' && mode !== 'tcp-server' && stateRef.current.networkConnected) {
       invoke('disconnect_socketcan').catch(() => {});
-      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
+      // State will be updated by the socketcan-status Tauri event.
     }
   }, []);
 
@@ -343,7 +346,6 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const serialWriterRef = useRef<WritableStreamDefaultWriter<string> | null>(null);
 
   const connectSerial = useCallback(async (portName: string) => {
-    dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: true });
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SLCAN on ${portName}...`, type: 'info' } });
 
     try {
@@ -362,6 +364,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         await port.open({ baudRate: 115200 });
         serialPortRef.current = port;
         serialConnectedRef.current = true;
+        dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: true });
 
         const textEncoder = new TextEncoderStream();
         textEncoder.readable.pipeTo(port.writable);
@@ -417,10 +420,12 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         })();
       } else {
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: t('can.webSerialNotSupported'), type: 'info' } });
+        dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Failed to connect to Serial: ${msg}`, type: 'error' } });
+      serialConnectedRef.current = false;
       dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
     }
   }, [send, t]);
@@ -469,10 +474,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   }, [t]);
 
   const disconnectNetwork = useCallback(() => {
+    // State update driven by the socketcan-status Tauri event to avoid a double-dispatch
+    // race where a stale event overwrites a new connection's connected:true.
     invoke('disconnect_socketcan').catch(console.error);
-    dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
-    dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: t('can.disconnectedFromSock'), type: 'info' } });
-  }, [t]);
+  }, []);
 
   const startRecording = useCallback(() => {
     dispatch({ type: 'CAN_CLEAR_RECORDING' });
@@ -564,6 +569,7 @@ function socketCANPayloadToFrame(payload: SocketCANFramePayload, busLoadPercent:
 }
 
 function consumePendingSocketCANTx(pending: PendingSocketCANTx[], payload: SocketCANFramePayload): boolean {
+  if (pending.length === 0) return false;
   const nowMs = Date.now();
   const payloadData = Array.isArray(payload.data) ? payload.data.slice(0, Math.min(payload.dlc ?? payload.data.length, 8)) : [];
   const payloadDlc = Math.min(payload.dlc ?? payloadData.length, 8);

@@ -7,6 +7,27 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 ---
 
 ## [v1.6.0] — 2026-05-28 (patch)
+### 🔧 v3 Code Review Fixes
+
+#### Bug Fixes
+- **Rust `write_fd` Arc race on fast reconnect** (`lib.rs`): The previous fix shared `write_fd` via `Arc` with the read thread so it could close the fd on error exit. This introduced a race: if `connect_socketcan` stored a new `write_fd` before the dying thread's `Arc::take()` ran, the thread would steal and close the brand-new fd, silently breaking the next connection. Reverted to a plain `Mutex`; the frontend `socketcan-status` error handler now calls `invoke('disconnect_socketcan')` to clean up `write_fd` safely after an interface error.
+- **`connectSerial` partial-failure leaves `serialConnectedRef` permanently `true`** (`CANContext.tsx`): If `port.open()` succeeded (setting `serialConnectedRef = true`) but a later step threw, the catch block dispatched `CAN_SET_SERIAL_CONNECTED: false` but never reset `serialConnectedRef`. Every subsequent `setOutputMode` call would attempt serial teardown against null refs indefinitely. Fixed: `serialConnectedRef.current = false` added to the catch block.
+- **`connectSerial` optimistic dispatch with no rollback on non-Web-Serial platforms** (`CANContext.tsx`): `CAN_SET_SERIAL_CONNECTED: true` was dispatched unconditionally at the top of `connectSerial` before checking `'serial' in navigator`. On platforms without Web Serial the else branch logged a warning and returned without rolling back, leaving Redux permanently showing `serialConnected: true`. Fixed: dispatch moved to after `port.open()` succeeds; else branch dispatches `connected: false`.
+- **`disconnectNetwork` + Tauri event double-dispatch race** (`CANContext.tsx`): `disconnectNetwork` immediately dispatched `CAN_SET_NETWORK_CONNECTED: false`, then the Tauri `socketcan-status` event fired and dispatched `false` again. If `connectNetwork` was called between the two, the stale second dispatch overwrote the new `connected: true`, leaving the UI showing disconnected while hardware was connected. Fixed: eager dispatch removed from `disconnectNetwork`; state now driven solely by the `socketcan-status` Tauri event.
+- **`socketcan-status` error payload discarded — `networkError` state never populated** (`CANContext.tsx`): Background Rust disconnect errors were logged to the activity log but the `error` field was never forwarded to the reducer, so `state.networkError` stayed `null` and any error-banner UI had no data to show. Fixed: error field forwarded in the `CAN_SET_NETWORK_CONNECTED` dispatch.
+
+#### Performance Fixes
+- **`contextValue` `useMemo` included `customLabels` — all 173 `useTranslation()` consumers still re-rendered on every label save** (`LanguageProvider.tsx`): Despite `t` being stabilised with a ref, `customLabels` in the `contextValue` dep array produced a new context object on every mutation, propagating re-renders to all subscribers. Fixed by splitting into two separate React contexts: a stable `LanguageContext` (`t`, `locale`, `setLocale`) that only changes on locale switch, and a `CustomLabelsContext` (`customLabels` + mutators) that only the Translations page subscribes to.
+- **`customLabelsRef` synced via `useEffect` — 1-render stale window in `t()`** (`LanguageProvider.tsx`): The `useEffect` that kept `customLabelsRef` in sync with state ran after paint, so `t()` read old labels in the render immediately following a save. Fixed: `customLabelsRef.current = next` is now assigned synchronously inside each `setCustomLabels` functional updater; the `useEffect` is removed.
+- **`consumePendingSocketCANTx` called on every SocketCAN RX frame with no empty-list guard** (`CANContext.tsx`): On a receive-only bus with 1000+ fps the function ran a full backwards expiry loop + `findIndex` scan on every frame even when the pending list was empty. Fixed: early `if (pending.length === 0) return false` guard.
+- **`setOutputMode` called `invoke('disconnect_socketcan')` unconditionally** (`CANContext.tsx`): Every output-mode switch fired a Tauri IPC round-trip to disconnect SocketCAN even when it was never connected. Fixed: guarded by `stateRef.current.networkConnected`.
+
+#### UX / Correctness
+- **`bulkSetCustomLabels` additive merge broke import-as-replace** (`LanguageProvider.tsx` + `Translations/index.tsx`): Importing a pruned export file left deleted keys in storage because the merge spread `prev` over `overrides`. Added `replaceCustomLabels` (full replace, not merge); `handleImport` now uses it so a pruned import file actually removes the absent keys.
+
+---
+
+## [v1.6.0] — 2026-05-28 (patch)
 ### 🔧 v2 Code Review Fixes
 
 #### Bug Fixes

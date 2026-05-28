@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Download, Upload, RotateCcw, X } from 'lucide-react';
-import { useTranslation } from '../../i18n/context';
+import { useTranslation, useCustomLabels } from '../../i18n/context';
 import type { Locale } from '../../i18n/context';
 import enRaw from '../../i18n/locales/en.json';
 import trRaw from '../../i18n/locales/tr.json';
@@ -60,7 +60,8 @@ function getRows(ns: string): TranslationRow[] {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TranslationsPage() {
-  const { t, customLabels, setCustomLabel, bulkSetCustomLabels, resetCustomLabel, resetCustomLabelKeys } = useTranslation();
+  const { t } = useTranslation();
+  const { customLabels, setCustomLabel, replaceCustomLabels, resetCustomLabel, resetCustomLabelKeys } = useCustomLabels();
   const navigate = useNavigate();
 
   const [selectedNs, setSelectedNs] = useState('can');
@@ -131,18 +132,19 @@ export default function TranslationsPage() {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
         const locales: Locale[] = ['en', 'tr'];
-        const overrides: Record<Locale, Record<string, string>> = { en: {}, tr: {} };
+        const replacement: Record<Locale, Record<string, string>> = { en: {}, tr: {} };
         locales.forEach(loc => {
           const raw = parsed[loc];
           if (typeof raw === 'object' && raw !== null) {
             Object.entries(raw).forEach(([key, val]) => {
               if (typeof val === 'string' && val.trim()) {
-                overrides[loc][key] = val.trim();
+                replacement[loc][key] = val.trim();
               }
             });
           }
         });
-        bulkSetCustomLabels(overrides);
+        // Full replace so a pruned import file actually removes deleted keys.
+        replaceCustomLabels(replacement);
       } catch {
         // silently ignore malformed JSON
       }
