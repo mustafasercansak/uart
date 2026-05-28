@@ -120,4 +120,25 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+---
+
+## ✅ Closed — v1.6.0 v4 Code Review (2026-05-28)
+
+10 findings from 7-angle automated review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 66 | 🔴 Blocker | `dbcParser.ts`: `1 << i` for signals > 31 bits silently aliases bit 32 onto bit 0 — all wide signals produce corrupted values | DBC / Signal Decoding | Fixed: replaced `rawValue \|= 1 << i` with `rawValue += 2 ** i` in both LE and BE branches to avoid 32-bit JS bitwise truncation |
+| 67 | 🔴 Blocker | `dbcParser.ts`: sign extension for exactly 32-bit signed signals is broken — `signBit << 1` evaluates to `0`, rawValue never sign-extended | DBC / Signal Decoding | Fixed: replaced bitmask sign extension with `if (rawValue >= halfRange) rawValue -= 2 * halfRange` using pure arithmetic |
+| 68 | 🔴 Blocker | `FrameGenerator.ts`: 4-byte field accumulation via 32-bit `<<` / `\|` returns negative number when MSB is set (e.g. `0x80000000` → `-2147483648`) | Frame Generation | Fixed: applied `>>> 0` after both reduce paths to reinterpret as unsigned 32-bit |
+| 69 | 🔴 Blocker | `CANFrameParser.ts`: J1939 PGN uses `dataPage << 17` — correct is `<< 16`; all Data Page 1 PGNs (`0x10000–0x1FFFF`) are doubled | CAN / J1939 | Fixed: `<< 17` → `<< 16` (PGN = DP × 65536 = 2^16) |
+| 70 | 🔴 Blocker | `CANSimulationEngine.ts`: `clampCanId()` caps every ID at `0x7FF` — silently destroys 29-bit extended UDS addresses in `setUDSConfig`; J1939 UDS broken | UDS / CAN Simulation | Fixed: upper bound changed from `0x7FF` to `0x1FFFFFFF` (max 29-bit CAN ID) |
+| 71 | 🟠 High | `CANSimulationEngine.ts`: `sendCustomFrame` calls `computeCANCRC(..., 'standard')` hardcoded — extended-ID frames (`> 0x7FF`) get wrong CRC | CAN Simulation | Fixed: `idFormat` derived from `arbitrationId` before the CRC call, consistent with `transmitFrame` and `transmitDiagnosticFrame` |
+| 72 | 🟠 High | `CANSimulationEngine.ts`: UDS SID `0x11` (ECUReset) removed from `processUdsPayload` — returns NRC `0x11` (serviceNotSupported); `recoverNode()` never called | UDS / CAN Simulation | Fixed: SID `0x11` handler restored — replies `[0x51, subFunction]` and schedules `recoverNode()` after 100 ms |
+| 73 | 🟠 High | `lib.rs`: TCP server emits `connected: true` even when `stream.try_clone()` fails — `active_stream_arc` is `None`; all subsequent writes silently fail | Rust / TCP Server | Fixed: `emit` and `read_stream = Some(stream)` moved inside the `if let Ok(write_clone)` block; a failed clone silently drops the connection and waits for the next one |
+| 74 | 🟡 Medium | `CANSimulationEngine.ts`: `isotpRxSessions` map never cleared on `stop()`/`clearFrames()`; ISO-TP TX `setTimeout` chain not cancelled — stale sessions and ghost frames after reset | CAN / ISO-TP | Fixed: added `isotpTxTimers: Set<…>` to track TX timer handles; `clearTimers()` cancels all ISO-TP TX timers and clears RX sessions; `clearFrames()` does the same |
+| 75 | 🔵 Low | `CANContext.tsx`: `disconnectNetwork()` relies solely on Tauri `socketcan-status` event with no synchronous fallback — UI stuck as "connected" if event is dropped (backend crash, early listener cleanup) | SocketCAN / State | Fixed: `dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false })` added synchronously before the `invoke` call |
+
+---
+
 *Last updated: 2026-05-28*

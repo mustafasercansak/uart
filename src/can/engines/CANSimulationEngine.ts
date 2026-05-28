@@ -62,6 +62,7 @@ export class CANSimulationEngine {
   // Active noise-burst timers keyed by nodeId
   private noiseBurstTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
   private isotpRxSessions: Map<number, IsoTpRxSession> = new Map();
+  private isotpTxTimers: Set<ReturnType<typeof setTimeout>> = new Set();
 
   // Bus load tracking
   private recentFrameBits: Array<{ ts: number; bits: number }> = [];
@@ -193,6 +194,9 @@ export class CANSimulationEngine {
   }
 
   public clearFrames(): void {
+    this.isotpRxSessions.clear();
+    this.isotpTxTimers.forEach(t => clearTimeout(t));
+    this.isotpTxTimers.clear();
     this.state.recentFrames = [];
     this.state.frameCount = 0;
     this.state.errorCount = 0;
@@ -341,9 +345,8 @@ export class CANSimulationEngine {
     const now = Date.now();
     const dlc = Math.min(data.length, 8);
     const frameData = data.slice(0, dlc);
-    const crc = computeCANCRC(frameData, arbitrationId, dlc, 'standard');
-
     const idFormat = arbitrationId > 0x7ff ? 'extended' : 'standard';
+    const crc = computeCANCRC(frameData, arbitrationId, dlc, idFormat);
     const frame: CANFrame = {
       uid: uuidv4(),
       arbitrationId,
@@ -398,10 +401,14 @@ export class CANSimulationEngine {
       this.transmitDiagnosticFrame(arbitrationId, [0x20 | (sequence & 0x0f), ...chunk], sender);
       offset += chunk.length;
       sequence = (sequence + 1) & 0x0f;
-      if (offset < length) setTimeout(sendNext, this.state.udsConfig.stMinMs);
+      if (offset < length) {
+        const tid = setTimeout(sendNext, this.state.udsConfig.stMinMs);
+        this.isotpTxTimers.add(tid);
+      }
     };
 
-    setTimeout(sendNext, this.state.udsConfig.stMinMs);
+    const tid = setTimeout(sendNext, this.state.udsConfig.stMinMs);
+    this.isotpTxTimers.add(tid);
   }
 
   private handleIsoTpFrame(arbitrationId: number, data: number[]): void {
@@ -471,6 +478,10 @@ export class CANSimulationEngine {
     if (sid === 0x10) {
       const subFunction = payload[1] ?? 0x01;
       response = [0x50, subFunction, 0x00, 0x32, 0x01, 0xf4];
+    } else if (sid === 0x11) {
+      const subFunction = payload[1] ?? 0x01;
+      response = [0x51, subFunction];
+      if (targetNode) setTimeout(() => this.recoverNode(targetNode.id), 100);
     } else if (sid === 0x22) {
       response = this.buildReadDidResponse(payload, targetNode);
     } else if (sid === 0x19) {
@@ -730,13 +741,14 @@ export class CANSimulationEngine {
 
   private describeSid(sid: number): string {
     if (sid === 0x10) return 'Diagnostic Session Control';
+    if (sid === 0x11) return 'ECU Reset';
     if (sid === 0x22) return 'Read Data By Identifier';
     if (sid === 0x19) return 'Read DTC Information';
     return `SID 0x${this.hexByte(sid)}`;
   }
 
   private clampCanId(id: number): number {
-    return Math.max(0, Math.min(0x7ff, Math.round(id)));
+    return Math.max(0, Math.min(0x1FFFFFFF, Math.round(id)));
   }
 
   private hexId(id: number): string {
@@ -761,5 +773,8 @@ export class CANSimulationEngine {
     this.busOffTimers.clear();
     this.noiseBurstTimers.forEach(t => clearTimeout(t));
     this.noiseBurstTimers.clear();
+    this.isotpTxTimers.forEach(t => clearTimeout(t));
+    this.isotpTxTimers.clear();
+    this.isotpRxSessions.clear();
   }
 }

@@ -474,8 +474,11 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   }, [t]);
 
   const disconnectNetwork = useCallback(() => {
-    // State update driven by the socketcan-status Tauri event to avoid a double-dispatch
-    // race where a stale event overwrites a new connection's connected:true.
+    // Dispatch synchronously so the UI is never stuck as "connected" if the backend
+    // crashes before it can emit the socketcan-status event.  A stale connected:false
+    // Tauri event that arrives after a fast reconnect is harmless (it just re-confirms
+    // the already-false state before the new connected:true arrives).
+    dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
     invoke('disconnect_socketcan').catch(console.error);
   }, []);
 

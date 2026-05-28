@@ -481,17 +481,21 @@ fn start_tcp_server(
                             .set_read_timeout(Some(Duration::from_millis(100)))
                             .ok();
                         // Clone for writing: write_tcp_server accesses it through the mutex.
+                        // Only mark the connection live when the write clone succeeds —
+                        // if try_clone fails the frontend would believe it has a write path
+                        // while active_stream_arc stays None, causing silent write failures.
                         if let Ok(write_clone) = stream.try_clone() {
                             let mut ws = active_stream_arc.lock().unwrap();
                             *ws = Some(write_clone);
+                            drop(ws);
+                            app_clone
+                                .emit(
+                                    "tcp-server-status",
+                                    serde_json::json!({ "status": "connected", "client": addr.to_string() }),
+                                )
+                                .ok();
+                            read_stream = Some(stream);
                         }
-                        app_clone
-                            .emit(
-                                "tcp-server-status",
-                                serde_json::json!({ "status": "connected", "client": addr.to_string() }),
-                            )
-                            .ok();
-                        read_stream = Some(stream);
                     }
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                         // Waiting for a client — a short sleep is sufficient.

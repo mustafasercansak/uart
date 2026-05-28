@@ -156,7 +156,7 @@ export function extractSignalValue(data: number[], signal: DBCSignal): number {
       const byteIdx = Math.floor(bitPos / 8);
       const bitIdx = bitPos % 8;
       if (byteIdx < 8 && (buf[byteIdx] >> bitIdx) & 1) {
-        rawValue |= 1 << i;
+        rawValue += 2 ** i; // avoid `|=` / `<<` which truncate to 32 bits
       }
     }
   } else {
@@ -168,17 +168,17 @@ export function extractSignalValue(data: number[], signal: DBCSignal): number {
       const byteIdx = Math.floor(bitPos / 8);
       const bitIdx = bitPos % 8;
       if (byteIdx < 8 && (buf[byteIdx] >> bitIdx) & 1) {
-        rawValue |= 1 << i;
+        rawValue += 2 ** i; // avoid `|=` / `<<` which truncate to 32 bits
       }
       if (bitPos % 8 === 0) bitPos += 15;
       else bitPos--;
     }
   }
 
-  // Sign extension for signed signals
+  // Sign extension for signed signals — uses arithmetic to stay above 32-bit JS limit
   if (signal.isSigned && signal.length > 0) {
-    const signBit = 1 << (signal.length - 1);
-    if (rawValue & signBit) rawValue = rawValue - (signBit << 1);
+    const halfRange = 2 ** (signal.length - 1);
+    if (rawValue >= halfRange) rawValue -= 2 * halfRange;
   }
 
   return rawValue * signal.factor + signal.offset;

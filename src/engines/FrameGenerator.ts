@@ -235,8 +235,8 @@ export function generateFrame(
     const decimalValue = bytes.length === 1
       ? bytes[0]
       : field.endianness === 'little'
-        ? bytes.reduce((acc, b, _i) => acc | (b << (_i * 8)), 0)
-        : bytes.reduce((acc, b) => (acc << 8) | b, 0);
+        ? (bytes.reduce((acc, b, _i) => acc | (b << (_i * 8)), 0) >>> 0)
+        : (bytes.reduce((acc, b) => (acc << 8) | b, 0) >>> 0);
 
     const hexStr = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 

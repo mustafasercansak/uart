@@ -114,8 +114,8 @@ export function parseJ1939Id(arbitrationId: number): J1939Info {
   const isPeer2Peer   = pf < 240;
   // PGN omits SA; for peer-to-peer (PF < 240) the destination (PS) is not part of the PGN
   const pgn = isPeer2Peer
-    ? (dataPage << 17) | (pf << 8)
-    : (dataPage << 17) | (pf << 8) | ps;
+    ? (dataPage << 16) | (pf << 8)
+    : (dataPage << 16) | (pf << 8) | ps;
 
   return {
     priority,
