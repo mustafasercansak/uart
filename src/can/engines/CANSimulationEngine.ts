@@ -190,7 +190,8 @@ export class CANSimulationEngine {
     this.transmitIsoTpPayload(requestId, normalizedPayload, 'tester');
     const cfCount = normalizedPayload.length > 7 ? Math.ceil((normalizedPayload.length - 6) / 7) : 0;
     const responseDelay = cfCount > 0 ? (cfCount + 1) * this.state.udsConfig.stMinMs : 0;
-    setTimeout(() => this.processUdsPayload(requestId, responseId, normalizedPayload), responseDelay);
+    const tid = setTimeout(() => this.processUdsPayload(requestId, responseId, normalizedPayload), responseDelay);
+    this.isotpTxTimers.add(tid);
   }
 
   public clearFrames(): void {
@@ -390,8 +391,14 @@ export class CANSimulationEngine {
       ...payload.slice(0, 6),
     ], sender);
 
+    // Emit the FC from the opposite side on the next tick — after the FF has been
+    // "received" — so the simulation log shows FF then FC in the correct order.
+    // Tracking in isotpTxTimers allows clearFrames()/stop() to cancel it.
     const flowControlId = sender === 'tester' ? this.responseIdForRequest(arbitrationId) : this.state.udsConfig.testerRequestId;
-    this.transmitDiagnosticFrame(flowControlId, [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs], sender === 'tester' ? 'ecu' : 'tester');
+    const fcSender = sender === 'tester' ? 'ecu' : 'tester';
+    const fcData = [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs];
+    const fcTid = setTimeout(() => this.transmitDiagnosticFrame(flowControlId, fcData, fcSender), 0);
+    this.isotpTxTimers.add(fcTid);
 
     let offset = 6;
     let sequence = 1;

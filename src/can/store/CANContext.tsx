@@ -139,9 +139,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
               const slcanPacket = `${prefix}${idHex}${dlc}${dataHex}\r`;
               serialWriterRef.current.write(slcanPacket).catch((e) => console.error('[SLCAN] write failed:', e));
             }
-            // Only forward manually-sent frames (nodeId < 0) to the real bus.
-            // Simulation-generated node frames (nodeId >= 0) must not flood live hardware.
-            if (isSocketCAN && frame.nodeId < 0) {
+            // Only forward tester-injected frames (nodeId === -1) to the real bus.
+            // ECU simulation frames (nodeId === -2) and node frames (nodeId >= 0)
+            // must never reach live hardware.
+            if (isSocketCAN && frame.nodeId === -1) {
               invoke('write_socketcan_frame', {
                 arbitrationId: frame.arbitrationId,
                 data: frame.data,
@@ -512,6 +513,30 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   }, [send]);
 
   const sendUDSRequest = useCallback((requestId: number, payload: number[]) => {
+    // Pre-register all ISO-TP tester frames as pending TX so vcan echoes are
+    // matched by consumePendingSocketCANTx and shown as TX (not RX) in the monitor.
+    if (stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected) {
+      const norm = payload.map(b => b & 0xff);
+      const idFormat: 'standard' | 'extended' = requestId > 0x7ff ? 'extended' : 'standard';
+      const createdAt = Date.now();
+      if (norm.length <= 7) {
+        const data = [norm.length, ...norm];
+        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data, dlc: data.length, idFormat, createdAt });
+      } else {
+        const len = Math.min(norm.length, 0xfff);
+        const ffData = [0x10 | ((len >> 8) & 0x0f), len & 0xff, ...norm.slice(0, 6)];
+        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: ffData, dlc: ffData.length, idFormat, createdAt });
+        let offset = 6;
+        let seq = 1;
+        while (offset < len) {
+          const chunk = norm.slice(offset, offset + 7);
+          const cfData = [0x20 | (seq & 0x0f), ...chunk];
+          pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: cfData, dlc: cfData.length, idFormat, createdAt });
+          offset += chunk.length;
+          seq = (seq + 1) & 0x0f;
+        }
+      }
+    }
     send({ type: 'CAN_SEND_UDS_REQUEST', requestId, payload });
   }, [send]);
 

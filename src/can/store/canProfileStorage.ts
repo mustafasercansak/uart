@@ -127,8 +127,9 @@ export async function initCANProfileStorage(): Promise<void> {
     if (raw === null) {
       // First run — push current localStorage contents to FS
       persistToFS(loadCANProfiles());
-    } else if (Array.isArray(raw) && raw.length > 0) {
-      // FS wins: overwrite localStorage cache with authoritative copy
+    } else if (Array.isArray(raw)) {
+      // FS is authoritative: overwrite localStorage cache, including an empty array
+      // (user deliberately deleted all profiles — must not restore stale localStorage).
       localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
     }
   } catch (e) {

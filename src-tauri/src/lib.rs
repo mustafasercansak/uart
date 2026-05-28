@@ -501,7 +501,10 @@ fn start_tcp_server(
                         // Waiting for a client — a short sleep is sufficient.
                         thread::sleep(Duration::from_millis(5));
                     }
-                    Err(_) => {}
+                    Err(_) => {
+                        // Persistent accept errors (e.g. EMFILE): back off to avoid busy-spin.
+                        thread::sleep(Duration::from_millis(5));
+                    }
                 }
                 continue;
             }

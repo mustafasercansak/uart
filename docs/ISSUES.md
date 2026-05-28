@@ -141,4 +141,20 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v5 Code Review (2026-05-28)
+
+7 candidates from 7-angle automated review; 6 fixed, 1 invalidated.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 76 | 🔴 Blocker | `CANContext.tsx`: `nodeId < 0` guard forwards simulated ECU diagnostic frames (`nodeId: -2`) to the real SocketCAN bus — ECU UDS responses appear as live hardware traffic | SocketCAN / Safety | Fixed: guard changed to `nodeId === -1`; only tester-injected frames reach hardware |
+| 77 | 🔴 Blocker | `lib.rs`: TCP accept-loop `Err(_) => {}` arm has no sleep — persistent errors (e.g. EMFILE) spin at 100% CPU with no back-off | Rust / Reliability | Fixed: `thread::sleep(5 ms)` added to catch-all error arm |
+| 78 | 🟠 High | `CANContext.tsx`: tester ISO-TP frames (FF, CF, FC) not in `pendingSocketCANTxRef` — vcan echoes show as RX instead of TX in the monitor | SocketCAN / UX | Fixed: `sendUDSRequest` pre-computes the ISO-TP breakdown and pushes all expected frames to `pendingSocketCANTxRef` before dispatching to the worker |
+| 79 | 🟠 High | `canProfileStorage.ts`: `initCANProfileStorage` skips localStorage sync when `raw.length === 0` — deliberately deleted profiles are restored from stale localStorage on next launch | CAN Profiles / Persistence | Fixed: removed `&& raw.length > 0` guard; FS is always authoritative, including an empty array |
+| 80 | 🟠 High | `CANSimulationEngine.ts`: `buildReadDidResponse` guard `payload.length % 2 === 0` rejects even-length payloads | UDS / CAN Simulation | **Invalid** — UDS RDBI requests are always 1 + 2N bytes (odd); an even-length payload is genuinely malformed; NRC 0x13 is correct |
+| 81 | 🟡 Medium | `CANSimulationEngine.ts`: `sendUDSRequest` response-delay `setTimeout` handle not added to `isotpTxTimers` — stale UDS response fires after `stop()` / `clearFrames()` | UDS / CAN Simulation | Fixed: timer handle stored in `tid` and added to `isotpTxTimers` |
+| 82 | 🟡 Medium | `CANSimulationEngine.ts`: `transmitIsoTpPayload` emits FC immediately (before FF is processed) and the timer is not tracked — cannot be cancelled by `clearFrames()` | ISO-TP / CAN Simulation | Fixed: FC emission deferred via `setTimeout(..., 0)` and handle added to `isotpTxTimers` |
+
+---
+
 *Last updated: 2026-05-28*
