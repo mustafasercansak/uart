@@ -40,4 +40,28 @@ Issues are evaluated here before opening on GitHub.
 
 ---
 
-*Last updated: 2026-05-27*
+## ✅ Closed — v1.6.0 Pre-Release Code Review (2026-05-28)
+
+All 15 findings from the 9-angle + gap-sweep review resolved in the same release.
+
+| # | Title | Area | Resolution |
+|---|-------|------|------------|
+| 22 | Motorola `bitIdx` formula bit-reverses every byte — all multi-byte DBC signals wrong | DBC / Signal Decoding | Fixed: `7 - (bitPos % 8)` → `bitPos % 8` |
+| 23 | `parseFloat(factor) \|\| 1` corrupts legitimate DBC factor of `0` | DBC / Signal Decoding | Fixed: explicit `isNaN` guard |
+| 24 | Simulation frames flood real SocketCAN bus on connect | SocketCAN / Safety | Fixed: only `nodeId < 0` (manual) frames forwarded to hardware |
+| 25 | `frameCount++` twice in `transmitFrame()` — counter always 2× | CAN Simulation | Fixed: duplicate removed |
+| 26 | `transmitFrame` / `transmitDiagnosticFrame` hardcode `'standard'` CRC for extended-ID nodes | CAN Simulation | Fixed: `idFormat` derived from arbitration ID |
+| 27 | `canProfileStorage.ts` localStorage key `'can_profiles'` never synced to Tauri FS | CAN Profiles / Persistence | Fixed: `initCANProfileStorage()` + `save_can_profiles` on every write |
+| 28 | DBC parser clamps DLC to min 1 — valid `DLC=0` frames silently promoted | DBC / Parser | Fixed: `Math.max(0, dlc)` |
+| 29 | SLCAN parser loops past `dataHex.length` — injects `NaN` into byte arrays | SLCAN / Serial | Fixed: loop bounded to `min(dlc, floor(dataHex.length/2))` with NaN guard |
+| 30 | `write_tcp_server` holds mutex during `write_all` — deadlocks on client disconnect | TCP Server / Rust | Fixed: stream cloned out of mutex before write |
+| 31 | `write_fd` overwritten without `close()` on SocketCAN reconnect — fd leak | SocketCAN / Rust | Fixed: old fd closed before replacement |
+| 32 | `setOutputMode` never closes serial port handle — OS resource leak | Serial / Cleanup | Fixed: reader/writer/port explicitly closed on mode switch |
+| 33 | `clearFrames()` leaves `state.status` as `'running'` — controls silently no-op | CAN Simulation / State | Fixed: `CAN_SET_STATUS: 'stopped'` dispatched |
+| 34 | `loadCANProfiles()` casts `JSON.parse` without `Array.isArray` — crash on corrupted storage | CAN Profiles / Robustness | Fixed: validation with fallback to defaults |
+| 35 | `connectNetwork` passes `tcp-server://` verbatim to SocketCAN — TCP server never starts | Network / CAN Dashboard | Fixed: `tcp(-server)?://` prefix stripped |
+| 36 | `list_recordings` reads full JSON of every recording just for frame count — blocks Tauri thread | Recordings / Rust | Fixed: lightweight `.meta.json` sidecar written at save; `list_recordings` reads sidecar only |
+
+---
+
+*Last updated: 2026-05-28*

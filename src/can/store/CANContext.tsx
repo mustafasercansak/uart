@@ -137,7 +137,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
               const slcanPacket = `${prefix}${idHex}${dlc}${dataHex}\r`;
               serialWriterRef.current.write(slcanPacket).catch((e) => console.error('[SLCAN] write failed:', e));
             }
-            if (isSocketCAN) {
+            // Only forward manually-sent frames (nodeId < 0) to the real bus.
+            // Simulation-generated node frames (nodeId >= 0) must not flood live hardware.
+            if (isSocketCAN && frame.nodeId < 0) {
               invoke('write_socketcan_frame', {
                 arbitrationId: frame.arbitrationId,
                 data: frame.data,
@@ -306,6 +308,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const clearFrames  = useCallback(() => {
     send({ type: 'CAN_STOP' });
     send({ type: 'CAN_CLEAR_FRAMES' });
+    dispatch({ type: 'CAN_SET_STATUS', status: 'stopped' });
     dispatch({ type: 'CAN_CLEAR_FRAMES' });
   }, [send]);
   const toggleArbitrationDisplay = useCallback(() => dispatch({ type: 'CAN_TOGGLE_ARBITRATION_DISPLAY' }), []);
@@ -315,9 +318,21 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
   const setOutputMode = useCallback((mode: CANBusState['outputMode']) => {
     dispatch({ type: 'CAN_SET_OUTPUT_MODE', mode });
-    // If switching away from serial/network, disconnect them
-    if (mode !== 'serial') dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
-    if (mode !== 'tcp' && mode !== 'tcp-server') dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
+    if (mode !== 'serial' && stateRef.current.serialConnected) {
+      // Close the physical serial port so the OS handle is released
+      serialReaderRef.current?.cancel().catch(() => {});
+      serialReaderRef.current = null;
+      serialWriterRef.current?.close().catch(() => {});
+      // eslint-disable-next-line react-hooks/immutability
+      serialWriterRef.current = null;
+      serialPortRef.current?.close().catch(() => {});
+      serialPortRef.current = null;
+      dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
+    }
+    if (mode !== 'tcp' && mode !== 'tcp-server') {
+      invoke('disconnect_socketcan').catch(() => {});
+      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
+    }
   }, []);
 
   const serialPortRef = useRef<SerialPortLike | null>(null);
@@ -379,8 +394,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
                     const dataHex = line.substring(2 + idLength);
 
                     const dataBytes: number[] = [];
-                    for (let i = 0; i < dlc * 2; i += 2) {
-                      dataBytes.push(parseInt(dataHex.substring(i, i + 2), 16));
+                    const maxBytes = Math.min(dlc, Math.floor(dataHex.length / 2));
+                    for (let i = 0; i < maxBytes * 2; i += 2) {
+                      const byte = parseInt(dataHex.substring(i, i + 2), 16);
+                      dataBytes.push(isNaN(byte) ? 0 : byte);
                     }
                     const arbId = parseInt(idHex, 16);
 
@@ -428,7 +445,11 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const connectNetwork = useCallback(async (interfaceName: string) => {
-    const normalizedInterface = interfaceName.replace(/^socketcan:\/\//, '').trim() || 'vcan0';
+    // Strip known scheme prefixes; tcp-server:// is not a valid SocketCAN target
+    const normalizedInterface = interfaceName
+      .replace(/^socketcan:\/\//, '')
+      .replace(/^tcp(-server)?:\/\/.*/, '')
+      .trim() || 'vcan0';
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SocketCAN ${normalizedInterface}...`, type: 'info' } });
     try {
       await invoke('connect_socketcan', { interface: normalizedInterface });

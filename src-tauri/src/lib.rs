@@ -576,11 +576,15 @@ fn write_tcp_server(
     bytes: Vec<u8>,
     state: tauri::State<'_, TcpServerState>,
 ) -> Result<(), String> {
-    let mut ws = state.active_stream.lock().unwrap();
-    if let Some(stream) = ws.as_mut() {
-        stream.write_all(&bytes).map_err(|e| e.to_string())
-    } else {
-        Err("ERR_NO_CONNECTED_CLIENT".to_string())
+    // Clone the stream out of the mutex before writing so the lock is not held
+    // during a potentially blocking write_all (prevents deadlock with the accept loop).
+    let stream_clone = {
+        let ws = state.active_stream.lock().unwrap();
+        ws.as_ref().and_then(|s| s.try_clone().ok())
+    };
+    match stream_clone {
+        Some(mut s) => s.write_all(&bytes).map_err(|e| e.to_string()),
+        None => Err("ERR_NO_CONNECTED_CLIENT".to_string()),
     }
 }
 
@@ -788,6 +792,11 @@ fn connect_socketcan(
 
     {
         let mut fd = state.write_fd.lock().unwrap();
+        // Close the previous write_fd if present to avoid leaking file descriptors
+        // when connect_socketcan is called again without disconnect_socketcan.
+        if let Some(old_fd) = fd.take() {
+            unsafe { libc::close(old_fd) };
+        }
         *fd = Some(write_fd);
     }
 
@@ -931,6 +940,14 @@ struct RecordingMeta {
     duration_ms: f64,
 }
 
+#[derive(Serialize, Deserialize)]
+struct RecordingMetaSidecar {
+    #[serde(rename = "frameCount")]
+    frame_count: usize,
+    #[serde(rename = "durationMs")]
+    duration_ms: f64,
+}
+
 #[tauri::command]
 fn list_recordings() -> Result<Vec<RecordingMeta>, String> {
     let dir = recordings_dir();
@@ -942,30 +959,38 @@ fn list_recordings() -> Result<Vec<RecordingMeta>, String> {
     for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+
+        // Process only primary recording files, not sidecar .meta.json files
+        let ext = path.extension().and_then(|e| e.to_str());
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        if ext != Some("json") || stem.ends_with(".meta") {
             continue;
         }
 
         let id = path.file_name().unwrap().to_string_lossy().to_string();
-        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+        let name = stem.to_string();
 
-        let meta = entry.metadata().map_err(|e| e.to_string())?;
-        let created_at = meta
+        let file_meta = entry.metadata().map_err(|e| e.to_string())?;
+        let created_at = file_meta
             .created()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
 
-        let content_str = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        let frames: Vec<serde_json::Value> =
-            serde_json::from_str(&content_str).unwrap_or_default();
-        let frame_count = frames.len();
-        let duration_ms = frames
-            .last()
-            .and_then(|f| f.get("time"))
-            .and_then(|t| t.as_f64())
-            .unwrap_or(0.0);
+        // Read from lightweight sidecar if available; fall back to scanning the full file.
+        let sidecar_path = path.with_extension("meta.json");
+        let (frame_count, duration_ms) = if sidecar_path.exists() {
+            let raw = std::fs::read_to_string(&sidecar_path).unwrap_or_default();
+            let sc: RecordingMetaSidecar = serde_json::from_str(&raw).unwrap_or(RecordingMetaSidecar { frame_count: 0, duration_ms: 0.0 });
+            (sc.frame_count, sc.duration_ms)
+        } else {
+            let content_str = std::fs::read_to_string(&path).unwrap_or_default();
+            let frames: Vec<serde_json::Value> = serde_json::from_str(&content_str).unwrap_or_default();
+            let fc = frames.len();
+            let dm = frames.last().and_then(|f| f.get("time").or_else(|| f.get("timestamp"))).and_then(|t| t.as_f64()).unwrap_or(0.0);
+            (fc, dm)
+        };
 
         metas.push(RecordingMeta {
             id,
@@ -998,7 +1023,21 @@ fn save_recording(name: String, data: serde_json::Value) -> Result<(), String> {
     let path = dir.join(&file_name);
 
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| e.to_string())
+    std::fs::write(&path, &json).map_err(|e| e.to_string())?;
+
+    // Write a lightweight sidecar so list_recordings can skip full deserialization.
+    let frames = data.as_array();
+    let frame_count = frames.map(|f| f.len()).unwrap_or(0);
+    let duration_ms = frames
+        .and_then(|f| f.last())
+        .and_then(|f| f.get("time").or_else(|| f.get("timestamp")))
+        .and_then(|t| t.as_f64())
+        .unwrap_or(0.0);
+    let sidecar = serde_json::json!({ "frameCount": frame_count, "durationMs": duration_ms });
+    let sidecar_path = path.with_extension("meta.json");
+    let _ = std::fs::write(&sidecar_path, serde_json::to_string(&sidecar).unwrap_or_default());
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -1012,7 +1051,12 @@ fn load_recording(id: String) -> Result<serde_json::Value, String> {
 fn delete_recording(id: String) -> Result<(), String> {
     let path = recordings_dir().join(&id);
     if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| e.to_string())
+        std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        let sidecar = path.with_extension("meta.json");
+        if sidecar.exists() {
+            let _ = std::fs::remove_file(&sidecar);
+        }
+        Ok(())
     } else {
         Err(format!("ERR_RECORDING_NOT_FOUND:{}", id))
     }

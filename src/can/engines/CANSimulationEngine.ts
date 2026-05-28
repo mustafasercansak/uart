@@ -535,12 +535,13 @@ export class CANSimulationEngine {
     const dlc = 8;
     const frameData = data.slice(0, 8);
     while (frameData.length < 8) frameData.push(0x00);
-    const crc = computeCANCRC(frameData, arbitrationId, dlc, 'standard');
+    const idFormat: 'standard' | 'extended' = arbitrationId > 0x7ff ? 'extended' : 'standard';
+    const crc = computeCANCRC(frameData, arbitrationId, dlc, idFormat);
 
     const frame: CANFrame = {
       uid: uuidv4(),
       arbitrationId,
-      idFormat: 'standard',
+      idFormat,
       frameType: 'data',
       isRTR: false,
       dlc,
@@ -567,12 +568,13 @@ export class CANSimulationEngine {
   private transmitFrame(node: CANNode, data: number[], now: number): void {
     const dlc = Math.min(data.length, 8);
     const frameData = data.slice(0, dlc);
-    const crc = computeCANCRC(frameData, node.baseArbitrationId, dlc, 'standard');
+    const idFormat: 'standard' | 'extended' = node.baseArbitrationId > 0x7ff ? 'extended' : 'standard';
+    const crc = computeCANCRC(frameData, node.baseArbitrationId, dlc, idFormat);
 
     const frame: CANFrame = {
       uid: uuidv4(),
       arbitrationId: node.baseArbitrationId,
-      idFormat: 'standard',
+      idFormat,
       frameType: 'data',
       isRTR: false,
       dlc,
@@ -625,10 +627,9 @@ export class CANSimulationEngine {
     }
 
     // Track bits for bus load calculation
-    const bits = estimateFrameBits(dlc, false);
+    const bits = estimateFrameBits(dlc, idFormat === 'extended');
     this.recentFrameBits.push({ ts: now, bits });
 
-    this.state.frameCount++;
     this.onFrame?.(frame);
 
     this.log('tx', `Node ${node.id} TX [0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}] DLC=${dlc} ${encodeCANFrame(frame).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CANBaudRate } from '../types/CANBusState';
 import type { CANMedicalProfile } from '../types/CANNode';
 import { MEDICAL_PROFILE_COLORS } from '../types/CANNode';
+import { invoke, isTauri } from '../../lib/tauri-bridge';
 
 const STORAGE_KEY = 'can_profiles';
 
@@ -92,6 +93,14 @@ const DEFAULT_PROFILES: CANProfile[] = [
   }
 ];
 
+/** Persist profiles to Tauri FS (fire-and-forget; localStorage is the sync cache). */
+function persistToFS(profiles: CANProfile[]): void {
+  if (!isTauri()) return;
+  invoke('save_can_profiles', { data: profiles }).catch((e) =>
+    console.error('[canProfileStorage] save_can_profiles failed:', e)
+  );
+}
+
 export function loadCANProfiles(): CANProfile[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -99,9 +108,31 @@ export function loadCANProfiles(): CANProfile[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILES));
       return DEFAULT_PROFILES;
     }
-    return JSON.parse(raw) as CANProfile[];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILES));
+      return DEFAULT_PROFILES;
+    }
+    return parsed as CANProfile[];
   } catch {
     return DEFAULT_PROFILES;
+  }
+}
+
+/** On first run (Tauri): seed localStorage from FS; migrate if no FS file yet. */
+export async function initCANProfileStorage(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const raw = await invoke<CANProfile[] | null>('load_can_profiles');
+    if (raw === null) {
+      // First run — push current localStorage contents to FS
+      persistToFS(loadCANProfiles());
+    } else if (Array.isArray(raw) && raw.length > 0) {
+      // FS wins: overwrite localStorage cache with authoritative copy
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
+    }
+  } catch (e) {
+    console.error('[canProfileStorage] initCANProfileStorage failed:', e);
   }
 }
 
@@ -111,11 +142,13 @@ export function saveCANProfile(profile: CANProfile): void {
   if (idx >= 0) all[idx] = profile;
   else all.push(profile);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  persistToFS(all);
 }
 
 export function deleteCANProfile(id: string): void {
   const all = loadCANProfiles().filter(p => p.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  persistToFS(all);
 }
 
 export function createCANProfile(

@@ -7,6 +7,32 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 ---
 
 ## [v1.6.0] — 2026-05-28 (patch)
+### 🐛 Pre-Release Bug-Fix Pass (Code Review)
+
+#### Critical Fixes
+- **DBC Motorola signal decoding wrong** (`dbcParser.ts`): The big-endian bit-extraction formula used `7 - (bitPos % 8)` instead of `bitPos % 8`, bit-reversing every byte of every multi-byte Motorola/big-endian signal. All multi-byte signals (temperature, RPM, speed…) now decode to correct physical values.
+- **DBC signal `factor=0` corrupted** (`dbcParser.ts`): `parseFloat(factor) || 1` replaced a legitimate zero factor with `1` due to JS falsy coercion. Fixed with an explicit `isNaN` check so factor=0 is preserved.
+- **DBC `DLC=0` rejected** (`dbcParser.ts`): `Math.max(1, dlc)` promoted valid DLC=0 messages (NMT heartbeat, keep-alive frames) to DLC=1. Changed to `Math.max(0, dlc)`.
+- **Simulation flooding real SocketCAN bus** (`CANContext.tsx`): Every simulation-generated node frame was forwarded to the live CAN bus when SocketCAN was connected. Now only manually-sent frames (`nodeId < 0`) are written to hardware; periodic simulation traffic stays internal.
+- **`frameCount` double-incremented** (`CANSimulationEngine.ts`): `this.state.frameCount++` appeared twice in `transmitFrame()`, making the counter always report 2× the real value. Duplicate removed.
+- **Extended-ID nodes get wrong CRC and `idFormat`** (`CANSimulationEngine.ts`): `transmitFrame` and `transmitDiagnosticFrame` hardcoded `'standard'` for CRC computation and frame format regardless of the arbitration ID. Both now derive `idFormat` from the actual ID value (`> 0x7ff → 'extended'`) and pass it to `computeCANCRC`. Bus-load estimation also corrected for extended frames.
+
+#### High-Severity Fixes
+- **CAN profiles not persisted to disk** (`canProfileStorage.ts`): Profiles were written to localStorage key `'can_profiles'` which the Tauri FS layer never reads. Added `initCANProfileStorage()` (called in `main.tsx` before first render), `invoke('save_can_profiles')` calls in `saveCANProfile` / `deleteCANProfile`, and first-run FS seeding. Profiles now survive app reinstalls.
+- **`canProfileStorage` JSON not validated as array** (`canProfileStorage.ts`): `JSON.parse` result was cast without `Array.isArray` check; a corrupted storage value crashed `saveCANProfile` on `.findIndex`. Added validation with fallback to defaults.
+- **SLCAN parser injects `NaN` bytes** (`CANContext.tsx`): The SLCAN frame loop ran `dlc * 2` iterations without bounding to `dataHex.length`; malformed frames with DLC > actual hex data pushed `NaN` values into the byte array. Now clamped to `Math.min(dlc, floor(dataHex.length / 2))` with explicit NaN guard.
+- **TCP server deadlock on client disconnect** (`lib.rs`): `write_tcp_server` held `active_stream` mutex for the entire duration of `write_all`. If the remote client disconnected mid-write the accept-loop thread deadlocked on the same mutex. Fixed by cloning the stream out of the mutex before writing.
+- **`clearFrames()` leaves status as `'running'`** (`CANContext.tsx`): The engine was stopped but UI status stayed `'running'`, making subsequent start/pause/resume silently no-op. Added `CAN_SET_STATUS: 'stopped'` dispatch.
+- **`setOutputMode` leaks serial port handle** (`CANContext.tsx`): Switching output mode cleared the `serialConnected` flag but never closed the physical Web Serial port. The background reader loop kept running and held the OS port handle. Now explicitly closes reader, writer, and port before dispatching the flag change. Also disconnects SocketCAN when switching away from tcp mode.
+- **SocketCAN `write_fd` leaked on reconnect** (`lib.rs`): `connect_socketcan` overwrote `state.write_fd` without closing the previous fd, leaking a file descriptor on each reconnect that bypassed `disconnect_socketcan`. Old fd is now closed before replacement.
+- **`connectNetwork` ignores `tcp-server://` prefix** (`CANContext.tsx`): Passing a `tcp-server://` URL forwarded it verbatim to `connect_socketcan`, which failed silently. The prefix is now stripped alongside `socketcan://`.
+
+#### Performance Fix
+- **`list_recordings` read full files for metadata** (`lib.rs`): Every call to `list_recordings` read and fully deserialised every recording JSON file just to count frames and get the last timestamp — causing multi-second hangs with large recording libraries. `save_recording` now writes a lightweight `.meta.json` sidecar (`{frameCount, durationMs}`); `list_recordings` reads the sidecar when available, falling back to full-file scan only for legacy recordings. `delete_recording` also removes the sidecar.
+
+---
+
+## [v1.6.0] — 2026-05-28 (patch)
 ### 🌐 Translations Page
 
 #### New Features
