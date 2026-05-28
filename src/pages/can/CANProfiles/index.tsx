@@ -41,9 +41,9 @@ const DEFAULT_FORM: NodeEditForm = {
   priority: '0',
 };
 
-function nodeToForm(n: CANProfileNode): NodeEditForm {
+function nodeToForm(n: CANProfileNode, t: (key: string) => string): NodeEditForm {
   return {
-    name: n.name,
+    name: resolveNodeName(n.name, t),
     profile: n.profile,
     arbitrationHex: n.baseArbitrationId.toString(16).toUpperCase().padStart(3, '0'),
     intervalMs: String(n.sendIntervalMs),
@@ -413,7 +413,7 @@ export default function CANProfiles() {
 
   const startEditNode = (node: CANProfileNode) => {
     setEditingNodeId(node.id);
-    setNodeForm(nodeToForm(node));
+    setNodeForm(nodeToForm(node, t));
     setShowAddNode(false);
   };
 

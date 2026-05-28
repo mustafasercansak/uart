@@ -28,7 +28,9 @@
     "togglePro": "Pro Modu Aç/Kapat",
     "toggleProDesc": "Standart ve Tanılama modu arasında geçiş yap",
     "searchPlaceholder": "Komut, araç veya tanılama ara...",
-    "versionLabel": "UART Simulator v{version}"
+    "versionLabel": "UART Simulator v{version}",
+    "translations": "Çeviriler",
+    "settingsGroup": "Ayarlar"
   },
   "system": {
     "title": "Yazılım & Güncellemeler",
@@ -1679,6 +1681,11 @@
     "editNode": "Düğümü Düzenle",
     "nodeIdLabel": "Düğüm ID: {id}",
     "saveNode": "Düğümü Kaydet",
+    "labelsEditor": "Cihaz Etiket Düzenleyici",
+    "labelsEditorHint": "Cihaz türlerinin arayüzde görünme şeklini özelleştirin",
+    "labelsEditorFooter": "Boş bırakılan alanlar için varsayılan etiket kullanılır. Değişiklikler kaydedildikten sonra hemen uygulanır.",
+    "saveLabels": "Etiketleri Kaydet",
+    "resetToDefault": "Varsayılana sıfırla",
     "faultTargetNode": "Hedef Düğüm",
     "noNodes": "Yapılandırılmış düğüm yok. Başlamak için bir düğüm ekleyin.",
     "faultConfirm": "Hata enjeksiyonunu onaylamak için tekrar tıklayın",
@@ -1986,5 +1993,26 @@
     "clientConnected": "TCP İstemci bağlandı: {client}",
     "serverListening": "TCP Sunucu dinliyor (Port: {port})",
     "serverStopped": "TCP Sunucu durduruldu"
+  },
+  "translations": {
+    "title": "Çeviriler",
+    "subtitle": "Herhangi bir dil için arayüz etiketlerini özelleştirin. Boş bırakılan alanlar varsayılan değeri kullanır.",
+    "back": "Geri",
+    "import": "İçe Aktar",
+    "export": "Dışa Aktar",
+    "searchPlaceholder": "Anahtar veya değer ara…",
+    "keyCount": "{n} anahtar",
+    "keyCountFiltered": "{total} içinden {n} anahtar",
+    "overriddenCount": "{n} özelleştirilmiş",
+    "resetAll": "Tümünü sıfırla",
+    "resetAllNs": "Bu ad alanındaki tüm özelleştirmeleri sıfırla",
+    "resetRow": "Varsayılana sıfırla",
+    "colKey": "Anahtar",
+    "colDefaultEn": "Varsayılan EN",
+    "colDefaultTr": "Varsayılan TR",
+    "colCustomEn": "Özel EN",
+    "colCustomTr": "Özel TR",
+    "noResults": "Aramanızla eşleşen anahtar bulunamadı.",
+    "footerHint": "Değişiklikler alandan çıkıldığında otomatik kaydedilir. Özelleştirmelerinizi cihazlar arasında paylaşmak için JSON olarak dışa aktarın."
   }
 }

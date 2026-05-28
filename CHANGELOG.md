@@ -6,6 +6,47 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.6.0] — 2026-05-28 (patch)
+### 🌐 Translations Page
+
+#### New Features
+- **Translations page** (`/translations`): A dedicated full-page translations manager accessible from the sidebar (`🏷 Çeviriler / Translations`) and the Tag button in the CAN stat bar. Replaces the previous `LabelsEditorModal` which only covered 8 device-type labels.
+  - **Namespace selector**: All 50+ namespaces (`can`, `common`, `dashboard`, `nav`, `canProfiles`, etc.) listed in a dropdown with key counts so you can jump directly to the section you need.
+  - **Search bar**: Filters rows by key name, default EN value, default TR value, or any custom override — clears with the ✕ button.
+  - **Editable table**: Five columns — Key · Default EN · Default TR · Custom EN · Custom TR. The custom columns are always-editable inputs; changes save automatically on blur. Placeholder text shows the built-in default so you always know what you're replacing.
+  - **Override highlighting**: Rows with any active custom label get a subtle cyan left-border tint and cyan underline on the edited field so overrides are instantly visible.
+  - **Per-row reset**: ↺ button on each overridden row to clear both EN and TR overrides for that key.
+  - **Namespace reset**: "Reset all" button (visible only when overrides exist for the selected namespace) clears every override in that namespace at once.
+  - **Export / Import**: Export all custom overrides as `uart_custom_labels.json`; import a previously exported file to restore or share label sets across devices.
+- **`translations.*` i18n namespace**: All page UI strings (`title`, `subtitle`, `colKey`, `colCustomEn`, etc.) are fully translated into EN and TR.
+- **`nav.translations`** key added (`"Translations"` / `"Çeviriler"`) for the sidebar and stat bar tooltip.
+
+#### Removed
+- `LabelsEditorModal` is superseded by the Translations page and is no longer opened from the CAN stat bar.
+
+#### UX Polish
+- **Translations moved to Settings group**: The `🏷 Translations` sidebar item was moved out of the UART section into a new **Settings** group (violet) at the bottom of the nav, since it is not UART-specific. Added `nav.settingsGroup` key (`"Settings"` / `"Ayarlar"`).
+- **Sidebar group headers smaller**: Group header labels (`UART`, `CAN`, `SETTINGS`) reduced from `text-[9px]` to `text-[7px]` for a less dominant appearance.
+- **Translations page header compact**: The page header was tightened to a single slim bar (`py-2`, `text-[11px]` title inline with `text-[9px]` subtitle) instead of a tall two-line block.
+
+---
+
+## [v1.6.0] — 2026-05-28 (patch)
+### 🏷️ i18n — Translation Display Fix & Device Label Editor
+
+#### Bug Fixes
+- **Raw i18n keys in edit forms**: Node names stored as translation keys (e.g. `can.oRMonitor`, `can.eCGMonitor`) were shown verbatim in the edit form's name field. `EditNodeModal` and `CANProfiles` node form now call `resolveNodeName()` on open, so users see the resolved translation ("OR Monitor" / "Ameliyathane Monitörü") instead of the raw key. Saving converts the key to plain text permanently for that node.
+- **Profile name dropdown showing keys**: The profile selector in the CAN stat bar now resolves i18n keys via `t()` before rendering, so preset profile names display correctly in both EN and TR.
+
+#### New Features
+- **Device Label Editor**: A new `Tag` icon button in the CAN stat bar opens the **Device Label Editor** modal. Users can override the display name for all 8 device type labels (Vital Monitor, IV Pump, Ventilator, ECG Monitor, Defibrillator, Infusion Pump, Pulse Oximeter, Custom Node) independently per language (EN and TR). Overrides are saved to `localStorage` (`uart_custom_labels`) and applied immediately across the entire UI. Leaving a field empty falls back to the built-in default. Each row has a reset (↺) button to clear its override.
+- **Custom labels system**: `LanguageProvider` now checks a user override store before resolving built-in translations. `setCustomLabel(key, locale, value)` and `resetCustomLabel(key, locale?)` are exposed via `useTranslation()` for use in any component.
+
+#### i18n
+- Added keys `labelsEditor`, `labelsEditorHint`, `labelsEditorFooter`, `saveLabels`, `resetToDefault` to `can.*` namespace in `en.json` and `tr.json`.
+
+---
+
 ## [v1.6.0] — 2026-05-27 (patch)
 ### ⚙️ Rust Backend — High-Resolution Timing & i18n Fix
 

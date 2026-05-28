@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, HelpCircle, Plus, Edit3, Circle, Square, FileDown } from 'lucide-react';
+import { Globe, HelpCircle, Plus, Edit3, Circle, Square, FileDown, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { OutputMode } from '../../../../types';
 import type { CANBusState } from '../../../../can/types/CANBusState';
@@ -88,7 +88,7 @@ export function CANStatBar({
           disabled={state.status !== 'stopped'}
         >
           <option value="">— {t('dashboard.profile')} —</option>
-          {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {profiles.map((p) => <option key={p.id} value={p.id}>{t(p.name) !== p.name ? t(p.name) : p.name}</option>)}
         </select>
         <div className="flex items-center gap-0.5">
           <button 
@@ -236,6 +236,15 @@ export function CANStatBar({
         )}
 
         <div className="w-px h-3 bg-gray-800 mx-1" />
+
+        {/* Labels / Translations */}
+        <button
+          onClick={() => navigate('/translations')}
+          className="p-1 rounded hover:bg-gray-800 text-gray-500 hover:text-cyan-400 transition-all border border-transparent hover:border-cyan-800/50"
+          title={t('nav.translations')}
+        >
+          <Tag size={11} />
+        </button>
 
         {/* Help */}
         <button

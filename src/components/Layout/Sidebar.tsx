@@ -34,6 +34,10 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
     { path: '/can-profiles', label: t('nav.profiles'), icon: '🗂' },
   ];
 
+  const SETTINGS_ITEMS = [
+    { path: '/translations', label: t('nav.translations'), icon: '🏷' },
+  ];
+
   const navLinkClass = (isActive: boolean) =>
     `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${
       isActive
@@ -45,6 +49,13 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
     `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${
       isActive
         ? 'bg-orange-900/20 text-orange-400 border border-orange-800/40'
+        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
+    } ${collapsed ? 'justify-center px-0' : ''}`;
+
+  const settingsLinkClass = (isActive: boolean) =>
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-mono transition-all ${
+      isActive
+        ? 'bg-violet-900/20 text-violet-400 border border-violet-800/40'
         : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/50'
     } ${collapsed ? 'justify-center px-0' : ''}`;
 
@@ -75,7 +86,7 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
           {!collapsed && (
             <div className="px-3 pb-1 flex items-center gap-2">
               <div className="h-px flex-1 bg-cyan-900/60" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-700 font-mono">UART</span>
+              <span className="text-[7px] font-black uppercase tracking-[0.2em] text-cyan-700 font-mono">UART</span>
               <div className="h-px flex-1 bg-cyan-900/60" />
             </div>
           )}
@@ -99,7 +110,7 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
           {!collapsed && (
             <div className="px-3 pb-1 flex items-center gap-2">
               <div className="h-px flex-1 bg-orange-900/60" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-700 font-mono">{t('nav.canGroup')}</span>
+              <span className="text-[7px] font-black uppercase tracking-[0.2em] text-orange-700 font-mono">{t('nav.canGroup')}</span>
               <div className="h-px flex-1 bg-orange-900/60" />
             </div>
           )}
@@ -110,6 +121,29 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
               to={item.path}
               title={collapsed ? item.label : ''}
               className={({ isActive }) => canLinkClass(isActive)}
+            >
+              <span className="w-4 text-center text-xs shrink-0">{item.icon}</span>
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </NavLink>
+          ))}
+        </div>
+
+        {/* Settings Grubu */}
+        <div className="space-y-1">
+          {!collapsed && (
+            <div className="px-3 pb-1 flex items-center gap-2">
+              <div className="h-px flex-1 bg-violet-900/60" />
+              <span className="text-[7px] font-black uppercase tracking-[0.2em] text-violet-700 font-mono">{t('nav.settingsGroup')}</span>
+              <div className="h-px flex-1 bg-violet-900/60" />
+            </div>
+          )}
+          {collapsed && <div className="h-px bg-violet-900/40 mx-2 mb-1" />}
+          {SETTINGS_ITEMS.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={collapsed ? item.label : ''}
+              className={({ isActive }) => settingsLinkClass(isActive)}
             >
               <span className="w-4 text-center text-xs shrink-0">{item.icon}</span>
               {!collapsed && <span className="truncate">{item.label}</span>}

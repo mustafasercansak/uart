@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CANNode, CANMedicalProfile } from '../../../../can/types/CANNode';
 import { MEDICAL_PROFILE_LABELS, MEDICAL_PROFILE_COLORS } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
+import { resolveNodeName } from '../../../../can/utils/nodeNameResolver';
 
 interface EditNodeModalProps {
   node: CANNode;
@@ -14,7 +15,7 @@ const PROFILES = Object.entries(MEDICAL_PROFILE_LABELS) as [CANMedicalProfile, s
 export function EditNodeModal({ node, onSave, onClose }: EditNodeModalProps) {
   const { t } = useTranslation();
 
-  const [name, setName] = useState(node.name);
+  const [name, setName] = useState(() => resolveNodeName(node.name, t));
   const [profile, setProfile] = useState<CANMedicalProfile>(node.profile);
   const [baseId, setBaseId] = useState(node.baseArbitrationId);
   const [intervalMs, setIntervalMs] = useState(node.sendIntervalMs);

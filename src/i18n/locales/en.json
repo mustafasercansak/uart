@@ -28,7 +28,9 @@
     "togglePro": "Toggle Pro Mode",
     "toggleProDesc": "Switch between Standard and Diagnostic mode",
     "searchPlaceholder": "Search commands, tools or diagnostics...",
-    "versionLabel": "UART Simulator v{version}"
+    "versionLabel": "UART Simulator v{version}",
+    "translations": "Translations",
+    "settingsGroup": "Settings"
   },
   "system": {
     "title": "Software & Updates",
@@ -1679,6 +1681,11 @@
     "editNode": "Edit Node",
     "nodeIdLabel": "Node ID: {id}",
     "saveNode": "Save Node",
+    "labelsEditor": "Device Label Editor",
+    "labelsEditorHint": "Customize how device types appear across the UI",
+    "labelsEditorFooter": "Leave a field empty to use the default label. Changes apply immediately after saving.",
+    "saveLabels": "Save Labels",
+    "resetToDefault": "Reset to default",
     "faultTargetNode": "Target Node",
     "noNodes": "No nodes configured. Add a node to begin.",
     "faultConfirm": "Click again to confirm fault injection",
@@ -1986,5 +1993,26 @@
     "clientConnected": "TCP client connected: {client}",
     "serverListening": "TCP server listening (Port: {port})",
     "serverStopped": "TCP server stopped"
+  },
+  "translations": {
+    "title": "Translations",
+    "subtitle": "Override UI labels for any language. Leave a field empty to use the built-in default.",
+    "back": "Back",
+    "import": "Import",
+    "export": "Export",
+    "searchPlaceholder": "Search keys or values…",
+    "keyCount": "{n} keys",
+    "keyCountFiltered": "{n} of {total} keys",
+    "overriddenCount": "{n} overridden",
+    "resetAll": "Reset all",
+    "resetAllNs": "Reset all overrides in this namespace",
+    "resetRow": "Reset to default",
+    "colKey": "Key",
+    "colDefaultEn": "Default EN",
+    "colDefaultTr": "Default TR",
+    "colCustomEn": "Custom EN",
+    "colCustomTr": "Custom TR",
+    "noResults": "No keys match your search.",
+    "footerHint": "Changes are saved automatically when you leave a field. Export your overrides as JSON to share them across devices."
   }
 }
