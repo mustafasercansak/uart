@@ -1794,6 +1794,7 @@
     "autoSendFrame": "Send Frame",
     "autoExpectFrame": "Expect Frame",
     "autoFrameSent": "Frame sent",
+    "autoNoTransport": "No transport active (serial or network required)",
     "autoWithinMs": "within {ms} ms",
     "autoAfterMs": "after {ms} ms",
     "autoStepDelay": "ms delay",

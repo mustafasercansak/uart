@@ -82,4 +82,23 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v2 Code Review (2026-05-28)
+
+10 findings from 7-angle automated review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 46 | 🔴 Blocker | `connectNetwork`: `tcp://` URL stripped to `''` → silent fallback to `vcan0` instead of error | SocketCAN / UX | Fixed: reject `tcp(-server)://` URLs with an explicit error before normalization |
+| 47 | 🔴 Blocker | SocketCAN read thread closes `read_fd` on fatal error but never closes `write_fd` — kernel fd leak per interface flap | Rust / Resource | Fixed: `write_fd` stored in `Arc<Mutex<…>>` shared with thread; thread closes it on exit |
+| 48 | 🔴 Blocker | `CANAutomationTab`: `networkConnected`/`serialConnected` props aliased to `_unused` — send-frame steps always report `passed: true` even with no transport | Automation / Correctness | Fixed: transport state checked before `onSendFrame`; step fails with error message when no transport active |
+| 49 | 🟠 High | Stale `nodeId` auto-fix silently remaps broken steps to `nodes[0]` and immediately persists to localStorage — no notification, no undo | Automation / Data Integrity | Fixed: silent remap removed; broken steps naturally fail with "node not found" at execution time |
+| 50 | 🟠 High | `setOutputMode` reads `stateRef.current.serialConnected` but `stateRef` is only refreshed by `useLayoutEffect` — serial port teardown skipped in same-tick calls | Serial / Race | Fixed: dedicated `serialConnectedRef` updated synchronously in `connectSerial`/`disconnectSerial`; `setOutputMode` reads the ref |
+| 51 | 🟡 Medium | `t` `useCallback` depends on `customLabels` — every `setCustomLabel` call recreates `t`, invalidating `contextValue` `useMemo`, causing all 173 `useTranslation()` consumers to re-render | Performance | Fixed: `customLabels` moved to a ref read inside `t`; `t` dep array is `[locale]` only |
+| 52 | 🟡 Medium | `handleImport` fires N individual `setCustomLabel` calls — N state updates + N `localStorage.setItem` writes for a bulk import | Performance | Fixed: new `bulkSetCustomLabels` context method; import uses one atomic write |
+| 53 | 🟡 Medium | `socketCANPayloadToFrame` calls `computeCANCRC` on every SocketCAN RX frame — kernel already verified CRC; wasted work at high frame rates | Performance | Fixed: SocketCAN RX frames set `crc: 0`; CRC computation skipped on the receive path |
+| 54 | 🔵 Low | `LanguageProvider` fallback traversal guards with `=== undefined` not `== null` — a `null` value in a locale JSON bypasses the guard and returns the raw key path | Robustness | Fixed: guard changed to `== null` (covers both `null` and `undefined`) |
+| 55 | 🔵 Low | `resolveNodeName` step-1 (`t(name) !== name`) translates any user node name that accidentally matches an i18n key | i18n / Correctness | Fixed: step-1 only fires for strings that look like i18n keys (no spaces, contains dot, starts lowercase) |
+
+---
+
 *Last updated: 2026-05-28*

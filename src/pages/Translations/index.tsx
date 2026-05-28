@@ -60,7 +60,7 @@ function getRows(ns: string): TranslationRow[] {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TranslationsPage() {
-  const { t, customLabels, setCustomLabel, resetCustomLabel, resetCustomLabelKeys } = useTranslation();
+  const { t, customLabels, setCustomLabel, bulkSetCustomLabels, resetCustomLabel, resetCustomLabelKeys } = useTranslation();
   const navigate = useNavigate();
 
   const [selectedNs, setSelectedNs] = useState('can');
@@ -131,16 +131,18 @@ export default function TranslationsPage() {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
         const locales: Locale[] = ['en', 'tr'];
+        const overrides: Record<Locale, Record<string, string>> = { en: {}, tr: {} };
         locales.forEach(loc => {
-          const overrides = parsed[loc];
-          if (typeof overrides === 'object' && overrides !== null) {
-            Object.entries(overrides).forEach(([key, val]) => {
+          const raw = parsed[loc];
+          if (typeof raw === 'object' && raw !== null) {
+            Object.entries(raw).forEach(([key, val]) => {
               if (typeof val === 'string' && val.trim()) {
-                setCustomLabel(key, loc, val.trim());
+                overrides[loc][key] = val.trim();
               }
             });
           }
         });
+        bulkSetCustomLabels(overrides);
       } catch {
         // silently ignore malformed JSON
       }

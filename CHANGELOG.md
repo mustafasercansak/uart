@@ -7,6 +7,25 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 ---
 
 ## [v1.6.0] — 2026-05-28 (patch)
+### 🔧 v2 Code Review Fixes
+
+#### Bug Fixes
+- **`connectNetwork` silently fell back to `vcan0` on TCP URLs** (`CANContext.tsx`): Passing a `tcp://` or `tcp-server://` URL stripped it to an empty string and triggered the `|| 'vcan0'` fallback with no error. Now rejected up-front with an explicit error log entry.
+- **SocketCAN `write_fd` leaked after interface error** (`lib.rs`): When the read thread exited due to a fatal poll/recv error (e.g. `ip link del vcan0`), it closed `read_fd` but left `write_fd` open in the shared state. Fixed by sharing `write_fd` via `Arc<Mutex<…>>`; the thread now closes it on exit alongside `read_fd`.
+- **Automation send-frame steps always passed** (`CANAutomationTab.tsx`): `networkConnected` and `serialConnected` props were aliased to unused underscore vars; send-frame steps called `onSendFrame` and recorded `passed: true` even when no serial port or network was active. Both props are now tracked via `transportRef` and checked before executing the step — reports `passed: false` with a clear `autoNoTransport` message when inactive.
+- **Stale automation `nodeId` silently remapped to `nodes[0]`** (`CANAutomationTab.tsx`): A `useEffect` watching `nodes` changes automatically reassigned any broken step to `nodes[0]` with no user notification and immediately persisted the corrupted profile to localStorage. The silent remap is removed; steps with stale node IDs now fail gracefully at execution time with "node not found".
+- **`setOutputMode` skipped serial teardown due to stale ref** (`CANContext.tsx`): `setOutputMode` read `stateRef.current.serialConnected` to decide whether to close the port, but `stateRef` is only refreshed after the next render via `useLayoutEffect`. If `connectSerial` and `setOutputMode` ran in the same synchronous batch the flag was still `false`, leaving the serial port open. Added a dedicated `serialConnectedRef` updated synchronously in `connectSerial`, `disconnectSerial`, and `setOutputMode`.
+- **`LanguageProvider` fallback `null` guard used `=== undefined`** (`LanguageProvider.tsx`): The locale JSON fallback traversal checked `=== undefined` but not `=== null`, so a `null` value in a locale file bypassed the guard and caused `t()` to return the raw dotted key. Changed to `== null`.
+- **`resolveNodeName` mis-translated user-created node names** (`nodeNameResolver.ts`): Step-1 (`t(name) !== name`) was applied unconditionally — any user node name that happened to match an i18n key (e.g. `can.defibrillator`) was silently replaced with its translation. Now restricted to strings that look like i18n keys: no spaces, contains a dot, starts lowercase.
+
+#### Performance Fixes
+- **`t()` recreation defeated `contextValue` `useMemo`** (`LanguageProvider.tsx`): `t` was defined with `useCallback([locale, customLabels])`; every `setCustomLabel` call created a new `customLabels` reference, recreating `t` and invalidating the `useMemo` on `contextValue` — causing all 173 `useTranslation()` consumers to re-render on every keystroke in the Translations page. `t` now reads `customLabels` via a `customLabelsRef`, its dep array is `[locale]` only, and label saves no longer propagate to consumers.
+- **`handleImport` fired N state updates** (`Translations/index.tsx`): Importing a JSON file called `setCustomLabel` once per key, causing N sequential React re-renders and N `localStorage.setItem` calls. Added `bulkSetCustomLabels(overrides)` to the context; import now performs one atomic state update and one storage write.
+- **`computeCANCRC` called on every SocketCAN RX frame** (`CANContext.tsx`): The kernel driver already validates the CRC before delivering frames to userspace; running the full 15-bit polynomial in JS on every received frame was pure overhead. `socketCANPayloadToFrame` now sets `crc: 0` for SocketCAN RX frames.
+
+---
+
+## [v1.6.0] — 2026-05-28 (patch)
 ### 🔧 i18n / Translations Code Review Fixes
 
 #### Bug Fixes

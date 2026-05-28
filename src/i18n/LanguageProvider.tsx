@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import tr from './locales/tr.json';
 import en from './locales/en.json';
 import { LanguageContext, type Locale, type Translations } from './context';
@@ -13,6 +13,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [customLabels, setCustomLabels] = useState<CustomLabelStore>(() => loadCustomLabels());
+  // Ref so t() never needs customLabels in its dep array — prevents 173-component re-render
+  // cascade on every label save while still reading the latest value at call time.
+  const customLabelsRef = useRef<CustomLabelStore>(customLabels);
+  useEffect(() => { customLabelsRef.current = customLabels; }, [customLabels]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
@@ -29,6 +33,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       const next: CustomLabelStore = {
         ...prev,
         [loc]: { ...prev[loc], [key]: value },
+      };
+      saveCustomLabels(next);
+      return next;
+    });
+  }, []);
+
+  const bulkSetCustomLabels = useCallback((overrides: CustomLabelStore) => {
+    setCustomLabels(prev => {
+      const next: CustomLabelStore = {
+        en: { ...prev.en, ...overrides.en },
+        tr: { ...prev.tr, ...overrides.tr },
       };
       saveCustomLabels(next);
       return next;
@@ -60,9 +75,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // t reads customLabels via ref — dep array is [locale] only, so label saves do NOT
+  // invalidate t or contextValue, and 173 useTranslation() consumers stay quiet.
   const t = useCallback((path: string, params?: Record<string, unknown>): string => {
+    const labels = customLabelsRef.current;
+
     // Check user overrides first
-    const override = customLabels[locale]?.[path];
+    const override = labels[locale]?.[path];
     if (override !== undefined && override !== '') {
       return applyParams(override, params);
     }
@@ -72,16 +91,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     for (const key of keys) {
       if (typeof current !== 'object' || current === null || !(key in current) || (current as Record<string, unknown>)[key] === undefined) {
-        // Fallback to English for any missing key
+        // Fallback to the other locale for any missing key
         const fallbackLocale: Locale = locale === 'en' ? 'tr' : 'en';
         // Check user override in fallback locale
-        const fallbackOverride = customLabels[fallbackLocale]?.[path];
+        const fallbackOverride = labels[fallbackLocale]?.[path];
         if (fallbackOverride !== undefined && fallbackOverride !== '') {
           return applyParams(fallbackOverride, params);
         }
         let fallback: unknown = translations[fallbackLocale];
         for (const fKey of keys) {
-            if (typeof fallback !== 'object' || fallback === null || (fallback as Record<string, unknown>)[fKey] === undefined) return path;
+            if (typeof fallback !== 'object' || fallback == null || (fallback as Record<string, unknown>)[fKey] == null) return path;
             fallback = (fallback as Record<string, unknown>)[fKey];
         }
         current = fallback;
@@ -92,11 +111,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     const result = typeof current === 'string' ? current : path;
     return applyParams(result, params);
-  }, [locale, customLabels]);
+  }, [locale]);
 
   const contextValue = useMemo(
-    () => ({ locale, language: locale, setLocale, t, customLabels, setCustomLabel, resetCustomLabel, resetCustomLabelKeys }),
-    [locale, setLocale, t, customLabels, setCustomLabel, resetCustomLabel, resetCustomLabelKeys],
+    () => ({ locale, language: locale, setLocale, t, customLabels, setCustomLabel, bulkSetCustomLabels, resetCustomLabel, resetCustomLabelKeys }),
+    [locale, setLocale, t, customLabels, setCustomLabel, bulkSetCustomLabels, resetCustomLabel, resetCustomLabelKeys],
   );
 
   return (

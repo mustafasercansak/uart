@@ -103,7 +103,7 @@ struct TcpServerState {
 struct SocketCanState {
     stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     #[cfg(target_os = "linux")]
-    write_fd: Mutex<Option<RawFd>>,
+    write_fd: Arc<Mutex<Option<RawFd>>>,
 }
 
 fn recordings_dir() -> PathBuf {
@@ -800,6 +800,10 @@ fn connect_socketcan(
         *fd = Some(write_fd);
     }
 
+    // Share write_fd Arc with the read thread so it can close the fd if it exits
+    // due to a fatal error (e.g. interface removed) without waiting for disconnect_socketcan.
+    let write_fd_arc = Arc::clone(&state.write_fd);
+
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     {
         let mut tx = state.stop_tx.lock().unwrap();
@@ -860,6 +864,11 @@ fn connect_socketcan(
         }
 
         unsafe { libc::close(read_fd) };
+        // Also close write_fd so the kernel socket is fully released even if
+        // disconnect_socketcan is never called (e.g. after a fatal interface error).
+        if let Some(wfd) = write_fd_arc.lock().unwrap().take() {
+            unsafe { libc::close(wfd) };
+        }
         app_clone
             .emit("socketcan-status", serde_json::json!({ "connected": false }))
             .ok();
@@ -1086,7 +1095,7 @@ pub fn run() {
         .manage(SocketCanState {
             stop_tx: Mutex::new(None),
             #[cfg(target_os = "linux")]
-            write_fd: Mutex::new(None),
+            write_fd: Arc::new(Mutex::new(None)),
         })
         .invoke_handler(tauri::generate_handler![
             list_serial_ports,

@@ -1794,6 +1794,7 @@
     "autoSendFrame": "Frame Gönder",
     "autoExpectFrame": "Frame Bekle",
     "autoFrameSent": "Frame gönderildi",
+    "autoNoTransport": "Aktif taşıma yok (seri port veya ağ gerekli)",
     "autoWithinMs": "{ms} ms içinde",
     "autoAfterMs": "{ms} ms sonra",
     "autoStepDelay": "ms gecikme",

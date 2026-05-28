@@ -6,7 +6,6 @@ import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANFrame } from '../types/CANFrame';
 import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
 import type { UDSDiagnosticConfig } from '../types/UDS';
-import { computeCANCRC } from '../engines/CANFrameParser';
 import { invoke, listen } from '../../lib/tauri-bridge';
 import { translateBackendError } from '../../utils/backendError';
 
@@ -97,6 +96,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const workerRef = useRef<Worker | null>(null);
   const restartCountRef = useRef(0);
   const isMountedRef = useRef(true);
+
+  // Tracks serial connection state synchronously (stateRef is only refreshed after render)
+  const serialConnectedRef = useRef(false);
 
   // Buffer for high-frequency frame updates — drained by RAF loop
   const frameBatchRef = useRef<CANFrame[]>([]);
@@ -318,7 +320,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
   const setOutputMode = useCallback((mode: CANBusState['outputMode']) => {
     dispatch({ type: 'CAN_SET_OUTPUT_MODE', mode });
-    if (mode !== 'serial' && stateRef.current.serialConnected) {
+    if (mode !== 'serial' && serialConnectedRef.current) {
       // Close the physical serial port so the OS handle is released
       serialReaderRef.current?.cancel().catch(() => {});
       serialReaderRef.current = null;
@@ -327,6 +329,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       serialWriterRef.current = null;
       serialPortRef.current?.close().catch(() => {});
       serialPortRef.current = null;
+      serialConnectedRef.current = false;
       dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
     }
     if (mode !== 'tcp' && mode !== 'tcp-server') {
@@ -358,6 +361,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
         await port.open({ baudRate: 115200 });
         serialPortRef.current = port;
+        serialConnectedRef.current = true;
 
         const textEncoder = new TextEncoderStream();
         textEncoder.readable.pipeTo(port.writable);
@@ -440,15 +444,19 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       // Port/writer may already be closed — log for debugging but don't surface to user
       console.warn('[SLCAN] disconnect error (non-critical):', e);
     }
+    serialConnectedRef.current = false;
     dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Disconnected from SLCAN`, type: 'info' } });
   }, []);
 
   const connectNetwork = useCallback(async (interfaceName: string) => {
-    // Strip known scheme prefixes; tcp-server:// is not a valid SocketCAN target
+    // Reject TCP addresses up-front — SocketCAN takes interface names like 'vcan0', 'can0'
+    if (/^tcp(-server)?:\/\//i.test(interfaceName)) {
+      dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN does not accept TCP URLs: ${interfaceName}`, type: 'error' } });
+      return;
+    }
     const normalizedInterface = interfaceName
       .replace(/^socketcan:\/\//, '')
-      .replace(/^tcp(-server)?:\/\/.*/, '')
       .trim() || 'vcan0';
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SocketCAN ${normalizedInterface}...`, type: 'info' } });
     try {
@@ -547,7 +555,7 @@ function socketCANPayloadToFrame(payload: SocketCANFramePayload, busLoadPercent:
     isRTR: Boolean(payload.isRTR),
     dlc,
     data: data.slice(0, dlc),
-    crc: computeCANCRC(data, payload.arbitrationId, dlc, idFormat),
+    crc: 0, // kernel already validated CRC; avoid redundant computation on every RX frame
     timestamp: Date.now(),
     nodeId,
     busLoadPercent,

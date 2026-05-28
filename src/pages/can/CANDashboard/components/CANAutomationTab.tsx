@@ -191,7 +191,7 @@ function newProfile(name: string, groupId?: string): CANAutomationProfile {
 
 export function CANAutomationTab({
   nodes, elapsedMs, status: _status, frames,
-  networkConnected: _networkConnected, serialConnected: _serialConnected,
+  networkConnected, serialConnected,
   onInjectFault, onRecoverNode, onSendFrame,
 }: CANAutomationTabProps) {
   const { t } = useTranslation();
@@ -227,27 +227,9 @@ export function CANAutomationTab({
   useEffect(() => { saveGroups(groups); }, [groups]);
   useEffect(() => { saveExpandedGroups(expandedGroups); }, [expandedGroups]);
 
-  // Auto-fix stale nodeIds when nodes are added/changed
-  useEffect(() => {
-    if (nodes.length === 0) return;
-    const validIds = new Set(nodes.map(n => n.id));
-    setProfiles(prev => {
-      let anyChanged = false;
-      const next = prev.map(p => {
-        let profileChanged = false;
-        const steps = p.steps.map(s => {
-          if ((s.type === 'fault' || s.type === 'recover') && !validIds.has(s.nodeId)) {
-            profileChanged = true;
-            anyChanged = true;
-            return { ...s, nodeId: nodes[0].id };
-          }
-          return s;
-        });
-        return profileChanged ? { ...p, steps } : p;
-      });
-      return anyChanged ? next : prev;
-    });
-  }, [nodes]);
+  // NOTE: stale nodeId steps are intentionally left as-is; when executed they will
+  // produce a clear passed:false result ("node not found") rather than silently
+  // remapping to nodes[0] and persisting corrupted data.
 
   const editingProfile = profiles.find(p => p.id === editingId) ?? profiles[0];
 
@@ -393,6 +375,8 @@ export function CANAutomationTab({
 
   const cbRefs = useRef({ onInjectFault, onRecoverNode, onSendFrame });
   useEffect(() => { cbRefs.current = { onInjectFault, onRecoverNode, onSendFrame }; }, [onInjectFault, onRecoverNode, onSendFrame]);
+  const transportRef = useRef(networkConnected || serialConnected);
+  useEffect(() => { transportRef.current = networkConnected || serialConnected; }, [networkConnected, serialConnected]);
   const tRef = useRef(t);
   useEffect(() => { tRef.current = t; }, [t]);
   const nodesRef = useRef(nodes);
@@ -504,6 +488,11 @@ export function CANAutomationTab({
         } else if (step.type === 'send-frame') {
           const id = step.sendArbId ?? 0;
           const data = parseHex(step.sendDataHex ?? '');
+          if (!transportRef.current) {
+            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: false, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoNoTransport') });
+            runNext();
+            return;
+          }
           cbRefs.current.onSendFrame(id, data);
           addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoFrameSent') });
           runNext();
@@ -616,8 +605,12 @@ export function CANAutomationTab({
           } else if (step.type === 'send-frame') {
             const id = step.sendArbId ?? 0;
             const data = parseHex(step.sendDataHex ?? '');
-            cbRefs.current.onSendFrame(id, data);
-            addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoFrameSent') });
+            if (!transportRef.current) {
+              addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: false, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoNoTransport') });
+            } else {
+              cbRefs.current.onSendFrame(id, data);
+              addRunResult(pid, { stepId: step.id, type: step.type, label: stepLabel(step), timeMs: step.timeMs, passed: true, expected: expectedFrameStr(id, data), actual: tRef.current('can.autoFrameSent') });
+            }
           } else if (step.type === 'expect-frame') {
             rt.timelinePending.set(step.id, { step, triggerWallMs: now, framesAtTrigger: framesRef.current.length });
           }

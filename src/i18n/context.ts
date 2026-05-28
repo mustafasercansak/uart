@@ -12,6 +12,7 @@ export interface LanguageContextType {
   t: (path: string, params?: Record<string, unknown>) => string;
   customLabels: CustomLabelStore;
   setCustomLabel: (key: string, locale: Locale, value: string) => void;
+  bulkSetCustomLabels: (overrides: CustomLabelStore) => void;
   resetCustomLabel: (key: string, locale?: Locale) => void;
   resetCustomLabelKeys: (keys: string[]) => void;
 }

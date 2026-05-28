@@ -30,9 +30,13 @@ export function resolveNodeName(
   name: string,
   t: (key: string) => string,
 ): string {
-  // 1. Exact key — t() returns something different from the key itself
-  const exact = t(name);
-  if (exact !== name) return exact;
+  // 1. Exact key — only attempt for strings that look like i18n keys
+  //    (no spaces, contains a dot, starts lowercase). User-created names
+  //    like "My Device" or "Bed 3" are never candidates.
+  if (!name.includes(' ') && name.includes('.') && /^[a-z]/.test(name)) {
+    const exact = t(name);
+    if (exact !== name) return exact;
+  }
 
   // 2. Pattern: can.bed{N}{Suffix}
   //    e.g. can.bed3IVPump → "Bed 3 · IV Pump"
