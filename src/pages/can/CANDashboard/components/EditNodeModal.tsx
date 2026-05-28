@@ -15,7 +15,8 @@ const PROFILES = Object.entries(MEDICAL_PROFILE_LABELS) as [CANMedicalProfile, s
 export function EditNodeModal({ node, onSave, onClose }: EditNodeModalProps) {
   const { t } = useTranslation();
 
-  const [name, setName] = useState(() => resolveNodeName(node.name, t));
+  const resolvedOriginalName = resolveNodeName(node.name, t);
+  const [name, setName] = useState(resolvedOriginalName);
   const [profile, setProfile] = useState<CANMedicalProfile>(node.profile);
   const [baseId, setBaseId] = useState(node.baseArbitrationId);
   const [intervalMs, setIntervalMs] = useState(node.sendIntervalMs);
@@ -26,7 +27,7 @@ export function EditNodeModal({ node, onSave, onClose }: EditNodeModalProps) {
     if (baseId < 0 || baseId > 0x7ff) { setError(t('can.arbIdRange')); return; }
 
     onSave(node.id, {
-      name: name.trim(),
+      name: name.trim() === resolvedOriginalName ? node.name : name.trim(),
       profile,
       color: MEDICAL_PROFILE_COLORS[profile],
       baseArbitrationId: baseId,

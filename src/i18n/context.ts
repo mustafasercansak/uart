@@ -13,6 +13,7 @@ export interface LanguageContextType {
   customLabels: CustomLabelStore;
   setCustomLabel: (key: string, locale: Locale, value: string) => void;
   resetCustomLabel: (key: string, locale?: Locale) => void;
+  resetCustomLabelKeys: (keys: string[]) => void;
 }
 
 export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

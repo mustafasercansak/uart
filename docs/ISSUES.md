@@ -64,4 +64,22 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 i18n / Translations Code Review (2026-05-28)
+
+9 findings from 7-angle automated review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 37 | 🔴 Blocker | `EditNodeModal`: `resolveNodeName()` result written back on save — i18n key permanently destroyed | i18n / Data Integrity | Fixed: preserve original `node.name` when display text is unchanged |
+| 38 | 🔴 Blocker | `CANProfiles` `nodeToForm`: same silent key destruction via `resolveNodeName()` | i18n / Data Integrity | Fixed: same pattern — compare resolved text before overwriting key |
+| 39 | 🔴 Blocker | `LanguageProvider`: no `useMemo` on context value — all 173 `useTranslation()` consumers re-render on every label save | Performance | Fixed: context value wrapped in `useMemo` |
+| 40 | 🟠 High | `loadCustomLabels`: `{ en:{}, tr:{}, ...parsed }` allows `null` locale — `resetCustomLabel` throws `TypeError` | Robustness | Fixed: null-guard after spread |
+| 41 | 🟡 Medium | `handleResetAll`: N separate `localStorage.setItem` calls (one per key) instead of one bulk write | Performance | Fixed: new `resetCustomLabelsForNamespace` bulk action |
+| 42 | 🟡 Medium | `handleBlur`: fires `setCustomLabel` on innocent focus/blur with no change — spurious writes and re-renders | Performance | Fixed: early return when value equals stored custom label |
+| 43 | 🔵 Low | `applyParams`: `new RegExp('{' + key + '}', 'g')` — unescaped key throws `SyntaxError` for metachar param names | Robustness | Fixed: replaced with `split`/`join` |
+| 44 | 🔵 Low | `Translations` table column headers use translated text as React `key` — duplicate translation collapses a column | UI | Fixed: stable identifier string used as key |
+| 45 | 🔵 Low | `LabelsEditorModal.tsx`: dead code — zero imports after Tag button changed to navigate | Maintenance | Fixed: file deleted |
+
+---
+
 *Last updated: 2026-05-28*

@@ -8,7 +8,11 @@ export function loadCustomLabels(): CustomLabelStore {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
-    return { en: {}, tr: {}, ...parsed };
+    const merged = { en: {}, tr: {}, ...parsed };
+    return {
+      en: merged.en && typeof merged.en === 'object' ? merged.en : {},
+      tr: merged.tr && typeof merged.tr === 'object' ? merged.tr : {},
+    };
   } catch {
     return { en: {}, tr: {} };
   }

@@ -421,8 +421,13 @@ export default function CANProfiles() {
 
   const commitEditNode = () => {
     if (!selectedProfile || !nodeForm || editingNodeId === null) return;
+    const originalNode = selectedProfile.nodes.find(n => n.id === editingNodeId);
     const patch = formToNode(nodeForm);
     if (!patch) return;
+    // Preserve the original i18n key if the user didn't change the display name
+    if (originalNode && patch.name === resolveNodeName(originalNode.name, t)) {
+      patch.name = originalNode.name;
+    }
     const updatedNodes = selectedProfile.nodes.map(n =>
       n.id === editingNodeId ? { ...n, ...patch } as CANProfileNode : n
     );

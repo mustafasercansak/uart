@@ -60,7 +60,7 @@ function getRows(ns: string): TranslationRow[] {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TranslationsPage() {
-  const { t, customLabels, setCustomLabel, resetCustomLabel } = useTranslation();
+  const { t, customLabels, setCustomLabel, resetCustomLabel, resetCustomLabelKeys } = useTranslation();
   const navigate = useNavigate();
 
   const [selectedNs, setSelectedNs] = useState('can');
@@ -90,13 +90,15 @@ export default function TranslationsPage() {
   const handleBlur = useCallback(
     (key: string, locale: Locale, value: string) => {
       const trimmed = value.trim();
+      const stored = customLabels[locale][key] ?? '';
+      if (trimmed === stored) return;
       if (trimmed) {
         setCustomLabel(key, locale, trimmed);
       } else {
         resetCustomLabel(key, locale);
       }
     },
-    [setCustomLabel, resetCustomLabel],
+    [customLabels, setCustomLabel, resetCustomLabel],
   );
 
   const handleResetRow = useCallback(
@@ -105,7 +107,7 @@ export default function TranslationsPage() {
   );
 
   const handleResetAll = () => {
-    rows.forEach(r => resetCustomLabel(r.key));
+    resetCustomLabelKeys(rows.map(r => r.key));
   };
 
   const handleExport = () => {
@@ -244,14 +246,8 @@ export default function TranslationsPage() {
 
       {/* Table header */}
       <div className="shrink-0 grid grid-cols-[2fr_2fr_2fr_2fr_2fr_auto] gap-0 border-b border-gray-800/60 px-5 py-1.5 bg-gray-900/40">
-        {[
-          t('translations.colKey'),
-          t('translations.colDefaultEn'),
-          t('translations.colDefaultTr'),
-          t('translations.colCustomEn'),
-          t('translations.colCustomTr'),
-        ].map(label => (
-          <div key={label} className="text-[9px] font-black uppercase tracking-widest text-gray-500 pr-3">{label}</div>
+        {(['colKey', 'colDefaultEn', 'colDefaultTr', 'colCustomEn', 'colCustomTr'] as const).map(col => (
+          <div key={col} className="text-[9px] font-black uppercase tracking-widest text-gray-500 pr-3">{t(`translations.${col}`)}</div>
         ))}
         <div className="w-6" />
       </div>

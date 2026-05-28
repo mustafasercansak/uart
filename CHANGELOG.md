@@ -7,6 +7,26 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 ---
 
 ## [v1.6.0] — 2026-05-28 (patch)
+### 🔧 i18n / Translations Code Review Fixes
+
+#### Bug Fixes
+- **`EditNodeModal` name round-trip broken** (`EditNodeModal.tsx`): When saving, the node name was taken from the display-resolved string rather than the original i18n key, permanently converting keys like `can.oRMonitor` to plain text and breaking future locale switching. Now tracks `resolvedOriginalName` and writes back the original key if the user made no change.
+- **`CANProfiles` `commitEditNode` same issue** (`CANProfiles/index.tsx`): `commitEditNode` compared `patch.name` to the raw form value; identical fix — restores the original i18n key when the user leaves the name unchanged.
+- **`applyParams` unsafe with regex metachar keys** (`LanguageProvider.tsx`): The param substitution used `new RegExp('{' + key + '}', 'g')`, which throws a `SyntaxError` for any param whose name contains a regex metacharacter. Replaced with a safe `split`/`join` approach.
+- **`loadCustomLabels` null locale crash** (`customLabels.ts`): After the spread `{ en: {}, tr: {}, ...parsed }`, a stored `null` value for `en` or `tr` passed straight through as `null`. Added an explicit `typeof === 'object'` guard so malformed localStorage data falls back to `{}`.
+
+#### Performance Fixes
+- **Mass re-render on every label save** (`LanguageProvider.tsx`): The context value object was re-created on every render, causing all 173 `useTranslation()` consumers to re-render after each `setCustomLabel` call. Wrapped context value in `useMemo`.
+- **N `localStorage.setItem` writes on "Reset All"** (`Translations/index.tsx` + `LanguageProvider.tsx`): The previous `handleResetAll` called `resetCustomLabel` in a `forEach` loop, triggering one state update and one storage write per key. Added `resetCustomLabelKeys(keys[])` bulk method that does a single state update and a single write regardless of namespace size.
+
+#### Code Quality
+- **`handleBlur` no-op saves** (`Translations/index.tsx`): Blurring an unmodified input fired `setCustomLabel` unnecessarily. Added early-return guard `if (trimmed === stored) return`.
+- **Column headers used translated text as React keys** (`Translations/index.tsx`): Column header `key` prop used the translated string, which changes with locale and can collide. Changed to stable identifier strings (`'colKey'`, `'colDefaultEn'`, etc.).
+- **`LabelsEditorModal` dead code** (`LabelsEditorModal.tsx`): After the Tag button was changed to navigate to `/translations`, the modal had zero import sites. File deleted.
+
+---
+
+## [v1.6.0] — 2026-05-28 (patch)
 ### 🐛 Pre-Release Bug-Fix Pass (Code Review)
 
 #### Critical Fixes

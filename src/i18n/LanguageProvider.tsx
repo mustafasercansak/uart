@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import tr from './locales/tr.json';
 import en from './locales/en.json';
 import { LanguageContext, type Locale, type Translations } from './context';
@@ -29,6 +29,18 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       const next: CustomLabelStore = {
         ...prev,
         [loc]: { ...prev[loc], [key]: value },
+      };
+      saveCustomLabels(next);
+      return next;
+    });
+  }, []);
+
+  const resetCustomLabelKeys = useCallback((keys: string[]) => {
+    setCustomLabels(prev => {
+      const keySet = new Set(keys);
+      const next: CustomLabelStore = {
+        en: Object.fromEntries(Object.entries(prev.en).filter(([k]) => !keySet.has(k))),
+        tr: Object.fromEntries(Object.entries(prev.tr).filter(([k]) => !keySet.has(k))),
       };
       saveCustomLabels(next);
       return next;
@@ -82,8 +94,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return applyParams(result, params);
   }, [locale, customLabels]);
 
+  const contextValue = useMemo(
+    () => ({ locale, language: locale, setLocale, t, customLabels, setCustomLabel, resetCustomLabel, resetCustomLabelKeys }),
+    [locale, setLocale, t, customLabels, setCustomLabel, resetCustomLabel, resetCustomLabelKeys],
+  );
+
   return (
-    <LanguageContext.Provider value={{ locale, language: locale, setLocale, t, customLabels, setCustomLabel, resetCustomLabel }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );
@@ -92,7 +109,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 function applyParams(str: string, params?: Record<string, unknown>): string {
   if (!params) return str;
   return Object.entries(params).reduce(
-    (acc, [key, value]) => acc.replace(new RegExp(`{${key}}`, 'g'), String(value)),
+    (acc, [key, value]) => acc.split(`{${key}}`).join(String(value)),
     str,
   );
 }
