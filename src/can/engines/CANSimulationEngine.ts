@@ -32,6 +32,7 @@ import { DEFAULT_VITALS, MEDICAL_PROFILE_COLORS, FAULT_LABELS } from '../types/C
 const MAX_RECENT_FRAMES = 200;
 const MAX_LOG_ENTRIES = 500;
 const BUS_LOAD_WINDOW_MS = 1000;
+const ERROR_INJECTION_EMIT_INTERVAL_MS = 250;
 
 interface IsoTpRxSession {
   totalLength: number;
@@ -68,6 +69,7 @@ export class CANSimulationEngine {
   private recentFrameBits: Array<{ ts: number; bits: number }> = [];
   private fpsCounter = 0;
   private fpsResetAt = 0;
+  private lastErrorInjectionEmitAt = 0;
 
   constructor(initialState: CANBusState) {
     this.state = structuredClone(initialState);
@@ -211,6 +213,7 @@ export class CANSimulationEngine {
       },
       oneTimeArmed: false,
     };
+    this.lastErrorInjectionEmitAt = 0;
     this.emitStateUpdate({
       recentFrames: [],
       frameCount: 0,
@@ -684,9 +687,10 @@ export class CANSimulationEngine {
       this.log('error', `Injected Errors: ${injectedLabels.join(', ')} on CAN 0x${frame.arbitrationId.toString(16).toUpperCase().padStart(3, '0')}`, frame.nodeId >= 0 ? frame.nodeId : undefined);
     }
 
+    const oneTimeConsumed = current.config.triggerMode === 'one-time' && shouldInject && current.oneTimeArmed;
     this.state.errorInjection = {
       ...current,
-      oneTimeArmed: current.config.triggerMode === 'one-time' && shouldInject ? false : current.oneTimeArmed,
+      oneTimeArmed: oneTimeConsumed ? false : current.oneTimeArmed,
       stats: {
         totalPackets: current.stats.totalPackets + 1,
         successfulPackets: current.stats.successfulPackets + (injectedLabels.length === 0 ? 1 : 0),
@@ -694,7 +698,17 @@ export class CANSimulationEngine {
       },
     };
 
-    this.emitStateUpdate({ errorInjection: this.state.errorInjection });
+    const nowMs = Date.now();
+    const shouldEmitState =
+      injectedLabels.length > 0 ||
+      oneTimeConsumed ||
+      packetNumber === 1 ||
+      nowMs - this.lastErrorInjectionEmitAt >= ERROR_INJECTION_EMIT_INTERVAL_MS;
+
+    if (shouldEmitState) {
+      this.lastErrorInjectionEmitAt = nowMs;
+      this.emitStateUpdate({ errorInjection: this.state.errorInjection });
+    }
   }
 
   // ── BUS LOAD ───────────────────────────────────────────────────────────────

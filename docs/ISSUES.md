@@ -157,4 +157,16 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v6 Code Review (2026-05-28)
+
+3 findings from focused follow-up review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 83 | 🟠 High | `CANSimulationEngine.ts`: `applyErrorInjection()` emitted `CAN_STATE_UPDATE` on every frame, bypassing frame batching and risking UI throughput drops at high bus rates | Performance / CAN Simulation | Fixed: `errorInjection` patches are now throttled (`250ms`) with immediate emits for first packet, one-time arm consume, and actual injected errors |
+| 84 | 🟡 Medium | `CANContext.tsx`: fixed 2s echo window could expire pre-registered ISO-TP pending TX entries; delayed CF echoes were misclassified as RX | SocketCAN / UX | Fixed: pending ISO-TP entries are timestamped per scheduled CF send time using `stMinMs`, preventing premature expiry for long bursts |
+| 85 | 🟡 Medium | `CANContext.tsx`: serial ref assignments triggered `react-hooks/immutability` lint errors in updated paths | TypeScript / Lint | Fixed: explicit `react-hooks/immutability` suppressions added for intended ref mutations in serial connect/disconnect paths |
+
+---
+
 *Last updated: 2026-05-28*

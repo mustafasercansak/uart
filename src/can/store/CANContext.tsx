@@ -363,6 +363,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         }
 
         await port.open({ baudRate: 115200 });
+        // eslint-disable-next-line react-hooks/immutability
         serialPortRef.current = port;
         serialConnectedRef.current = true;
         dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: true });
@@ -378,6 +379,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         const textDecoder = new TextDecoderStream() as unknown as Uint8ArrayDecoder;
         port.readable.pipeTo(textDecoder.writable);
         const reader = textDecoder.readable.getReader();
+        // eslint-disable-next-line react-hooks/immutability
         serialReaderRef.current = reader;
 
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: t('can.successfullyConne'), type: 'info' } });
@@ -435,6 +437,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     try {
       if (serialReaderRef.current) {
         await serialReaderRef.current.cancel();
+        // eslint-disable-next-line react-hooks/immutability
         serialReaderRef.current = null;
       }
       if (serialWriterRef.current) {
@@ -444,6 +447,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       }
       if (serialPortRef.current) {
         await serialPortRef.current.close();
+        // eslint-disable-next-line react-hooks/immutability
         serialPortRef.current = null;
       }
     } catch (e) {
@@ -518,17 +522,20 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     if (stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected) {
       const norm = payload.map(b => b & 0xff);
       const idFormat: 'standard' | 'extended' = requestId > 0x7ff ? 'extended' : 'standard';
-      const createdAt = Date.now();
+      const baseCreatedAt = Date.now();
+      const stMinMs = Math.max(0, stateRef.current.udsConfig.stMinMs ?? 0);
       if (norm.length <= 7) {
         const data = [norm.length, ...norm];
-        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data, dlc: data.length, idFormat, createdAt });
+        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data, dlc: data.length, idFormat, createdAt: baseCreatedAt });
       } else {
         const len = Math.min(norm.length, 0xfff);
         const ffData = [0x10 | ((len >> 8) & 0x0f), len & 0xff, ...norm.slice(0, 6)];
+        let createdAt = baseCreatedAt;
         pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: ffData, dlc: ffData.length, idFormat, createdAt });
         let offset = 6;
         let seq = 1;
         while (offset < len) {
+          createdAt += stMinMs;
           const chunk = norm.slice(offset, offset + 7);
           const cfData = [0x20 | (seq & 0x0f), ...chunk];
           pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: cfData, dlc: cfData.length, idFormat, createdAt });
