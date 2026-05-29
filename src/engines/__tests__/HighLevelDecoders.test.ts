@@ -288,6 +288,22 @@ describe('HighLevelDecoders', () => {
              expect(res.fields.find(f => f.name === 'Coil Byte[1]')?.value).toBe('0b10101010');
         });
 
+        it('Modbus FC 0x06 write single register', () => {
+             // realFC=0x06, data=[addrHi, addrLo, valHi, valLo]
+             const req = [0x01, 0x06, 0x00, 0x10, 0x00, 0x0A, 0xE9, 0x79];
+             const res = decodeModbusRTU(req);
+             expect(res.fields.find(f => f.name === 'Register Adresi')?.value).toBe(16);
+             expect(res.fields.find(f => f.name === 'Yazılan Değer')?.value).toBe(10);
+        });
+
+        it('Modbus FC 0x01 request form (8 bytes, 4 data bytes)', () => {
+             // realFC=0x01, bytes.length===8, data.length>=4 → start address + quantity
+             const req = [0x01, 0x01, 0x00, 0x00, 0x00, 0x08, 0x3D, 0xCC];
+             const res = decodeModbusRTU(req);
+             expect(res.fields.find(f => f.name === 'Başlangıç Adresi')?.value).toBe(0);
+             expect(res.fields.find(f => f.name === 'Coil Miktarı')?.value).toBe(8);
+        });
+
         it('NMEA: targets remaining specific branches', () => {
              // Line 326: qualityMap fallback
              const gga = '$GPGGA,123519,4807.038,N,01131.000,E,9,08,0.9,545.4,M,46.9,M,,*49';

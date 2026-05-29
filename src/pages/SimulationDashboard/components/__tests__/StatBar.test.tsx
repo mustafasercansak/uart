@@ -605,4 +605,38 @@ describe('StatBar', () => {
     );
     expect(container.querySelector('.text-emerald-400')).toBeTruthy();
   });
+
+  it('shows online status when tcp mode is connected', () => {
+    render(<StatBar {...defaultProps} outputMode="tcp" networkConnected={true} />, { wrapper });
+    expect(screen.getByText(/online/i)).toBeInTheDocument();
+  });
+
+  it('shows tcp-server listening status when tcp-server mode is connected', () => {
+    render(<StatBar {...defaultProps} outputMode="tcp-server" networkConnected={true} />, { wrapper });
+    expect(screen.getByText(/listening/i)).toBeInTheDocument();
+  });
+
+  it('toggles locale when Globe button is clicked', () => {
+    localStorage.setItem('uart_locale', 'en');
+    render(<StatBar {...defaultProps} />, { wrapper });
+    // Default locale is 'en', so the button shows 'EN' as its title
+    const globeBtn = screen.getByTitle('EN');
+    fireEvent.click(globeBtn);
+    // After click locale switches to 'tr'
+    expect(screen.getByTitle('TR')).toBeInTheDocument();
+  });
+
+  it('shows Start button disabled when no profile is selected', () => {
+    render(<StatBar {...defaultProps} status="stopped" selectedProfileId={null} />, { wrapper });
+    const startBtn = screen.getByRole('button', { name: /start/i });
+    expect(startBtn).toBeDisabled();
+  });
+
+  it('shows validationSession view-report button when session exists', () => {
+    const session = { id: 's1', startedAt: 0, endedAt: 1000, summary: { pass: 1, fail: 0, warn: 0, totalSteps: 1 }, steps: [] };
+    render(<StatBar {...defaultProps} validationSession={session as never} />, { wrapper });
+    // Use queryAllByRole to handle multiple matches, just verify at least one exists
+    const reportBtns = screen.queryAllByRole('button', { name: /report/i });
+    expect(reportBtns.length).toBeGreaterThan(0);
+  });
 });

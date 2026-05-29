@@ -276,4 +276,36 @@ describe('customLabels storage', () => {
     const loaded = loadCustomLabels();
     expect(loaded).toEqual({ en: {}, tr: {} });
   });
+
+  it('loadCustomLabels falls back to {} when en/tr values are non-objects', () => {
+    // Covers lines 13-14: `merged.en && typeof merged.en === 'object'` false branch
+    localStorage.setItem('uart_custom_labels', JSON.stringify({ en: null, tr: 42 }));
+    const loaded = loadCustomLabels();
+    expect(loaded).toEqual({ en: {}, tr: {} });
+  });
+});
+
+describe('resetCustomLabelKeys preserves non-deleted keys', () => {
+  it('keeps labels that are NOT in the deletion set', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    // Set two custom labels
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'S'));
+    act(() => result.current.labels.setCustomLabel('common.cancel', 'en', 'X'));
+
+    // Delete only 'common.save'; 'common.cancel' must survive
+    act(() => result.current.labels.resetCustomLabelKeys(['common.save']));
+    act(() => result.current.t.setLocale('en'));
+
+    // Deleted key reverts to default
+    expect(result.current.t.t('common.save')).toBe('Save');
+    // Kept key still uses custom override (covers the `!keySet.has(k)` → true branch)
+    expect(result.current.t.t('common.cancel')).toBe('X');
+  });
 });

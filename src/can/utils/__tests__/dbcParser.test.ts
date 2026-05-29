@@ -105,6 +105,37 @@ BO_ 2147483904 Pump_Ext: 2 PUMP
       dlc: 2,
     });
   });
+
+  it('does not sign-extend a positive value in a signed signal', () => {
+    const signal = makeSignal({ startBit: 0, length: 8, byteOrder: 'little_endian', isSigned: true });
+    // 0x7F = 127 — less than halfRange (128), so no sign extension applied
+    expect(extractSignalValue([0x7f], signal)).toBe(127);
+  });
+
+  it('resets message context on a blank line between definitions', () => {
+    const dbc = `
+BO_ 100 Msg: 8 ECU
+ SG_ A : 0|8@1+ (1,0) [0|255] "" ECU
+
+BO_ 200 Msg2: 8 ECU
+ SG_ B : 0|8@1+ (1,0) [0|255] "" ECU
+`;
+    const result = parseDBC(dbc);
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0].signals[0].name).toBe('A');
+    expect(result.messages[1].signals[0].name).toBe('B');
+  });
+
+  it('handles a VAL_ table whose pairs contain multiple entries', () => {
+    const dbc = `
+BO_ 300 States: 8 ECU
+ SG_ State : 0|4@1+ (1,0) [0|15] "" ECU
+VAL_ 300 State 0 "Off" 1 "Standby" 2 "Active" 3 "Fault" ;
+`;
+    const result = parseDBC(dbc);
+    expect(result.valueTables).toHaveLength(1);
+    expect(result.valueTables[0].values).toEqual({ 0: 'Off', 1: 'Standby', 2: 'Active', 3: 'Fault' });
+  });
 });
 
 function makeSignal(patch: Partial<DBCSignal>): DBCSignal {

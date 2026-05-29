@@ -611,5 +611,33 @@ describe('FrameGenerator', () => {
       expect(emptySyncError.errors).toHaveLength(1);
       expect(emptySyncError.rawBytes).toEqual([]);
     });
+
+    it('skips noise when signalIntegrity is absent', () => {
+      // Covers the `state.signalIntegrity?.bitFlipsEnabled` null branch
+      const frame = generateFrame(mockProfile, { ...mockState, signalIntegrity: undefined as never }, 1);
+      expect(frame.rawBytes).toEqual([0xab, 0xcd, 0x55]);
+    });
+
+    it('skips ecg/resp legacy auto-sync when named values are absent', () => {
+      // Covers the `if (bpm > 0)` and `if (rr > 0)` false branches
+      const waveProfile = {
+        ...mockProfile,
+        fields: [
+          {
+            id: 'w1', name: 'W1', byteWidth: 1, order: 0, endianness: 'big',
+            type: 'waveform',
+            typeConfig: { shape: 'ecg', frequency: 2, amplitude: 50, offset: 128 },
+          },
+          {
+            id: 'w2', name: 'W2', byteWidth: 1, order: 1, endianness: 'big',
+            type: 'waveform',
+            typeConfig: { shape: 'resp_flow', frequency: 2, amplitude: 50, offset: 128 },
+          },
+        ],
+      } as unknown as FrameProfile;
+      // No BPM/RR named values → bpm=0, rr=0 → frequency unchanged
+      const frame = generateFrame(waveProfile, mockState, 0);
+      expect(frame.rawBytes).toHaveLength(2);
+    });
   });
 });

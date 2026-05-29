@@ -133,5 +133,11 @@ describe('FilterEngine', () => {
             // Craft a condition that has an unknown operator to hit 'default' in switch
             expect(FilterEngine.evaluate(mockExchange, 'latency ??? 10')).toBe(false);
         });
+
+        it('matches a symbolic operator with no surrounding spaces', () => {
+            // latency==15 — operator detected via bare indexOf fallback (lines 105-109)
+            expect(FilterEngine.evaluate(mockExchange, 'latency==15')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency==99')).toBe(false);
+        });
     });
 });

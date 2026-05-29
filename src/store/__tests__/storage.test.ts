@@ -67,6 +67,14 @@ describe('storage.ts', () => {
         expect(saved).toBeNull();
     });
 
+    it('falls back to INITIAL_PROFILES when stored array is empty', () => {
+        // Covers the `if (profiles.length === 0) return INITIAL_PROFILES` recovery branch
+        localStorage.setItem('uart_profiles', JSON.stringify([]));
+        const profiles = loadProfiles();
+        expect(profiles.length).toBeGreaterThan(0);
+        expect(profiles[0].name).toBe('YS2000A Patient Monitor');
+    });
+
     it('handles corrupted JSON in storage gracefully', () => {
         localStorage.setItem('uart_profiles', 'corrupted { json');
         const profiles = loadProfiles();
@@ -353,5 +361,16 @@ describe('Tauri FS profile persistence', () => {
 
     // Should not throw
     await expect(initProfileStorage()).resolves.toBeUndefined();
+  });
+
+  it('tauriSaveProfiles — logs error when save_can_profiles throws', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockInvokeFs.mockRejectedValueOnce(new Error('disk full'));
+
+    saveProfiles([mockProfile]);
+
+    await new Promise<void>(resolve => setTimeout(resolve, 20));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('save_can_profiles'), expect.any(Error));
+    consoleSpy.mockRestore();
   });
 });

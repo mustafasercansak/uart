@@ -49,6 +49,20 @@ describe('CANFrameParser', () => {
     });
   });
 
+  it('encodes and parses standard RTR (remote) frames', () => {
+    const encoded = encodeCANFrame({
+      arbitrationId: 0x123,
+      idFormat: 'standard',
+      frameType: 'remote',
+      isRTR: true,
+      dlc: 0,
+      data: [],
+    });
+
+    const parsed = parseCANFrame(encoded);
+    expect(parsed).toMatchObject({ arbitrationId: 0x123, idFormat: 'standard', isRTR: true, frameType: 'remote' });
+  });
+
   it.each([
     ['remote', true, 0x10fef100],
     ['error', false, 0x00fef100],
