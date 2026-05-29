@@ -192,8 +192,7 @@ export class CANSimulationEngine {
     this.transmitIsoTpPayload(requestId, normalizedPayload, 'tester');
     const cfCount = normalizedPayload.length > 7 ? Math.ceil((normalizedPayload.length - 6) / 7) : 0;
     const responseDelay = cfCount > 0 ? (cfCount + 1) * this.state.udsConfig.stMinMs : 0;
-    const tid = setTimeout(() => this.processUdsPayload(requestId, responseId, normalizedPayload), responseDelay);
-    this.isotpTxTimers.add(tid);
+    this.scheduleManagedTimeout(() => this.processUdsPayload(requestId, responseId, normalizedPayload), responseDelay);
   }
 
   public clearFrames(): void {
@@ -400,8 +399,7 @@ export class CANSimulationEngine {
     const flowControlId = sender === 'tester' ? this.responseIdForRequest(arbitrationId) : this.state.udsConfig.testerRequestId;
     const fcSender = sender === 'tester' ? 'ecu' : 'tester';
     const fcData = [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs];
-    const fcTid = setTimeout(() => this.transmitDiagnosticFrame(flowControlId, fcData, fcSender), 0);
-    this.isotpTxTimers.add(fcTid);
+    this.scheduleManagedTimeout(() => this.transmitDiagnosticFrame(flowControlId, fcData, fcSender), 0);
 
     let offset = 6;
     let sequence = 1;
@@ -412,13 +410,11 @@ export class CANSimulationEngine {
       offset += chunk.length;
       sequence = (sequence + 1) & 0x0f;
       if (offset < length) {
-        const tid = setTimeout(sendNext, this.state.udsConfig.stMinMs);
-        this.isotpTxTimers.add(tid);
+        this.scheduleManagedTimeout(sendNext, this.state.udsConfig.stMinMs);
       }
     };
 
-    const tid = setTimeout(sendNext, this.state.udsConfig.stMinMs);
-    this.isotpTxTimers.add(tid);
+    this.scheduleManagedTimeout(sendNext, this.state.udsConfig.stMinMs);
   }
 
   private handleIsoTpFrame(arbitrationId: number, data: number[]): void {
@@ -491,7 +487,7 @@ export class CANSimulationEngine {
     } else if (sid === 0x11) {
       const subFunction = payload[1] ?? 0x01;
       response = [0x51, subFunction];
-      if (targetNode) setTimeout(() => this.recoverNode(targetNode.id), 100);
+      if (targetNode) this.scheduleManagedTimeout(() => this.recoverNode(targetNode.id), 100);
     } else if (sid === 0x22) {
       response = this.buildReadDidResponse(payload, targetNode);
     } else if (sid === 0x19) {
@@ -734,6 +730,15 @@ export class CANSimulationEngine {
 
   private emitStateUpdate(patch: Partial<CANBusState>): void {
     this.onStateUpdate?.(patch);
+  }
+
+  private scheduleManagedTimeout(callback: () => void, delayMs: number): ReturnType<typeof setTimeout> {
+    const tid = setTimeout(() => {
+      this.isotpTxTimers.delete(tid);
+      callback();
+    }, delayMs);
+    this.isotpTxTimers.add(tid);
+    return tid;
   }
 
   private isDiagnosticAddress(id: number): boolean {

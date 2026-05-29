@@ -250,8 +250,14 @@ export default function TranslationsPage() {
 
       {/* Table header */}
       <div className="shrink-0 grid grid-cols-[2fr_2fr_2fr_2fr_2fr_auto] gap-0 border-b border-gray-800/60 px-5 py-1.5 bg-gray-900/40">
-        {(['colKey', 'colDefaultEn', 'colDefaultTr', 'colCustomEn', 'colCustomTr'] as const).map(col => (
-          <div key={col} className="text-[9px] font-black uppercase tracking-widest text-gray-500 pr-3">{t(`translations.${col}`)}</div>
+        {[
+          { key: 'colKey',       label: t('translations.colKey') },
+          { key: 'colDefaultEn', label: t('translations.colDefaultEn') },
+          { key: 'colDefaultTr', label: t('translations.colDefaultTr') },
+          { key: 'colCustomEn',  label: t('translations.colCustomEn') },
+          { key: 'colCustomTr',  label: t('translations.colCustomTr') },
+        ].map(({ key, label }) => (
+          <div key={key} className="text-[9px] font-black uppercase tracking-widest text-gray-500 pr-3">{label}</div>
         ))}
         <div className="w-6" />
       </div>

@@ -73,6 +73,13 @@ interface PendingSocketCANTx {
   createdAt: number;
 }
 
+interface SocketCANStatusPayload {
+  connected?: boolean;
+  interface?: string;
+  error?: string;
+  sessionId?: number;
+}
+
 const CANContext = createContext<CANContextValue | null>(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -103,6 +110,13 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   // Buffer for high-frequency frame updates — drained by RAF loop
   const frameBatchRef = useRef<CANFrame[]>([]);
   const pendingSocketCANTxRef = useRef<PendingSocketCANTx[]>([]);
+  const activeSocketCANSessionRef = useRef<number | null>(null);
+
+  const clearPendingSocketCANTx = useCallback(() => {
+    if (pendingSocketCANTxRef.current.length > 0) {
+      pendingSocketCANTxRef.current.splice(0, pendingSocketCANTxRef.current.length);
+    }
+  }, []);
 
   // ── Worker lifecycle ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -242,18 +256,42 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     });
 
     listen('socketcan-status', (payload) => {
-      const status = payload as { connected?: boolean; interface?: string; error?: string };
+      const status = payload as SocketCANStatusPayload;
+      const activeSessionId = activeSocketCANSessionRef.current;
+      const payloadSessionId = typeof status.sessionId === 'number' ? status.sessionId : null;
+
+      if (
+        payloadSessionId !== null &&
+        activeSessionId !== null &&
+        payloadSessionId !== activeSessionId &&
+        !status.connected
+      ) {
+        return;
+      }
+
+      if (status.connected && payloadSessionId !== null) {
+        activeSocketCANSessionRef.current = payloadSessionId;
+      }
+
       // Forward error to state so UI banners can display background disconnect errors.
       dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: Boolean(status.connected), error: status.error });
       if (status.error) {
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN error: ${status.error}`, type: 'error' } });
         // Background error disconnect — clean up write_fd since the read thread cannot.
         invoke('disconnect_socketcan').catch(() => {});
+        clearPendingSocketCANTx();
+        if (payloadSessionId !== null && activeSocketCANSessionRef.current === payloadSessionId) {
+          activeSocketCANSessionRef.current = null;
+        }
         return;
       }
       if (status.connected) {
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connected: ${status.interface ?? 'can'}`, type: 'info' } });
       } else {
+        clearPendingSocketCANTx();
+        if (payloadSessionId === null || activeSocketCANSessionRef.current === payloadSessionId) {
+          activeSocketCANSessionRef.current = null;
+        }
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: t('can.disconnectedFromSock'), type: 'info' } });
       }
     }).then((unlisten) => {
@@ -266,7 +304,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       unlistenFrame?.();
       unlistenStatus?.();
     };
-  }, [t]);
+  }, [clearPendingSocketCANTx, t]);
 
   // ── Public API ──────────────────────────────────────────────────────────────
   const start = useCallback(() => {
@@ -276,9 +314,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
   const stop = useCallback(() => {
     send({ type: 'CAN_STOP' });
+    clearPendingSocketCANTx();
     dispatch({ type: 'CAN_SET_STATUS', status: 'stopped' });
     dispatch({ type: 'CAN_CLEAR_FRAMES' });
-  }, [send]);
+  }, [clearPendingSocketCANTx, send]);
 
   const pause = useCallback(() => {
     send({ type: 'CAN_PAUSE' });
@@ -314,9 +353,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const clearFrames  = useCallback(() => {
     send({ type: 'CAN_STOP' });
     send({ type: 'CAN_CLEAR_FRAMES' });
+    clearPendingSocketCANTx();
     dispatch({ type: 'CAN_SET_STATUS', status: 'stopped' });
     dispatch({ type: 'CAN_CLEAR_FRAMES' });
-  }, [send]);
+  }, [clearPendingSocketCANTx, send]);
   const toggleArbitrationDisplay = useCallback(() => dispatch({ type: 'CAN_TOGGLE_ARBITRATION_DISPLAY' }), []);
   const toggleErrorDisplay       = useCallback(() => dispatch({ type: 'CAN_TOGGLE_ERROR_DISPLAY' }), []);
   const injectFault  = useCallback((nodeId: number, fault: CANFaultType) => send({ type: 'CAN_INJECT_FAULT', nodeId, fault }), [send]);
@@ -337,10 +377,12 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'CAN_SET_SERIAL_CONNECTED', connected: false });
     }
     if (mode !== 'tcp' && mode !== 'tcp-server' && stateRef.current.networkConnected) {
+      clearPendingSocketCANTx();
+      activeSocketCANSessionRef.current = null;
       invoke('disconnect_socketcan').catch(() => {});
       // State will be updated by the socketcan-status Tauri event.
     }
-  }, []);
+  }, [clearPendingSocketCANTx]);
 
   const serialPortRef = useRef<SerialPortLike | null>(null);
   const serialReaderRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
@@ -468,6 +510,8 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     const normalizedInterface = interfaceName
       .replace(/^socketcan:\/\//, '')
       .trim() || 'vcan0';
+    clearPendingSocketCANTx();
+    activeSocketCANSessionRef.current = null;
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SocketCAN ${normalizedInterface}...`, type: 'info' } });
     try {
       await invoke('connect_socketcan', { interface: normalizedInterface });
@@ -476,16 +520,18 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false, error: msg });
       dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connect failed: ${translateBackendError(t, msg)}`, type: 'error' } });
     }
-  }, [t]);
+  }, [clearPendingSocketCANTx, t]);
 
   const disconnectNetwork = useCallback(() => {
     // Dispatch synchronously so the UI is never stuck as "connected" if the backend
     // crashes before it can emit the socketcan-status event.  A stale connected:false
     // Tauri event that arrives after a fast reconnect is harmless (it just re-confirms
     // the already-false state before the new connected:true arrives).
+    clearPendingSocketCANTx();
+    activeSocketCANSessionRef.current = null;
     dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
     invoke('disconnect_socketcan').catch(console.error);
-  }, []);
+  }, [clearPendingSocketCANTx]);
 
   const startRecording = useCallback(() => {
     dispatch({ type: 'CAN_CLEAR_RECORDING' });

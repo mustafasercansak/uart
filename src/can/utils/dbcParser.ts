@@ -74,7 +74,7 @@ export function parseDBC(content: string): DBCParseResult {
       currentMessage = {
         id: actualId,
         name: msgMatch[2].replace(/_/g, ' '),
-        dlc: Math.min(8, Math.max(0, parseInt(msgMatch[3], 10))),
+        dlc: Math.min(8, Math.max(1, parseInt(msgMatch[3], 10))),
         sender: msgMatch[4],
         isExtended,
         signals: [],
@@ -160,13 +160,13 @@ export function extractSignalValue(data: number[], signal: DBCSignal): number {
       }
     }
   } else {
-    // Motorola byte order: startBit is the MSB position in DBC bit numbering
-    // where bit N of byte B = byte B, physical bit N%8 (bit 7 = MSB of that byte).
+    // Motorola byte order: startBit is the MSB position in DBC bit numbering.
+    // DBC bit N within byte B maps to physical bit (7 - N%8) of that byte (bit 7 = MSB).
     // Traverse from MSB downward; at byte LSB (bitPos%8===0) jump to MSB of next byte (+15).
     let bitPos = signal.startBit;
     for (let i = signal.length - 1; i >= 0; i--) {
       const byteIdx = Math.floor(bitPos / 8);
-      const bitIdx = bitPos % 8;
+      const bitIdx = 7 - (bitPos % 8); // convert DBC bit number to physical bit position
       if (byteIdx < 8 && (buf[byteIdx] >> bitIdx) & 1) {
         rawValue += 2 ** i; // avoid `|=` / `<<` which truncate to 32 bits
       }

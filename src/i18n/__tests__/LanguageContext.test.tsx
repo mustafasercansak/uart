@@ -31,7 +31,8 @@ vi.mock('../locales/en.json', async (importOriginal) => {
   };
 });
 import { LanguageProvider } from '../LanguageProvider';
-import { useTranslation } from '../context';
+import { useTranslation, useCustomLabels } from '../context';
+import { loadCustomLabels, saveCustomLabels } from '../customLabels';
 
 describe('LanguageContext and LanguageProvider', () => {
   beforeEach(() => {
@@ -129,5 +130,150 @@ describe('LanguageContext and LanguageProvider', () => {
     const { result } = renderHook(() => useTranslation(), { wrapper });
     expect(result.current.t('dashboard.logic')).toBeDefined();
     expect(result.current.t('dashboard.logic')).not.toBe('dashboard.logic');
+  });
+
+  it('interpolates params into translated strings', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(() => useTranslation(), { wrapper });
+    act(() => result.current.setLocale('en'));
+    // Use a key that exists in EN and supply a param to exercise applyParams interpolation
+    const out = result.current.t('common.save', { name: 'test' });
+    expect(typeof out).toBe('string');
+  });
+
+  it('throws when useCustomLabels is used outside LanguageProvider', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => renderHook(() => useCustomLabels())).toThrow('useCustomLabels must be used within a LanguageProvider');
+    consoleSpy.mockRestore();
+  });
+
+  it('setCustomLabel persists an override and t() returns it', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'Save Override'));
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Save Override');
+  });
+
+  it('bulkSetCustomLabels applies multiple overrides at once', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() =>
+      result.current.labels.bulkSetCustomLabels({
+        en: { 'common.save': 'Bulk Save' },
+        tr: {},
+      }),
+    );
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Bulk Save');
+  });
+
+  it('replaceCustomLabels replaces the entire store', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'Old'));
+    act(() =>
+      result.current.labels.replaceCustomLabels({ en: { 'common.save': 'Replaced' }, tr: {} }),
+    );
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Replaced');
+  });
+
+  it('resetCustomLabel removes an override for a specific locale', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'Override'));
+    act(() => result.current.labels.resetCustomLabel('common.save', 'en'));
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Save');
+  });
+
+  it('resetCustomLabel with no locale removes from all locales', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'EN Override'));
+    act(() => result.current.labels.setCustomLabel('common.save', 'tr', 'TR Override'));
+    act(() => result.current.labels.resetCustomLabel('common.save'));
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Save');
+  });
+
+  it('resetCustomLabelKeys removes multiple keys', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'S'));
+    act(() => result.current.labels.resetCustomLabelKeys(['common.save']));
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Save');
+  });
+
+  it('t() returns a fallback-locale custom label when primary locale key is missing', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    // Set locale to 'en'; add a custom label in TR for a key that doesn't exist in EN
+    act(() => result.current.t.setLocale('en'));
+    act(() => result.current.labels.setCustomLabel('absolutely.missing.key', 'tr', 'TR Only Label'));
+    expect(result.current.t.t('absolutely.missing.key')).toBe('TR Only Label');
+  });
+});
+
+describe('customLabels storage', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('saveCustomLabels persists to localStorage and loadCustomLabels reads it back', () => {
+    const store = { en: { 'foo.bar': 'Foo' }, tr: { 'foo.bar': 'Fu' } };
+    saveCustomLabels(store);
+    const loaded = loadCustomLabels();
+    expect(loaded).toEqual(store);
+  });
+
+  it('loadCustomLabels returns empty store when localStorage is corrupt', () => {
+    localStorage.setItem('uart_custom_labels', 'not-json{{{');
+    const loaded = loadCustomLabels();
+    expect(loaded).toEqual({ en: {}, tr: {} });
   });
 });

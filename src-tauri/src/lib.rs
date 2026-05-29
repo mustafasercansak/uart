@@ -6,6 +6,8 @@ use std::net::TcpStream;
 use std::os::fd::RawFd;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+#[cfg(target_os = "linux")]
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
@@ -104,6 +106,8 @@ struct SocketCanState {
     stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     #[cfg(target_os = "linux")]
     write_fd: Mutex<Option<RawFd>>,
+    #[cfg(target_os = "linux")]
+    session_id: AtomicU64,
 }
 
 fn recordings_dir() -> PathBuf {
@@ -760,6 +764,8 @@ fn connect_socketcan(
     state: tauri::State<'_, SocketCanState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let session_id = state.session_id.fetch_add(1, Ordering::SeqCst) + 1;
+
     {
         let mut tx = state.stop_tx.lock().unwrap();
         if let Some(sender) = tx.take() {
@@ -770,7 +776,7 @@ fn connect_socketcan(
     let read_fd = open_socketcan_fd(&interface).map_err(|e| {
         let _ = app.emit(
             "socketcan-status",
-            serde_json::json!({ "connected": false, "error": e }),
+            serde_json::json!({ "connected": false, "error": e, "sessionId": session_id }),
         );
         e
     })?;
@@ -792,7 +798,7 @@ fn connect_socketcan(
         unsafe { libc::close(read_fd) };
         let _ = app.emit(
             "socketcan-status",
-            serde_json::json!({ "connected": false, "error": e }),
+            serde_json::json!({ "connected": false, "error": e, "sessionId": session_id }),
         );
         e
     })?;
@@ -818,7 +824,7 @@ fn connect_socketcan(
         app_clone
             .emit(
                 "socketcan-status",
-                serde_json::json!({ "connected": true, "interface": interface }),
+                serde_json::json!({ "connected": true, "interface": interface, "sessionId": session_id }),
             )
             .ok();
 
@@ -837,7 +843,7 @@ fn connect_socketcan(
                 app_clone
                     .emit(
                         "socketcan-status",
-                        serde_json::json!({ "connected": false, "error": err.to_string() }),
+                        serde_json::json!({ "connected": false, "error": err.to_string(), "sessionId": session_id }),
                     )
                     .ok();
                 break;
@@ -858,7 +864,7 @@ fn connect_socketcan(
                     app_clone
                         .emit(
                             "socketcan-status",
-                            serde_json::json!({ "connected": false, "error": e.to_string() }),
+                            serde_json::json!({ "connected": false, "error": e.to_string(), "sessionId": session_id }),
                         )
                         .ok();
                     break;
@@ -870,7 +876,10 @@ fn connect_socketcan(
         // write_fd is closed by disconnect_socketcan (called by the frontend on receiving
         // this error event). Closing it here would race with a concurrent connect_socketcan.
         app_clone
-            .emit("socketcan-status", serde_json::json!({ "connected": false }))
+            .emit(
+                "socketcan-status",
+                serde_json::json!({ "connected": false, "sessionId": session_id }),
+            )
             .ok();
     });
 
@@ -889,6 +898,7 @@ fn disconnect_socketcan(
     state: tauri::State<'_, SocketCanState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let session_id = state.session_id.load(Ordering::SeqCst);
     let mut tx = state.stop_tx.lock().unwrap();
     if let Some(sender) = tx.take() {
         let _ = sender.send(());
@@ -897,7 +907,10 @@ fn disconnect_socketcan(
     if let Some(write_fd) = fd.take() {
         unsafe { libc::close(write_fd) };
     }
-    app.emit("socketcan-status", serde_json::json!({ "connected": false }))
+    app.emit(
+        "socketcan-status",
+        serde_json::json!({ "connected": false, "sessionId": session_id }),
+    )
         .map_err(|e| e.to_string())
 }
 
@@ -1096,6 +1109,8 @@ pub fn run() {
             stop_tx: Mutex::new(None),
             #[cfg(target_os = "linux")]
             write_fd: Mutex::new(None),
+            #[cfg(target_os = "linux")]
+            session_id: AtomicU64::new(0),
         })
         .invoke_handler(tauri::generate_handler![
             list_serial_ports,

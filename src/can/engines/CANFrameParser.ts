@@ -112,10 +112,11 @@ export function parseJ1939Id(arbitrationId: number): J1939Info {
   const ps            = (arbitrationId >>  8) & 0xFF;
   const sourceAddress =  arbitrationId        & 0xFF;
   const isPeer2Peer   = pf < 240;
-  // PGN omits SA; for peer-to-peer (PF < 240) the destination (PS) is not part of the PGN
+  // PGN omits SA; for peer-to-peer (PF < 240) the destination (PS) is not part of the PGN.
+  // DP occupies bit 17 of the 18-bit PGN field (bits 17-0 of the 29-bit extended ID starting at bit 8).
   const pgn = isPeer2Peer
-    ? (dataPage << 16) | (pf << 8)
-    : (dataPage << 16) | (pf << 8) | ps;
+    ? (dataPage << 17) | (pf << 8)
+    : (dataPage << 17) | (pf << 8) | ps;
 
   return {
     priority,

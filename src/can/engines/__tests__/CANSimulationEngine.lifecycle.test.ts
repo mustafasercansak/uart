@@ -75,7 +75,7 @@ describe('CANSimulationEngine lifecycle and bus behavior', () => {
     expect(engine.getState().errorInjection.config).toMatchObject({ periodicEvery: 1, randomRate: 100 });
     expect(engine.getState().udsConfig).toMatchObject({
       testerRequestId: 0,
-      ecuResponseId: 0x7ff,
+      ecuResponseId: 0x900,
       blockSize: 255,
       stMinMs: 127,
       dtcCodes: [0, 0xffffff],

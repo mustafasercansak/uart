@@ -169,4 +169,17 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v7 Code Review (2026-05-28)
+
+4 findings from follow-up review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 86 | 🟠 High | `socketcan-status` events had no session/connection identifier; stale `connected: false` from an old read thread could overwrite a newer `connected: true` reconnect state | SocketCAN / Race | Fixed: Rust backend now emits `sessionId` on SocketCAN status events; frontend tracks active session and ignores stale disconnect/error events from previous sessions |
+| 87 | 🟡 Medium | `CANSimulationEngine.ts`: `isotpTxTimers` only grew (`add`) and was not pruned when timer callbacks completed during normal runtime | CAN / ISO-TP | Fixed: introduced `scheduleManagedTimeout()` that removes timer handles from `isotpTxTimers` when callbacks fire |
+| 88 | 🟡 Medium | `CANSimulationEngine.ts`: UDS SID `0x11` recovery timeout (`setTimeout(() => recoverNode)`) was not tracked/cancelled by lifecycle clear paths | UDS / Lifecycle | Fixed: ECU reset recovery now uses `scheduleManagedTimeout()`, so it is tracked and canceled by `stop()`/`clearFrames()` |
+| 89 | 🟡 Medium | `CANContext.tsx`: `pendingSocketCANTxRef` had no explicit reset on disconnect/mode change and only pruned on RX, allowing stale echo-matching entries across sessions | SocketCAN / State | Fixed: added explicit pending queue reset on connect/disconnect, mode exit from SocketCAN, stop, clearFrames, and disconnect/error status handling |
+
+---
+
 *Last updated: 2026-05-28*

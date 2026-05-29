@@ -110,4 +110,70 @@ describe('BusMonitor', () => {
     expect(screen.getByText('RX')).toBeInTheDocument();
     expect(screen.getByText('Bed Monitor')).toBeInTheDocument();
   });
+
+  it('normalizes arb-ID field on blur', () => {
+    renderBusMonitor();
+    const idInput = screen.getByPlaceholderText('0x200');
+    fireEvent.change(idInput, { target: { value: '1ff' } });
+    fireEvent.blur(idInput);
+    expect(idInput).toHaveValue('0x1FF');
+  });
+
+  it('blur on invalid arb-ID leaves field unchanged', () => {
+    renderBusMonitor();
+    const idInput = screen.getByPlaceholderText('0x200');
+    fireEvent.change(idInput, { target: { value: 'zzz' } });
+    fireEvent.blur(idInput);
+    expect(idInput).toHaveValue('zzz');
+  });
+
+  it('decodeInfo shows vitals for vital-monitor nodes', () => {
+    renderBusMonitor({
+      frames: [makeFrame({ uid: 'f1', arbitrationId: 0x180, nodeId: 1, data: [0x01], dlc: 1 })],
+      nodes: [makeNode()],
+    });
+    expect(screen.getByText(/HR=/)).toBeInTheDocument();
+  });
+
+  it('decodeInfo shows flow for infusion-pump nodes', () => {
+    renderBusMonitor({
+      frames: [makeFrame({ uid: 'f2', arbitrationId: 0x181, nodeId: 1, data: [0x01], dlc: 1 })],
+      nodes: [{ ...makeNode(), profile: 'infusion-pump' }],
+    });
+    expect(screen.getByText(/Flow=/)).toBeInTheDocument();
+  });
+
+  it('decodeInfo shows TV/PEEP for ventilator nodes', () => {
+    renderBusMonitor({
+      frames: [makeFrame({ uid: 'f3', arbitrationId: 0x182, nodeId: 1, data: [0x01], dlc: 1 })],
+      nodes: [{ ...makeNode(), profile: 'ventilator' }],
+    });
+    expect(screen.getByText(/TV=/)).toBeInTheDocument();
+  });
+
+  it('decodeInfo shows Standby for defibrillator nodes', () => {
+    renderBusMonitor({
+      frames: [makeFrame({ uid: 'f4', arbitrationId: 0x183, nodeId: 1, data: [0x01], dlc: 1 })],
+      nodes: [{ ...makeNode(), profile: 'defibrillator' }],
+    });
+    expect(screen.getByText(/Standby/)).toBeInTheDocument();
+  });
+
+  it('decodeInfo shows TPDO1 for unknown profile nodes', () => {
+    renderBusMonitor({
+      frames: [makeFrame({ uid: 'f5', arbitrationId: 0x184, nodeId: 1, data: [0x01], dlc: 1 })],
+      nodes: [{ ...makeNode(), profile: 'custom' as CANNode['profile'] }],
+    });
+    expect(screen.getByText(/TPDO1/)).toBeInTheDocument();
+  });
+
+  it('selects a frame when clicked', () => {
+    const onSelectFrame = vi.fn();
+    renderBusMonitor({
+      frames: [makeFrame({ uid: 'click-frame' })],
+      onSelectFrame,
+    });
+    fireEvent.click(screen.getByText('0x123'));
+    expect(onSelectFrame).toHaveBeenCalledWith('click-frame');
+  });
 });
