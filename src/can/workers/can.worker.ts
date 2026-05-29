@@ -35,7 +35,7 @@ engine.onFaultEvent = (event) => {
 
 self.onmessage = (event: MessageEvent) => {
   const msg = event.data;
-
+  try {
   switch (msg.type) {
     case 'CAN_START':
       engine.start();
@@ -104,5 +104,13 @@ self.onmessage = (event: MessageEvent) => {
     case 'CAN_ARM_ERROR_INJECTION':
       engine.armOneTimeErrorInjection();
       break;
+
+    default:
+      // Unknown message type — ignore silently (forward-compatibility).
+      break;
+  }
+  } catch (err) {
+    // Report engine errors back to the main thread instead of silently dropping them.
+    self.postMessage({ type: 'CAN_WORKER_ERROR', message: String(err), msgType: msg.type });
   }
 };

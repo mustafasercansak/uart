@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, Plus, Send, Trash2, Wand2 } from 'lucide-react';
 import type { CANFrame } from '../../../../can/types/CANFrame';
 import type { CANNode } from '../../../../can/types/CANNode';
@@ -20,6 +20,14 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
   const { t } = useTranslation();
   const [preset, setPreset] = useState<RequestPreset>('read-did');
   const [requestId, setRequestId] = useState(formatId(config.testerRequestId));
+  // Keep the input in sync when the parent updates config (e.g. loading a preset).
+  const prevTesterIdRef = useRef(config.testerRequestId);
+  useEffect(() => {
+    if (config.testerRequestId !== prevTesterIdRef.current) {
+      prevTesterIdRef.current = config.testerRequestId;
+      setRequestId(formatId(config.testerRequestId));
+    }
+  }, [config.testerRequestId]);
   const [sessionType, setSessionType] = useState('03');
   const [did, setDid] = useState('F190');
   const [dtcMask, setDtcMask] = useState('FF');
@@ -128,7 +136,7 @@ export function DiagnosticTerminal({ frames, nodes, isRunning, config, onSendReq
                   value={formatId(config.ecuResponseId)}
                   onChange={e => {
                     const parsed = parseHex(e.target.value);
-                    if (parsed !== null) updateConfig({ ecuResponseId: parsed });
+                    if (parsed !== null && parsed <= 0x1fffffff) updateConfig({ ecuResponseId: parsed });
                   }}
                   className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-yellow-400 outline-none focus:border-cyan-600"
                 />

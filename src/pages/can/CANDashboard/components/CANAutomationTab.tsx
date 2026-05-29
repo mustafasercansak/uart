@@ -1087,7 +1087,8 @@ export function CANAutomationTab({
             {profiles.filter(p => runStates[p.id]).map((profile, pIdx) => {
               const rs = runStates[profile.id];
               if (!rs) return null;
-              const total = profile.steps.length;
+              const repeatCount = Math.max(1, profile.repeatCount ?? 1);
+              const total = profile.steps.length * repeatCount;
               const done = rs.results.length;
               const passed = rs.results.filter(r => r.passed).length;
               const failed = rs.results.filter(r => !r.passed).length;

@@ -87,11 +87,25 @@ export class FilterEngine {
     let right = '';
 
     for (const op of operators) {
-        if (condition.includes(op)) {
+        // Prefer space-delimited match to avoid false positives when an operator
+        // string appears inside a value (e.g. `data contains 0x==FF` must not
+        // match `==` before `contains`).
+        const withSpaces = ` ${op} `;
+        const spaceIdx = condition.indexOf(withSpaces);
+        if (spaceIdx !== -1) {
             operator = op;
-            const parts = condition.split(op);
-            left = parts[0].trim();
-            right = parts[1].trim();
+            left = condition.slice(0, spaceIdx).trim();
+            // Use everything after the operator so the value can contain the op string.
+            right = condition.slice(spaceIdx + withSpaces.length).trim();
+            break;
+        }
+        // Symbolic operators may appear without spaces (e.g. `id==5`).
+        // 'contains' is a word and requires spaces — skip the bare fallback for it.
+        if (op !== 'contains' && condition.includes(op)) {
+            operator = op;
+            const sepIdx = condition.indexOf(op);
+            left = condition.slice(0, sepIdx).trim();
+            right = condition.slice(sepIdx + op.length).trim();
             break;
         }
     }

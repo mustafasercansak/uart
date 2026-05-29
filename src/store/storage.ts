@@ -271,20 +271,19 @@ async function tauriSaveProfiles(profiles: FrameProfile[]): Promise<void> {
 
 /**
  * Load profiles from Tauri FS.
- * Returns migrated profiles on success, or `null` when no file exists yet
- * (first-run — the caller should migrate from localStorage).
+ * Returns migrated profiles (possibly empty) on success, or `null` when the file
+ * does not exist yet (first-run). Throws on transient OS / read errors so the
+ * caller does NOT fall through to the first-run migration branch.
  */
 async function tauriLoadProfiles(): Promise<FrameProfile[] | null> {
-  try {
-    const raw = await invoke<PersistedProfile[] | null>('load_can_profiles');
-    if (raw == null) return null;          // file does not exist yet
-    const list = Array.isArray(raw) ? raw : [];
-    const { profiles } = migrateProfiles(list);
-    return profiles.length > 0 ? profiles : null;
-  } catch (e) {
-    console.error('[storage] load_can_profiles failed:', e);
-    return null;
-  }
+  // Intentionally not caught — transient errors propagate so initProfileStorage
+  // skips migration and leaves the existing FS file untouched.
+  const raw = await invoke<PersistedProfile[] | null>('load_can_profiles');
+  if (raw == null) return null; // Rust returned None: file does not exist yet
+  const list = Array.isArray(raw) ? raw : [];
+  const { profiles } = migrateProfiles(list);
+  // Return profiles even when empty — an empty array is the user's authoritative state.
+  return profiles;
 }
 
 /**
@@ -293,26 +292,31 @@ async function tauriLoadProfiles(): Promise<FrameProfile[] | null> {
  * Behaviour:
  *  - Tauri env: load from FS → sync localStorage cache
  *      • First run (no FS file): migrate localStorage → FS
- *      • Subsequent runs: FS wins, overwrites stale localStorage
+ *      • Subsequent runs: FS wins, overwrites stale localStorage (including empty [])
  *  - Browser/dev env: no-op (localStorage is the only store)
+ *  - Transient FS error: logged, localStorage left unchanged (FS not overwritten)
  */
 export async function initProfileStorage(): Promise<void> {
   if (!isTauri()) return;
+  try {
+    const fromFs = await tauriLoadProfiles();
 
-  const fromFs = await tauriLoadProfiles();
+    if (fromFs !== null) {
+      // FS is authoritative — repopulate localStorage cache, including empty array.
+      const withSchema = fromFs.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+      save(PROFILES_KEY, withSchema);
+      return;
+    }
 
-  if (fromFs !== null) {
-    // FS has data — repopulate localStorage cache with authoritative copy
-    const withSchema = fromFs.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
-    save(PROFILES_KEY, withSchema);
-    return;
+    // File not found — first run: migrate localStorage contents to FS.
+    const fromLocal = load<PersistedProfile>(PROFILES_KEY, INITIAL_PROFILES);
+    const { profiles } = migrateProfiles(fromLocal);
+    const source = profiles.length > 0 ? profiles : INITIAL_PROFILES;
+    await tauriSaveProfiles(source);
+  } catch (e) {
+    // Transient OS / network error — log and leave both stores untouched.
+    console.error('[storage] initProfileStorage failed, keeping existing data:', e);
   }
-
-  // No FS file yet — migrate from localStorage to FS (one-time, first run)
-  const fromLocal = load<PersistedProfile>(PROFILES_KEY, INITIAL_PROFILES);
-  const { profiles } = migrateProfiles(fromLocal);
-  const source = profiles.length > 0 ? profiles : INITIAL_PROFILES;
-  await tauriSaveProfiles(source);
 }
 
 // ── Profiles ─────────────────────────────────

@@ -124,10 +124,9 @@ fn can_profiles_dir() -> PathBuf {
     home.join("uart_profiles")
 }
 
-// ── CAN PROFILES PERSISTENCE ──────────────────────────────────────────────────
+// ── SIMULATION PROFILES PERSISTENCE (storage.ts) ─────────────────────────────
 
-/// Load all CAN profiles from disk. Returns `null` (None) when no file exists yet,
-/// so the frontend can detect a first-run and migrate from localStorage.
+/// Load simulation profiles. Returns `null` (None) when no file exists yet.
 #[tauri::command]
 fn load_can_profiles() -> Result<Option<serde_json::Value>, String> {
     let path = can_profiles_dir().join("profiles.json");
@@ -139,12 +138,44 @@ fn load_can_profiles() -> Result<Option<serde_json::Value>, String> {
     Ok(Some(data))
 }
 
-/// Persist all CAN profiles to disk as a single JSON file.
+/// Persist simulation profiles to disk.
 #[tauri::command]
 fn save_can_profiles(data: serde_json::Value) -> Result<(), String> {
     let dir = can_profiles_dir();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("profiles.json");
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+// ── CAN NODE PROFILES PERSISTENCE (canProfileStorage.ts) ─────────────────────
+// Separate commands and file so the two profile stores never overwrite each other.
+
+fn can_node_profiles_dir() -> PathBuf {
+    let home = dirs_next::document_dir()
+        .or_else(dirs_next::home_dir)
+        .unwrap_or_else(|| PathBuf::from("."));
+    home.join("uart_profiles")
+}
+
+/// Load CAN node profiles. Returns `null` (None) when no file exists yet.
+#[tauri::command]
+fn load_can_node_profiles() -> Result<Option<serde_json::Value>, String> {
+    let path = can_node_profiles_dir().join("can_node_profiles.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(Some(data))
+}
+
+/// Persist CAN node profiles to disk.
+#[tauri::command]
+fn save_can_node_profiles(data: serde_json::Value) -> Result<(), String> {
+    let dir = can_node_profiles_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("can_node_profiles.json");
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| e.to_string())
 }
@@ -955,9 +986,11 @@ fn write_socketcan_frame(
             None => Err("ERR_SOCKETCAN_NOT_CONNECTED".to_string()),
         }
     }?;
-    let result = write_socketcan_fd(dup_fd, arbitration_id, data, is_extended, is_rtr);
-    unsafe { libc::close(dup_fd) };
-    result
+    // DeferClose ensures libc::close(dup_fd) runs even if write_socketcan_fd panics.
+    struct DeferClose(RawFd);
+    impl Drop for DeferClose { fn drop(&mut self) { unsafe { libc::close(self.0) }; } }
+    let _guard = DeferClose(dup_fd);
+    write_socketcan_fd(dup_fd, arbitration_id, data, is_extended, is_rtr)
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -1161,6 +1194,8 @@ pub fn run() {
             delete_recording,
             load_can_profiles,
             save_can_profiles,
+            load_can_node_profiles,
+            save_can_node_profiles,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start Tauri application");

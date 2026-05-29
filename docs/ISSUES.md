@@ -212,4 +212,23 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v9 Code Review (2026-05-29)
+
+10 findings from full-branch comprehensive review (all files, not just uncommitted diff); all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 98 | 🔴 Blocker | `storage.ts` + `canProfileStorage.ts`: both called `invoke('save_can_profiles')` / `invoke('load_can_profiles')` writing **different schemas** to the **same** `profiles.json` — every save from one module silently corrupted the other's data; both initialised concurrently in `Promise.all` compounding the race | Rust / Storage | Fixed: added `load_can_node_profiles` / `save_can_node_profiles` Rust commands writing to `can_node_profiles.json`; `canProfileStorage.ts` updated to use the new commands; each store now has its own file |
+| 99 | 🔴 Blocker | Fix #95 regression: on the **first-ever** SocketCAN connection `activeSocketCANSessionRef.current` is `null`, so every `socketcan-frame` with a `sessionId` was dropped until `socketcan-status:connected` arrived — frames in the IPC latency window were lost on a busy bus | SocketCAN / Race | Fixed: added `hasEverConnectedRef` (starts `false`, set to `true` on first `status.connected`); frame filter only activates when `hasEverConnectedRef.current === true`, so the null-active guard is skipped on the first connection |
+| 100 | 🟠 High | `storage.ts:283`: `tauriLoadProfiles()` returned `null` for both "file missing" and "file present but empty" — deliberately deleting all profiles caused `initProfileStorage()` to restore factory defaults on every launch | Storage / UX | Fixed: `tauriLoadProfiles` returns `profiles` directly (including `[]`); `initProfileStorage` treats `[]` as authoritative and saves it to localStorage without triggering migration |
+| 101 | 🟠 High | `storage.ts:284`: `tauriLoadProfiles()` caught all `invoke` errors and returned `null`, indistinguishable from "file not found" — a transient OS/lock error triggered the migration branch and overwrote FS with stale localStorage data | Storage / Reliability | Fixed: `tauriLoadProfiles` no longer catches errors; `initProfileStorage` wraps the full flow in `try/catch` and logs without acting on transient errors |
+| 102 | 🟡 Medium | `FilterEngine.ts:90`: operator detection used `condition.includes(op)` without boundaries — `data contains 0x==FF` matched `==` before `contains`, parsed as `left="data contains 0x"`, `right="FF"` | Filter Engine | Fixed: space-delimited search tried first (`condition.indexOf(' op ')`) for all operators; symbolic operators fall back to no-space match; `contains` never falls back (word-only), so values containing `==` no longer hijack the operator |
+| 103 | 🟡 Medium | `DiagnosticTerminal.tsx:22`: `requestId` state initialised once at mount, never re-synced — loading a UDS preset changed `config.testerRequestId` but the input showed the stale value; blurring wrote it back, undoing the preset | UDS / UI | Fixed: `useEffect` on `config.testerRequestId` updates local state via `prevTesterIdRef` to avoid infinite loop |
+| 104 | 🟡 Medium | `DiagnosticTerminal.tsx:130`: `ecuResponseId` `onChange` had no upper-bound — typing `DEADBEEF` stored 3.7 billion, causing the diagnostic log to show no traffic forever | UDS / Validation | Fixed: `parsed <= 0x1FFFFFFF` guard added (29-bit CAN ID maximum) |
+| 105 | 🟡 Medium | `CANAutomationTab.tsx`: progress counter used `rs.results.length / profile.steps.length` ignoring `repeatCount` — a 3-step × 3-repeat profile showed `3/3` after iteration 1, then `6/3` and `9/3` | Automation / UX | Fixed: denominator is `profile.steps.length * Math.max(1, profile.repeatCount ?? 1)` |
+| 106 | 🔵 Low | `lib.rs`: `write_socketcan_fd(dup_fd, ...)` was called before `libc::close(dup_fd)` — a panic inside the write would unwind past the close, leaking the dup'd fd | Rust / Resource | Fixed: `DeferClose(RawFd)` struct with a `Drop` impl closes the fd automatically even on panic |
+| 107 | 🔵 Low | `can.worker.ts`: `onmessage` switch had no `try/catch` and no `default:` — engine exceptions silently terminated the handler; the main thread was never notified | Worker / Reliability | Fixed: switch body wrapped in `try/catch`; errors posted back as `CAN_WORKER_ERROR`; `default:` case added for forward-compatibility |
+
+---
+
 *Last updated: 2026-05-29*

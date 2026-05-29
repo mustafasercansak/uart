@@ -96,8 +96,8 @@ const DEFAULT_PROFILES: CANProfile[] = [
 /** Persist profiles to Tauri FS (fire-and-forget; localStorage is the sync cache). */
 function persistToFS(profiles: CANProfile[]): void {
   if (!isTauri()) return;
-  invoke('save_can_profiles', { data: profiles }).catch((e) =>
-    console.error('[canProfileStorage] save_can_profiles failed:', e)
+  invoke('save_can_node_profiles', { data: profiles }).catch((e) =>
+    console.error('[canProfileStorage] save_can_node_profiles failed:', e)
   );
 }
 
@@ -123,7 +123,7 @@ export function loadCANProfiles(): CANProfile[] {
 export async function initCANProfileStorage(): Promise<void> {
   if (!isTauri()) return;
   try {
-    const raw = await invoke<CANProfile[] | null>('load_can_profiles');
+    const raw = await invoke<CANProfile[] | null>('load_can_node_profiles');
     if (raw === null) {
       // First run — push current localStorage contents to FS
       persistToFS(loadCANProfiles());

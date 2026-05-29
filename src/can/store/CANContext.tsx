@@ -112,6 +112,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const frameBatchRef = useRef<CANFrame[]>([]);
   const pendingSocketCANTxRef = useRef<PendingSocketCANTx[]>([]);
   const activeSocketCANSessionRef = useRef<number | null>(null);
+  // True once the first socketcan-status:connected has been received.
+  // Before the first connection there is no prior session to filter against,
+  // so frames must be allowed through even while activeSocketCANSessionRef is null.
+  const hasEverConnectedRef = useRef(false);
 
   const clearPendingSocketCANTx = useCallback(() => {
     if (pendingSocketCANTxRef.current.length > 0) {
@@ -241,9 +245,11 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     listen('socketcan-frame', (payload) => {
       const socketPayload = payload as SocketCANFramePayload;
       // Drop frames from any session other than the active one.
-      // When activeSocketCANSessionRef.current is null (between sessions), any frame that
-      // carries a sessionId must belong to a previous session — drop it too.
-      if (typeof socketPayload.sessionId === 'number') {
+      // On the very first connection hasEverConnectedRef is false, so active is null
+      // but there is no prior session to filter — allow frames through.
+      // On reconnects hasEverConnectedRef is true, so null active means "between sessions"
+      // and all sessionId-tagged frames are correctly dropped until the new session is set.
+      if (typeof socketPayload.sessionId === 'number' && hasEverConnectedRef.current) {
         const active = activeSocketCANSessionRef.current;
         if (active === null || socketPayload.sessionId !== active) return;
       }
@@ -282,6 +288,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
       if (status.connected && payloadSessionId !== null) {
         activeSocketCANSessionRef.current = payloadSessionId;
+        hasEverConnectedRef.current = true;
       }
 
       // Forward error to state so UI banners can display background disconnect errors.
