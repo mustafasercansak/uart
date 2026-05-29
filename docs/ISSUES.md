@@ -169,6 +169,23 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v7 Code Review (2026-05-29)
+
+8 findings from 7-angle + verify automated review (5 CONFIRMED, 3 PLAUSIBLE); all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 86 | 🔴 Blocker | `lib.rs`: `write_socketcan_frame` holds `write_fd` Mutex across `libc::write` — full TX buffer blocks the lock, deadlocking `disconnect_socketcan` (same bug fixed in TCP path in v4 review) | Rust / SocketCAN | Fixed: fd integer copied out of the mutex before the lock is released; `libc::write` called with no lock held, consistent with `write_tcp_server` |
+| 87 | 🔴 Blocker | `CANContext.tsx`: `sendUDSRequest` stores `dlc: data.length` (e.g. 4) in pending TX, but `transmitDiagnosticFrame` always emits DLC=8 padded frames — `consumePendingSocketCANTx` DLC comparison always fails; every UDS TX echo appears as RX in monitor | SocketCAN / UDS | Fixed: all pending TX entries use `dlc: 8` to match the actual padded frame size |
+| 88 | 🔴 Blocker | `lib.rs`: on fast reconnect, the dying read thread emits `socketcan-frame` events for up to 100 ms (poll timeout) with no `sessionId` field; the frontend `socketcan-frame` listener had no session filter and accepted stale frames from the old session | Rust / SocketCAN | Fixed: `sessionId` added to `socketcan-frame` JSON payload; frontend filters frames whose `sessionId` differs from `activeSocketCANSessionRef.current` |
+| 89 | 🟠 High | `CANSimulationEngine.ts`: `scheduleManagedTimeout` with `delayMs=0` (used for FC scheduling) queues a macrotask that `clearTimeout` cannot cancel; callback fires after `stop()`/`clearTimers()`, calling `transmitDiagnosticFrame` on a stopped engine | CAN / ISO-TP | Fixed: callback checks `isotpTxTimers.has(tid)` before executing — `clearTimers()` clears the set, so already-queued macrotasks see `has()=false` and return early |
+| 90 | 🟠 High | `CANSimulationEngine.ts`: `handleIsoTpFrame` (FF path) sends Flow Control unconditionally before checking if `payload.length >= totalLength`; a malformed FF with tiny `totalLength` receives an FC and processes the response — then discards the subsequent CF the tester sends in reply | CAN / ISO-TP | Fixed: FC only sent when `payload.length < totalLength`; immediately-complete FFs skip the FC and call `processUdsPayload` directly |
+| 91 | 🟡 Medium | `CANSimulationEngine.ts`: `startedAt` written to `IsoTpRxSession` but never read; stale abandoned sessions persist in `isotpRxSessions` until `clearFrames()`; a late CF on the same arbitration ID corrupts the next session's payload | CAN / ISO-TP | Fixed: CF handler checks `Date.now() - session.startedAt > 2000` and evicts expired sessions |
+| 92 | 🟡 Medium | `lib.rs`: `delete_recording` and `load_recording` join a user-supplied `id` to `recordings_dir()` without sanitising `..` sequences — allows reading or deleting arbitrary files outside the recordings directory | Rust / Security | Fixed: both commands reject any `id` containing `..`, `/`, or `\` before path construction |
+| 93 | 🔵 Low | `lib.rs`: `write_fd` opened at line 797 before `state.write_fd.lock()` is acquired at line 806; if the mutex is poisoned between these two points, the `RawFd` integer is dropped without `close()` — fd leak on rapid connect/panic cycles | Rust / Resource | Fixed: lock acquisition uses `match` with an explicit `Err` arm that closes both `write_fd` and `read_fd` before returning |
+
+---
+
 ## ✅ Closed — v1.6.0 v7 Code Review (2026-05-28)
 
 4 findings from follow-up review; all fixed in the same session.
@@ -182,4 +199,17 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
-*Last updated: 2026-05-28*
+## ✅ Closed — v1.6.0 v8 Code Review (2026-05-29)
+
+4 findings from 7-angle + verify automated review (4 CONFIRMED); all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 94 | 🔴 Blocker | `lib.rs`: `write_socketcan_frame` v7 fix introduced a TOCTOU race — `RawFd` integer copied out of mutex without `dup()`, so `disconnect_socketcan` can `close()` and the OS can recycle the fd before `libc::write` executes; writes silently go to a wrong file descriptor | Rust / SocketCAN | Fixed: `libc::dup()` called inside the lock to create an independent kernel file-description reference; mutex released; write proceeds on the dup'd fd; dup closed after write regardless of outcome |
+| 95 | 🟠 High | `CANContext.tsx`: `socketcan-frame` session filter is disabled during reconnect window — `activeSocketCANSessionRef.current` is set to `null` before `invoke('connect_socketcan')` returns; old-session frames from the dying read thread bypass the `!== null` conjunct and appear as real RX traffic in the new session | SocketCAN / Race | Fixed: filter rewritten — any sessionId-tagged frame is dropped when `active === null` (between sessions) or when `sessionId !== active`; frames without a sessionId still pass |
+| 96 | 🟠 High | `CANContext.tsx`: `socketcan-status` disconnect guard has the same `!== null` gap — a stale `connected:false` event from the dying thread dispatches `CAN_SET_NETWORK_CONNECTED:false` during the reconnect window, transiently showing the UI as disconnected even when the new connection succeeds | SocketCAN / Race | Fixed: guard updated to treat `activeSessionId === null` as "between sessions" — stale disconnect events (any non-null sessionId while active is null) are dropped; safe because `disconnectNetwork()` already dispatches the disconnect state change eagerly |
+| 97 | 🔵 Low | `CANSimulationEngine.ts`: short-FF path with `totalLength === 0` calls `processUdsPayload([])`, which returns silently with no FC sent and no error logged — malformed First Frames are swallowed without any diagnostic output | CAN / ISO-TP | Fixed: early `totalLength === 0` guard added before the short-FF branch; logs an error and returns without creating a session or sending FC |
+
+---
+
+*Last updated: 2026-05-29*

@@ -432,19 +432,25 @@ export class CANSimulationEngine {
 
     if (pciType === 1) {
       const totalLength = ((data[0] & 0x0f) << 8) | data[1];
+      if (totalLength === 0) {
+        this.log('error', `ISO-TP FF with totalLength=0 on 0x${this.hexId(arbitrationId)}; discarding`);
+        return;
+      }
       const payload = data.slice(2, Math.min(8, 2 + totalLength));
-      this.isotpRxSessions.set(arbitrationId, {
-        totalLength,
-        payload,
-        nextSequence: 1,
-        responseId,
-        startedAt: Date.now(),
-      });
-      this.log('rx', `ISO-TP FF request len=${totalLength}; sending Flow Control`);
-      this.transmitDiagnosticFrame(responseId, [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs], 'ecu');
       if (payload.length >= totalLength) {
-        this.isotpRxSessions.delete(arbitrationId);
+        // Malformed FF: total length fits in the first frame — process directly, no FC needed.
+        this.log('rx', `ISO-TP FF (short) request len=${totalLength}; processing directly`);
         this.processUdsPayload(arbitrationId, responseId, payload.slice(0, totalLength));
+      } else {
+        this.isotpRxSessions.set(arbitrationId, {
+          totalLength,
+          payload,
+          nextSequence: 1,
+          responseId,
+          startedAt: Date.now(),
+        });
+        this.log('rx', `ISO-TP FF request len=${totalLength}; sending Flow Control`);
+        this.transmitDiagnosticFrame(responseId, [0x30, this.state.udsConfig.blockSize, this.state.udsConfig.stMinMs], 'ecu');
       }
       return;
     }
@@ -452,6 +458,12 @@ export class CANSimulationEngine {
     if (pciType === 2) {
       const session = this.isotpRxSessions.get(arbitrationId);
       if (!session) return;
+      // Expire sessions that have been waiting too long to prevent stale-session corruption.
+      if (Date.now() - session.startedAt > 2000) {
+        this.log('error', `ISO-TP session on 0x${this.hexId(arbitrationId)} expired; discarding stale CF`);
+        this.isotpRxSessions.delete(arbitrationId);
+        return;
+      }
       const sequence = data[0] & 0x0f;
       if (sequence !== session.nextSequence) {
         this.log('error', `ISO-TP sequence error on 0x${this.hexId(arbitrationId)} expected ${session.nextSequence} got ${sequence}`);
@@ -734,6 +746,10 @@ export class CANSimulationEngine {
 
   private scheduleManagedTimeout(callback: () => void, delayMs: number): ReturnType<typeof setTimeout> {
     const tid = setTimeout(() => {
+      // Guard against delayMs=0 callbacks that were already queued when clearTimers()
+      // ran: clearTimeout is a no-op on already-enqueued macrotasks, but clearTimers()
+      // also calls isotpTxTimers.clear(), so the presence check below is the reliable gate.
+      if (!this.isotpTxTimers.has(tid)) return;
       this.isotpTxTimers.delete(tid);
       callback();
     }, delayMs);

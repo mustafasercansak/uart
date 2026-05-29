@@ -804,7 +804,14 @@ fn connect_socketcan(
     })?;
 
     {
-        let mut fd = state.write_fd.lock().unwrap();
+        let mut fd = match state.write_fd.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                // Poisoned mutex: close both fds before propagating.
+                unsafe { libc::close(write_fd); libc::close(read_fd) };
+                return Err("ERR_SOCKETCAN_INTERNAL".to_string());
+            }
+        };
         // Close the previous write_fd if present to avoid leaking file descriptors
         // when connect_socketcan is called again without disconnect_socketcan.
         if let Some(old_fd) = fd.take() {
@@ -857,6 +864,9 @@ fn connect_socketcan(
                     let mut decoded = decode_linux_can_frame(frame);
                     if let Some(map) = decoded.as_object_mut() {
                         map.insert("timestamp".to_string(), serde_json::json!(ts_ms));
+                    }
+                    if let Some(map) = decoded.as_object_mut() {
+                        map.insert("sessionId".to_string(), serde_json::json!(session_id));
                     }
                     app_clone.emit("socketcan-frame", decoded).ok();
                 }
@@ -929,12 +939,25 @@ fn write_socketcan_frame(
     is_rtr: bool,
     state: tauri::State<'_, SocketCanState>,
 ) -> Result<(), String> {
-    let fd = state.write_fd.lock().unwrap();
-    if let Some(write_fd) = *fd {
-        write_socketcan_fd(write_fd, arbitration_id, data, is_extended, is_rtr)
-    } else {
-        Err("ERR_SOCKETCAN_NOT_CONNECTED".to_string())
-    }
+    // dup() the fd inside the lock so the lock can be released before libc::write.
+    // Copying a bare RawFd (i32) is NOT safe: disconnect_socketcan can close the original
+    // and the OS can recycle the number before libc::write runs (TOCTOU). libc::dup()
+    // creates an independent kernel file-description reference that survives the close.
+    // We close the dup'd fd ourselves after the write, regardless of outcome.
+    let dup_fd = {
+        let fd = state.write_fd.lock().unwrap();
+        match *fd {
+            Some(f) => {
+                let d = unsafe { libc::dup(f) };
+                if d < 0 { return Err(std::io::Error::last_os_error().to_string()); }
+                Ok(d)
+            }
+            None => Err("ERR_SOCKETCAN_NOT_CONNECTED".to_string()),
+        }
+    }?;
+    let result = write_socketcan_fd(dup_fd, arbitration_id, data, is_extended, is_rtr);
+    unsafe { libc::close(dup_fd) };
+    result
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -1064,6 +1087,9 @@ fn save_recording(name: String, data: serde_json::Value) -> Result<(), String> {
 
 #[tauri::command]
 fn load_recording(id: String) -> Result<serde_json::Value, String> {
+    if id.contains("..") || id.contains('/') || id.contains('\\') {
+        return Err("ERR_INVALID_RECORDING_ID".to_string());
+    }
     let path = recordings_dir().join(&id);
     let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
     serde_json::from_str(&content).map_err(|e| e.to_string())
@@ -1071,6 +1097,9 @@ fn load_recording(id: String) -> Result<serde_json::Value, String> {
 
 #[tauri::command]
 fn delete_recording(id: String) -> Result<(), String> {
+    if id.contains("..") || id.contains('/') || id.contains('\\') {
+        return Err("ERR_INVALID_RECORDING_ID".to_string());
+    }
     let path = recordings_dir().join(&id);
     if path.exists() {
         std::fs::remove_file(&path).map_err(|e| e.to_string())?;

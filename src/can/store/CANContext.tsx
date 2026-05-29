@@ -63,6 +63,7 @@ interface SocketCANFramePayload {
   isRTR: boolean;
   dlc: number;
   data: number[];
+  sessionId?: number;
 }
 
 interface PendingSocketCANTx {
@@ -239,6 +240,13 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
     listen('socketcan-frame', (payload) => {
       const socketPayload = payload as SocketCANFramePayload;
+      // Drop frames from any session other than the active one.
+      // When activeSocketCANSessionRef.current is null (between sessions), any frame that
+      // carries a sessionId must belong to a previous session — drop it too.
+      if (typeof socketPayload.sessionId === 'number') {
+        const active = activeSocketCANSessionRef.current;
+        if (active === null || socketPayload.sessionId !== active) return;
+      }
       const isLocalEcho = consumePendingSocketCANTx(pendingSocketCANTxRef.current, socketPayload);
       const frame = socketCANPayloadToFrame(socketPayload, stateRef.current.busLoadPercent, isLocalEcho ? -1 : 0);
       dispatch({ type: 'CAN_ADD_FRAME', frame });
@@ -260,10 +268,13 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       const activeSessionId = activeSocketCANSessionRef.current;
       const payloadSessionId = typeof status.sessionId === 'number' ? status.sessionId : null;
 
+      // Drop stale disconnect events from prior sessions.
+      // activeSessionId === null means we are between sessions (connectNetwork just ran but the
+      // new socketcan-status:connected hasn't arrived yet) — still drop any sessionId-tagged
+      // disconnect event, since disconnectNetwork() already dispatched connected:false eagerly.
       if (
         payloadSessionId !== null &&
-        activeSessionId !== null &&
-        payloadSessionId !== activeSessionId &&
+        (activeSessionId === null || payloadSessionId !== activeSessionId) &&
         !status.connected
       ) {
         return;
@@ -570,21 +581,23 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       const idFormat: 'standard' | 'extended' = requestId > 0x7ff ? 'extended' : 'standard';
       const baseCreatedAt = Date.now();
       const stMinMs = Math.max(0, stateRef.current.udsConfig.stMinMs ?? 0);
+      // transmitDiagnosticFrame always zero-pads to DLC=8; store 8 so
+      // consumePendingSocketCANTx matches the vcan echo (which also arrives with DLC=8).
       if (norm.length <= 7) {
         const data = [norm.length, ...norm];
-        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data, dlc: data.length, idFormat, createdAt: baseCreatedAt });
+        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data, dlc: 8, idFormat, createdAt: baseCreatedAt });
       } else {
         const len = Math.min(norm.length, 0xfff);
         const ffData = [0x10 | ((len >> 8) & 0x0f), len & 0xff, ...norm.slice(0, 6)];
         let createdAt = baseCreatedAt;
-        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: ffData, dlc: ffData.length, idFormat, createdAt });
+        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: ffData, dlc: 8, idFormat, createdAt });
         let offset = 6;
         let seq = 1;
         while (offset < len) {
           createdAt += stMinMs;
           const chunk = norm.slice(offset, offset + 7);
           const cfData = [0x20 | (seq & 0x0f), ...chunk];
-          pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: cfData, dlc: cfData.length, idFormat, createdAt });
+          pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: cfData, dlc: 8, idFormat, createdAt });
           offset += chunk.length;
           seq = (seq + 1) & 0x0f;
         }
