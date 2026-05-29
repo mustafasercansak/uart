@@ -125,12 +125,17 @@ export async function initCANProfileStorage(): Promise<void> {
   try {
     const raw = await invoke<CANProfile[] | null>('load_can_node_profiles');
     if (raw === null) {
-      // First run — push current localStorage contents to FS
+      // First run — push current localStorage contents to FS.
       persistToFS(loadCANProfiles());
     } else if (Array.isArray(raw)) {
       // FS is authoritative: overwrite localStorage cache, including an empty array
       // (user deliberately deleted all profiles — must not restore stale localStorage).
       localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
+    } else {
+      // FS file contains non-array JSON (corruption) — log and reset to defaults.
+      console.error('[canProfileStorage] FS file is corrupt (not an array); resetting to defaults');
+      persistToFS(DEFAULT_PROFILES);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILES));
     }
   } catch (e) {
     console.error('[canProfileStorage] initCANProfileStorage failed:', e);

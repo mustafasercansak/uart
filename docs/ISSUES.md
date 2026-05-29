@@ -231,4 +231,16 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v10 Pre-Release Final Sweep (2026-05-29)
+
+3 findings from comprehensive full-branch review (all 54 source files); all fixed in the same session. The Motorola big-endian `7-(bitPos%8)` formula was independently confirmed correct — a false positive was correctly rejected.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 108 | 🟠 High | `EditNodeModal.tsx:27`: hard-coded `baseId > 0x7FF` validation rejected all extended CAN IDs — any node with a J1939 or DBC-imported 29-bit address (e.g. `0x18FEF100`) could never be saved through the edit modal; user saw the arbIdRange error with no escape | CAN / UI | Fixed: upper bound raised to `0x1FFFFFFF` (full 29-bit CAN ID range) |
+| 109 | 🟠 High | `CANContext.tsx:194`: `CAN_WORKER_ERROR` messages posted by the new worker error boundary (fix #107) had no case in the main-thread `onmessage` switch — engine exceptions were silently dropped, the worker was left in a broken state, and the user saw no error or restart | Worker / Reliability | Fixed: added `case 'CAN_WORKER_ERROR': handleCrash(...)` which logs the error and triggers the existing auto-restart path |
+| 110 | 🟡 Medium | `canProfileStorage.ts:130`: `initCANProfileStorage` handled `raw === null` (file missing) and `Array.isArray(raw)` (valid), but had no `else` branch — a corrupt FS file containing non-array JSON silently bypassed both branches, leaving localStorage unchanged and the corruption undetected on every subsequent launch | Storage / Reliability | Fixed: `else` branch logs the corruption, resets the FS file to `DEFAULT_PROFILES`, and writes defaults to localStorage |
+
+---
+
 *Last updated: 2026-05-29*

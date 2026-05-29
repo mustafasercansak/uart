@@ -24,7 +24,8 @@ export function EditNodeModal({ node, onSave, onClose }: EditNodeModalProps) {
 
   const handleSubmit = () => {
     if (!name.trim()) { setError(t('can.nodeNameRequired')); return; }
-    if (baseId < 0 || baseId > 0x7ff) { setError(t('can.arbIdRange')); return; }
+    // Allow up to 29-bit extended CAN IDs (0x1FFFFFFF) for J1939 / DBC-imported nodes.
+    if (baseId < 0 || baseId > 0x1FFFFFFF) { setError(t('can.arbIdRange')); return; }
 
     onSave(node.id, {
       name: name.trim() === resolvedOriginalName ? node.name : name.trim(),

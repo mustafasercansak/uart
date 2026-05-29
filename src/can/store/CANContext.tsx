@@ -191,6 +191,11 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
           case 'CAN_FAULT_EVENT':
             dispatch({ type: 'CAN_ADD_FAULT_EVENT', event: msg.event });
             break;
+
+          case 'CAN_WORKER_ERROR':
+            // Engine method threw — log it and trigger the crash-restart path.
+            handleCrash(`Engine error (${msg.msgType}): ${msg.message}`);
+            break;
         }
       };
 
