@@ -291,4 +291,16 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v14 Code Review (2026-05-30)
+
+3 findings from full-branch re-review (2 CONFIRMED, 1 PLAUSIBLE); all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 129 | 🔴 Blocker | `CANContext.tsx` SLCAN serial write block forwards ALL worker frames with no `nodeId` guard — ECU simulation frames (`nodeId === -2`) and simulation node frames (`nodeId >= 0`) reach the physical serial/SLCAN adapter; comment on the adjacent SocketCAN path explicitly says these frames "must never reach live hardware" but serial was not enforced | Serial / Safety | Fixed: serial write guarded with `&& frame.nodeId === -1` — only tester-injected frames reach hardware, matching the SocketCAN write guard |
+| 130 | 🔵 Low | `CANContext.tsx` `socketcan-status` error handler: when the backend emits `{connected:false, error:...}` after `invoke` resolves successfully, `expectingConnectionRef` is not cleared — it stays `true`, leaving the stale-event guard permanently open until the user calls `disconnectNetwork` | SocketCAN / State | Fixed: `expectingConnectionRef.current = false` added alongside the existing `activeSocketCANSessionRef` cleanup in the error branch |
+| 131 | 🔵 Low | `lib.rs` `atomic_write`: nonce uses `subsec_nanos()` which wraps every second — two calls in the same process at the same sub-second nanosecond position 1 s apart generate identical tmp filenames and race | Rust / Storage | Fixed: `subsec_nanos()` → `as_nanos()` (monotonically increasing since UNIX_EPOCH, collision-free for all practical purposes) |
+
+---
+
 *Last updated: 2026-05-30*

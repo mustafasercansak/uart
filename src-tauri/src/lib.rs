@@ -132,7 +132,7 @@ fn atomic_write(path: &std::path::Path, content: &str) -> Result<(), String> {
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.subsec_nanos())
+        .map(|d| d.as_nanos())
         .unwrap_or(0);
     let tmp_name = format!("{}.{}.{}.tmp", stem, std::process::id(), nonce);
     let tmp = path.with_file_name(tmp_name);

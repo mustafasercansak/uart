@@ -165,7 +165,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
             if (!(isSocketCAN && frame.nodeId < 0)) {
               frameBatchRef.current.push(frame);
             }
-            if (stateRef.current.serialConnected && serialWriterRef.current) {
+            // Only forward tester-injected frames (nodeId === -1) to SLCAN hardware.
+            // ECU simulation (nodeId === -2) and simulation nodes (nodeId >= 0) must
+            // never reach live hardware — same restriction as the SocketCAN write below.
+            if (stateRef.current.serialConnected && serialWriterRef.current && frame.nodeId === -1) {
               const isExt = frame.idFormat === 'extended';
               const prefix = isExt ? 'T' : 't';
               const idHex = frame.arbitrationId.toString(16).toUpperCase().padStart(isExt ? 8 : 3, '0');
@@ -324,6 +327,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         // Background error disconnect — clean up write_fd since the read thread cannot.
         invoke('disconnect_socketcan').catch(() => {});
         clearPendingSocketCANTx();
+        expectingConnectionRef.current = false;
         if (payloadSessionId !== null && activeSocketCANSessionRef.current === payloadSessionId) {
           activeSocketCANSessionRef.current = null;
         }
