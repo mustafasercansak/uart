@@ -104,6 +104,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
   const workerRef = useRef<Worker | null>(null);
   const restartCountRef = useRef(0);
   const stabilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while a connectNetwork() call is in-flight; cleared on the first connected:true
+  // event or on disconnectNetwork(). Guards against stale connected:true events from a
+  // prior session re-enabling the UI after the user has already disconnected.
+  const expectingConnectionRef = useRef(false);
   const isMountedRef = useRef(true);
 
   // Tracks serial connection state synchronously (stateRef is only refreshed after render)
@@ -154,9 +158,11 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
           case 'CAN_FRAME': {
             const frame = msg.frame as CANFrame;
             const isSocketCAN = stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected;
-            // In SocketCAN mode, manually sent frames (nodeId: -1) are echoed back by vcan
-            // as INJECT frames — skip the internal copy to avoid duplicates in the monitor
-            if (!(isSocketCAN && frame.nodeId === -1)) {
+            // In SocketCAN mode suppress all engine-internal frames (nodeId < 0):
+            //   nodeId === -1: tester TX — covered by vcan echo via socketcan-frame
+            //   nodeId === -2: ECU simulation — covered by real hardware response via socketcan-frame
+            // Simulation node frames (nodeId >= 0) still appear since they have no real counterpart.
+            if (!(isSocketCAN && frame.nodeId < 0)) {
               frameBatchRef.current.push(frame);
             }
             if (stateRef.current.serialConnected && serialWriterRef.current) {
@@ -304,6 +310,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (status.connected && payloadSessionId !== null) {
+        // Drop a stale connected:true that arrives after the user already disconnected.
+        if (!expectingConnectionRef.current && hasEverConnectedRef.current) return;
+        expectingConnectionRef.current = false;
         activeSocketCANSessionRef.current = payloadSessionId;
         hasEverConnectedRef.current = true;
       }
@@ -414,6 +423,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     if (mode !== 'tcp' && mode !== 'tcp-server' && stateRef.current.networkConnected) {
       clearPendingSocketCANTx();
       activeSocketCANSessionRef.current = null;
+      expectingConnectionRef.current = false;
       // Dispatch eagerly so the UI transitions to disconnected immediately;
       // a stale socketcan-status event arriving later is harmless (re-confirms false).
       dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
@@ -549,6 +559,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       .trim() || 'vcan0';
     clearPendingSocketCANTx();
     activeSocketCANSessionRef.current = null;
+    expectingConnectionRef.current = true;
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SocketCAN ${normalizedInterface}...`, type: 'info' } });
     try {
       await invoke('connect_socketcan', { interface: normalizedInterface });
@@ -556,6 +567,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       // socketcan-status Tauri event never fires — simulate the connected event
       // so the UI and session refs are set correctly for dev-mode testing.
       if (!isTauri()) {
+        expectingConnectionRef.current = false;
         const devSessionId = 1;
         activeSocketCANSessionRef.current = devSessionId;
         hasEverConnectedRef.current = true;
@@ -563,6 +575,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connected (dev): ${normalizedInterface}`, type: 'info' } });
       }
     } catch (err: unknown) {
+      expectingConnectionRef.current = false;
       const msg = err instanceof Error ? err.message : String(err);
       dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false, error: msg });
       dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connect failed: ${translateBackendError(t, msg)}`, type: 'error' } });
@@ -576,6 +589,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     // the already-false state before the new connected:true arrives).
     clearPendingSocketCANTx();
     activeSocketCANSessionRef.current = null;
+    expectingConnectionRef.current = false;
     dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
     invoke('disconnect_socketcan').catch(console.error);
   }, [clearPendingSocketCANTx]);

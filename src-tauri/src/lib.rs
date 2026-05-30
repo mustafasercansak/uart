@@ -124,11 +124,18 @@ fn can_profiles_dir() -> PathBuf {
     home.join("uart_profiles")
 }
 
-/// Write `content` to `path` atomically: write to a sibling `.tmp` file then
-/// rename. On POSIX, `rename` is atomic within the same filesystem, so a crash
-/// mid-write never leaves a truncated file at the final path.
+/// Write `content` to `path` atomically: write to a uniquely-named sibling tmp
+/// file then rename. Using process ID + nanosecond timestamp in the name
+/// prevents concurrent calls from clobbering each other's temp file.
+/// On POSIX, `rename` is atomic within the same filesystem.
 fn atomic_write(path: &std::path::Path, content: &str) -> Result<(), String> {
-    let tmp = path.with_extension("json.tmp");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
+    let tmp_name = format!("{}.{}.{}.tmp", stem, std::process::id(), nonce);
+    let tmp = path.with_file_name(tmp_name);
     std::fs::write(&tmp, content).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, path).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);

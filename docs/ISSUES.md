@@ -279,4 +279,16 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v13 Code Review (2026-05-30)
+
+3 findings from full-branch re-review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 126 | 🔴 Blocker | `lib.rs` `atomic_write`: fixed sibling `.json.tmp` name is shared across all concurrent Tauri command invocations of the same save command — two rapid saves write to the same temp file, one clobbers the other's content, and the rename promotes the wrong data silently | Rust / Storage | Fixed: temp filename now includes process ID and subsecond nanoseconds (`{stem}.{pid}.{nanos}.tmp`) making each call unique; orphan cleanup on rename failure updated to match |
+| 127 | 🟠 High | `CANContext.tsx` `socketcan-status` listener: the stale-event guard only drops `connected:false` events (`!status.connected` conjunct); a delayed `connected:true` from a prior session arriving after `disconnectNetwork()` is never dropped — it resets `activeSocketCANSessionRef` and dispatches `CAN_SET_NETWORK_CONNECTED:true`, re-showing the UI as connected | SocketCAN / Race | Fixed: added `expectingConnectionRef` boolean set `true` in `connectNetwork`, cleared on first `connected:true` event and on `disconnectNetwork`; `connected:true` events are dropped when `!expectingConnectionRef.current && hasEverConnectedRef.current` |
+| 128 | 🟡 Medium | `CANContext.tsx` `CAN_FRAME` handler: suppression guard uses `frame.nodeId === -1` — only tester-injected frames are suppressed from `frameBatchRef` in SocketCAN mode; ECU simulation frames (`nodeId === -2`, including FC frames from `transmitIsoTpPayload`) are pushed to `frameBatchRef` and appear in the monitor alongside the real FC arriving via `socketcan-frame`, producing duplicate entries | SocketCAN / UX | Fixed: guard widened to `frame.nodeId < 0` — both tester (`-1`) and ECU simulation (`-2`) frames are suppressed from `frameBatchRef` when in SocketCAN mode; real hardware frames cover both via vcan echo and `socketcan-frame` events |
+
+---
+
 *Last updated: 2026-05-30*
