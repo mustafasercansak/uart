@@ -64,6 +64,7 @@ export class CANSimulationEngine {
   private noiseBurstTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
   private isotpRxSessions: Map<number, IsoTpRxSession> = new Map();
   private isotpTxTimers: Set<ReturnType<typeof setTimeout>> = new Set();
+  private isotpSessionCleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   // Bus load tracking
   private recentFrameBits: Array<{ ts: number; bits: number }> = [];
@@ -83,6 +84,7 @@ export class CANSimulationEngine {
     this.state.startedAt = Date.now();
     this.fpsResetAt = Date.now();
     this.tickTimer = setInterval(() => this.tick(), 50); // 20 Hz tick
+    this.isotpSessionCleanupTimer = setInterval(() => this.sweepIsoTpRxSessions(), 2000);
     this.log('info', t('can.cANBusSimulatio'));
     this.emitStateUpdate({ status: 'running', startedAt: this.state.startedAt });
   }
@@ -108,6 +110,7 @@ export class CANSimulationEngine {
     if (this.state.status !== 'paused') return;
     this.state.status = 'running';
     this.tickTimer = setInterval(() => this.tick(), 50);
+    this.isotpSessionCleanupTimer = setInterval(() => this.sweepIsoTpRxSessions(), 2000);
     this.log('info', t('can.cANBusSimulatio'));
     this.emitStateUpdate({ status: 'running' });
   }
@@ -191,7 +194,10 @@ export class CANSimulationEngine {
     const responseId = this.responseIdForRequest(requestId);
     this.transmitIsoTpPayload(requestId, normalizedPayload, 'tester');
     const cfCount = normalizedPayload.length > 7 ? Math.ceil((normalizedPayload.length - 6) / 7) : 0;
-    const responseDelay = cfCount > 0 ? (cfCount + 1) * this.state.udsConfig.stMinMs : 0;
+    // When stMinMs=0 every CF fires as a macrotask at delay=0; give the response a
+    // minimum of 1 ms per CF so it always lands after the last CF in the event queue.
+    const effectiveStMin = Math.max(1, this.state.udsConfig.stMinMs);
+    const responseDelay = cfCount > 0 ? (cfCount + 1) * effectiveStMin : 0;
     this.scheduleManagedTimeout(() => this.processUdsPayload(requestId, responseId, normalizedPayload), responseDelay);
   }
 
@@ -502,6 +508,8 @@ export class CANSimulationEngine {
       if (targetNode) this.scheduleManagedTimeout(() => this.recoverNode(targetNode.id), 100);
     } else if (sid === 0x22) {
       response = this.buildReadDidResponse(payload, targetNode);
+    } else if (sid === 0x2e) {
+      response = this.buildWriteDidResponse(payload, targetNode);
     } else if (sid === 0x19) {
       response = this.buildReadDtcResponse(payload);
     } else {
@@ -524,6 +532,22 @@ export class CANSimulationEngine {
       response.push((did >> 8) & 0xff, did & 0xff, ...value);
     }
     return response;
+  }
+
+  private buildWriteDidResponse(payload: number[], targetNode: CANNode | undefined): number[] {
+    if (payload.length < 3) return [0x7f, 0x2e, 0x13];
+    const did = (payload[1] << 8) | payload[2];
+    if (did === 0xf197) {
+      const nameBytes = payload.slice(3);
+      const newName = String.fromCharCode(...nameBytes).replace(/\x00/g, '').trim();
+      if (newName && targetNode) {
+        this.updateNode(targetNode.id, { name: newName });
+        this.log('nmt', `UDS Write DID 0xF197: Updated Node ${targetNode.id} name to "${newName}"`);
+        return [0x6e, 0xf1, 0x97];
+      }
+      return [0x7f, 0x2e, 0x13];
+    }
+    return [0x7f, 0x2e, 0x31];
   }
 
   private buildReadDtcResponse(payload: number[]): number[] {
@@ -785,6 +809,7 @@ export class CANSimulationEngine {
     if (sid === 0x10) return 'Diagnostic Session Control';
     if (sid === 0x11) return 'ECU Reset';
     if (sid === 0x22) return 'Read Data By Identifier';
+    if (sid === 0x2e) return 'Write Data By Identifier';
     if (sid === 0x19) return 'Read DTC Information';
     return `SID 0x${this.hexByte(sid)}`;
   }
@@ -809,8 +834,19 @@ export class CANSimulationEngine {
     this.onFaultEvent?.(event);
   }
 
+  private sweepIsoTpRxSessions(): void {
+    const now = Date.now();
+    for (const [id, session] of this.isotpRxSessions) {
+      if (now - session.startedAt > 2000) {
+        this.log('error', `ISO-TP session on 0x${this.hexId(id)} expired (no CFs received); discarding`);
+        this.isotpRxSessions.delete(id);
+      }
+    }
+  }
+
   private clearTimers(): void {
     if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null; }
+    if (this.isotpSessionCleanupTimer) { clearInterval(this.isotpSessionCleanupTimer); this.isotpSessionCleanupTimer = null; }
     this.busOffTimers.forEach(t => clearTimeout(t));
     this.busOffTimers.clear();
     this.noiseBurstTimers.forEach(t => clearTimeout(t));

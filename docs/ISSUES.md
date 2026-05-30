@@ -186,16 +186,15 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
-## ✅ Closed — v1.6.0 v7 Code Review (2026-05-28)
+## ✅ Closed — v1.6.0 v7 Addendum (2026-05-28)
 
-4 findings from follow-up review; all fixed in the same session.
+3 distinct findings from a follow-up session (a 4th was a duplicate of #89). All fixed alongside the main v7 work.
 
 | # | Severity | Title | Area | Resolution |
 |---|----------|-------|------|------------|
-| 86 | 🟠 High | `socketcan-status` events had no session/connection identifier; stale `connected: false` from an old read thread could overwrite a newer `connected: true` reconnect state | SocketCAN / Race | Fixed: Rust backend now emits `sessionId` on SocketCAN status events; frontend tracks active session and ignores stale disconnect/error events from previous sessions |
-| 87 | 🟡 Medium | `CANSimulationEngine.ts`: `isotpTxTimers` only grew (`add`) and was not pruned when timer callbacks completed during normal runtime | CAN / ISO-TP | Fixed: introduced `scheduleManagedTimeout()` that removes timer handles from `isotpTxTimers` when callbacks fire |
-| 88 | 🟡 Medium | `CANSimulationEngine.ts`: UDS SID `0x11` recovery timeout (`setTimeout(() => recoverNode)`) was not tracked/cancelled by lifecycle clear paths | UDS / Lifecycle | Fixed: ECU reset recovery now uses `scheduleManagedTimeout()`, so it is tracked and canceled by `stop()`/`clearFrames()` |
-| 89 | 🟡 Medium | `CANContext.tsx`: `pendingSocketCANTxRef` had no explicit reset on disconnect/mode change and only pruned on RX, allowing stale echo-matching entries across sessions | SocketCAN / State | Fixed: added explicit pending queue reset on connect/disconnect, mode exit from SocketCAN, stop, clearFrames, and disconnect/error status handling |
+| 123 | 🟠 High | `lib.rs`: `socketcan-status` Tauri events emitted no `sessionId` field — a stale `connected: false` from a dying read thread could overwrite a newer `connected: true` reconnect state; distinct from #88 which added `sessionId` to `socketcan-frame` events only | SocketCAN / Race | Fixed: Rust backend now emits `sessionId` on `socketcan-status` events; prerequisite for the frontend session guards added in #95 and #96 |
+| 124 | 🟡 Medium | `CANSimulationEngine.ts`: UDS SID `0x11` ECU Reset recovery used a bare `setTimeout(() => recoverNode(...), 100)` — untracked by `isotpTxTimers`, so the reset fired after `stop()` / `clearFrames()`, updating node state on a stopped engine | UDS / Lifecycle | Fixed: recovery timer wrapped in `scheduleManagedTimeout()`; `clearTimers()` and `clearFrames()` cancel it correctly |
+| 125 | 🟡 Medium | `CANContext.tsx`: `pendingSocketCANTxRef` was only pruned reactively on incoming RX frames; no explicit clear on disconnect, mode switch, `stop()`, or `clearFrames()` — stale pending echo entries persisted across sessions, causing unrelated frames in a new session to be misclassified as TX | SocketCAN / State | Fixed: `clearPendingSocketCANTx()` called on disconnect, SocketCAN mode exit, `stop()`, `clearFrames()`, and `socketcan-status` error handling |
 
 ---
 
@@ -259,4 +258,25 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
-*Last updated: 2026-05-29*
+## ✅ Closed — v1.6.0 v12 Code Review (2026-05-30)
+
+12 findings from 7-angle + verify automated review; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 111 | 🔴 Blocker | `lib.rs` `save_can_profiles` / `save_can_node_profiles`: `std::fs::write` is non-atomic — a crash mid-write truncates the JSON file, leaving it unreadable on next launch | Rust / Storage | Fixed: `atomic_write()` helper added — writes to a sibling `.json.tmp` then `rename()`; both save commands use it |
+| 112 | 🟠 High | `CANContext.tsx` `setOutputMode`: nulls `activeSocketCANSessionRef` before `invoke('disconnect_socketcan')`, then the resulting `socketcan-status` disconnect event is dropped by the session guard; `networkConnected` stays `true` permanently after a non-SocketCAN mode switch | SocketCAN / State | Fixed: eager `dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false })` added before the invoke, mirroring `disconnectNetwork` |
+| 113 | 🟠 High | `CANContext.tsx` `restartCountRef`: incremented on every worker crash but never reset; after `MAX_RESTARTS` total crashes the engine is permanently dead for the component lifetime | Worker / Reliability | Fixed: `restartCountRef.current` reset to `0` in `worker.onmessage` whenever the worker sends any message — confirms it is alive and restarts the counter |
+| 114 | 🟠 High | `CANContext.tsx` `consumePendingSocketCANTx`: `item.data.every()` iterates only `item.data.length` indices of the 8-byte vcan echo — shorter pending entries match any frame whose first N bytes agree, misclassifying unrelated RX frames as TX echoes | SocketCAN / UDS | Fixed: comparison loop now iterates `payloadDlc` bytes, zero-padding `item.data` when it is shorter than `payloadDlc` |
+| 115 | 🟠 High | `CANSimulationEngine.ts` `processUdsPayload`: SID `0x2E` (WriteDataByIdentifier) was silently dropped in the ISO-TP refactor — node rename via DID `0xF197` returned NRC `0x11` (serviceNotSupported) | UDS / CAN Simulation | Fixed: `buildWriteDidResponse()` added; `processUdsPayload` routes `0x2E` to it; `describeSid` updated |
+| 116 | 🟡 Medium | `CANSimulationEngine.ts` `sendUDSRequest`: `responseDelay = (cfCount + 1) * stMinMs` collapses to `0` when `stMinMs=0`; ECU response fires as a macrotask before the last CF, producing a protocol-impossible log ordering | UDS / ISO-TP | Fixed: `effectiveStMin = Math.max(1, stMinMs)` used for response delay so it always fires after all CFs even when `stMinMs=0` |
+| 117 | 🔵 Low | `lib.rs` `can_node_profiles_dir()`: byte-for-byte duplicate of `can_profiles_dir()` — identical bodies, both return `uart_profiles/` | Rust / Cleanup | Fixed: `can_node_profiles_dir()` removed; all four call sites replaced with `can_profiles_dir()` |
+| 118 | 🟠 High | `CANContext.tsx` `connectNetwork`: in non-Tauri (browser/`npm run dev`) mode `invoke` is a silent no-op and the `socketcan-status` Tauri event never fires — `networkConnected` is permanently `false` after clicking connect | SocketCAN / Dev-Mode | Fixed: after `invoke` returns in non-Tauri mode, a dev-mode connected state is dispatched directly using `isTauri()` guard |
+| 119 | 🔵 Low | `CANContext.tsx` `CANContextValue` interface: `connectNetwork` parameter still named `url` (old TCP-URL contract) while the implementation expects a SocketCAN interface name and rejects TCP URLs | SocketCAN / Types | Fixed: parameter renamed to `interfaceName` in the interface declaration |
+| 120 | 🔵 Low | `lib.rs` `list_recordings`: legacy recordings (pre-sidecar) trigger full `serde_json` deserialisation on every listing; sidecars are never written for old files so the cost is permanent | Rust / Performance | Fixed: sidecar back-filled immediately after the fallback full-parse; subsequent listings read the sidecar |
+| 121 | 🔵 Low | `CANContext.tsx` `sendUDSRequest`: FF/CF construction hand-rolled inline, duplicating `transmitIsoTpPayload` engine logic — a framing change in the engine silently breaks vcan echo matching | SocketCAN / Maintenance | Fixed: inline framing extracted to `buildIsoTpTxEntries()` pure helper with a sync-comment referencing the engine method; `sendUDSRequest` calls the helper |
+| 122 | 🔵 Low | `CANSimulationEngine.ts` `isotpRxSessions`: stale sessions (FF with no CFs) only expire when a new CF arrives on the same arbitration ID; a crashed sender leaves the session open indefinitely | CAN / ISO-TP | Fixed: `sweepIsoTpRxSessions()` added; `setInterval` in `start()` / `resume()` calls it every 2 s; `clearTimers()` cancels the interval |
+
+---
+
+*Last updated: 2026-05-30*

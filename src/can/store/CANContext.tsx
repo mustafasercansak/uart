@@ -6,7 +6,7 @@ import type { CANNode, CANFaultType } from '../types/CANNode';
 import type { CANFrame } from '../types/CANFrame';
 import type { CANErrorInjectionConfig } from '../types/CANErrorInjection';
 import type { UDSDiagnosticConfig } from '../types/UDS';
-import { invoke, listen } from '../../lib/tauri-bridge';
+import { invoke, listen, isTauri } from '../../lib/tauri-bridge';
 import { translateBackendError } from '../../utils/backendError';
 
 // ── Web Serial API types ────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ interface CANContextValue {
   setOutputMode: (mode: CANBusState['outputMode']) => void;
   connectSerial: (portName: string) => void;
   disconnectSerial: () => void;
-  connectNetwork: (url: string) => void;
+  connectNetwork: (interfaceName: string) => void;
   disconnectNetwork: () => void;
   startRecording: () => void;
   stopRecording: () => void;
@@ -137,6 +137,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       workerRef.current = worker;
 
       worker.onmessage = (event: MessageEvent) => {
+        // Worker is alive — reset crash counter so intermittent faults don't
+        // permanently disable the restart path after MAX_RESTARTS total crashes.
+        if (restartCountRef.current > 0) restartCountRef.current = 0;
         const msg = event.data;
         if (!msg?.type) return;
 
@@ -402,8 +405,10 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     if (mode !== 'tcp' && mode !== 'tcp-server' && stateRef.current.networkConnected) {
       clearPendingSocketCANTx();
       activeSocketCANSessionRef.current = null;
+      // Dispatch eagerly so the UI transitions to disconnected immediately;
+      // a stale socketcan-status event arriving later is harmless (re-confirms false).
+      dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false });
       invoke('disconnect_socketcan').catch(() => {});
-      // State will be updated by the socketcan-status Tauri event.
     }
   }, [clearPendingSocketCANTx]);
 
@@ -538,6 +543,16 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `Connecting to SocketCAN ${normalizedInterface}...`, type: 'info' } });
     try {
       await invoke('connect_socketcan', { interface: normalizedInterface });
+      // In non-Tauri (browser/dev) mode invoke() is a silent no-op and the
+      // socketcan-status Tauri event never fires — simulate the connected event
+      // so the UI and session refs are set correctly for dev-mode testing.
+      if (!isTauri()) {
+        const devSessionId = 1;
+        activeSocketCANSessionRef.current = devSessionId;
+        hasEverConnectedRef.current = true;
+        dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: true });
+        dispatch({ type: 'CAN_ADD_LOG', entry: { time: now(), text: `SocketCAN connected (dev): ${normalizedInterface}`, type: 'info' } });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       dispatch({ type: 'CAN_SET_NETWORK_CONNECTED', connected: false, error: msg });
@@ -590,30 +605,9 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
     // matched by consumePendingSocketCANTx and shown as TX (not RX) in the monitor.
     if (stateRef.current.outputMode === 'tcp' && stateRef.current.networkConnected) {
       const norm = payload.map(b => b & 0xff);
-      const idFormat: 'standard' | 'extended' = requestId > 0x7ff ? 'extended' : 'standard';
-      const baseCreatedAt = Date.now();
       const stMinMs = Math.max(0, stateRef.current.udsConfig.stMinMs ?? 0);
-      // transmitDiagnosticFrame always zero-pads to DLC=8; store 8 so
-      // consumePendingSocketCANTx matches the vcan echo (which also arrives with DLC=8).
-      if (norm.length <= 7) {
-        const data = [norm.length, ...norm];
-        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data, dlc: 8, idFormat, createdAt: baseCreatedAt });
-      } else {
-        const len = Math.min(norm.length, 0xfff);
-        const ffData = [0x10 | ((len >> 8) & 0x0f), len & 0xff, ...norm.slice(0, 6)];
-        let createdAt = baseCreatedAt;
-        pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: ffData, dlc: 8, idFormat, createdAt });
-        let offset = 6;
-        let seq = 1;
-        while (offset < len) {
-          createdAt += stMinMs;
-          const chunk = norm.slice(offset, offset + 7);
-          const cfData = [0x20 | (seq & 0x0f), ...chunk];
-          pendingSocketCANTxRef.current.push({ arbitrationId: requestId, data: cfData, dlc: 8, idFormat, createdAt });
-          offset += chunk.length;
-          seq = (seq + 1) & 0x0f;
-        }
-      }
+      const entries = buildIsoTpTxEntries(requestId, norm, stMinMs, Date.now());
+      pendingSocketCANTxRef.current.push(...entries);
     }
     send({ type: 'CAN_SEND_UDS_REQUEST', requestId, payload });
   }, [send]);
@@ -687,16 +681,65 @@ function consumePendingSocketCANTx(pending: PendingSocketCANTx[], payload: Socke
     }
   }
 
-  const matchIndex = pending.findIndex(item =>
-    item.arbitrationId === payload.arbitrationId &&
-    item.dlc === payloadDlc &&
-    item.idFormat === payloadIdFormat &&
-    item.data.every((byte, index) => byte === payloadData[index])
-  );
+  const matchIndex = pending.findIndex(item => {
+    if (item.arbitrationId !== payload.arbitrationId) return false;
+    if (item.dlc !== payloadDlc) return false;
+    if (item.idFormat !== payloadIdFormat) return false;
+    // Compare all payloadDlc bytes, zero-padding item.data when it is shorter than
+    // payloadDlc (transmitDiagnosticFrame pads frames to DLC=8 on the wire).
+    for (let i = 0; i < payloadDlc; i++) {
+      const expected = i < item.data.length ? item.data[i] : 0;
+      if (expected !== payloadData[i]) return false;
+    }
+    return true;
+  });
 
   if (matchIndex === -1) return false;
   pending.splice(matchIndex, 1);
   return true;
+}
+
+/**
+ * Pure helper that mirrors `CANSimulationEngine.transmitIsoTpPayload`.
+ * Returns the list of frame data arrays (before zero-padding to DLC=8) that the
+ * engine will emit, plus a cumulative `createdAt` offset in ms based on stMinMs.
+ * Used by sendUDSRequest to pre-register expected vcan echoes.
+ *
+ * If this function drifts from the engine implementation, vcan echoes will show
+ * as RX instead of TX. Keep in sync with transmitIsoTpPayload in CANSimulationEngine.ts.
+ */
+function buildIsoTpTxEntries(
+  arbitrationId: number,
+  payload: number[],
+  stMinMs: number,
+  baseCreatedAt: number
+): PendingSocketCANTx[] {
+  const idFormat: 'standard' | 'extended' = arbitrationId > 0x7ff ? 'extended' : 'standard';
+  const entries: PendingSocketCANTx[] = [];
+
+  if (payload.length <= 7) {
+    entries.push({ arbitrationId, data: [payload.length, ...payload], dlc: 8, idFormat, createdAt: baseCreatedAt });
+    return entries;
+  }
+
+  const length = Math.min(payload.length, 0xfff);
+  entries.push({
+    arbitrationId,
+    data: [0x10 | ((length >> 8) & 0x0f), length & 0xff, ...payload.slice(0, 6)],
+    dlc: 8, idFormat, createdAt: baseCreatedAt,
+  });
+
+  let offset = 6;
+  let seq = 1;
+  let createdAt = baseCreatedAt + stMinMs;
+  while (offset < length) {
+    const chunk = payload.slice(offset, offset + 7);
+    entries.push({ arbitrationId, data: [0x20 | (seq & 0x0f), ...chunk], dlc: 8, idFormat, createdAt });
+    offset += chunk.length;
+    seq = (seq + 1) & 0x0f;
+    createdAt += stMinMs;
+  }
+  return entries;
 }
 
 function makeSocketCANFrameUid(): string {

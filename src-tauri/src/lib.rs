@@ -124,6 +124,18 @@ fn can_profiles_dir() -> PathBuf {
     home.join("uart_profiles")
 }
 
+/// Write `content` to `path` atomically: write to a sibling `.tmp` file then
+/// rename. On POSIX, `rename` is atomic within the same filesystem, so a crash
+/// mid-write never leaves a truncated file at the final path.
+fn atomic_write(path: &std::path::Path, content: &str) -> Result<(), String> {
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, content).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        e.to_string()
+    })
+}
+
 // ── SIMULATION PROFILES PERSISTENCE (storage.ts) ─────────────────────────────
 
 /// Load simulation profiles. Returns `null` (None) when no file exists yet.
@@ -138,30 +150,24 @@ fn load_can_profiles() -> Result<Option<serde_json::Value>, String> {
     Ok(Some(data))
 }
 
-/// Persist simulation profiles to disk.
+/// Persist simulation profiles to disk atomically.
 #[tauri::command]
 fn save_can_profiles(data: serde_json::Value) -> Result<(), String> {
     let dir = can_profiles_dir();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("profiles.json");
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| e.to_string())
+    atomic_write(&path, &json)
 }
 
 // ── CAN NODE PROFILES PERSISTENCE (canProfileStorage.ts) ─────────────────────
-// Separate commands and file so the two profile stores never overwrite each other.
-
-fn can_node_profiles_dir() -> PathBuf {
-    let home = dirs_next::document_dir()
-        .or_else(dirs_next::home_dir)
-        .unwrap_or_else(|| PathBuf::from("."));
-    home.join("uart_profiles")
-}
+// Separate filenames under the same uart_profiles directory ensure the two
+// profile stores never overwrite each other.
 
 /// Load CAN node profiles. Returns `null` (None) when no file exists yet.
 #[tauri::command]
 fn load_can_node_profiles() -> Result<Option<serde_json::Value>, String> {
-    let path = can_node_profiles_dir().join("can_node_profiles.json");
+    let path = can_profiles_dir().join("can_node_profiles.json");
     if !path.exists() {
         return Ok(None);
     }
@@ -170,14 +176,14 @@ fn load_can_node_profiles() -> Result<Option<serde_json::Value>, String> {
     Ok(Some(data))
 }
 
-/// Persist CAN node profiles to disk.
+/// Persist CAN node profiles to disk atomically.
 #[tauri::command]
 fn save_can_node_profiles(data: serde_json::Value) -> Result<(), String> {
-    let dir = can_node_profiles_dir();
+    let dir = can_profiles_dir();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("can_node_profiles.json");
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| e.to_string())
+    atomic_write(&path, &json)
 }
 
 // ── SERIAL PORT COMMANDS ──────────────────────────────────────────────────────
@@ -1067,6 +1073,9 @@ fn list_recordings() -> Result<Vec<RecordingMeta>, String> {
             let frames: Vec<serde_json::Value> = serde_json::from_str(&content_str).unwrap_or_default();
             let fc = frames.len();
             let dm = frames.last().and_then(|f| f.get("time").or_else(|| f.get("timestamp"))).and_then(|t| t.as_f64()).unwrap_or(0.0);
+            // Back-fill sidecar so future listings skip the full parse.
+            let sidecar = serde_json::json!({ "frameCount": fc, "durationMs": dm });
+            let _ = std::fs::write(&sidecar_path, serde_json::to_string(&sidecar).unwrap_or_default());
             (fc, dm)
         };
 
