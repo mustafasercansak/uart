@@ -15,9 +15,13 @@
 ## 🚀 Key Capabilities
 
 - **Dual Operation Modes:** Seamlessly switch between clinical **Standard Mode** and engineering-focused **Pro (Analyzer) Mode**.
-- **17+ Specialized Modules:** Bit-level logic analysis, protocol diffing, signal integrity simulation, 3D visualization, and more.
+- **20+ Specialized Modules:** Bit-level logic analysis, protocol diffing, signal integrity simulation, 3D visualization, and more.
 - **Automation & Scenarios:** Scripted clinical events and automated handshakes for comprehensive HIL (Hardware-in-the-Loop) testing.
-- **CAN Bus Tooling:** Dedicated CAN Dashboard with node simulation, arbitration visibility, fault injection, profiles, and passive Smart Listen discovery.
+- **CAN Bus Tooling:** Dedicated CAN Dashboard with multi-node simulation, arbitration visibility, fault injection, medical profiles, and passive Smart Listen baud-rate detection.
+- **UDS / ISO-TP Diagnostics:** Full ISO 14229 diagnostic layer over CAN — Session Control, Read DID, Read DTC, multi-frame ISO-TP segmentation/reassembly, and a Symphony auto-responder ECU simulator.
+- **J1939 Frame Decoder:** Decodes all SAE J1939 fields (priority, PGN, PF/PS, source/destination) from 29-bit extended IDs with PGN name lookup directly in the Frame Inspector.
+- **DBC File Parser:** Full signal extraction — Intel/Motorola byte order, multiplexing, value tables, and physical-value decoding via `extractSignalValue()`.
+- **Full i18n:** Complete English and Turkish localisation with a custom-labels editor; zero hardcoded strings across all modules.
 - **Medical Validation:** Integrated compliance suite with automated PDF report generation for regulatory auditing.
 - **Enterprise Updates:** Built-in auto-updater system for seamless delivery of new protocol definitions and engineering tools.
 - **Cross-Platform Excellence:** High-performance Rust-based core running on Windows, macOS, and Linux.
@@ -56,7 +60,7 @@ npx tsc --noEmit
 ```
 
 The frontend coverage report uses Vitest V8 coverage and is written to `coverage/`.
-The default coverage gate is 95% statements, 90% branches, 95% functions, and 95% lines.
+Coverage is at **100% statements, branches, functions, and lines** (842 tests across 46 test files).
 ESLint is configured to ignore generated files under `src-tauri/target/**` so Rust/Tauri build artifacts do not create false-positive parse errors.
 
 ### Rust / Tauri
@@ -74,7 +78,7 @@ cargo install cargo-llvm-cov
 npm run test:rust:coverage
 ```
 
-The HTML report is written to `src-tauri/target/llvm-cov/html/index.html`. For SocketCAN changes, run the Rust tests first, then validate the Linux virtual bus manually:
+The HTML report is written to `src-tauri/target/llvm-cov/html/index.html`. Rust coverage is at **100% regions, functions, and lines** (20 tests). For SocketCAN changes, run the Rust tests first, then validate the Linux virtual bus manually:
 
 ```bash
 sudo modprobe vcan
