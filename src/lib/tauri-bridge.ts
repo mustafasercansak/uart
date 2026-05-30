@@ -1,7 +1,13 @@
 /**
  * Tauri bridge — wraps invoke/listen with graceful fallback when not in Tauri.
  * Import this instead of @tauri-apps/api directly.
+ *
+ * Static imports are intentional: @tauri-apps/api/core and /event are already
+ * pulled into the bundle by Tauri plugin packages, so dynamic imports would be
+ * ineffective and only produce Vite warnings.
  */
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { listen as tauriListen } from '@tauri-apps/api/event';
 
 export const isTauri = (): boolean =>
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -14,7 +20,6 @@ export async function invoke<T = void>(
     console.warn(`[Tauri] invoke('${cmd}') called outside Tauri — ignored`);
     return undefined as T;
   }
-  const { invoke: tauriInvoke } = await import('@tauri-apps/api/core');
   return tauriInvoke<T>(cmd, args);
 }
 
@@ -27,6 +32,5 @@ export async function listen(
   if (!isTauri()) {
     return () => {};
   }
-  const { listen: tauriListen } = await import('@tauri-apps/api/event');
   return tauriListen(event, (e) => handler(e.payload));
 }

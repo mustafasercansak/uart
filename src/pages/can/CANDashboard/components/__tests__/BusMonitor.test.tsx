@@ -330,6 +330,19 @@ describe('BusMonitor', () => {
     expect(screen.getByText(/Flow=/)).toBeInTheDocument();
   });
 
+  it('flash-sent timer resets flashSent state after 600 ms', () => {
+    vi.useFakeTimers();
+    const onSendFrame = vi.fn();
+    renderBusMonitor({ onSendFrame });
+
+    fireEvent.change(screen.getByPlaceholderText('0x200'), { target: { value: '100' } });
+    fireEvent.change(screen.getByPlaceholderText('01 02 03 04'), { target: { value: 'AA' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    vi.advanceTimersByTime(600);
+    vi.useRealTimers();
+  });
+
   it('rejects arbId hex strings that exceed the 29-bit CAN ID range', () => {
     // Covers line 193: `id <= 0x1fffffff ? id : null` — false branch (id > 0x1FFFFFFF)
     const onSendFrame = vi.fn();
