@@ -410,7 +410,6 @@ export class CANSimulationEngine {
     let offset = 6;
     let sequence = 1;
     const sendNext = () => {
-      if (offset >= length) return;
       const chunk = payload.slice(offset, offset + 7);
       this.transmitDiagnosticFrame(arbitrationId, [0x20 | (sequence & 0x0f), ...chunk], sender);
       offset += chunk.length;

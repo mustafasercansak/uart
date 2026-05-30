@@ -639,5 +639,82 @@ describe('FrameGenerator', () => {
       const frame = generateFrame(waveProfile, mockState, 0);
       expect(frame.rawBytes).toHaveLength(2);
     });
+
+    it('handles custom waveform with zero frequency fallback and undefined noise level', () => {
+      const waveProfile = {
+        ...mockProfile,
+        fields: [
+          {
+            id: 'w', name: 'W', byteWidth: 1, order: 0, endianness: 'big',
+            type: 'waveform',
+            typeConfig: { shape: 'sine', frequency: 0, amplitude: 20, offset: 128 },
+          },
+        ],
+      } as unknown as FrameProfile;
+
+      const frame = generateFrame(waveProfile, {
+        ...mockState,
+        elapsedMs: 100,
+        customWaveform: [100, 110, 120],
+        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: undefined as unknown as number, jitterMs: 0 },
+      } as unknown as SimulationState, 1);
+
+      expect(frame.rawBytes[0]).toBeGreaterThanOrEqual(0);
+      expect(frame.rawBytes[0]).toBeLessThanOrEqual(255);
+    });
+
+    it('keeps waveform frequency unchanged when frequencySource is missing or zero', () => {
+      const profileMissingSource = {
+        ...mockProfile,
+        fields: [
+          {
+            id: 'wf1', name: 'WF1', byteWidth: 1, order: 0, endianness: 'big',
+            type: 'waveform',
+            typeConfig: { shape: 'sine', frequency: 2, amplitude: 20, offset: 128, frequencySource: 'MISSING' },
+          },
+        ],
+      } as unknown as FrameProfile;
+
+      const profileZeroSource = {
+        ...mockProfile,
+        fields: [
+          { id: 'bpm', name: 'BPM', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 0 }, endianness: 'big' },
+          {
+            id: 'wf2', name: 'WF2', byteWidth: 1, order: 1, endianness: 'big',
+            type: 'waveform',
+            typeConfig: { shape: 'sine', frequency: 2, amplitude: 20, offset: 128, frequencySource: 'BPM' },
+          },
+        ],
+      } as unknown as FrameProfile;
+
+      expect(generateFrame(profileMissingSource, mockState, 1).rawBytes).toHaveLength(1);
+      expect(generateFrame(profileZeroSource, mockState, 1).rawBytes).toHaveLength(2);
+    });
+
+    it('handles checksum scope iteration with multiple checksums and delayed scope start', () => {
+      const checksumProfile = {
+        ...mockProfile,
+        fields: [
+          { id: 'a', name: 'A', byteWidth: 1, order: 0, type: 'fixed', typeConfig: { value: 1 }, endianness: 'big' },
+          {
+            id: 'cs1', name: 'CS1', byteWidth: 1, order: 1, type: 'checksum',
+            typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'b', endFieldId: 'c' } },
+            endianness: 'big',
+          },
+          { id: 'b', name: 'B', byteWidth: 1, order: 2, type: 'fixed', typeConfig: { value: 2 }, endianness: 'big' },
+          { id: 'c', name: 'C', byteWidth: 1, order: 3, type: 'fixed', typeConfig: { value: 3 }, endianness: 'big' },
+          {
+            id: 'cs2', name: 'CS2', byteWidth: 1, order: 4, type: 'checksum',
+            typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'a', endFieldId: 'c' } },
+            endianness: 'big',
+          },
+        ],
+      } as unknown as FrameProfile;
+
+      const frame = generateFrame(checksumProfile, mockState, 1);
+      expect(frame.rawBytes.length).toBe(5);
+      expect(frame.fields.find(f => f.name === 'CS1')).toBeDefined();
+      expect(frame.fields.find(f => f.name === 'CS2')).toBeDefined();
+    });
   });
 });

@@ -39,6 +39,13 @@ describe('DSPEngine', () => {
             expect(data[0]).toBeCloseTo(0.08);
             expect(data[3]).toBeCloseTo(0.08);
         });
+
+        it('keeps values unchanged with Rectangular window', () => {
+            const data = new Float32Array([1, 2, 3, 4]);
+            const original = Array.from(data);
+            DSPEngine.applyWindow(data, 'Rectangular');
+            expect(Array.from(data)).toEqual(original);
+        });
     });
 
     describe('calculateMagnitude', () => {

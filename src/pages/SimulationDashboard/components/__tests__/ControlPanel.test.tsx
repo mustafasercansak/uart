@@ -424,4 +424,5 @@ describe('ControlPanel — alarm thresholds', () => {
       )
     ).not.toThrow();
   });
+
 });

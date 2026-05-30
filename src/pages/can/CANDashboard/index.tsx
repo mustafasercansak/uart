@@ -83,7 +83,8 @@ export default function CANDashboard() {
       setBaudRate(p.baudRate);
       // Slight delay so worker processes removes before adds
       setTimeout(() => {
-        p.nodes.forEach(n => addNode({
+        const nodes = Array.isArray(p.nodes) ? p.nodes : [];
+        nodes.forEach(n => addNode({
           id: n.id, name: n.name, profile: n.profile,
           color: MEDICAL_PROFILE_COLORS[n.profile],
           baseArbitrationId: n.baseArbitrationId,

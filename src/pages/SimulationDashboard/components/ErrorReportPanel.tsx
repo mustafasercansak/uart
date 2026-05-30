@@ -37,20 +37,21 @@ function StatCard({
   label,
   value,
   sub,
-  accent,
+  accent = 'default',
 }: {
   label: string;
   value: string | number;
   sub?: string;
-  accent?: 'green' | 'red' | 'blue' | 'yellow';
+  accent?: 'green' | 'red' | 'blue' | 'yellow' | 'default';
 }) {
   const colorMap = {
     green: 'text-emerald-400 border-emerald-800/40 bg-emerald-950/20',
     red: 'text-red-400 border-red-800/40 bg-red-950/20',
     blue: 'text-blue-400 border-blue-800/40 bg-blue-950/20',
     yellow: 'text-yellow-400 border-yellow-800/40 bg-yellow-950/20',
+    default: 'text-gray-200 border-gray-800/40 bg-gray-900/20',
   };
-  const cls = accent ? colorMap[accent] : 'text-gray-200 border-gray-800/40 bg-gray-900/20';
+  const cls = colorMap[accent];
 
   return (
     <div className={`border rounded-xl p-3 ${cls}`}>

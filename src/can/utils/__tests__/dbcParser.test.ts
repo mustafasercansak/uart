@@ -136,6 +136,55 @@ VAL_ 300 State 0 "Off" 1 "Standby" 2 "Active" 3 "Fault" ;
     expect(result.valueTables).toHaveLength(1);
     expect(result.valueTables[0].values).toEqual({ 0: 'Off', 1: 'Standby', 2: 'Active', 3: 'Fault' });
   });
+
+  it('uses numeric fallbacks for malformed SG_ factor/max values', () => {
+    const dbc = `
+BO_ 400 Weird_Signal: 8 ECU
+ SG_ Odd : 0|8@1+ (NaN,2.5) [1|NaN] "u" ECU, , NODE
+`;
+
+    const result = parseDBC(dbc);
+    const sig = result.messages[0].signals[0];
+
+    expect(sig.factor).toBe(1);
+    expect(sig.offset).toBe(2.5);
+    expect(sig.min).toBe(1);
+    expect(sig.max).toBe(0);
+    expect(sig.receivers).toEqual(['ECU', 'NODE']);
+  });
+
+  it('ignores orphan SG_ lines and keeps parsing later messages', () => {
+    const dbc = `
+SG_ Orphan : 0|8@1+ (1,0) [0|255] "" ECU
+BO_ 500 Real_Message: 8 ECU
+ SG_ Value : 0|8@1+ (1,0) [0|255] "" ECU
+`;
+
+    const result = parseDBC(dbc);
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].name).toBe('Real Message');
+    expect(result.messages[0].signals.map(s => s.name)).toEqual(['Value']);
+  });
+
+  it('does not reset message context on non-keyword non-empty lines', () => {
+    const dbc = `
+BO_ 600 Keep_Context: 8 ECU
+ this is a free-form line
+ SG_ A : 0|8@1+ (1,0) [0|255] "" ECU
+`;
+
+    const result = parseDBC(dbc);
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].signals.map(s => s.name)).toEqual(['A']);
+  });
+
+  it('returns 0 for big-endian bits that are out of data buffer range', () => {
+    const signal = makeSignal({ startBit: 64, length: 1, byteOrder: 'big_endian' });
+
+    expect(extractSignalValue([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff], signal)).toBe(0);
+  });
 });
 
 function makeSignal(patch: Partial<DBCSignal>): DBCSignal {

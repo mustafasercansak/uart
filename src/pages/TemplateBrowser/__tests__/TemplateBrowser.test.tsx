@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import TemplateBrowser from '../index';
 import { BrowserRouter } from 'react-router-dom';
@@ -62,6 +62,12 @@ describe('TemplateBrowser Component', () => {
     const applyButtons = screen.getAllByText(/Bu Şablonu Kullan/i);
     fireEvent.click(applyButtons[applyButtons.length - 1]); // Last one is the Ventilator we added
 
+    // applyTemplate yields once to render the applying state
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
     // Verify simulation calls
     expect(mockSetProfile).toHaveBeenCalled();
     expect(mockUpdateLayout).toHaveBeenCalled();
@@ -69,7 +75,10 @@ describe('TemplateBrowser Component', () => {
     expect(screen.getByText('Simülasyona Uygulandı')).toBeInTheDocument();
 
     // Advance timers for navigation
-    vi.advanceTimersByTime(1000);
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
     expect(mockNavigate).toHaveBeenCalledWith('/');
     
     vi.useRealTimers();

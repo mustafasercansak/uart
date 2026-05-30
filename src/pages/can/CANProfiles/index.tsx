@@ -314,7 +314,8 @@ export default function CANProfiles() {
     state.nodes.forEach(n => removeNode(n.id));
     setBaudRate(selectedProfile.baudRate);
     setTimeout(() => {
-      selectedProfile.nodes.forEach(n => addNode({
+      const nodes = Array.isArray(selectedProfile.nodes) ? selectedProfile.nodes : [];
+      nodes.forEach(n => addNode({
         id: n.id, name: n.name, profile: n.profile,
         color: MEDICAL_PROFILE_COLORS[n.profile],
         baseArbitrationId: n.baseArbitrationId,
@@ -367,7 +368,7 @@ export default function CANProfiles() {
     reader.onload = (ev) => {
       try {
         const raw = JSON.parse(ev.target?.result as string) as CANProfile;
-        if (!raw.nodes || !raw.baudRate) throw new Error(t('canProfiles.invalidProfileFormat'));
+        if (!Array.isArray(raw.nodes) || !raw.baudRate) throw new Error(t('canProfiles.invalidProfileFormat'));
         const imported: CANProfile = {
           ...raw,
           id: crypto.randomUUID(),

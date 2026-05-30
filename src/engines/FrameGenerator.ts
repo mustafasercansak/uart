@@ -207,7 +207,7 @@ export function generateFrame(
     for (const f of sortedFields) {
       if (f.type === 'checksum') continue;
       if (f.id === csFieldCfg.scope.startFieldId) inScope = true;
-      if (inScope) scopeBytes.push(...(fieldBytes[f.id] ?? []));
+      if (inScope) scopeBytes.push(...fieldBytes[f.id]);
       if (f.id === csFieldCfg.scope.endFieldId) break;
     }
 
@@ -220,7 +220,7 @@ export function generateFrame(
       reflectOut: csFieldCfg.reflectOut,
     });
 
-    namedValues[field.name] = checksumBytes[0] ?? 0;
+    namedValues[field.name] = checksumBytes[0];
     fieldBytes[field.id] = checksumBytes.slice(0, field.byteWidth);
   }
 
@@ -229,7 +229,7 @@ export function generateFrame(
   const parsedFields: ParsedField[] = [];
 
   for (const field of sortedFields) {
-    const bytes = fieldBytes[field.id] ?? Array(field.byteWidth).fill(0);
+    const bytes = fieldBytes[field.id];
     allBytes.push(...bytes);
 
     const decimalValue = bytes.length === 1

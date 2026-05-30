@@ -240,6 +240,19 @@ describe('UDS diagnostics over ISO-TP', () => {
     vi.useRealTimers();
   });
 
+  it('SID 0x2E: returns NRC 0x13 for payloads shorter than DID length', () => {
+    vi.useFakeTimers();
+    const { engine, frames } = createEngine();
+
+    // Only SID byte; missing DID high+low bytes.
+    engine.sendUDSRequest(0x7e0, [0x2e]);
+    vi.runAllTimers();
+
+    const nrc = frames.find(f => f.arbitrationId === 0x7e8 && f.data[1] === 0x7f);
+    expect(nrc?.data.slice(1, 4)).toEqual([0x7f, 0x2e, 0x13]);
+    vi.useRealTimers();
+  });
+
   it('SID 0x22: returns NRC 0x31 when configured DID has an empty hex value', () => {
     vi.useFakeTimers();
     const { engine, frames } = createEngine();

@@ -55,6 +55,32 @@ describe('HighLevelDecoders', () => {
             expect(result.fields.find(f => f.name === 'Veri[0]')?.value).toBe(10);
             expect(result.fields.find(f => f.name === 'Veri[1]')?.value).toBe(20);
         });
+
+        it('uses fallback text for unknown exception code', () => {
+            const bytes = [0x01, 0x83, 0x7f, 0x80, 0xf0];
+            const result = decodeModbusRTU(bytes);
+            expect(result.fields.find(f => f.name === 'İstisna Kodu')?.value).toBe('0x7F');
+        });
+
+        it('handles FC 03/04 with empty data payload', () => {
+            const bytes = [0x01, 0x03, 0x40, 0x21];
+            const result = decodeModbusRTU(bytes);
+            expect(result.functionName).toBe('Read Holding Registers');
+            expect(result.fields.find(f => f.name === 'Byte Sayısı')).toBeUndefined();
+        });
+
+        it('handles FC 06 frames with short data payload', () => {
+            const bytes = [0x01, 0x06, 0x00, 0x00, 0x20, 0x0a];
+            const result = decodeModbusRTU(bytes);
+            expect(result.fields.find(f => f.name === 'Register Adresi')).toBeUndefined();
+        });
+
+        it('handles FC 01/02 branch with no data bytes', () => {
+            const bytes = [0x01, 0x01, 0xc0, 0x01];
+            const result = decodeModbusRTU(bytes);
+            expect(result.functionName).toBe('Read Coils');
+            expect(result.fields.find(f => f.name === 'Coil Miktarı')).toBeUndefined();
+        });
     });
 
     describe('decodeNMEA', () => {
@@ -323,6 +349,14 @@ describe('HighLevelDecoders', () => {
              expect(res.fields.find(f => f.name === 'Alan 1')?.value).toBe('V1');
              expect(res.fields.find(f => f.name === 'Alan 3')?.value).toBe('V3');
              expect(res.fields.find(f => f.name === 'Alan 2')).toBeUndefined();
+        });
+
+        it('NMEA: marks GGA quality 0 as error highlight', () => {
+            const gga = '$GPGGA,123519,4807.038,N,01131.000,E,0,08,0.9,545.4,M,46.9,M,,*40';
+            const result = decodeNMEA(Array.from(gga).map(c => c.charCodeAt(0)));
+            const quality = result.fields.find(f => f.name === 'Kalite');
+            expect(quality?.highlight).toBe('error');
+            expect(quality?.value).toBe('Geçersiz');
         });
     });
 });

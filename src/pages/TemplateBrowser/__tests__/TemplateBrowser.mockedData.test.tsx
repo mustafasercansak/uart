@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n/LanguageProvider';
@@ -115,7 +115,7 @@ describe('TemplateBrowser with minimal templates', () => {
     vi.useFakeTimers();
   });
 
-  it('applies a template without scenarios or default layout', () => {
+  it('applies a template without scenarios or default layout', async () => {
     renderBrowser();
 
     expect(screen.getAllByText('templateBrowser.categories.unknown_category')).toHaveLength(2);
@@ -123,6 +123,10 @@ describe('TemplateBrowser with minimal templates', () => {
     const minimalCard = minimalHeading.closest('div.bg-gray-800');
     expect(minimalCard).toBeTruthy();
     fireEvent.click(within(minimalCard as HTMLElement).getByRole('button', { name: 'Use This Template' }));
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
 
     expect(saveProfile).toHaveBeenCalledWith(expect.objectContaining({ name: 'Minimal Profile' }));
     expect(saveScenario).not.toHaveBeenCalled();
@@ -131,11 +135,14 @@ describe('TemplateBrowser with minimal templates', () => {
     expect(mockSetScenario).not.toHaveBeenCalled();
     expect(screen.getByText('Applied to Simulation')).toBeInTheDocument();
 
-    vi.advanceTimersByTime(1000);
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
-  it('applies a template with scenarios and default layout', () => {
+  it('applies a template with scenarios and default layout', async () => {
     renderBrowser();
 
     expect(screen.getByText('1 scenarios')).toBeInTheDocument();
@@ -146,6 +153,10 @@ describe('TemplateBrowser with minimal templates', () => {
 
     const applyBtn = within(scenarioCard as HTMLElement).getByRole('button', { name: 'Use This Template' });
     fireEvent.click(applyBtn);
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
 
     expect(saveProfile).toHaveBeenCalledWith(expect.objectContaining({ name: 'Scenario Profile' }));
     expect(saveScenario).toHaveBeenCalledTimes(1);
@@ -153,7 +164,26 @@ describe('TemplateBrowser with minimal templates', () => {
     expect(mockUpdateLayout).toHaveBeenCalled();
     expect(mockSetScenario).toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1000);
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
     expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('shows applying label while template apply is in progress', async () => {
+    renderBrowser();
+
+    const minimalHeading = screen.getByText('Minimal Template');
+    const minimalCard = minimalHeading.closest('div.bg-gray-800');
+    expect(minimalCard).toBeTruthy();
+
+    fireEvent.click(within(minimalCard as HTMLElement).getByRole('button', { name: 'Use This Template' }));
+    expect(screen.getByText('Applying...')).toBeInTheDocument();
+
+    await act(async () => {
+      vi.runOnlyPendingTimers();
+      await Promise.resolve();
+    });
   });
 });

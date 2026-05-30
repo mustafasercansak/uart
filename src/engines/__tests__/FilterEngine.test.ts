@@ -139,5 +139,40 @@ describe('FilterEngine', () => {
             expect(FilterEngine.evaluate(mockExchange, 'latency==15')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'latency==99')).toBe(false);
         });
+
+        it('handles quick hex search when only one side of exchange exists', () => {
+            const txOnly = { id: 'tx-only', tx: { rawHex: 'AA BB' } } as unknown as Exchange;
+            const rxOnly = { id: 'rx-only', rx: { rawHex: 'CC DD' } } as unknown as Exchange;
+
+            expect(FilterEngine.evaluate(txOnly, 'AA')).toBe(true);
+            expect(FilterEngine.evaluate(rxOnly, 'DD')).toBe(true);
+        });
+
+        it('uses latency fallback when latencyMs is undefined', () => {
+            const noLatency = { id: 'nolat', tx: { rawHex: 'AA' } } as unknown as Exchange;
+            expect(FilterEngine.evaluate(noLatency, 'latency == 0')).toBe(true);
+        });
+
+        it('returns false when profile parsing fails due insufficient bytes', () => {
+            const shortExchange = { id: 'short', tx: { rawHex: 'AA' } } as unknown as Exchange;
+            const wideProfile: FrameProfile = {
+                id: 'wide',
+                fields: [{ id: 'f1', name: 'CMD', order: 0, byteWidth: 2, endianness: 'big', type: 'fixed', typeConfig: { value: 0 } }],
+            } as unknown as FrameProfile;
+            expect(FilterEngine.evaluate(shortExchange, 'cmd == 1', wideProfile)).toBe(false);
+        });
+
+        it('does not treat zero-valued flags as truthy lookups', () => {
+            const profileWithFlag: FrameProfile = {
+                id: 'p3',
+                fields: [
+                    { id: 'f3', name: 'STATUS', order: 0, byteWidth: 1, type: 'flags', typeConfig: { bits: [{ index: 0, name: 'error', label: 'E' }] } }
+                ]
+            } as unknown as FrameProfile;
+            const exchangeWithZeroFlag: Exchange = {
+                tx: { rawHex: '00' }
+            } as unknown as Exchange;
+            expect(FilterEngine.evaluate(exchangeWithZeroFlag, 'error == 0', profileWithFlag)).toBe(false);
+        });
     });
 });

@@ -42,11 +42,22 @@ describe('SmartListen', () => {
     expect(result.protocol).toBe('uart');
   });
 
+  it('returns unknown UART protocol when there are no payload bytes', () => {
+    const result = detectUARTTraffic([], []);
+    expect(result.protocol).toBe('unknown');
+    expect(result.evidence).toContain('0 UART payload bytes observed');
+  });
+
   it('falls back to UART when a long packet has no valid Modbus CRC', () => {
     const result = detectUARTTraffic([frame([0x01, 0x03, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00])], []);
 
     expect(result.protocol).toBe('uart');
     expect(result.evidence).toContain('8 UART payload bytes observed');
+  });
+
+  it('ignores candidate Modbus packets with function code 0 inside scanner', () => {
+    const result = detectUARTTraffic([frame([0x01, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66])], []);
+    expect(result.protocol).toBe('uart');
   });
 
   it('returns an empty result when there are no clean timing samples', () => {

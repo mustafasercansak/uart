@@ -199,6 +199,27 @@ describe('LanguageContext and LanguageProvider', () => {
     expect(result.current.t.t('common.save')).toBe('Replaced');
   });
 
+  it('replaceCustomLabels falls back to empty stores when en/tr are non-objects', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    act(() => result.current.labels.setCustomLabel('common.save', 'en', 'Old EN'));
+    act(() => result.current.labels.setCustomLabel('common.save', 'tr', 'Eski TR'));
+    act(() =>
+      result.current.labels.replaceCustomLabels({ en: null as unknown as Record<string, string>, tr: 1 as unknown as Record<string, string> }),
+    );
+
+    act(() => result.current.t.setLocale('en'));
+    expect(result.current.t.t('common.save')).toBe('Save');
+    act(() => result.current.t.setLocale('tr'));
+    expect(result.current.t.t('common.save')).toBe('Kaydet');
+  });
+
   it('resetCustomLabel removes an override for a specific locale', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <LanguageProvider>{children}</LanguageProvider>
@@ -259,6 +280,15 @@ describe('LanguageContext and LanguageProvider', () => {
     act(() => result.current.labels.setCustomLabel('absolutely.missing.key', 'tr', 'TR Only Label'));
     expect(result.current.t.t('absolutely.missing.key')).toBe('TR Only Label');
   });
+
+  it('t() returns the path when it resolves to a non-string translation object', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(() => useTranslation(), { wrapper });
+
+    expect(result.current.t('common')).toBe('common');
+  });
 });
 
 describe('customLabels storage', () => {
@@ -307,5 +337,28 @@ describe('resetCustomLabelKeys preserves non-deleted keys', () => {
     expect(result.current.t.t('common.save')).toBe('Save');
     // Kept key still uses custom override (covers the `!keySet.has(k)` → true branch)
     expect(result.current.t.t('common.cancel')).toBe('X');
+  });
+
+  it('removes matching TR keys and preserves non-deleted TR keys', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <LanguageProvider>{children}</LanguageProvider>
+    );
+    const { result } = renderHook(
+      () => ({ t: useTranslation(), labels: useCustomLabels() }),
+      { wrapper },
+    );
+
+    // Ensure the TR filter path in resetCustomLabelKeys runs against non-empty entries.
+    act(() => result.current.labels.setCustomLabel('common.save', 'tr', 'Kaydet Ozellestirilmis'));
+    act(() => result.current.labels.setCustomLabel('common.cancel', 'tr', 'Iptal Ozellestirilmis'));
+
+    // Remove only one TR key.
+    act(() => result.current.labels.resetCustomLabelKeys(['common.save']));
+    act(() => result.current.t.setLocale('tr'));
+
+    // Deleted TR key falls back to default translation.
+    expect(result.current.t.t('common.save')).toBe('Kaydet');
+    // Non-deleted TR key keeps custom override.
+    expect(result.current.t.t('common.cancel')).toBe('Iptal Ozellestirilmis');
   });
 });

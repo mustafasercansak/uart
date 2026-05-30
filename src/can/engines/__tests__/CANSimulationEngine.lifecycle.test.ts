@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CANSimulationEngine } from '../CANSimulationEngine';
 import { INITIAL_CAN_STATE } from '../../store/canReducer';
-import { DEFAULT_VITALS, type CANMedicalProfile } from '../../types/CANNode';
+import { DEFAULT_VITALS, FAULT_LABELS, type CANMedicalProfile } from '../../types/CANNode';
 import type { CANFrame } from '../../types/CANFrame';
 import type { CANBusState } from '../../types/CANBusState';
 
@@ -618,6 +618,74 @@ describe('CANSimulationEngine lifecycle and bus behavior', () => {
     vi.advanceTimersByTime(5000);
 
     expect(logs.length).toBe(logsBefore); // no new expiry logs after stop
+  });
+
+  it('uses translation key fallback for unknown fault label mappings', () => {
+    const { engine, logs } = createEngine();
+    engine.addNode(makeNodeInput(1));
+
+    const original = FAULT_LABELS.tachycardia;
+    FAULT_LABELS.tachycardia = 'can.unknownFaultKey';
+    engine.injectFault(1, 'tachycardia');
+    FAULT_LABELS.tachycardia = original;
+
+    expect(logs.some(text => text.includes('can.unknownFaultKey'))).toBe(true);
+  });
+
+  it('tick returns immediately when status is not running', () => {
+    const { engine, frames } = createEngine();
+    engine.addNode(makeNodeInput(1));
+
+    (engine as unknown as { tick: () => void }).tick();
+
+    expect(frames).toHaveLength(0);
+  });
+
+  it('tick computes elapsedMs as 0 when startedAt is null while running', () => {
+    const { engine } = createEngine();
+    const state = engine.getState();
+    state.status = 'running';
+    state.startedAt = null;
+
+    (engine as unknown as { tick: () => void }).tick();
+
+    expect(engine.getState().elapsedMs).toBe(0);
+  });
+
+  it('reassembled ISO-TP log uses SID fallback when payload is empty', () => {
+    const { engine, logs } = createEngine();
+    const now = Date.now();
+    const internal = engine as unknown as {
+      isotpRxSessions: Map<number, { totalLength: number; payload: number[]; nextSequence: number; responseId: number; startedAt: number }>;
+    };
+
+    internal.isotpRxSessions.set(0x7e0, {
+      totalLength: 0,
+      payload: [],
+      nextSequence: 1,
+      responseId: 0x7e8,
+      startedAt: now,
+    });
+
+    engine.sendCustomFrame(0x7e0, [0x21, 0x00]);
+
+    expect(logs.some(text => text.includes('ISO-TP reassembled len=0 SID=0x00'))).toBe(true);
+  });
+
+  it('scheduleManagedTimeout skips callback when timer is no longer tracked', () => {
+    vi.useFakeTimers();
+    const { engine } = createEngine();
+    const callback = vi.fn();
+    const internals = engine as unknown as {
+      scheduleManagedTimeout: (cb: () => void, delay: number) => ReturnType<typeof setTimeout>;
+      isotpTxTimers: Set<ReturnType<typeof setTimeout>>;
+    };
+
+    const tid = internals.scheduleManagedTimeout(callback, 0);
+    internals.isotpTxTimers.delete(tid);
+    vi.runAllTimers();
+
+    expect(callback).not.toHaveBeenCalled();
   });
 });
 

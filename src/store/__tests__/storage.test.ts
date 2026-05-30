@@ -336,6 +336,18 @@ describe('Tauri FS profile persistence', () => {
     expect(profiles.find(p => p.id === 'tauri-test')?.name).toBe('FS Authoritative');
   });
 
+  it('initProfileStorage — treats non-array FS payload as authoritative empty list', async () => {
+    mockInvokeFs.mockImplementation((cmd: string) => {
+      if (cmd === 'load_can_profiles') return Promise.resolve({ not: 'an-array' });
+      return Promise.reject(new Error(`unexpected: ${cmd}`));
+    });
+
+    await initProfileStorage();
+
+    expect(localStorage.setItem).toHaveBeenCalledWith('uart_profiles', '[]');
+    expect(mockInvokeFs).toHaveBeenCalledTimes(1);
+  });
+
   it('saveProfiles — mirrors to Tauri FS', () => {
     mockInvokeFs.mockResolvedValue(undefined);
 
@@ -354,6 +366,7 @@ describe('Tauri FS profile persistence', () => {
   });
 
   it('initProfileStorage — gracefully handles FS load error (falls back to migration path)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     saveProfiles([mockProfile]);
     mockInvokeFs
       .mockRejectedValueOnce(new Error('disk error'))  // load_can_profiles fails
@@ -361,6 +374,31 @@ describe('Tauri FS profile persistence', () => {
 
     // Should not throw
     await expect(initProfileStorage()).resolves.toBeUndefined();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('initProfileStorage failed'),
+      expect.any(Error),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('initProfileStorage — first-run fallback uses INITIAL_PROFILES when migrated local list is empty', async () => {
+    localStorage.setItem('uart_profiles', JSON.stringify([null]));
+    mockInvokeFs.mockImplementation((cmd: string) => {
+      if (cmd === 'load_can_profiles') return Promise.resolve(null);
+      if (cmd === 'save_can_profiles') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected command: ${cmd}`));
+    });
+
+    await initProfileStorage();
+
+    expect(mockInvokeFs).toHaveBeenCalledWith(
+      'save_can_profiles',
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({ name: 'YS2000A Patient Monitor' }),
+        ]),
+      })
+    );
   });
 
   it('tauriSaveProfiles — logs error when save_can_profiles throws', async () => {
@@ -372,5 +410,21 @@ describe('Tauri FS profile persistence', () => {
     await new Promise<void>(resolve => setTimeout(resolve, 20));
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('save_can_profiles'), expect.any(Error));
     consoleSpy.mockRestore();
+  });
+
+  it('initProfileStorage — no-ops outside Tauri environment', async () => {
+    vi.resetModules();
+    const invokeSpy = vi.fn();
+    vi.doMock('../../lib/tauri-bridge', () => ({
+      isTauri: () => false,
+      invoke: invokeSpy,
+      listen: vi.fn().mockResolvedValue(() => {}),
+    }));
+
+    const storage = await import('../storage');
+    await storage.initProfileStorage();
+
+    expect(invokeSpy).not.toHaveBeenCalled();
+    vi.resetModules();
   });
 });

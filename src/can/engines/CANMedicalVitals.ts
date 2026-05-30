@@ -104,7 +104,7 @@ export function tickVitals(vitals: CANNodeVitals, profile: CANMedicalProfile, ac
       next.tidalVolumeMl   = driftValue(vitals.tidalVolumeMl ?? 500, 'tidalVolumeMl');
       next.peepCmH2O       = driftValue(vitals.peepCmH2O ?? 5, 'peepCmH2O');
       next.fio2Percent     = driftValue(vitals.fio2Percent ?? 40, 'fio2Percent');
-      next.peakPressure    = (next.tidalVolumeMl ?? 500) / 30 + (next.peepCmH2O ?? 5);
+      next.peakPressure    = next.tidalVolumeMl / 30 + next.peepCmH2O;
       next.respiratoryRate = driftValue(vitals.respiratoryRate, 'respiratoryRate');
       break;
 

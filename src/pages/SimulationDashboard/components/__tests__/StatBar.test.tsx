@@ -477,6 +477,16 @@ describe('StatBar', () => {
     expect(portInput).toBeTruthy();
   });
 
+  it('keeps selected port when saved port exists in availablePorts', () => {
+    localStorage.setItem('uart_last_settings', JSON.stringify({ selectedPort: 'COM7' }));
+    render(
+      <StatBar {...defaultProps} outputMode="serial" availablePorts={[{ path: 'COM7' }, { path: 'COM8' }]} />,
+      { wrapper }
+    );
+    const portInput = screen.getByPlaceholderText(/COM1/i) as HTMLInputElement;
+    expect(portInput.value).toBe('COM7');
+  });
+
   // --- Export Report button ---
 
   it('calls handleExport when Export Report button is clicked', () => {
@@ -501,6 +511,16 @@ describe('StatBar', () => {
     expect(onConnectNetwork).toHaveBeenCalled();
   });
 
+  it('calls onConnectNetwork with tcp-server URL from backend status button', () => {
+    const onConnectNetwork = vi.fn();
+    render(
+      <StatBar {...defaultProps} outputMode="tcp-server" networkConnected={false} onConnectNetwork={onConnectNetwork} />,
+      { wrapper }
+    );
+    fireEvent.click(screen.getByRole('button', { name: /offline/i }));
+    expect(onConnectNetwork).toHaveBeenCalledWith(expect.stringContaining('tcp-server://'));
+  });
+
   it('calls onDisconnectNetwork when backend button clicked while online', () => {
     const onDisconnectNetwork = vi.fn();
     render(
@@ -519,6 +539,14 @@ describe('StatBar', () => {
     // Globe button has title equal to the current locale in uppercase ('EN')
     const langBtn = screen.getByTitle('EN');
     expect(() => fireEvent.click(langBtn)).not.toThrow();
+  });
+
+  it('toggles locale from TR to EN when language switcher is clicked', () => {
+    localStorage.setItem('uart_locale', 'tr');
+    render(<StatBar {...defaultProps} />, { wrapper });
+    const langBtn = screen.getByTitle('TR');
+    fireEvent.click(langBtn);
+    expect(screen.getByTitle('EN')).toBeInTheDocument();
   });
 
   it('navigates to /help when help button is clicked', () => {
@@ -630,6 +658,36 @@ describe('StatBar', () => {
     render(<StatBar {...defaultProps} status="stopped" selectedProfileId={null} />, { wrapper });
     const startBtn = screen.getByRole('button', { name: /start/i });
     expect(startBtn).toBeDisabled();
+  });
+
+  it('disables Start button in serial mode when serial is not connected', () => {
+    render(
+      <StatBar
+        {...defaultProps}
+        status="stopped"
+        outputMode="serial"
+        serialConnected={false}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+      />,
+      { wrapper }
+    );
+    expect(screen.getByRole('button', { name: /start/i })).toBeDisabled();
+  });
+
+  it('disables Start button in tcp mode when network is not connected', () => {
+    render(
+      <StatBar
+        {...defaultProps}
+        status="stopped"
+        outputMode="tcp"
+        networkConnected={false}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+      />,
+      { wrapper }
+    );
+    expect(screen.getByRole('button', { name: /start/i })).toBeDisabled();
   });
 
   it('shows validationSession view-report button when session exists', () => {

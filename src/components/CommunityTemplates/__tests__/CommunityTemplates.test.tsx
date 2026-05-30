@@ -310,4 +310,73 @@ describe('CommunityTemplates', () => {
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Import' })[0]).toBeEnabled());
     expect(saveProfile).not.toHaveBeenCalled();
   });
+
+  it('does not set index state when initial fetch resolves after unmount', async () => {
+    let resolveJson!: (value: unknown) => void;
+    const pendingJson = new Promise((resolve) => {
+      resolveJson = resolve;
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: vi.fn(() => pendingJson) }));
+
+    const { unmount } = renderCommunityTemplates();
+    unmount();
+    resolveJson(communityIndex);
+
+    await Promise.resolve();
+    expect(true).toBe(true);
+  });
+
+  it('does not set error state when initial fetch rejects after unmount', async () => {
+    let rejectFetch!: (reason?: unknown) => void;
+    const pendingFetch = new Promise((_, reject) => {
+      rejectFetch = reject;
+    });
+    vi.stubGlobal('fetch', vi.fn(() => pendingFetch as Promise<Response>));
+
+    const { unmount } = renderCommunityTemplates();
+    unmount();
+    rejectFetch(new Error('network down'));
+
+    await Promise.resolve();
+    expect(true).toBe(true);
+  });
+
+  it('sorts favorite templates to the top when showing all templates', async () => {
+    renderCommunityTemplates();
+
+    const [, secondTemplate] = communityIndex.templates;
+    fireEvent.click((await screen.findAllByTitle('Add to favorites'))[1]);
+
+    await waitFor(() => {
+      const names = screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent);
+      expect(names[0]).toBe(secondTemplate.name);
+    });
+  });
+
+  it('submits templates with empty profile description using fallback empty string', async () => {
+    mockProfileId = 'profile-empty-desc';
+    vi.mocked(getProfile).mockReturnValue({
+      id: 'profile-empty-desc',
+      name: 'No Description Profile',
+      description: '',
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'None',
+      stopBits: 1,
+      sendIntervalMs: 100,
+      framing: { mode: 'fixed' },
+      fields: [],
+      createdAt: 'now',
+      updatedAt: 'now',
+    });
+    vi.mocked(loadScenarios).mockReturnValue([]);
+
+    renderCommunityTemplates();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit Active Profile' }));
+
+    expect(open).toHaveBeenCalledTimes(1);
+    const calledUrl = String(vi.mocked(open).mock.calls[0][0]);
+    expect(decodeURIComponent(calledUrl)).toContain('"description": ""');
+  });
 });

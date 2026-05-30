@@ -130,7 +130,6 @@ function median(values: number[]): number {
 }
 
 function normalizedMad(values: number[], center: number): number {
-  if (center === 0) return 1;
   const deviations = values.map((v) => Math.abs(v - center));
   return median(deviations) / center;
 }

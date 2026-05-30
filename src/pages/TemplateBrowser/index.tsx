@@ -34,6 +34,8 @@ export default function TemplateBrowser() {
 
   const applyTemplate = async (template: (typeof SENSOR_TEMPLATES)[number]) => {
     setApplying(template.id);
+    // Yield once so the disabled/applying button state is actually rendered.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     const now = new Date().toISOString();
 
     // Create profile
