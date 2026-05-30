@@ -25,7 +25,7 @@ const npxBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const child = spawn(npxBin, ['tauri', ...args], {
   stdio: 'inherit',
   env,
-  shell: false,
+  shell: process.platform === 'win32',
 });
 
 child.on('exit', (code, signal) => {
