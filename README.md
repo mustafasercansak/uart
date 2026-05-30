@@ -60,8 +60,16 @@ npx tsc --noEmit
 ```
 
 The frontend coverage report uses Vitest V8 coverage and is written to `coverage/`.
-Coverage is at **100% statements, branches, functions, and lines** (842 tests across 46 test files).
 ESLint is configured to ignore generated files under `src-tauri/target/**` so Rust/Tauri build artifacts do not create false-positive parse errors.
+
+**Frontend coverage summary (Vitest V8 · 842 tests · 46 files):**
+
+| Metric     | Covered | Total | Rate     |
+|------------|--------:|------:|:--------:|
+| Statements |    2992 |  2992 | **100%** |
+| Branches   |    2010 |  2010 | **100%** |
+| Functions  |     479 |   479 | **100%** |
+| Lines      |    2665 |  2665 | **100%** |
 
 ### Rust / Tauri
 
@@ -78,7 +86,17 @@ cargo install cargo-llvm-cov
 npm run test:rust:coverage
 ```
 
-The HTML report is written to `src-tauri/target/llvm-cov/html/index.html`. Rust coverage is at **100% regions, functions, and lines** (20 tests). For SocketCAN changes, run the Rust tests first, then validate the Linux virtual bus manually:
+The HTML report is written to `src-tauri/target/llvm-cov/html/index.html`.
+
+**Rust coverage summary (`cargo-llvm-cov` · 20 tests · `src-tauri/src/lib.rs`):**
+
+| Metric    | Covered | Total | Rate     |
+|-----------|--------:|------:|:--------:|
+| Regions   |     616 |   616 | **100%** |
+| Functions |      44 |    44 | **100%** |
+| Lines     |     338 |   338 | **100%** |
+
+For SocketCAN changes, run the Rust tests first, then validate the Linux virtual bus manually:
 
 ```bash
 sudo modprobe vcan
