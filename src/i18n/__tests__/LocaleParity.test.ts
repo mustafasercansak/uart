@@ -94,10 +94,7 @@ describe('I18n Locale Parity', () => {
             return val === trFlat[k] && val.length > 3;
         });
 
-        // We don't necessarily fail on this, but it's a good check. 
-        // Let's make it a warning by not failing or fail if it's too many.
-        // For now, let's just log it if there are many.
-        if (identical.length > 10) {
+        if (identical.length > 10 && process.env.VITEST_I18N_WARN === '1') {
             console.warn(`⚠️ Found ${identical.length} identical strings across languages. Potential missing translations:`, identical);
         }
     });

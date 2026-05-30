@@ -155,6 +155,33 @@ describe('StatBar', () => {
     expect(screen.queryByText('Scenario B')).not.toBeInTheDocument();
   });
 
+  it('calls onSetScenario when scenario select changes', () => {
+    const onSetScenario = vi.fn();
+    const scenarios: Scenario[] = [
+      { id: 's1', name: 'Scenario A', profileId: 'p1', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
+      { id: 's2', name: 'Scenario B', profileId: 'p1', steps: [], createdAt: '', updatedAt: '', description: '', loop: false },
+    ];
+
+    render(
+      <StatBar
+        {...defaultProps}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+        scenarios={scenarios}
+        onSetScenario={onSetScenario}
+      />,
+      { wrapper }
+    );
+
+    const scenarioSelect = screen
+      .getAllByRole('combobox')
+      .find((select) => Array.from((select as HTMLSelectElement).options).some((opt) => opt.textContent === 'Scenario A'));
+
+    expect(scenarioSelect).toBeTruthy();
+    fireEvent.change(scenarioSelect as HTMLSelectElement, { target: { value: 's2' } });
+    expect(onSetScenario).toHaveBeenCalledWith('s2');
+  });
+
   it('shows baud rate badge when a profile is selected', () => {
     render(
       <StatBar {...defaultProps} profiles={[sampleProfile]} selectedProfileId="p1" />,
@@ -450,6 +477,16 @@ describe('StatBar', () => {
     expect(portInput).toBeTruthy();
   });
 
+  it('keeps selected port when saved port exists in availablePorts', () => {
+    localStorage.setItem('uart_last_settings', JSON.stringify({ selectedPort: 'COM7' }));
+    render(
+      <StatBar {...defaultProps} outputMode="serial" availablePorts={[{ path: 'COM7' }, { path: 'COM8' }]} />,
+      { wrapper }
+    );
+    const portInput = screen.getByPlaceholderText(/COM1/i) as HTMLInputElement;
+    expect(portInput.value).toBe('COM7');
+  });
+
   // --- Export Report button ---
 
   it('calls handleExport when Export Report button is clicked', () => {
@@ -474,6 +511,16 @@ describe('StatBar', () => {
     expect(onConnectNetwork).toHaveBeenCalled();
   });
 
+  it('calls onConnectNetwork with tcp-server URL from backend status button', () => {
+    const onConnectNetwork = vi.fn();
+    render(
+      <StatBar {...defaultProps} outputMode="tcp-server" networkConnected={false} onConnectNetwork={onConnectNetwork} />,
+      { wrapper }
+    );
+    fireEvent.click(screen.getByRole('button', { name: /offline/i }));
+    expect(onConnectNetwork).toHaveBeenCalledWith(expect.stringContaining('tcp-server://'));
+  });
+
   it('calls onDisconnectNetwork when backend button clicked while online', () => {
     const onDisconnectNetwork = vi.fn();
     render(
@@ -492,6 +539,14 @@ describe('StatBar', () => {
     // Globe button has title equal to the current locale in uppercase ('EN')
     const langBtn = screen.getByTitle('EN');
     expect(() => fireEvent.click(langBtn)).not.toThrow();
+  });
+
+  it('toggles locale from TR to EN when language switcher is clicked', () => {
+    localStorage.setItem('uart_locale', 'tr');
+    render(<StatBar {...defaultProps} />, { wrapper });
+    const langBtn = screen.getByTitle('TR');
+    fireEvent.click(langBtn);
+    expect(screen.getByTitle('EN')).toBeInTheDocument();
   });
 
   it('navigates to /help when help button is clicked', () => {
@@ -577,5 +632,69 @@ describe('StatBar', () => {
       { wrapper }
     );
     expect(container.querySelector('.text-emerald-400')).toBeTruthy();
+  });
+
+  it('shows online status when tcp mode is connected', () => {
+    render(<StatBar {...defaultProps} outputMode="tcp" networkConnected={true} />, { wrapper });
+    expect(screen.getByText(/online/i)).toBeInTheDocument();
+  });
+
+  it('shows tcp-server listening status when tcp-server mode is connected', () => {
+    render(<StatBar {...defaultProps} outputMode="tcp-server" networkConnected={true} />, { wrapper });
+    expect(screen.getByText(/listening/i)).toBeInTheDocument();
+  });
+
+  it('toggles locale when Globe button is clicked', () => {
+    localStorage.setItem('uart_locale', 'en');
+    render(<StatBar {...defaultProps} />, { wrapper });
+    // Default locale is 'en', so the button shows 'EN' as its title
+    const globeBtn = screen.getByTitle('EN');
+    fireEvent.click(globeBtn);
+    // After click locale switches to 'tr'
+    expect(screen.getByTitle('TR')).toBeInTheDocument();
+  });
+
+  it('shows Start button disabled when no profile is selected', () => {
+    render(<StatBar {...defaultProps} status="stopped" selectedProfileId={null} />, { wrapper });
+    const startBtn = screen.getByRole('button', { name: /start/i });
+    expect(startBtn).toBeDisabled();
+  });
+
+  it('disables Start button in serial mode when serial is not connected', () => {
+    render(
+      <StatBar
+        {...defaultProps}
+        status="stopped"
+        outputMode="serial"
+        serialConnected={false}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+      />,
+      { wrapper }
+    );
+    expect(screen.getByRole('button', { name: /start/i })).toBeDisabled();
+  });
+
+  it('disables Start button in tcp mode when network is not connected', () => {
+    render(
+      <StatBar
+        {...defaultProps}
+        status="stopped"
+        outputMode="tcp"
+        networkConnected={false}
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+      />,
+      { wrapper }
+    );
+    expect(screen.getByRole('button', { name: /start/i })).toBeDisabled();
+  });
+
+  it('shows validationSession view-report button when session exists', () => {
+    const session = { id: 's1', startedAt: 0, endedAt: 1000, summary: { pass: 1, fail: 0, warn: 0, totalSteps: 1 }, steps: [] };
+    render(<StatBar {...defaultProps} validationSession={session as never} />, { wrapper });
+    // Use queryAllByRole to handle multiple matches, just verify at least one exists
+    const reportBtns = screen.queryAllByRole('button', { name: /report/i });
+    expect(reportBtns.length).toBeGreaterThan(0);
   });
 });

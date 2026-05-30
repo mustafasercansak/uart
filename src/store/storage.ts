@@ -12,10 +12,18 @@ import type {
   Parity,
   StopBits,
 } from '../types';
+import { invoke, isTauri } from '../lib/tauri-bridge';
 
-// ─────────────────────────────────────────────
-// LOCALSTORAGE TABANLI DEPOLAMA
-// ─────────────────────────────────────────────
+// ── LOCAL STORAGE + TAURI FILE-SYSTEM STORAGE ─────────────────────────────────
+//
+// Profiles are stored in TWO places:
+//   1. localStorage  — synchronous, fast, used as the in-process cache
+//   2. Tauri FS      — durable, survives localStorage clears
+//
+// On every saveProfiles() both stores are written (FS is fire-and-forget async).
+// On startup, initProfileStorage() reads from FS and repopulates localStorage
+// so that the synchronous loadProfiles() always returns fresh data.
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PROFILES_KEY = 'uart_profiles';
 const SCENARIOS_KEY = 'uart_scenarios';
@@ -236,13 +244,12 @@ function migrateProfiles(profiles: PersistedProfile[]): { profiles: FrameProfile
   return { profiles: migrated, changed };
 }
 
-function load<T>(key: string): T[] {
+function load<T>(key: string, fallback: T[] = []): T[] {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw && key === PROFILES_KEY) return INITIAL_PROFILES as unknown as T[];
-    return raw ? JSON.parse(raw) : [];
+    return raw ? (JSON.parse(raw) as T[]) : fallback;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
@@ -250,10 +257,72 @@ function save<T>(key: string, data: T[]): void {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
+// ── Tauri FS helpers (async) ──────────────────────────────────────────────────
+
+/** Write profiles to disk. Fire-and-forget — errors are logged, never thrown. */
+async function tauriSaveProfiles(profiles: FrameProfile[]): Promise<void> {
+  try {
+    const persisted = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+    await invoke('save_can_profiles', { data: persisted });
+  } catch (e) {
+    console.error('[storage] save_can_profiles failed:', e);
+  }
+}
+
+/**
+ * Load profiles from Tauri FS.
+ * Returns migrated profiles (possibly empty) on success, or `null` when the file
+ * does not exist yet (first-run). Throws on transient OS / read errors so the
+ * caller does NOT fall through to the first-run migration branch.
+ */
+async function tauriLoadProfiles(): Promise<FrameProfile[] | null> {
+  // Intentionally not caught — transient errors propagate so initProfileStorage
+  // skips migration and leaves the existing FS file untouched.
+  const raw = await invoke<PersistedProfile[] | null>('load_can_profiles');
+  if (raw == null) return null; // Rust returned None: file does not exist yet
+  const list = Array.isArray(raw) ? raw : [];
+  const { profiles } = migrateProfiles(list);
+  // Return profiles even when empty — an empty array is the user's authoritative state.
+  return profiles;
+}
+
+/**
+ * Must be awaited ONCE before React renders.
+ *
+ * Behaviour:
+ *  - Tauri env: load from FS → sync localStorage cache
+ *      • First run (no FS file): migrate localStorage → FS
+ *      • Subsequent runs: FS wins, overwrites stale localStorage (including empty [])
+ *  - Browser/dev env: no-op (localStorage is the only store)
+ *  - Transient FS error: logged, localStorage left unchanged (FS not overwritten)
+ */
+export async function initProfileStorage(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const fromFs = await tauriLoadProfiles();
+
+    if (fromFs !== null) {
+      // FS is authoritative — repopulate localStorage cache, including empty array.
+      const withSchema = fromFs.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+      save(PROFILES_KEY, withSchema);
+      return;
+    }
+
+    // File not found — first run: migrate localStorage contents to FS.
+    const fromLocal = load<PersistedProfile>(PROFILES_KEY, INITIAL_PROFILES);
+    const { profiles } = migrateProfiles(fromLocal);
+    const source = profiles.length > 0 ? profiles : INITIAL_PROFILES;
+    await tauriSaveProfiles(source);
+  } catch (e) {
+    // Transient OS / network error — log and leave both stores untouched.
+    console.error('[storage] initProfileStorage failed, keeping existing data:', e);
+  }
+}
+
 // ── Profiles ─────────────────────────────────
 
 export function loadProfiles(): FrameProfile[] {
-  const loaded = load<PersistedProfile>(PROFILES_KEY);
+  const loaded = load<PersistedProfile>(PROFILES_KEY, INITIAL_PROFILES);
   const { profiles, changed } = migrateProfiles(loaded);
 
   if (profiles.length === 0) {
@@ -272,6 +341,10 @@ export function loadProfiles(): FrameProfile[] {
 export function saveProfiles(profiles: FrameProfile[]): void {
   const persisted = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
   save(PROFILES_KEY, persisted);
+  // Mirror to Tauri FS asynchronously — fire-and-forget
+  if (isTauri()) {
+    tauriSaveProfiles(profiles).catch(console.error);
+  }
 }
 
 export function saveProfile(profile: FrameProfile): void {
@@ -363,10 +436,10 @@ export function importFromJson<T>(file: File): Promise<T> {
         const data = JSON.parse(e.target?.result as string);
         resolve(data as T);
       } catch {
-        reject(new Error('Geçersiz JSON dosyası'));
+        reject(new Error('Invalid JSON file'));
       }
     };
-    reader.onerror = () => reject(new Error('Dosya okunamadı'));
+    reader.onerror = () => reject(new Error('File could not be read'));
     reader.readAsText(file);
   });
 }

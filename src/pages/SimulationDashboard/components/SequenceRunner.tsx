@@ -98,8 +98,7 @@ async function triggerDownload(content: string, filename: string, mimeType: stri
   try {
     const fsModule = await import('@tauri-apps/plugin-fs');
     await fsModule.writeTextFile(filename, content, { baseDir: fsModule.BaseDirectory.Download });
-  } catch (err) {
-    console.error('[triggerDownload] Tauri FS failed, falling back to blob:', err);
+  } catch {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -73,23 +73,43 @@ const VISIBLE_ATTRIBUTES = [
 
 // Common MUI/Technical values to ignore
 const IGNORE_VALUES = new Set([
+    // MUI / layout variants
     'outlined', 'contained', 'text', 'small', 'medium', 'large',
     'primary', 'secondary', 'error', 'info', 'success', 'warning',
-    'inherit', 'div', 'span', 'row', 'column', 'flex', 'center',
+    // CSS / style values
+    'inherit', 'div', 'span', 'row', 'column', 'flex', 'center', 'middle', 'justify',
     'sticky', 'absolute', 'relative', 'fixed', 'hidden', 'visible',
-    'password', 'email', 'number', 'tel', 'url', 'search', 'date',
     'top', 'bottom', 'left', 'right', 'start', 'end',
-    'monospace', 'sans-serif', 'serif', 'auto', 'none', 'initial',
+    'solid', 'dashed', 'dotted', 'uppercase', 'lowercase', 'capitalize',
+    'normal', 'bold', 'black', 'mono', 'pointer', 'default',
+    'transparent', 'inherit', 'initial', 'unset', 'auto', 'none',
+    'borderRadius', 'fontSize', 'fontWeight', 'lineHeight', 'padding', 'margin',
+    'currentColor', 'monospace', 'sans-serif', 'serif',
+    'Courier New', 'Arial', 'Roboto', 'Inter', 'Segoe UI',
+    // Input types
+    'password', 'email', 'number', 'tel', 'url', 'search', 'date',
     'button', 'submit', 'reset', 'checkbox', 'radio', 'select',
-    'info', 'tx', 'rx', 'error', 'pending', 'running', 'stopped', 'paused', 'Started', 'Progress', 'Finished',
-    'Disconnected from SLCAN', 'Disconnected from SocketCAN', 'fontFamily=', 'fontWeight=',
-    'HR', 'SpO2', 'spO2', 'systolicBP', 'RR', 'Temp', 'Pleth', 'BPM', 'Rate', 'Volume', 'Remaining', 'PI', 'FiO2', 'PEEP', 'Tidal Vol', 'Lead-I', 'Lead-II', 'SPO2-Wave',
+    // Runtime states (not user-visible labels)
+    'tx', 'rx', 'pending', 'running', 'stopped', 'paused', 'Started', 'Progress', 'Finished',
+    'Disconnected from SLCAN', 'Disconnected from SocketCAN',
+    // Medical signal names (technical identifiers, not translated)
+    'SpO₂', 'SpO2', 'spO2', 'HR', 'RR', 'Temp', 'Pleth', 'PI', 'FiO2', 'PEEP', 'Tidal Vol',
+    'MAP', 'TV', 'PI%', 'Pulse', 'Rate', 'Volume', 'Remaining',
+    'Lead-I', 'Lead-II', 'SPO2-Wave', 'BPM', 'PIP', 'FIO2',
+    'MSB', 'LSB', 'SPO2', 'ECG', 'EKG', 'TEMP',
+    // Hardware / protocol identifiers
+    'MISO', 'MOSI', 'PARITY', 'COM1', 'F190', 'DATA', 'CRCD', 'ACKD', 'TEXTAREA',
+    'TCP', 'UDP', 'UART', 'SPI', 'I2C', 'USB', 'HTTP', 'HTTPS', 'JSON', 'CSV', 'PDF', 'PCAP',
+    'Baud', 'Parity', 'Stop', 'Start', 'Sync', 'CRC', 'XOR', 'Checksum',
+    'Hanning', 'Hamming', 'CCITT', 'Modbus', 'RTU', 'NMEA',
+    'Big Endian', 'Little Endian', 'Modbus RTU', 'NMEA 0183', 'UART-X1',
+    'Hz', 'MHz', 'kHz',
+    // Locale codes
+    'tr-TR', 'en-US', 'en-GB',
+    // Keyboard keys
+    'Enter', 'Escape', 'Space', 'Shift', 'Control', 'Alt', 'Meta',
+    // Redux action types
     'INIT_STATE', 'SET_PROFILE', 'SET_SCENARIO', 'SET_OUTPUT_MODE', 'START', 'STOP', 'PAUSE', 'RESUME',
-    'SET:', 'RAMP:', 'INJECT_ERROR:', 'Mustafa Sercan Sak', '© 2026 Mustafa Sercan Sak',
-    'SpO₂', 'Math.*', 'struct MyData { uint32_t id; ... };', 'BPM > 150',
-    ', borderRadius:', ', fontSize:', ').length > 30 ?', ', endFieldId: allFields[allFields.length - 1]?.id ??',
-    ', atMs: 0, target:', ', atMs: 500, target:', 'None', 'Even', 'Odd', 'Mark', 'Space',
-    'field:Lead-I', 'field:Lead-II', 'field:SPO2-Wave',
     'MASTER_TICK', 'ADD_LOG', 'BATCH_LOGS', 'OVERRIDE_FIELD', 'OVERRIDE_BIT', 'INJECT_ERROR',
     'CONSUME_ERROR', 'RESET_OVERRIDES', 'SET_SERIAL_CONNECTED', 'SET_NETWORK_CONNECTED',
     'SET_BACKEND_CONNECTED', 'SET_RECORDING', 'ADD_CONVERSATION', 'UPDATE_EXCHANGE',
@@ -100,27 +120,20 @@ const IGNORE_VALUES = new Set([
     'BATCH_UPDATE', 'START_VALIDATION', 'STOP_VALIDATION', 'CANCEL_VALIDATION',
     'ADD_VALIDATION_EVENT', 'UPDATE_VALIDATION_HISTORY', 'SET_ACTIVE_SEQUENCE',
     'SAVE_SEQUENCE', 'DELETE_SEQUENCE', 'SET_SEQUENCES', 'CLEAR_EXCHANGES',
-    'tr-TR', 'en-US', 'en-GB', 'currentColor', 'transparent', 'solid', 'dashed', 'dotted',
-    'uppercase', 'lowercase', 'capitalize', 'normal', 'bold', 'black', 'mono',
-    'pointer', 'default', 'none', 'absolute', 'relative', 'fixed', 'sticky',
-    'top', 'bottom', 'left', 'right', 'center', 'middle', 'justify',
-    'Enter', 'Escape', 'Space', 'Shift', 'Control', 'Alt', 'Meta',
-    'TCP', 'UDP', 'UART', 'SPI', 'I2C', 'USB', 'HTTP', 'HTTPS', 'JSON', 'CSV', 'PDF', 'PCAP',
-    'MSB', 'LSB', 'BPM', 'SPO2', 'ECG', 'EKG', 'RR', 'TEMP', 'PIP', 'PEEP', 'FIO2',
-    'Baud', 'Parity', 'Stop', 'Start', 'Sync', 'CRC', 'XOR', 'Checksum',
-    'Hanning', 'Hamming', 'CCITT', 'Modbus', 'RTU', 'NMEA', 'Big Endian', 'Little Endian',
-    'Courier New', 'Arial', 'Roboto', 'Inter', 'Segoe UI', 'monospace', 'sans-serif',
-    'borderRadius', 'fontSize', 'fontWeight', 'lineHeight', 'padding', 'margin',
-    'transparent', 'inherit', 'initial', 'unset', 'auto',
-    'ms', 'Hz', 'MHz', 'kHz', 'BPM', 'mmHg', 'cmH2O', 'mL', 'mL/h', 'L/min', 'sec', 'min', 'sa', 'dk', 'sn',
-    'borderRadius', 'fontSize', 'fontWeight', 'lineHeight', 'padding', 'margin',
-    'SpO2', 'FiO2', 'RR', 'BPM', 'HR', 'PEEP', 'PIP', 'MAP', 'TV', 'Tidal Vol', 'PI%', 'Pulse',
-    'Modbus RTU', 'NMEA 0183', 'NMEA', 'Modbus', 'UART-X1',
+    'systolicBP', 'fontFamily=', 'fontWeight=',
+    // Code-like strings detected as false positives
+    'SET:', 'RAMP:', 'INJECT_ERROR:', 'Mustafa Sercan Sak', '© 2026 Mustafa Sercan Sak',
+    'Math.*', 'struct MyData { uint32_t id; ... };', 'BPM > 150',
+    ', borderRadius:', ', fontSize:', ').length > 30 ?', ', endFieldId: allFields[allFields.length - 1]?.id ??',
+    ', atMs: 0, target:', ', atMs: 500, target:',
+    'None', 'Even', 'Odd', 'Mark', 'Space',
+    'field:Lead-I', 'field:Lead-II', 'field:SPO2-Wave',
+    'Timeout:', '01 02 …', '01 02 03 04',
     'peripheral_logic.js', 'input', 'state', 'send(bytes)', 'bytes:', 'state:', 'sendHex:', 'setFields:',
     'Diagnostics', 'Gauge', 'Sparkline', 'Monitor', 'Timeline', 'VisualProtocolAnalyzer',
     'minDurationMs', 'maxDurationMs', 'activateAtMs', 'deactivateAtMs', 'preserveStartEnd',
     '&amp;', '&lt;', '&gt;', '&quot;', 'AssertionError', 'uart-sequences', 'UART Automation',
-    '\\n'
+    '\\n',
 ]);
 
 interface HardcodedString {
@@ -223,7 +236,10 @@ function scanFile(filePath: string): HardcodedString[] {
                 !/[A-Z]/.test(text) &&
                 !/[ğüşıöçĞÜŞİÖÇ]/.test(text);
 
-            const isTechnical = /^[A-Z0-9_]+$/.test(text) ||
+            // All-caps: only treat as technical if it's an acronym (≤3 chars) or an action-type with underscores.
+            // Longer all-caps words without underscores (e.g. ACTIVE, INACTIVE) are UI labels and should be flagged.
+            const isAllCapsTechnical = /^[A-Z0-9_]+$/.test(text) && (text.includes('_') || text.length <= 3);
+            const isTechnical = isAllCapsTechnical ||
                 IGNORE_VALUES.has(text) ||
                 IGNORE_VALUES.has(text.toLowerCase()) ||
                 /^[a-z]+[A-Z][a-z]+$/.test(text) || // camelCase

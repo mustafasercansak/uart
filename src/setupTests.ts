@@ -1,16 +1,11 @@
 import '@testing-library/jest-dom';
-import { expect, afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 
 expect.extend(matchers as unknown as Parameters<typeof expect.extend>[0]);
 
-afterEach(() => {
-  cleanup();
-});
-
 // scrollIntoView not implemented in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
+window.HTMLAnchorElement.prototype.click = vi.fn();
 
 // Mock Web Workers (jsdom doesn't support them)
 class MockWorker {

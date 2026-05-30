@@ -1,11 +1,11 @@
 {
-  "version": "1.5.8",
-  "notes": "System update and new professional icon integration.",
-  "pub_date": "2026-05-09T04:26:00Z",
+  "version": "1.6.0",
+  "notes": "CAN Bus Simulator enhancements: J1939 frame decoder, DBC file import & signal decoder, UDS/ISO-TP diagnostic layer, light mode redesign, full i18n compliance, and numerous bug fixes.",
+  "pub_date": "2026-05-20T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "BURAYA_BUILD_SIRASINDA_ALDIGINIZ_IMZAYI_YAPISTIRIN",
-      "url": "https://github.com/mustafasercansak/uart/releases/download/v1.5.8/UART.Simulator_1.5.8_x64-setup.exe"
+      "signature": "PASTE_SIGNATURE_FROM_BUILD_OUTPUT_HERE",
+      "url": "https://github.com/mustafasercansak/uart/releases/download/v1.6.0/UART.Simulator_1.6.0_x64-setup.exe"
     }
   }
 }

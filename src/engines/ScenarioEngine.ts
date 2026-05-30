@@ -110,7 +110,7 @@ export function processScenarioStep(
       default:
         break;
     }
-  } else if (target.type === 'bit') {
+  } else {
     const fieldId = findFieldId(profile, target.name);
     if (!fieldId || !target.subName) return { newState: {} };
 

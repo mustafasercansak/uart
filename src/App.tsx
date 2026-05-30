@@ -14,6 +14,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import CANDashboard from './pages/can/CANDashboard';
 import CANProfiles from './pages/can/CANProfiles';
 import { CANProvider } from './can/store/CANContext';
+import TranslationsPage from './pages/Translations';
 
 function AppRoutes() {
   const { show, dismiss } = useOnboarding();
@@ -29,6 +30,7 @@ function AppRoutes() {
           <Route path="/templates" element={<ErrorBoundary><TemplateBrowser /></ErrorBoundary>} />
           <Route path="/can" element={<ErrorBoundary><CANProvider><CANDashboard /></CANProvider></ErrorBoundary>} />
           <Route path="/can-profiles" element={<ErrorBoundary><CANProvider><CANProfiles /></CANProvider></ErrorBoundary>} />
+          <Route path="/translations" element={<ErrorBoundary><TranslationsPage /></ErrorBoundary>} />
         </Route>
         <Route path="/help" element={<ErrorBoundary><HelpPage /></ErrorBoundary>} />
       </Routes>

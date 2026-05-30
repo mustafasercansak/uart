@@ -1,5 +1,5 @@
 # UART PRO LAB — Master Engineering Manual
-## Professional Simulation, Diagnostic & Validation Suite · v1.5.28
+## Professional Simulation, Diagnostic & Validation Suite · v1.6.0
 
 > **UART Pro Lab** is the world's most advanced browser-based UART simulation and validation environment — built for embedded engineers, medical device developers, and protocol researchers who demand precision.
 
@@ -28,6 +28,20 @@
 17. [Keyboard Shortcuts](#shortcuts)
 18. [Troubleshooting & Optimization](#troubleshooting)
 19. [Glossary](#glossary)
+20. [CAN Bus Simulator](#can-bus)
+    - [20.1 Architecture Overview](#can-arch)
+    - [20.2 Dashboard Layout](#can-layout)
+    - [20.3 Adding & Configuring Nodes](#can-nodes)
+    - [20.4 Running the Simulation](#can-run)
+    - [20.5 Bus Monitor & Frame Injection](#can-monitor)
+    - [20.6 Fault Injection](#can-errors)
+    - [20.7 Compliance Panel](#can-compliance)
+    - [20.8 CAN Profiles](#can-profiles)
+    - [20.9 Smart Listen](#can-smart-listen)
+    - [20.10 Keyboard Shortcuts](#can-shortcuts)
+    - [20.11 UDS Diagnostic Terminal (ISO 14229 / ISO-TP)](#can-uds)
+    - [20.12 DBC File Import & Signal Decoder](#can-dbc)
+    - [20.13 J1939 Frame Decoder](#can-j1939)
 
 ---
 
@@ -114,7 +128,7 @@ The dashboard is engineered as a **High-Density Diagnostic Station** — every p
 - **Buffer Fill**: Real-time ring buffer utilization — critical for detecting overflow risk.
 
 ### Bento-Grid Layout
-In v1.5.28, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
+In v1.6.0, all panels use a **Bento-Grid** system. This allows the information density to increase by 60% compared to v1.3 while maintaining diagnostic readability at the 13px type scale.
 
 ---
 
@@ -150,7 +164,7 @@ Click any field value in the Telemetry Panel to **pin it** as a reference. A del
 <a name="waveform-designer"></a>
 ## 5. Custom Waveform Designer
 
-> **New in v1.5.28** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
+> **New in v1.6.0** — The most requested feature. Design arbitrary byte-level waveforms and inject them directly into the simulation.
 
 ![Waveform Designer](images/v1.3/designer_live.png)
 
@@ -671,7 +685,7 @@ Sequences can be exported to — or imported from — a JSON file. Use this to b
 ```json
 {
   "format": "uart-sequences",
-  "version": "1.5.28",
+  "version": "1.6.0",
   "exportedAt": "2026-05-15T12:00:00.000Z",
   "sequences": [ ... ]
 }
@@ -983,13 +997,359 @@ The live Diagnostics Panel shows:
 
 ---
 
+<a name="can-bus"></a>
+## 20. CAN Bus Simulator
+
+The CAN Bus module is a standalone, browser-native simulation environment for **ISO 11898-1 CAN 2.0A** networks. It runs on a dedicated **Web Worker** thread, completely isolated from the UART engine, and supports up to 127 nodes at baud rates of 125 / 250 / 500 / 1000 kbps.
+
+Navigate to **CAN → Dashboard** from the sidebar.
+
+---
+
+### 20.1 Architecture Overview
+
+| Layer | Component | Description |
+|-------|-----------|-------------|
+| Worker thread | `can.worker.ts` | Runs the simulation engine at 20 Hz, isolated from UI |
+| Engine | `CANSimulationEngine` | Arbitration, fault injection, vitals, UDS protocol |
+| Error state machine | `CANErrorStateMachine` | ISO 11898-1 TEC/REC counters, Error-Active/Passive/Bus-Off |
+| Medical vitals | `CANMedicalVitals` | Per-profile vital sign evolution with Gaussian drift |
+| Frame codec | `CANFrameParser` | 15-bit CRC, SLCAN encode/decode |
+| Store | `CANContext` + `canReducer` | React context, Web Serial API, profile persistence |
+
+---
+
+### 20.2 Dashboard Layout
+
+The dashboard is divided into three panels:
+
+**Left panel — Node List**
+- Lists all active CAN nodes with color-coded profile badges
+- Add (`+`) or remove nodes; collapse with the `❮` toggle
+- Each node card shows its ID, profile type, and live vital summary
+
+**Center panel — Tabbed Workspace**
+
+| # | Tab | Description |
+|---|-----|-------------|
+| 1 | Bus Monitor | Live frame stream with injection bar |
+| 2 | Nodes | Full node grid with toggle/edit/remove |
+| 3 | Arbitration | Collision event log (winner / loser pairs) |
+| 4 | Log | Searchable, filterable event log with TXT export |
+| 5 | Fault Injection | Clinical and network fault injection UI |
+| 6 | Automation | Step-based timed fault sequences |
+| 7 | Compliance | IEC 60601-1 / ISO 11898-1 / CiA 301 live metrics |
+
+**Right panel — Inspector / Vitals**
+- Toggle with the `⚙` button on the far right
+- **Frame Inspector**: bit-level breakdown of the selected frame (Arbitration ID, DLC, data bytes, CRC, EOF)
+- **Vitals Panel**: real-time vital sign sparklines for the selected node
+
+---
+
+### 20.3 Adding and Configuring Nodes
+
+1. Click **+ Add Node** in the left panel header (or press **N**)
+2. Set the **Node ID** (1–127; auto-increments to next free ID)
+3. Enter a **name** (e.g. "Bed-3 Vital Monitor")
+4. Select a **Medical Profile** — determines which vital signs are simulated and how they are encoded in the CAN data bytes
+5. Adjust the **Arbitration ID** (default: `0x180 + nodeId`, standard CANopen TPDO1)
+6. Set the **Send Interval** (10–2000 ms, i.e. 0.5–100 Hz)
+
+**Available profiles:**
+
+| Profile | Description |
+|---------|-------------|
+| Vital Monitor | HR, SpO₂, BP, Temp, RR |
+| IV Pump | Flow rate, volume infused, pressure |
+| Ventilator | Tidal vol, PEEP, FiO₂, peak pressure |
+| ECG Monitor | HR, SpO₂, BP |
+| Defibrillator | HR, standby state |
+| Infusion Pump | Flow rate, volume, pressure |
+| Pulse Oximeter | HR, SpO₂ |
+| Custom | User-defined payload |
+
+---
+
+### 20.4 Running the Simulation
+
+| Control | Action |
+|---------|--------|
+| ▶ Start | Begins simulation (requires at least one active node) |
+| ⏸ Pause | Freezes frame generation; state is preserved |
+| ▶ Resume | Continues from paused state |
+| ■ Stop | Stops and resets to idle |
+
+The top **Stat Bar** shows: total frames, error count, live FPS, bus load gauge, baud rate selector, and profile quick-load.
+
+---
+
+### 20.5 Bus Monitor & Frame Injection
+
+The Bus Monitor streams all CAN frames in real time. Click any row to select it — the right-panel **Frame Inspector** will decode it.
+
+**Manual Frame Injection** (top bar of Bus Monitor):
+1. Enter the **Arbitration ID** in hex (e.g. `0x200`)
+2. Enter **data bytes** as space-separated hex (e.g. `01 FF A0 00`, max 8 bytes)
+3. Click **Send** or press **Enter**
+
+Injected frames appear highlighted in cyan with the tag `INJECTED`. The bus must be running to inject.
+
+---
+
+### 20.6 Fault Injection
+
+Switch to the **Fault Injection** tab. Select a node, then click a fault type:
+
+**Clinical faults** (alter vital sign evolution):
+
+| Fault | Effect |
+|-------|--------|
+| Cardiac Arrest | HR drops to ~6 bpm |
+| Bradycardia | HR drifts to ~40 bpm |
+| Tachycardia | HR climbs to ~160 bpm |
+| Hypoxia | SpO₂ falls to ~85% |
+| Hypotension | BP drops to ~60 mmHg |
+| Hypertension | BP rises to ~190 mmHg |
+| Fever | Temp rises to ~39.5°C |
+| Hypothermia | Temp falls to ~35°C |
+
+**Network faults:**
+
+| Fault | Effect |
+|-------|--------|
+| Bus-Off | Node stops transmitting (TEC > 255) |
+| Freeze | Node freezes last values, stops updating |
+| Noise Burst | ~40% error rate for ~3 seconds |
+
+Click **Recover Node** to restore normal operation.
+
+---
+
+### 20.7 Compliance Panel
+
+The Compliance tab provides live ISO/IEC metrics:
+
+| Metric | Threshold | Standard |
+|--------|-----------|----------|
+| Bus load | ≤ 30% | IEC 60601-1 §14 |
+| Error rate | ≤ 1% | ISO 11898-1 §6.12 |
+| Node availability | ≥ 99.9% | IEC 60601-1 §14 |
+| Active alarms | 0 | Clinical requirement |
+
+All four passing = **COMPLIANT** badge. Any failure = **NON-COMPLIANT** with the failing metric highlighted in red.
+
+---
+
+### 20.8 CAN Profiles
+
+Save the current bus configuration (nodes + baud rate) as a reusable profile:
+
+1. Navigate to **CAN → Profiles** (sidebar, or `navigate('/can-profiles')`)
+2. Click **Save Current Bus** to snapshot the running configuration
+3. Name and describe the profile
+4. **Load to Bus** to restore any saved profile onto the dashboard
+
+Four built-in profiles ship with the app: **ICU**, **ER**, **OR**, and **Ward** — each with a realistic set of pre-configured nodes.
+
+---
+
+### 20.9 Smart Listen
+
+**Smart Listen** is a passive CAN discovery mode for unknown hardware configurations. Open the CAN Dashboard and click **Smart Listen** in the lower-right corner.
+
+The scanner observes already captured traffic only. It does not inject frames, reset nodes, acknowledge traffic, or alter the running bus.
+
+| Detection | Behavior |
+|-----------|----------|
+| Baud rate | Locks to common CAN speeds: 125k, 250k, 500k, or 1M bps |
+| Margin | Requires the detected speed to be within 5% of a known rate |
+| Protocol | Distinguishes Standard 11-bit CAN from Extended 29-bit CAN |
+| Confidence | Enables **Sync and Connect** only after enough frames are observed |
+
+When locked, click **Sync and Connect** to apply the detected baud rate and return to the Bus Monitor.
+
+---
+
+### 20.10 Keyboard Shortcuts
+
+Press **?** anywhere on the CAN Dashboard to open the shortcuts cheatsheet.
+
+| Key | Action |
+|-----|--------|
+| `Space` | Start / Pause / Resume |
+| `Esc` | Stop bus |
+| `1` – `8` | Switch to tab |
+| `N` | Add new node |
+| `C` | Clear bus frames |
+| `Enter` | Send injected frame (when injection bar focused) |
+| `?` | Toggle shortcuts modal |
+
+---
+
+### 20.11 UDS Diagnostic Terminal (ISO 14229 / ISO-TP)
+
+The **Diagnostic Terminal** tab exposes a full UDS (Unified Diagnostic Services) stack over the ISO-TP (ISO 15765-2) transport layer. It lets you send standard diagnostic requests, inspect multi-frame ISO-TP traffic, and configure a simulated ECU that responds automatically.
+
+#### Opening the Terminal
+
+Select the **Diagnostics** tab (tab 6) on the CAN Dashboard. The panel is split into a configuration sidebar on the left and a live ISO-TP frame log on the right.
+
+#### Configuring CAN IDs
+
+| Field | Default | Notes |
+|-------|---------|-------|
+| Request ID | `0x7E0` | CAN ID used by the tester (this application) |
+| Response ID | `0x7E8` | CAN ID used by the simulated ECU |
+
+If the Request ID is in the standard range `0x7E0`–`0x7E7`, the Response ID is derived automatically (`requestId + 8`) when you leave the field.
+
+#### Sending Requests
+
+Choose a preset and click **Send UDS Request** (bus must be running):
+
+| Preset | SID | Payload |
+|--------|-----|---------|
+| `0x10` Session Control | `0x10` | Configurable session type (Default / Programming / Extended) |
+| `0x22` Read DID | `0x22` | 16-bit Data Identifier (hex, e.g. `F190` for VIN) |
+| `0x19` Read DTC | `0x19` | Sub-function `0x02`, configurable status mask |
+| Raw | — | Any hex bytes separated by spaces |
+
+Multi-frame payloads are automatically segmented using ISO-TP (First Frame + Consecutive Frames). A Flow Control frame is injected after the First Frame.
+
+#### Symphony — Automated ECU Responses
+
+Toggle **Symphony On** to enable the simulated ECU. When active, the engine:
+
+1. Receives and reassembles multi-frame requests.
+2. Processes the UDS Service Identifier (SID).
+3. Transmits an ISO-TP response automatically.
+
+Supported SIDs and their responses:
+
+| SID | Service | Positive Response |
+|-----|---------|------------------|
+| `0x10` | Diagnostic Session Control | `0x50` + session params |
+| `0x22` | Read Data By Identifier | `0x62` + DID + value bytes |
+| `0x19` | Read DTC Information (SF `0x02`) | `0x59` + DTC records |
+| Other | — | `0x7F` NRC `0x11` (serviceNotSupported) |
+
+#### DID Response Table
+
+Configure what value is returned for each DID:
+
+| Encoding | Behaviour |
+|----------|-----------|
+| **ASCII** | Value string is transmitted as raw ASCII bytes |
+| **Hex** | Hex string (e.g. `DEADBEEF`) is split into bytes |
+| **Vitals** | Live vital value (e.g. `heartRate`, `spO2`) is read from the target node at response time, scaled ×10, and returned as a 2-byte big-endian integer |
+
+Use **Target Node** to pin vitals responses to a specific simulation node. Leave it as **Auto from request ID** to let the engine infer the node from the tester request ID offset.
+
+#### ISO-TP Frame Log
+
+The right panel shows all frames on the diagnostic CAN IDs:
+
+| Column | Content |
+|--------|---------|
+| Time | ISO timestamp (ms precision) |
+| ID | CAN arbitration ID |
+| PCI | Frame type: **SF** (Single Frame), **FF** (First Frame), **CF** (Consecutive Frame), **FC** (Flow Control) |
+| Data | Raw hex payload (8 bytes, zero-padded) |
+
+Tester frames have a cyan background; ECU frames have an emerald background.
+
+---
+
+<a name="can-dbc"></a>
+### 20.12 DBC File Import & Signal Decoder
+
+**.dbc** files are the industry-standard format (CANdb++ / Vector) for storing CAN message and signal definitions. UART Pro Lab v1.6.0 provides full DBC parsing support.
+
+#### Importing a DBC File
+
+1. Navigate to **CAN → Profiles** in the sidebar.
+2. Click the **DBC** button in the toolbar.
+3. Select your `.dbc` file — messages are automatically converted into a CAN profile.
+
+#### Supported DBC Elements
+
+| Element | Description |
+|---------|-------------|
+| `BO_` | Message definition (ID, DLC, transmitter) |
+| `SG_` | Signal definition — start bit, length, byte order, factor/offset, min/max, unit |
+| Multiplexing | `M` (multiplexer signal) and `m<value>` (multiplexed signal) supported |
+| `VAL_` | Signal value/enum tables |
+
+#### Byte Order
+
+| Symbol | Type | Description |
+|--------|------|-------------|
+| `@1` | Intel (little-endian) | LSB first; `startBit` is the least significant bit position |
+| `@0` | Motorola (big-endian) | MSB first; `startBit` is the most significant bit position |
+
+#### Viewing Signals in Frame Inspector
+
+After importing a DBC file, select any frame in the Bus Monitor. The **Frame Inspector** panel shows decoded signal values in the **Signal Decoder** section — raw bytes are converted to physical values (rpm, °C, km/h, etc.) using the signal's factor and offset.
+
+---
+
+<a name="can-j1939"></a>
+### 20.13 J1939 Frame Decoder
+
+**SAE J1939** is the heavy-duty vehicle and agricultural machinery standard built on top of 29-bit extended CAN IDs. UART Pro Lab automatically decodes J1939 fields whenever an extended frame is selected.
+
+#### 29-bit ID Layout
+
+```
+Bits 28-26 │ Bit 25 │ Bit 24 │ Bits 23-16 │ Bits 15-8 │ Bits 7-0
+  Priority │  Rsrv  │   DP   │     PF     │    PS     │    SA
+  (3 bits) │        │        │ PDU Format │PDU Specific│  Source
+```
+
+| Field | Description |
+|-------|-------------|
+| **Priority** | 0–7 (lower = higher priority). `≤ 2` ⚡ flagged as critical |
+| **DP** | Data Page — extends the PGN address space |
+| **PGN** | Parameter Group Number — identifies the message content |
+| **PF** | PDU Format — `< 240` means peer-to-peer; `≥ 240` means broadcast |
+| **PS** | PDU Specific — destination address when PF < 240; group extension when PF ≥ 240 |
+| **SA** | Source Address — transmitting ECU address |
+
+#### PDU Types
+
+| Type | Condition | Description |
+|------|-----------|-------------|
+| **PDU1** | PF < 240 | Peer-to-peer — PS = destination address |
+| **PDU2** | PF ≥ 240 | Broadcast — PS is part of the PGN |
+
+#### Common PGNs
+
+| PGN | Name |
+|-----|------|
+| `0xFECA` | DM1 — Active Diagnostic Trouble Codes |
+| `0xFEEE` | Engine Temperature |
+| `0xFEF1` | Cruise Control / Vehicle Speed |
+| `0xFEF2` | Fuel Economy |
+| `0xF004` | Electronic Engine Controller 1 |
+
+#### J1939 in Frame Inspector
+
+When a 29-bit extended frame is selected, the Frame Inspector automatically shows an orange **J1939** panel with:
+- PGN name and numeric value
+- Priority, PF, PS, Source Address
+- Destination Address (PDU1 only)
+- PDU type (peer-to-peer / broadcast)
+
+---
+
 ## Conclusion
 
-**UART Pro Lab v1.5.28** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
+**UART Pro Lab v1.6.0** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
 
 Every feature was designed around a real engineering problem: framing errors that escape unit tests, jitter that only appears under thermal stress, waveform anomalies invisible to the naked eye. This tool surfaces all of them — before they reach silicon.
 
 ---
 
 *Mustafa Sercan Sak — Chief Architect*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.28-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.6.0-STABLE*

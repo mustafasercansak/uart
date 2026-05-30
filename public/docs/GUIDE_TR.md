@@ -1,5 +1,5 @@
 # UART PRO LAB — Ana Mühendislik Kılavuzu
-## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.5.28
+## Profesyonel Simülasyon, Tanılama ve Doğrulama Paketi · v1.6.0
 
 > **UART Pro Lab**, hassasiyet gerektiren gömülü sistem mühendisleri, tıbbi cihaz geliştiricileri ve protokol araştırmacıları için tasarlanmış dünyanın en gelişmiş tarayıcı tabanlı UART simülasyon ve doğrulama ortamıdır.
 
@@ -28,6 +28,20 @@
 17. [Klavye Kısayolları](#shortcuts)
 18. [Sorun Giderme ve Optimizasyon](#troubleshooting)
 19. [Sözlük](#glossary)
+20. [CAN Bus Simülatörü](#can-bus)
+    - [20.1 Mimari Genel Bakış](#can-arch)
+    - [20.2 Gösterge Paneli Düzeni](#can-layout)
+    - [20.3 Düğüm Ekleme ve Yapılandırma](#can-nodes)
+    - [20.4 Simülasyonu Çalıştırma](#can-run)
+    - [20.5 Bus Monitörü ve Frame Enjeksiyonu](#can-monitor)
+    - [20.6 Hata Enjeksiyonu](#can-errors)
+    - [20.7 Uyumluluk Paneli](#can-compliance)
+    - [20.8 CAN Profilleri](#can-profiles)
+    - [20.9 Akıllı Dinleme](#can-smart-listen)
+    - [20.10 Klavye Kısayolları](#can-shortcuts)
+    - [20.11 UDS Tanı Terminali (ISO 14229 / ISO-TP)](#can-uds)
+    - [20.12 DBC Dosyası İçe Aktarma ve Sinyal Çözümleyici](#can-dbc)
+    - [20.13 J1939 Çerçeve Çözümleyici](#can-j1939)
 
 ---
 
@@ -114,7 +128,7 @@ Panel, **Yüksek Yoğunluklu Tanı İstasyonu** olarak tasarlanmıştır — her
 - **Tampon Doluluk**: Gerçek zamanlı halka tampon kullanımı — taşma riskini tespit için kritik.
 
 ### Bento-Grid Düzeni
-v1.5.28'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
+v1.6.0'da tüm paneller **Bento-Grid** sistemini kullanır. Bu, 13px yazı tipi ölçeğinde tanısal okunabilirliği korurken bilgi yoğunluğunu v1.3'e kıyasla %60 artırır.
 
 ---
 
@@ -150,7 +164,7 @@ Telemetri Paneli'nde herhangi bir alan değerine tıklayarak onu referans olarak
 <a name="waveform-designer"></a>
 ## 5. Özel Dalga Formu Tasarımcısı
 
-> **v1.5.28'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
+> **v1.6.0'da Yeni** — En çok istenen özellik. Keyfi bayt düzeyinde dalga formları tasarlayın ve doğrudan simülasyona enjekte edin.
 
 ![Dalga Formu Tasarımcısı](images/v1.3/designer_live.png)
 
@@ -671,7 +685,7 @@ Sekansları JSON dosyası olarak dışa veya içe aktarabilirsiniz. Bu özellik 
 ```json
 {
   "format": "uart-sequences",
-  "version": "1.5.28",
+  "version": "1.6.0",
   "exportedAt": "2026-05-15T12:00:00.000Z",
   "sequences": [ ... ]
 }
@@ -983,13 +997,359 @@ Canlı Tanı Paneli şunları gösterir:
 
 ---
 
+<a name="can-bus"></a>
+## 20. CAN Bus Simülatörü
+
+CAN Bus modülü, **ISO 11898-1 CAN 2.0A** ağları için tamamen tarayıcı tabanlı, bağımsız bir simülasyon ortamıdır. UART motorundan tamamen izole edilmiş ayrı bir **Web Worker** thread'i üzerinde çalışır; 125 / 250 / 500 / 1000 kbps baud hızlarında 127 adede kadar düğümü destekler.
+
+Kenar çubuğundan **CAN → Gösterge Paneli** yolunu izleyin.
+
+---
+
+### 20.1 Mimari Genel Bakış
+
+| Katman | Bileşen | Açıklama |
+|--------|---------|----------|
+| Worker thread | `can.worker.ts` | Simülasyon motorunu 20 Hz'de çalıştırır, UI'dan izole |
+| Motor | `CANSimulationEngine` | Arbitrasyon, hata enjeksiyonu, vital göstergeler, UDS protokolü |
+| Hata durum makinesi | `CANErrorStateMachine` | ISO 11898-1 TEC/REC sayaçları, Error-Active/Passive/Bus-Off |
+| Tıbbi vital göstergeler | `CANMedicalVitals` | Profil başına Gauss gürültülü vital evrim |
+| Frame codec | `CANFrameParser` | 15-bit CRC, SLCAN kodlama/çözme |
+| Depo | `CANContext` + `canReducer` | React context, Web Serial API, profil kalıcılığı |
+
+---
+
+### 20.2 Gösterge Paneli Düzeni
+
+Gösterge paneli üç bölümden oluşur:
+
+**Sol panel — Düğüm Listesi**
+- Renk kodlu profil rozetleriyle tüm aktif CAN düğümlerini listeler
+- `+` butonu ile düğüm eklenebilir; `❮` ile daraltılabilir
+- Her düğüm kartı ID, profil türü ve canlı vital özeti gösterir
+
+**Orta panel — Sekmeli Çalışma Alanı**
+
+| # | Sekme | Açıklama |
+|---|-------|----------|
+| 1 | Bus Monitörü | Enjeksiyon çubuğuyla canlı frame akışı |
+| 2 | Düğümler | Aç/kapat, düzenle, sil seçenekli tam düğüm ızgarası |
+| 3 | Arbitrasyon | Çarpışma olay günlüğü (kazanan / kaybeden çiftleri) |
+| 4 | Günlük | TXT dışa aktarmalı, arama/filtreleme destekli olay günlüğü |
+| 5 | Hata Enjeksiyonu | Klinik ve ağ hata enjeksiyon arayüzü |
+| 6 | Otomasyon | Adım tabanlı zamanlı hata sekansları |
+| 7 | Uyumluluk | IEC 60601-1 / ISO 11898-1 / CiA 301 canlı metrikler |
+
+**Sağ panel — Inspector / Vital Göstergeler**
+- En sağdaki `⚙` butonu ile açılır/kapanır
+- **Frame Inspector**: seçili frame'in bit düzeyinde dökümü (Arbitrasyon ID, DLC, veri baytları, CRC, EOF)
+- **Vital Göstergeler Paneli**: seçili düğüm için gerçek zamanlı vital sparkline grafikleri
+
+---
+
+### 20.3 Düğüm Ekleme ve Yapılandırma
+
+1. Sol panel başlığındaki **+ Düğüm Ekle** butonuna tıklayın (veya **N** tuşuna basın)
+2. **Düğüm ID** ayarlayın (1–127; sonraki boş ID'ye otomatik artış)
+3. Bir **isim** girin (örn. "Yatak-3 Vital Monitör")
+4. **Tıbbi Profil** seçin — hangi vital göstergelerin simüle edileceğini ve CAN veri baytlarına nasıl kodlanacağını belirler
+5. **Arbitrasyon ID** ayarlayın (varsayılan: `0x180 + nodeId`, standart CANopen TPDO1)
+6. **Gönderim Aralığı** belirleyin (10–2000 ms, yani 0,5–100 Hz)
+
+**Mevcut profiller:**
+
+| Profil | Açıklama |
+|--------|----------|
+| Vital Monitör | KAH, SpO₂, KB, Sıcaklık, SS |
+| IV Pompası | Akış hızı, hacim, basınç |
+| Ventilatör | Tidal hacim, PEEP, FiO₂, tepe basıncı |
+| EKG Monitörü | KAH, SpO₂, KB |
+| Defibrilatör | KAH, bekleme durumu |
+| İnfüzyon Pompası | Akış hızı, hacim, basınç |
+| Nabız Oksimetresi | KAH, SpO₂ |
+| Özel | Kullanıcı tanımlı payload |
+
+---
+
+### 20.4 Simülasyonu Çalıştırma
+
+| Kontrol | Eylem |
+|---------|-------|
+| ▶ Başlat | Simülasyonu başlatır (en az bir aktif düğüm gerektirir) |
+| ⏸ Duraklat | Frame üretimini dondurur; durum korunur |
+| ▶ Devam Et | Duraklatılan yerden devam eder |
+| ■ Durdur | Durdurur ve boşta konumuna sıfırlar |
+
+Üstteki **İstatistik Çubuğu** şunları gösterir: toplam frame, hata sayısı, canlı FPS, bus yük göstergesi, baud hızı seçici ve profil hızlı yükleme.
+
+---
+
+### 20.5 Bus Monitörü ve Frame Enjeksiyonu
+
+Bus Monitörü tüm CAN framelerini gerçek zamanlı olarak akışa alır. Herhangi bir satıra tıklayarak seçin — sağ paneldeki **Frame Inspector** çözümleyecektir.
+
+**Manuel Frame Enjeksiyonu** (Bus Monitörü üst çubuğu):
+1. **Arbitrasyon ID**'yi hex olarak girin (örn. `0x200`)
+2. **Veri baytlarını** boşlukla ayrılmış hex olarak girin (örn. `01 FF A0 00`, maks. 8 bayt)
+3. **Gönder**'e tıklayın veya **Enter** tuşuna basın
+
+Enjekte edilen frameler `INJECT` etiketiyle camgöbeği renkte vurgulanır. Enjeksiyon için bus'ın çalışıyor olması gerekir.
+
+---
+
+### 20.6 Hata Enjeksiyonu
+
+**Hata Enjeksiyonu** sekmesine geçin. Bir düğüm seçin ve hata türüne tıklayın:
+
+**Klinik hatalar** (vital evrimini etkiler):
+
+| Hata | Etki |
+|------|------|
+| Kardiyak Arrest | KAH ~6 bpm'e düşer |
+| Bradikardi | KAH ~40 bpm'e kayar |
+| Taşikardi | KAH ~160 bpm'e çıkar |
+| Hipoksi | SpO₂ ~%85'e düşer |
+| Hipotansiyon | KB ~60 mmHg'ya düşer |
+| Hipertansiyon | KB ~190 mmHg'ya çıkar |
+| Ateş | Sıcaklık ~39,5°C'ye yükselir |
+| Hipotermi | Sıcaklık ~35°C'ye düşer |
+
+**Ağ hataları:**
+
+| Hata | Etki |
+|------|------|
+| Bus-Off | Düğüm iletimi durur (TEC > 255) |
+| Dondur | Düğüm son değerlerde kalır, güncellemeyi durdurur |
+| Gürültü Patlaması | ~3 saniye boyunca ~%40 hata oranı |
+
+**Düğümü Kurtar** butonuna tıklayarak normal çalışmaya dönebilirsiniz.
+
+---
+
+### 20.7 Uyumluluk Paneli
+
+Uyumluluk sekmesi canlı ISO/IEC metrikleri sağlar:
+
+| Metrik | Eşik | Standart |
+|--------|------|----------|
+| Bus yükü | ≤ %30 | IEC 60601-1 §14 |
+| Hata oranı | ≤ %1 | ISO 11898-1 §6.12 |
+| Düğüm erişilebilirliği | ≥ %99,9 | IEC 60601-1 §14 |
+| Aktif alarmlar | 0 | Klinik gereksinim |
+
+Dördü de geçerse **UYUMLU** rozeti görünür. Herhangi bir başarısızlık = başarısız metrik kırmızıyla vurgulanmış **UYUMSUZ**.
+
+---
+
+### 20.8 CAN Profilleri
+
+Mevcut bus yapılandırmasını (düğümler + baud hızı) yeniden kullanılabilir profil olarak kaydedin:
+
+1. Kenar çubuğundan **CAN → Profiller**'e gidin
+2. Çalışan yapılandırmanın anlık görüntüsünü almak için **Mevcut Bus'ı Kaydet**'e tıklayın
+3. Profili adlandırın ve açıklayın
+4. Herhangi bir kaydedilmiş profili gösterge paneline geri yüklemek için **Veri Yoluna Yükle**'ye tıklayın
+
+Uygulamayla birlikte dört yerleşik profil gelir: **YBÜ**, **Acil Servis**, **Ameliyathane** ve **Servis** — her biri gerçekçi önceden yapılandırılmış düğüm setleriyle.
+
+---
+
+### 20.9 Akıllı Dinleme
+
+**Akıllı Dinleme**, bilinmeyen donanım yapılandırmaları için pasif CAN keşif modudur. CAN Gösterge Paneli'ni açın ve sağ alt köşedeki **Akıllı Dinle** düğmesine tıklayın.
+
+Tarayıcı yalnızca zaten yakalanmış trafiği gözlemler. Frame enjekte etmez, düğümleri sıfırlamaz, trafiği acknowledge etmez ve çalışan bus'ı değiştirmez.
+
+| Tespit | Davranış |
+|--------|----------|
+| Baud hızı | Yaygın CAN hızlarına kilitlenir: 125k, 250k, 500k veya 1M bps |
+| Marjin | Tespit edilen hızın bilinen hıza en fazla %5 uzaklıkta olmasını ister |
+| Protokol | Standart 11-bit CAN ile Genişletilmiş 29-bit CAN trafiğini ayırır |
+| Güven | Yeterli frame gözlenmeden **Senkronize Et ve Bağlan** düğmesini etkinleştirmez |
+
+Kilitlendikten sonra **Senkronize Et ve Bağlan** düğmesine basarak tespit edilen baud hızını uygulayın ve Bus Monitörü'ne dönün.
+
+---
+
+### 20.10 Klavye Kısayolları
+
+CAN Gösterge Paneli'nde herhangi bir yerde **?** tuşuna basarak kısayol sayfasını açın.
+
+| Tuş | Eylem |
+|-----|-------|
+| `Space` | Başlat / Duraklat / Devam Et |
+| `Esc` | Bus'ı durdur |
+| `1` – `8` | Sekmeye geç |
+| `N` | Yeni düğüm ekle |
+| `C` | Bus framelerini temizle |
+| `Enter` | Enjekte frame gönder (enjeksiyon çubuğu odakta) |
+| `?` | Kısayol modalını aç/kapat |
+
+---
+
+### 20.11 UDS Tanı Terminali (ISO 14229 / ISO-TP)
+
+**Tanı Terminali** sekmesi, ISO-TP (ISO 15765-2) taşıma katmanı üzerinde tam bir UDS (Unified Diagnostic Services) yığını sunar. Standart tanı istekleri göndermenizi, çok framelı ISO-TP trafiğini incelemenizi ve otomatik yanıt veren simüle edilmiş bir ECU yapılandırmanızı sağlar.
+
+#### Terminali Açma
+
+CAN Gösterge Paneli'nde **Diagnostics** sekmesini (6. sekme) seçin. Panel; solda yapılandırma kenar çubuğuna, sağda ise canlı ISO-TP frame günlüğüne ayrılmıştır.
+
+#### CAN ID'lerini Yapılandırma
+
+| Alan | Varsayılan | Notlar |
+|------|-----------|--------|
+| İstek ID | `0x7E0` | Test cihazı (bu uygulama) tarafından kullanılan CAN ID'si |
+| Yanıt ID | `0x7E8` | Simüle edilen ECU tarafından kullanılan CAN ID'si |
+
+İstek ID'si standart `0x7E0`–`0x7E7` aralığındaysa, alandan çıkıldığında Yanıt ID'si otomatik olarak türetilir (`requestId + 8`).
+
+#### İstek Gönderme
+
+Bir ön ayar seçin ve **Send UDS Request** düğmesine tıklayın (bus çalışıyor olmalıdır):
+
+| Ön Ayar | SID | Payload |
+|---------|-----|---------|
+| `0x10` Oturum Kontrolü | `0x10` | Yapılandırılabilir oturum türü (Varsayılan / Programlama / Genişletilmiş) |
+| `0x22` DID Oku | `0x22` | 16-bit Veri Tanımlayıcısı (hex, ör. VIN için `F190`) |
+| `0x19` DTC Oku | `0x19` | Alt fonksiyon `0x02`, yapılandırılabilir durum maskesi |
+| Ham | — | Boşluklarla ayrılmış herhangi bir hex byte dizisi |
+
+Çok framelı payload'lar ISO-TP kullanılarak otomatik olarak segmentlere ayrılır (İlk Frame + Ardışık Frameler). İlk Frame'den sonra bir Akış Kontrol frame'i enjekte edilir.
+
+#### Symphony — Otomatik ECU Yanıtları
+
+Simüle edilen ECU'yu etkinleştirmek için **Symphony On** seçeneğini açın. Etkin olduğunda:
+
+1. Çok framelı istekler alınır ve yeniden birleştirilir.
+2. UDS Servis Tanımlayıcısı (SID) işlenir.
+3. ISO-TP yanıtı otomatik olarak iletilir.
+
+Desteklenen SID'ler ve yanıtları:
+
+| SID | Servis | Olumlu Yanıt |
+|-----|--------|--------------|
+| `0x10` | Tanı Oturum Kontrolü | `0x50` + oturum parametreleri |
+| `0x22` | Tanımlayıcıya Göre Veri Oku | `0x62` + DID + değer byte'ları |
+| `0x19` | DTC Bilgisi Oku (SF `0x02`) | `0x59` + DTC kayıtları |
+| Diğer | — | `0x7F` NRC `0x11` (hizmet desteklenmiyor) |
+
+#### DID Yanıt Tablosu
+
+Her DID için döndürülecek değeri yapılandırın:
+
+| Kodlama | Davranış |
+|---------|----------|
+| **ASCII** | Değer dizesi ham ASCII byte'ları olarak iletilir |
+| **Hex** | Hex dizesi (ör. `DEADBEEF`) byte'lara bölünür |
+| **Vitals** | Canlı vital değer (ör. `heartRate`, `spO2`), yanıt anında hedef düğümden okunur, ×10 ölçeklenerek 2 byte'lık big-endian tam sayı olarak döndürülür |
+
+Vital yanıtlarını belirli bir simülasyon düğümüne sabitlemek için **Hedef Düğüm** seçeneğini kullanın. Motor, istek CAN ID'si ofsetinden düğümü kendiliğinden belirlesin istiyorsanız **İstek ID'sinden otomatik** seçeneğini bırakın.
+
+#### ISO-TP Frame Günlüğü
+
+Sağ panel, tanı CAN ID'lerindeki tüm frameleri gösterir:
+
+| Sütun | İçerik |
+|-------|--------|
+| Zaman | ISO zaman damgası (ms hassasiyetinde) |
+| ID | CAN arbitrasyon ID'si |
+| PCI | Frame türü: **SF** (Tek Frame), **FF** (İlk Frame), **CF** (Ardışık Frame), **FC** (Akış Kontrol) |
+| Veri | Ham hex payload (8 byte, sıfır dolgulu) |
+
+Tester frameleri siyan arka plana, ECU frameleri zümrüt arka plana sahiptir.
+
+---
+
+<a name="can-dbc"></a>
+### 20.12 DBC Dosyası İçe Aktarma ve Sinyal Çözümleyici
+
+**.dbc** dosyaları, CAN mesaj ve sinyal tanımlarını depolayan endüstri standardı formattır (CANdb++ / Vector). UART Pro Lab v1.6.0 tam DBC ayrıştırma desteği sunar.
+
+#### DBC İçe Aktarma
+
+1. Kenar çubuğundan **CAN → Profiller** sayfasına gidin.
+2. Araç çubuğundaki **DBC** düğmesine tıklayın.
+3. `.dbc` uzantılı dosyanızı seçin — mesajlar otomatik olarak CAN profiline dönüştürülür.
+
+#### Desteklenen DBC Öğeleri
+
+| Öğe | Açıklama |
+|-----|----------|
+| `BO_` | Mesaj tanımı (ID, DLC, gönderici) |
+| `SG_` | Sinyal tanımı — başlangıç bit, uzunluk, byte sırası, faktör/ofset, min/max, birim |
+| Çoklama (Mux) | `M` (çoklayıcı sinyal) ve `m<değer>` (çoklanan sinyal) desteklenir |
+| `VAL_` | Sinyal değer/enum tabloları |
+
+#### Byte Sırası
+
+| Sembol | Tür | Açıklama |
+|--------|-----|----------|
+| `@1` | Intel (little-endian) | LSB önce; `startBit` en düşük bit konumudur |
+| `@0` | Motorola (big-endian) | MSB önce; `startBit` en yüksek bit konumudur |
+
+#### Frame Inspector'da Sinyal Görüntüleme
+
+DBC içe aktarıldıktan sonra Bus Monitörü'nde bir frame seçin. **Frame Inspector** paneli **Signal Decoder** bölümünde çözümlenen sinyal değerlerini gösterir — ham baytlar faktör ve ofset uygulanarak fiziksel değerlere (rpm, °C, km/h vb.) dönüştürülür.
+
+---
+
+<a name="can-j1939"></a>
+### 20.13 J1939 Çerçeve Çözümleyici
+
+**SAE J1939**, ağır vasıta araçları ve tarım makineleri için 29-bit genişletilmiş CAN ID'si üzerine inşa edilmiş endüstri standardıdır. UART Pro Lab, genişletilmiş frame seçildiğinde J1939 alanlarını otomatik olarak çözümler.
+
+#### 29-bit ID Düzeni
+
+```
+Bit 28-26 │ Bit 25 │ Bit 24 │ Bit 23-16 │ Bit 15-8 │ Bit 7-0
+ Öncelik  │  Rsrv  │   DP   │    PF     │    PS    │   SA
+ (3 bit)  │        │        │ PDU Format│PDU Specif│ Kaynak
+```
+
+| Alan | Açıklama |
+|------|----------|
+| **Öncelik** | 0–7 (düşük = yüksek öncelik). `≤ 2` ⚡ kritik olarak işaretlenir |
+| **DP** | Veri Sayfası — PGN uzayını genişletir |
+| **PGN** | Parametre Grubu Numarası — mesajın içeriğini tanımlar |
+| **PF** | PDU Format — `< 240` ise eşler arası (Peer-to-Peer), `≥ 240` ise yayın (Broadcast) |
+| **PS** | PDU Specific — PF < 240'ta hedef adres; PF ≥ 240'ta grup uzantısı |
+| **SA** | Kaynak Adres — gönderen ECU adresi |
+
+#### PDU Türleri
+
+| Tür | Koşul | Açıklama |
+|-----|-------|----------|
+| **PDU1** | PF < 240 | Eşler arası — PS = hedef adres |
+| **PDU2** | PF ≥ 240 | Yayın — PS PGN'nin parçası |
+
+#### Yaygın PGN'ler
+
+| PGN | İsim |
+|-----|------|
+| `0xFECA` | DM1 — Aktif Hata Kodları |
+| `0xFEEE` | Motor Sıcaklığı |
+| `0xFEF1` | Hız Sabitleyici / Araç Hızı |
+| `0xFEF2` | Yakıt Ekonomisi |
+| `0xF004` | Elektronik Motor Kontrolcüsü 1 |
+
+#### Frame Inspector'da J1939
+
+29-bit genişletilmiş bir frame seçildiğinde Frame Inspector turuncu renkli **J1939** panelini otomatik olarak gösterir:
+- PGN adı ve sayısal değeri
+- Öncelik, PF, PS, Kaynak Adres
+- Hedef Adres (PDU1 ise)
+- PDU Türü (eşler arası / yayın)
+
+---
+
 ## Sonuç
 
-**UART Pro Lab v1.5.28** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
+**UART Pro Lab v1.6.0** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
 
 Her özellik gerçek bir mühendislik sorununa yönelik tasarlandı: birim testlerinden kaçan çerçeveleme hataları, yalnızca termal stres altında görünen jitter, çıplak gözle görünmeyen dalga formu anomalileri. Bu araç hepsini ortaya çıkarır — silikon aşamasına ulaşmadan önce.
 
 ---
 
 *Mustafa Sercan Sak — Baş Mimar*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.5.28-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.6.0-STABLE*

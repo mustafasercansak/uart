@@ -1,8 +1,27 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { LanguageProvider } from '../../../../i18n/LanguageProvider';
 import type { FrameProfile, GeneratedFrame } from '../../../../types';
 import ErrorReportPanel from '../ErrorReportPanel';
+
+vi.mock('recharts', () => {
+  const ChartShell = ({ children }: { children?: ReactNode }) => <div data-testid="mock-chart">{children}</div>;
+  const ChartLeaf = () => null;
+
+  return {
+    BarChart: ChartShell,
+    Bar: ChartShell,
+    XAxis: ChartLeaf,
+    YAxis: ChartLeaf,
+    CartesianGrid: ChartLeaf,
+    Tooltip: ChartLeaf,
+    ResponsiveContainer: ChartShell,
+    LineChart: ChartShell,
+    Line: ChartLeaf,
+    Cell: ChartLeaf,
+  };
+});
 
 const sampleProfile: FrameProfile = {
   id: 'demo-profile',
@@ -163,5 +182,26 @@ describe('ErrorReportPanel — elapsed time formatting', () => {
   it('renders duration < 60s in seconds format', () => {
     renderPanel({ elapsedMs: 5000 });
     expect(document.body.textContent).toMatch(/5/);
+  });
+
+  it('renders timeline with multiple buckets to exercise sorting branch', () => {
+    const spreadFrames: GeneratedFrame[] = [
+      { uId: 'f1', frameNumber: 1, timestampMs: 0, rawHex: 'AA', rawBytes: [0xaa], fields: [], errors: [] },
+      { uId: 'f2', frameNumber: 2, timestampMs: 2000, rawHex: 'BB', rawBytes: [0xbb], fields: [], errors: ['CRC error'] },
+    ];
+
+    expect(() =>
+      render(
+        <LanguageProvider>
+          <ErrorReportPanel
+            frames={spreadFrames}
+            profile={sampleProfile}
+            elapsedMs={2000}
+            frameCount={2}
+            errorCount={1}
+          />
+        </LanguageProvider>
+      )
+    ).not.toThrow();
   });
 });

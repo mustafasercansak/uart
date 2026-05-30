@@ -1,3 +1,6 @@
+# Ignore hidden directories anywhere in the tree
+**/.*/
+
 # Logs
 logs
 *.log
@@ -13,6 +16,7 @@ dist-ssr
 *.local
 
 # Editor directories and files
+!.vscode/
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -34,3 +38,6 @@ recordings/
 
 # Tauri signing key (private - repoya girmesin)
 src-tauri/uart.key
+
+# Analysis/audit output files
+findings.json

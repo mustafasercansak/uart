@@ -12,6 +12,7 @@ import {
   HeartPulse,
   Zap,
   ShieldCheck,
+  Stethoscope,
 } from 'lucide-react';
 import { useCANContext } from '../../../can/store/CANContext';
 import { NodeCard } from './components/NodeCard';
@@ -27,16 +28,21 @@ import { NodesTab } from './components/NodesTab';
 import { ArbitrationTab } from './components/ArbitrationTab';
 import { LogTab } from './components/LogTab';
 import { CANAutomationTab } from './components/CANAutomationTab';
+import { DiagnosticTerminal } from './components/DiagnosticTerminal';
+import { CANKeyboardShortcutsModal } from './components/CANKeyboardShortcutsModal';
 import { useTranslation } from '../../../i18n/context';
+import { detectCANTraffic } from '../../../engines/SmartListen';
+import { SmartListenOverlay } from '../../shared/SmartListenOverlay';
 import type { CANBaudRate } from '../../../can/types/CANBusState';
 import type { CANArbitrationEvent } from '../../../can/types/CANFrame';
 import { MEDICAL_PROFILE_COLORS, type CANNode } from '../../../can/types/CANNode';
 import { loadCANProfiles, type CANProfile } from '../../../can/store/canProfileStorage';
 
-type CenterTab = 'bus' | 'nodes' | 'arbitration' | 'log' | 'fault' | 'automation' | 'compliance';
+type CenterTab = 'bus' | 'nodes' | 'arbitration' | 'log' | 'fault' | 'diagnostics' | 'automation' | 'compliance';
 type RightPanel = 'inspector' | 'vitals';
 
 const BAUD_RATES: CANBaudRate[] = [125, 250, 500, 1000];
+const TAB_ORDER: CenterTab[] = ['bus', 'nodes', 'arbitration', 'log', 'fault', 'diagnostics', 'automation', 'compliance'];
 
 
 
@@ -49,15 +55,20 @@ export default function CANDashboard() {
     toggleArbitrationDisplay, toggleErrorDisplay,
     injectFault, recoverNode, setOutputMode,
     connectSerial, disconnectSerial, connectNetwork, disconnectNetwork,
-    startRecording, stopRecording
+    startRecording, stopRecording, sendFrame,
+    sendUDSRequest, setUDSConfig,
+    setErrorInjectionConfig, armErrorInjection
   } = useCANContext();
 
   const [showAddNode, setShowAddNode] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [vitalsNodeId, setVitalsNodeId] = useState<number | null>(null);
   const [editingNode, setEditingNode] = useState<CANNode | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>('inspector');
   const [activeTab, setActiveTab] = useState<CenterTab>('bus');
+  const [isSmartListenActive, setIsSmartListenActive] = useState(false);
 
   const [profiles] = useState<CANProfile[]>(() => loadCANProfiles());
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -72,7 +83,8 @@ export default function CANDashboard() {
       setBaudRate(p.baudRate);
       // Slight delay so worker processes removes before adds
       setTimeout(() => {
-        p.nodes.forEach(n => addNode({
+        const nodes = Array.isArray(p.nodes) ? p.nodes : [];
+        nodes.forEach(n => addNode({
           id: n.id, name: n.name, profile: n.profile,
           color: MEDICAL_PROFILE_COLORS[n.profile],
           baseArbitrationId: n.baseArbitrationId,
@@ -121,11 +133,58 @@ export default function CANDashboard() {
     () => state.nodes.find(n => n.id === (selectedFrame?.nodeId ?? -1)) ?? undefined,
     [state.nodes, selectedFrame]
   );
+  const smartListenResult = useMemo(
+    () => detectCANTraffic(state.recentFrames, state.baudRate),
+    [state.recentFrames, state.baudRate]
+  );
 
   const isRunning = state.status === 'running';
   const isPaused  = state.status === 'paused';
   const isStopped = state.status === 'stopped';
   const canStart  = state.nodes.filter(n => n.isActive).length > 0;
+
+  const handleSmartListenSync = useCallback(() => {
+    if (smartListenResult.baudRate) {
+      setBaudRate((smartListenResult.baudRate / 1000) as CANBaudRate);
+    }
+    setActiveTab('bus');
+    setIsSmartListenActive(false);
+  }, [setBaudRate, smartListenResult.baudRate]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (isInput) return;
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          if (isStopped && canStart) start();
+          else if (isRunning) pause();
+          else if (isPaused) resume();
+          break;
+        case 'Escape':
+          if (showShortcuts) { setShowShortcuts(false); break; }
+          if (!isStopped) stop();
+          break;
+        case '?':
+          setShowShortcuts(s => !s);
+          break;
+        case 'n': case 'N':
+          setShowAddNode(true);
+          break;
+        case 'c': case 'C':
+          clearFrames();
+          break;
+        case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8':
+          setActiveTab(TAB_ORDER[parseInt(e.key) - 1]);
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isStopped, isRunning, isPaused, canStart, start, pause, resume, stop, clearFrames, showShortcuts]);
 
   const TABS: Array<{ id: CenterTab; icon: React.ElementType; label: string; color: string; shadow: string }> = [
     { id: 'bus',         icon: Radio,        label: t('can.busMonitor'),       color: 'bg-cyan-600',    shadow: 'shadow-cyan-900/40' },
@@ -133,6 +192,7 @@ export default function CANDashboard() {
     { id: 'arbitration', icon: Shuffle,      label: t('can.arbitration'),      color: 'bg-purple-600',  shadow: 'shadow-purple-900/40' },
     { id: 'log',         icon: ScrollText,   label: t('can.log'),              color: 'bg-gray-600',    shadow: 'shadow-gray-900/40' },
     { id: 'fault',       icon: Zap,          label: t('can.faultInjection'),   color: 'bg-red-700',     shadow: 'shadow-red-900/40' },
+    { id: 'diagnostics', icon: Stethoscope,  label: 'Diagnostics',             color: 'bg-cyan-700',    shadow: 'shadow-cyan-900/40' },
     { id: 'automation',  icon: Zap,          label: t('can.automation') ?? 'Automation', color: 'bg-purple-700',  shadow: 'shadow-purple-900/40' },
     { id: 'compliance',  icon: ShieldCheck,  label: t('can.compliance'),       color: 'bg-emerald-700', shadow: 'shadow-emerald-900/40' },
   ];
@@ -158,6 +218,13 @@ export default function CANDashboard() {
 
       {/* Main area */}
       <div className="flex-1 min-h-0 flex relative bg-[#0a0a0d] overflow-hidden">
+        <SmartListenOverlay
+          active={isSmartListenActive}
+          result={smartListenResult}
+          onStart={() => setIsSmartListenActive(true)}
+          onCancel={() => setIsSmartListenActive(false)}
+          onSync={handleSmartListenSync}
+        />
 
         {/* ── Left panel: Node list ── */}
         <div
@@ -203,6 +270,11 @@ export default function CANDashboard() {
                     onToggle={() => updateNode(node.id, { isActive: !node.isActive })}
                     onRemove={() => removeNode(node.id)}
                     onEdit={() => setEditingNode(node)}
+                    onViewVitals={() => {
+                      setVitalsNodeId(node.id);
+                      setRightPanel('vitals');
+                      setIsRightPanelOpen(true);
+                    }}
                   />
                 ))
               )}
@@ -301,12 +373,19 @@ export default function CANDashboard() {
               {t('can.err')}
             </button>
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-1">
               <button
                 onClick={clearFrames}
                 className="px-2 py-1 text-[10px] font-mono text-gray-500 hover:text-gray-300 border border-gray-700/50 rounded transition-colors"
               >
                 {t('can.clear')}
+              </button>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="px-2 py-1 text-[10px] font-mono text-gray-500 hover:text-orange-400 border border-gray-700/50 hover:border-orange-800/60 rounded transition-colors"
+                title={t('can.canShortcutsShowShortcuts')}
+              >
+                ?
               </button>
             </div>
           </div>
@@ -354,7 +433,10 @@ export default function CANDashboard() {
                   filter={state.displayFilter}
                   selectedFrameUid={state.selectedFrameUid}
                   showErrorFrames={state.showErrorFrames}
+                  canSend={isRunning || state.networkConnected || state.serialConnected}
                   onSelectFrame={selectFrame}
+                  onSendFrame={sendFrame}
+                  onClear={clearFrames}
                 />
               )}
               {activeTab === 'nodes' && <NodesTab state={state} updateNode={updateNode} removeNode={removeNode} selectNode={selectNode} onEdit={setEditingNode} />}
@@ -367,6 +449,20 @@ export default function CANDashboard() {
                   onInject={injectFault}
                   onRecover={recoverNode}
                   onSelectNode={selectNode}
+                  errorInjection={state.errorInjection}
+                  onSetErrorInjectionConfig={setErrorInjectionConfig}
+                  onArmErrorInjection={armErrorInjection}
+                  isRunning={isRunning}
+                />
+              )}
+              {activeTab === 'diagnostics' && (
+                <DiagnosticTerminal
+                  frames={state.recentFrames}
+                  nodes={state.nodes}
+                  isRunning={isRunning}
+                  config={state.udsConfig}
+                  onSendRequest={sendUDSRequest}
+                  onSetConfig={setUDSConfig}
                 />
               )}
               {activeTab === 'automation' && (
@@ -374,8 +470,12 @@ export default function CANDashboard() {
                   nodes={state.nodes}
                   elapsedMs={state.elapsedMs}
                   status={state.status}
+                  frames={state.recentFrames}
+                  networkConnected={state.networkConnected}
+                  serialConnected={state.serialConnected}
                   onInjectFault={injectFault}
                   onRecoverNode={recoverNode}
+                  onSendFrame={sendFrame}
                 />
               )}
               {activeTab === 'compliance' && <CompliancePanel state={state} />}
@@ -425,7 +525,7 @@ export default function CANDashboard() {
               {rightPanel === 'inspector' && (
                 <FrameInspector frame={selectedFrame} node={selectedFrameNode} />
               )}
-              {rightPanel === 'vitals' && <VitalsPanel nodes={state.nodes} />}
+              {rightPanel === 'vitals' && <VitalsPanel nodes={state.nodes} focusNodeId={vitalsNodeId} onEdit={(node) => setEditingNode(node)} />}
             </div>
           </div>
         </div>
@@ -446,8 +546,11 @@ export default function CANDashboard() {
           onClose={() => setEditingNode(null)}
         />
       )}
+
+      <CANKeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
     </div>
   );
 }
-
-

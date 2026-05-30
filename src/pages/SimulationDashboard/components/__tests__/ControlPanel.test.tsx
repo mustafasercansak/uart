@@ -403,4 +403,26 @@ describe('ControlPanel — alarm thresholds', () => {
       render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper })
     ).not.toThrow();
   });
+
+  it('handles range field with min === max without dividing by zero', () => {
+    // range = 0 → `|| 1` fallback in ControlPanel
+    const field = makeRangeField('flat', 'Flat', 50, 50);
+    expect(() =>
+      render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper })
+    ).not.toThrow();
+  });
+
+  it('triggers auto-scroll effect when logEntries are updated', () => {
+    const { rerender } = render(<ControlPanel {...defaultProps} logEntries={[]} />, { wrapper });
+    // Rerender with new log entries — effect fires and tries to scroll logRef.current
+    expect(() =>
+      rerender(
+        <ControlPanel
+          {...defaultProps}
+          logEntries={[{ type: 'info', time: '00:00:01.000', text: 'New entry' }]}
+        />
+      )
+    ).not.toThrow();
+  });
+
 });

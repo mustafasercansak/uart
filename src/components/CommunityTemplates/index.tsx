@@ -85,13 +85,10 @@ export default function CommunityTemplates() {
   }, [retryCount]);
 
   const submitActiveProfile = () => {
-    const profileId = state.profileId;
-    if (!profileId) return;
-
-    const profile = getProfile(profileId);
+    const profile = getProfile(`${state.profileId}`);
     if (!profile) return;
 
-    const scenarios = loadScenarios().filter((s) => s.profileId === profileId);
+    const scenarios = loadScenarios().filter((s) => s.profileId === profile.id);
 
     const template: SensorTemplate = {
       id: `community-${profile.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,

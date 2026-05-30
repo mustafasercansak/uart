@@ -222,9 +222,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   // ── SERIAL / NETWORK ──────────────────────────────────────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
     await invoke('connect_serial', { portName, baudRate }).catch((e: unknown) => {
-      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Seri port hatası: ${e}` });
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.serialPortError', { error: e }) });
     });
-  }, []);
+  }, [dispatch, t]);
 
   const disconnectSerial = useCallback(async () => {
     await invoke('disconnect_serial').catch(console.error);
@@ -242,7 +242,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
 
       await invoke('start_tcp_server', { port }).catch((e: unknown) => {
-        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `TCP Sunucu hatası: ${e}` });
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.tcpServerError', { error: e }) });
       });
       return;
     }
@@ -259,7 +259,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
 
       await invoke('connect_tcp', { host, port }).catch((e: unknown) => {
-        dispatch({ type: 'ADD_LOG', entryType: 'error', text: `TCP hatası: ${e}` });
+        dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.tcpError', { error: e }) });
       });
       return;
     }
@@ -365,18 +365,18 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   const saveRecording = useCallback(async (name: string, data: Array<{ time: number; frame: GeneratedFrame }>) => {
     await invoke('save_recording', { name, data }).catch((e: unknown) => {
-      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Kayıt kaydedilemedi: ${e}` });
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.recordingSaveFailed', { error: e }) });
     });
-  }, [dispatch]);
+  }, [dispatch, t]);
 
   const deleteRecording = useCallback(async (id: string) => {
     await invoke('delete_recording', { id }).catch((e: unknown) => {
-      dispatch({ type: 'ADD_LOG', entryType: 'error', text: `Kayıt silinemedi: ${e}` });
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.recordingDeleteFailed', { error: e }) });
     });
-  }, [dispatch]);
+  }, [dispatch, t]);
 
   const refreshRecordings = useCallback(async () => {
-    const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch(() => []);
+    const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch((e) => { console.error('[recordings] list failed:', e); return []; });
     msgBufferRef.current.push(JSON.stringify({ type: 'RECORDINGS_LIST', recordings }));
   }, [msgBufferRef]);
 

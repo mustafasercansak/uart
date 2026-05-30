@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Globe, ArrowLeft, Plus, Edit3, Circle, Square, FileDown } from 'lucide-react';
+import { Globe, HelpCircle, Plus, Edit3, Circle, Square, FileDown, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { OutputMode } from '../../../../types';
 import type { CANBusState } from '../../../../can/types/CANBusState';
 import type { CANProfile } from '../../../../can/store/canProfileStorage';
 import { useTranslation } from '../../../../i18n/context';
+import { translateBackendError } from '../../../../utils/backendError';
 
 interface CANStatBarProps {
   state: CANBusState;
@@ -33,8 +34,7 @@ export function CANStatBar({
   const navigate = useNavigate();
 
   const [selectedPort, setSelectedPort] = useState('COM1');
-  const [tcpHost, setTcpHost] = useState('127.0.0.1');
-  const [tcpPort, setTcpPort] = useState('2000');
+  const [socketCanInterface, setSocketCanInterface] = useState('vcan0');
 
   const elapsed = state.elapsedMs;
   const h = Math.floor(elapsed / 3600000).toString().padStart(2, '0');
@@ -88,7 +88,7 @@ export function CANStatBar({
           disabled={state.status !== 'stopped'}
         >
           <option value="">— {t('dashboard.profile')} —</option>
-          {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {profiles.map((p) => <option key={p.id} value={p.id}>{t(p.name) !== p.name ? t(p.name) : p.name}</option>)}
         </select>
         <div className="flex items-center gap-0.5">
           <button 
@@ -160,28 +160,24 @@ export function CANStatBar({
             <>
               <input 
                 type="text" 
-                value={tcpHost}
-                onChange={(e) => setTcpHost(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-16 focus:border-cyan-500"
-                placeholder="127.0.0.1"
+                value={socketCanInterface}
+                onChange={(e) => setSocketCanInterface(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-20 focus:border-cyan-500"
+                placeholder="vcan0"
                 disabled={state.status !== 'stopped'}
               />
-              <span className="text-[8.5px] text-gray-500 font-mono">:</span>
-              <input 
-                type="text" 
-                value={tcpPort}
-                onChange={(e) => setTcpPort(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-10 focus:border-cyan-500"
-                placeholder="2000"
-                disabled={state.status !== 'stopped'}
-              />
-              <button 
-                onClick={() => onConnectNetwork(`tcp://${tcpHost}:${tcpPort}`)}
-                disabled={state.status !== 'stopped' || !tcpPort || !tcpHost}
+              <button
+                onClick={() => onConnectNetwork(socketCanInterface)}
+                disabled={state.status !== 'stopped' || !socketCanInterface}
                 className="px-1.5 py-0.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-30 text-white text-[8.5px] font-mono rounded font-bold transition-all"
               >
                 {t('dashboard.connect')}
               </button>
+              {state.networkError && (
+                <span className="text-[8px] text-rose-400 font-mono max-w-32 truncate" title={translateBackendError(t, state.networkError)}>
+                  ✗ {translateBackendError(t, state.networkError)}
+                </span>
+              )}
             </>
           ) : (
             <button 
@@ -241,13 +237,22 @@ export function CANStatBar({
 
         <div className="w-px h-3 bg-gray-800 mx-1" />
 
-        {/* Back to UART */}
+        {/* Labels / Translations */}
         <button
-          onClick={() => navigate('/')}
-          className="p-1 rounded hover:bg-gray-800 text-gray-500 hover:text-white transition-all border border-transparent hover:border-gray-700"
-          title="UART"
+          onClick={() => navigate('/translations')}
+          className="p-1 rounded hover:bg-gray-800 text-gray-500 hover:text-cyan-400 transition-all border border-transparent hover:border-cyan-800/50"
+          title={t('nav.translations')}
         >
-          <ArrowLeft size={11} />
+          <Tag size={11} />
+        </button>
+
+        {/* Help */}
+        <button
+          onClick={() => navigate('/help')}
+          className="p-1 rounded hover:bg-gray-800 text-gray-500 hover:text-orange-400 transition-all border border-transparent hover:border-orange-800/50"
+          title={t('nav.help') ?? 'Help'}
+        >
+          <HelpCircle size={11} />
         </button>
 
         <div className="w-px h-3 bg-gray-800 mx-0.5" />

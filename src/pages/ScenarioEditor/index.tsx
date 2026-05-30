@@ -301,7 +301,7 @@ export default function ScenarioEditor() {
                     <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1">
                       <input type="number" step={100} value={scenario.durationMs || 10000} onChange={(e) => updateScenario({ durationMs: Number(e.target.value) })}
                         className="bg-transparent text-[10px] font-mono text-green-500 w-16 outline-none text-right" />
-                      <span className="text-[9px] text-gray-600 font-mono uppercase">ms</span>
+                      <span className="text-[9px] text-gray-600 font-mono uppercase">{t('common.unitMs')}</span>
                     </div>
                   </div>
                 </div>

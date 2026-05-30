@@ -84,32 +84,41 @@ html, body {
 }
 
 html.light {
-  --color-gray-50: #030712;
-  --color-gray-100: #111827;
-  --color-gray-200: #1f2937;
-  --color-gray-300: #374151;
-  --color-gray-400: #4b5563;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #9ca3af;
-  --color-gray-700: #d1d5db;
-  --color-gray-800: #e5e7eb;
-  --color-gray-900: #f3f4f6;
-  --color-gray-950: #ffffff;
-  
-  --color-black: #f8fafc;
-  --color-white: #0f172a;
-  
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-  
-  --color-yellow-400: #a16207;
-  --color-yellow-500: #854d0e;
+  /* Background scale: cool blue-gray, not pure white */
+  --color-gray-50:  #060f1e;
+  --color-gray-100: #0f1f35;
+  --color-gray-200: #1c2e47;
+  --color-gray-300: #2e4260;
+  --color-gray-400: #4a6080;
+  --color-gray-500: #6b839f;
+  --color-gray-600: #8fa4bc;
+  --color-gray-700: #b8c9da;
+  --color-gray-800: #d4e0ea;   /* card / panel backgrounds */
+  --color-gray-900: #e4ecf3;   /* main content background */
+  --color-gray-950: #eef3f8;   /* page background — soft blue-gray */
+
+  --color-black: #eef3f8;
+  --color-white: #0f1f35;
+
+  /* Glass panels: translucent cool-white */
+  --glass-bg: rgba(228, 236, 243, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.09);
+  --glass-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+
+  /* Accent/status colors — more saturated so they stay visible on light bg */
+  --color-yellow-400: #b45309;
+  --color-yellow-500: #92400e;
   --color-orange-400: #c2410c;
+  --color-orange-700: #9a3412;
   --color-blue-400: #1d4ed8;
+  --color-blue-500: #1e40af;
   --color-emerald-400: #047857;
   --color-emerald-500: #065f46;
-  
+  --color-cyan-400: #0e7490;
+  --color-cyan-500: #155e75;
+  --color-green-400: #166534;
+  --color-red-400: #b91c1c;
+
   color-scheme: light;
 }
 
@@ -143,8 +152,8 @@ html.light {
   height: 4px;
 }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #374151; }
+::-webkit-scrollbar-thumb { background: var(--color-gray-700, #1f2937); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-gray-600, #374151); }
 
 /* ── uPlot dark-mode overrides ── */
 .uplot-dark .uplot,

@@ -397,4 +397,36 @@ describe('ScenarioEngine', () => {
         } as unknown as Scenario;
         expect(tickScenarioEngine(scenario2, mockProfile, mockState).executedSteps.length).toBe(1);
     });
+
+    it('handles bit target type — set overrides a specific bit', () => {
+        const profileWithFlags: FrameProfile = {
+            id: 'pf',
+            fields: [
+                {
+                    id: 'flags', name: 'STATUS', order: 0, byteWidth: 1,
+                    type: 'flags',
+                    typeConfig: { bits: [{ index: 0, name: 'alarm', label: 'A', defaultValue: 0, behavior: 'fixed', behaviorConfig: {} }] },
+                },
+            ],
+        } as unknown as FrameProfile;
+
+        // atMs must equal mockState.elapsedMs (1000) for the step to fire
+        const scenario: Scenario = {
+            steps: [{
+                id: 'b1', atMs: 1000, target: 'bit:STATUS.alarm', action: 'set', actionConfig: { value: 1 },
+            }]
+        } as unknown as Scenario;
+
+        const result = tickScenarioEngine(scenario, profileWithFlags, mockState);
+        expect(result.executedSteps.map(s => s.id)).toContain('b1');
+        expect(result.updates.bitOverrides?.['flags.alarm']).toBe(1);
+    });
+
+    it('returns empty newState for bit target with missing field or subName', () => {
+        const scenario: Scenario = {
+            steps: [{ id: 'b2', atMs: 1000, target: 'bit:NONEXISTENT.flag', action: 'set', actionConfig: { value: 1 } }]
+        } as unknown as Scenario;
+        const result = tickScenarioEngine(scenario, mockProfile, mockState);
+        expect(result.executedSteps).toHaveLength(0);
+    });
 });

@@ -1,7 +1,8 @@
-import { Pencil } from 'lucide-react';
+import { Pencil, HeartPulse } from 'lucide-react';
 import type { CANNode } from '../../../../can/types/CANNode';
 import { MEDICAL_PROFILE_LABELS } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
+import { resolveNodeName } from '../../../../can/utils/nodeNameResolver';
 
 interface NodeCardProps {
   node: CANNode;
@@ -10,6 +11,7 @@ interface NodeCardProps {
   onToggle: () => void;
   onRemove: () => void;
   onEdit?: () => void;
+  onViewVitals?: () => void;
 }
 
 const NMT_BADGE: Record<CANNode['nmtState'], string> = {
@@ -19,7 +21,7 @@ const NMT_BADGE: Record<CANNode['nmtState'], string> = {
   'stopped':         'text-red-400',
 };
 
-export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdit }: NodeCardProps) {
+export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdit, onViewVitals }: NodeCardProps) {
   const { t } = useTranslation();
   
   const STATE_BADGE: Record<CANNode['state'], { label: string; cls: string }> = {
@@ -43,7 +45,7 @@ export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdi
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: node.color }} />
-          <span className="text-xs font-mono font-bold text-white">{node.name}</span>
+          <span className="text-xs font-mono font-bold text-white">{resolveNodeName(node.name, t)}</span>
           <span className="text-[10px] font-mono text-gray-500">#{node.id}</span>
         </div>
         <div className="flex items-center gap-1">
@@ -57,6 +59,15 @@ export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdi
           >
             {node.isActive ? t('can.on') : t('can.off')}
           </button>
+          {onViewVitals && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewVitals(); }}
+              className="text-gray-600 hover:text-red-400 p-0.5 transition-colors"
+              title={t('can.vitals')}
+            >
+              <HeartPulse size={10} />
+            </button>
+          )}
           {onEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -109,9 +120,9 @@ export function NodeCard({ node, isSelected, onSelect, onToggle, onRemove, onEdi
       {/* Vitals preview */}
       {node.isActive && (
         <div className="grid grid-cols-3 gap-1">
-          <VitalChip label={t('can.heartRate')} value={node.vitals.heartRate.toFixed(0)} unit="bpm" warn={!!(node.vitals.alarmFlags & 0x01)} />
+          <VitalChip label={t('can.heartRate')} value={node.vitals.heartRate.toFixed(0)} unit={t('common.unitBpm')} warn={!!(node.vitals.alarmFlags & 0x01)} />
           <VitalChip label={t('can.spO2')} value={node.vitals.spO2.toFixed(1)} unit="%" warn={!!(node.vitals.alarmFlags & 0x02)} />
-          <VitalChip label={t('can.temp')} value={node.vitals.temperature.toFixed(1)} unit="°C" warn={!!(node.vitals.alarmFlags & 0x08)} />
+          <VitalChip label={t('can.temp')} value={node.vitals.temperature.toFixed(1)} unit={t('common.unitDegC')} warn={!!(node.vitals.alarmFlags & 0x08)} />
         </div>
       )}
     </div>

@@ -4177,6 +4177,7 @@ name = "uart"
 version = "1.6.0"
 dependencies = [
  "dirs-next",
+ "libc",
  "once_cell",
  "serde",
  "serde_json",

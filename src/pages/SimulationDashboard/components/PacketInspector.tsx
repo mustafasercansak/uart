@@ -3,7 +3,7 @@ import { X, Activity, Camera, Code2, Copy, FileJson, Hash, ChartLine, Gauge as G
 import { useSimulation } from '../../../hooks/useSimulation';
 import { parseFrame } from '../../../engines/FrameParser';
 import { useTranslation } from '../../../i18n/context';
-import type { FrameProfile, Exchange, GeneratedFrame } from '../../../types';
+import type { FrameProfile, Exchange, GeneratedFrame, ParsedField } from '../../../types';
 
 interface PacketInspectorProps {
   exchange: Exchange | null;
@@ -34,19 +34,24 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
   };
 
   // Decide which frame to show primary or show comparison
-  const txFrame = exchange.tx ? {
-      ...exchange.tx,
-      rawBytes: exchange.tx.rawHex.split(' ').map(h => parseInt(h, 16)),
-      fields: profile ? parseFrame(profile, exchange.tx.rawHex.split(' ').map(h => parseInt(h, 16))) || [] : []
-  } : null;
+  const toFrame = (entry: { id: string; timestamp: number; rawHex: string }): GeneratedFrame => {
+    const rawBytes = entry.rawHex.split(' ').map(h => parseInt(h, 16));
+    const fields: ParsedField[] = profile ? parseFrame(profile, rawBytes) || [] : [];
+    return {
+      uId: entry.id,
+      frameNumber: 0,
+      timestampMs: entry.timestamp,
+      rawHex: entry.rawHex,
+      rawBytes,
+      fields,
+      errors: [],
+    };
+  };
 
-  const rxFrame = exchange.rx ? {
-      ...exchange.rx,
-      rawBytes: exchange.rx.rawHex.split(' ').map(h => parseInt(h, 16)),
-      fields: profile ? parseFrame(profile, exchange.rx.rawHex.split(' ').map(h => parseInt(h, 16))) || [] : []
-  } : null;
+  const txFrame: GeneratedFrame | null = exchange.tx ? toFrame(exchange.tx) : null;
+  const rxFrame: GeneratedFrame | null = exchange.rx ? toFrame(exchange.rx) : null;
 
-  const renderFieldTable = (frame: { fields: import('../../../types').ParsedField[]; rawHex: string }, label: string, colorClass: string) => (
+  const renderFieldTable = (frame: { fields: ParsedField[]; rawHex: string }, label: string, colorClass: string) => (
     <div className="flex-1 flex flex-col min-h-0 border border-gray-800 rounded-lg overflow-hidden bg-gray-900/20 shadow-inner">
       <div className={`px-3 py-2 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between`}>
         <span className={`text-[10px] font-bold uppercase tracking-widest ${colorClass}`}>{label}</span>
@@ -151,7 +156,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
            <button 
             onClick={() => {
                 const primaryFrame = txFrame || rxFrame;
-                if (primaryFrame) saveSnapshot(primaryFrame as unknown as import('../../../types').GeneratedFrame);
+                if (primaryFrame) saveSnapshot(primaryFrame);
             }}
             className="p-1.5 text-gray-400 hover:text-white transition-all bg-white/5 border border-white/10 rounded-lg shadow-xl"
             title={t('inspector.snapshot')}

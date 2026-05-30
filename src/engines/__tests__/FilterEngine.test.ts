@@ -22,6 +22,8 @@ describe('FilterEngine', () => {
             expect(FilterEngine.validate('bpm > 100').isValid).toBe(true);
             expect(FilterEngine.validate('status == error').isValid).toBe(true);
             expect(FilterEngine.validate('data contains "AA"').isValid).toBe(true);
+            expect(FilterEngine.validate('').isValid).toBe(true);
+            expect(FilterEngine.validate('label == "value with spaces"').isValid).toBe(true);
         });
 
         it('identifies invalid tokens', () => {
@@ -37,7 +39,9 @@ describe('FilterEngine', () => {
     describe('evaluate', () => {
         it('filters by basic status', () => {
             expect(FilterEngine.evaluate(mockExchange, 'error')).toBe(true);
+            expect(FilterEngine.evaluate({ ...mockExchange, isLoopbackMatch: true }, 'err')).toBe(false);
             expect(FilterEngine.evaluate(mockExchange, 'tx')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'rx-only', rx: mockExchange.rx } as unknown as Exchange, 'rx')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, '!error')).toBe(false);
         });
 
@@ -67,13 +71,17 @@ describe('FilterEngine', () => {
         it('filters by additional standard fields', () => {
             expect(FilterEngine.evaluate(mockExchange, 'id == ex1')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'status == ok')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'nostatus', tx: { rawHex: 'AA' } } as unknown as Exchange, 'status == ok')).toBe(true);
+            expect(FilterEngine.evaluate({ id: 'rx-only', rx: { rawHex: 'DD EE', status: 'ok' } } as unknown as Exchange, 'src == rx')).toBe(true);
             expect(FilterEngine.evaluate(mockExchange, 'hex contains "AA BB"')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'data contains "11 22"')).toBe(false);
             expect(FilterEngine.evaluate(mockExchange, 'rx')).toBe(true);
         });
 
         it('handles unknown fields and fallback search', () => {
              // Unknown field should return false
              expect(FilterEngine.evaluate(mockExchange, 'unknown_field == 1')).toBe(false);
+             expect(FilterEngine.evaluate({ id: 'empty' } as unknown as Exchange, 'latency == 0')).toBe(false);
              
              // Fallback search via evaluateCondition (bypassing shortcut with logical op)
              // mockExchange.tx.rawHex is 'AA BB CC'
@@ -88,6 +96,7 @@ describe('FilterEngine', () => {
 
         it('handles logical OR (||)', () => {
             expect(FilterEngine.evaluate(mockExchange, 'latency > 20 || src == tx')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency > 20 || src == rx')).toBe(false);
         });
 
         it('filters by profile fields', () => {
@@ -123,6 +132,47 @@ describe('FilterEngine', () => {
         it('covers default branch in evaluateCondition', () => {
             // Craft a condition that has an unknown operator to hit 'default' in switch
             expect(FilterEngine.evaluate(mockExchange, 'latency ??? 10')).toBe(false);
+        });
+
+        it('matches a symbolic operator with no surrounding spaces', () => {
+            // latency==15 — operator detected via bare indexOf fallback (lines 105-109)
+            expect(FilterEngine.evaluate(mockExchange, 'latency==15')).toBe(true);
+            expect(FilterEngine.evaluate(mockExchange, 'latency==99')).toBe(false);
+        });
+
+        it('handles quick hex search when only one side of exchange exists', () => {
+            const txOnly = { id: 'tx-only', tx: { rawHex: 'AA BB' } } as unknown as Exchange;
+            const rxOnly = { id: 'rx-only', rx: { rawHex: 'CC DD' } } as unknown as Exchange;
+
+            expect(FilterEngine.evaluate(txOnly, 'AA')).toBe(true);
+            expect(FilterEngine.evaluate(rxOnly, 'DD')).toBe(true);
+        });
+
+        it('uses latency fallback when latencyMs is undefined', () => {
+            const noLatency = { id: 'nolat', tx: { rawHex: 'AA' } } as unknown as Exchange;
+            expect(FilterEngine.evaluate(noLatency, 'latency == 0')).toBe(true);
+        });
+
+        it('returns false when profile parsing fails due insufficient bytes', () => {
+            const shortExchange = { id: 'short', tx: { rawHex: 'AA' } } as unknown as Exchange;
+            const wideProfile: FrameProfile = {
+                id: 'wide',
+                fields: [{ id: 'f1', name: 'CMD', order: 0, byteWidth: 2, endianness: 'big', type: 'fixed', typeConfig: { value: 0 } }],
+            } as unknown as FrameProfile;
+            expect(FilterEngine.evaluate(shortExchange, 'cmd == 1', wideProfile)).toBe(false);
+        });
+
+        it('does not treat zero-valued flags as truthy lookups', () => {
+            const profileWithFlag: FrameProfile = {
+                id: 'p3',
+                fields: [
+                    { id: 'f3', name: 'STATUS', order: 0, byteWidth: 1, type: 'flags', typeConfig: { bits: [{ index: 0, name: 'error', label: 'E' }] } }
+                ]
+            } as unknown as FrameProfile;
+            const exchangeWithZeroFlag: Exchange = {
+                tx: { rawHex: '00' }
+            } as unknown as Exchange;
+            expect(FilterEngine.evaluate(exchangeWithZeroFlag, 'error == 0', profileWithFlag)).toBe(false);
         });
     });
 });

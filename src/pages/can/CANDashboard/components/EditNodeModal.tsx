@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CANNode, CANMedicalProfile } from '../../../../can/types/CANNode';
 import { MEDICAL_PROFILE_LABELS, MEDICAL_PROFILE_COLORS } from '../../../../can/types/CANNode';
 import { useTranslation } from '../../../../i18n/context';
+import { resolveNodeName } from '../../../../can/utils/nodeNameResolver';
 
 interface EditNodeModalProps {
   node: CANNode;
@@ -14,7 +15,8 @@ const PROFILES = Object.entries(MEDICAL_PROFILE_LABELS) as [CANMedicalProfile, s
 export function EditNodeModal({ node, onSave, onClose }: EditNodeModalProps) {
   const { t } = useTranslation();
 
-  const [name, setName] = useState(node.name);
+  const resolvedOriginalName = resolveNodeName(node.name, t);
+  const [name, setName] = useState(resolvedOriginalName);
   const [profile, setProfile] = useState<CANMedicalProfile>(node.profile);
   const [baseId, setBaseId] = useState(node.baseArbitrationId);
   const [intervalMs, setIntervalMs] = useState(node.sendIntervalMs);
@@ -22,10 +24,11 @@ export function EditNodeModal({ node, onSave, onClose }: EditNodeModalProps) {
 
   const handleSubmit = () => {
     if (!name.trim()) { setError(t('can.nodeNameRequired')); return; }
-    if (baseId < 0 || baseId > 0x7ff) { setError(t('can.arbIdRange')); return; }
+    // Allow up to 29-bit extended CAN IDs (0x1FFFFFFF) for J1939 / DBC-imported nodes.
+    if (baseId < 0 || baseId > 0x1FFFFFFF) { setError(t('can.arbIdRange')); return; }
 
     onSave(node.id, {
-      name: name.trim(),
+      name: name.trim() === resolvedOriginalName ? node.name : name.trim(),
       profile,
       color: MEDICAL_PROFILE_COLORS[profile],
       baseArbitrationId: baseId,

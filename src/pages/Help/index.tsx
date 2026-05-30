@@ -3,7 +3,9 @@ import ReactMarkdown from 'react-markdown';
 import { Book, FileText, Globe, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
+import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+import GithubSlugger from 'github-slugger';
 import { useTranslation } from '../../i18n/context';
 
 type DocType = 'master' | 'readme';
@@ -32,28 +34,18 @@ interface TocEntry {
 function extractToc(markdown: string): TocEntry[] {
   const lines = markdown.split('\n');
   const entries: TocEntry[] = [];
+  const slugger = new GithubSlugger();
   for (const line of lines) {
     const match = line.match(/^(#{1,3})\s+(.+)/);
     if (match) {
       const level = match[1].length;
       const rawText = match[2].replace(/[*_`~]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
-      // strip leading emojis/numbers for display
-      const text = rawText.replace(/^[\d]+\.\s+/, '').replace(/^[^\w\s]*\s*/, '').trim();
-      // build id matching react-markdown's heading id generation
-      const id = rawText
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-      if (text && level <= 2) {
+      // strip leading "20.1 " style numbers and leading emoji/symbols without touching unicode letters
+      const text = rawText.replace(/^[\d.]+\s+/, '').replace(/^\p{Emoji_Presentation}+\s*/u, '').trim();
+      const id = slugger.slug(rawText);
+      if (text && level <= 3) {
         entries.push({ id, text, level });
       }
-    }
-    // also capture <a name="..."> anchors from the markdown
-    const anchorMatch = line.match(/<a\s+name="([^"]+)"/);
-    if (anchorMatch) {
-      // next heading will be associated — skip, headings already captured
     }
   }
   return entries;
@@ -113,7 +105,11 @@ const HelpPage: React.FC = () => {
   }, [loading, content]);
 
   const scrollToSection = useCallback((id: string) => {
-    const el = contentRef.current?.querySelector(`#${id}, [id="${id}"], a[name="${id}"]`);
+    const root = contentRef.current;
+    if (!root) return;
+    const idSelector = `[id="${id}"]`;
+    const anchorSelector = `a[name="${id}"]`;
+    const el = root.querySelector(idSelector) ?? root.querySelector(anchorSelector);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -213,7 +209,7 @@ const HelpPage: React.FC = () => {
             ) : (
               <article className="prose prose-invert prose-blue max-w-none">
                 <ReactMarkdown
-                  rehypePlugins={[rehypeRaw as never]}
+                  rehypePlugins={[rehypeRaw as never, rehypeSlug]}
                   remarkPlugins={[remarkGfm]}
                   components={{
                     p: ({ node: _node, ...props }) => <div className="paragraph" {...props} />,

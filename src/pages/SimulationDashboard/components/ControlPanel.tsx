@@ -43,7 +43,7 @@ const ControlPanel = memo(({
 
   // Auto-scroll log
   useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+    logRef.current!.scrollTop = logRef.current!.scrollHeight;
   }, [logEntries]);
 
   return (

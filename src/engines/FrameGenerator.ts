@@ -207,7 +207,7 @@ export function generateFrame(
     for (const f of sortedFields) {
       if (f.type === 'checksum') continue;
       if (f.id === csFieldCfg.scope.startFieldId) inScope = true;
-      if (inScope) scopeBytes.push(...(fieldBytes[f.id] ?? []));
+      if (inScope) scopeBytes.push(...fieldBytes[f.id]);
       if (f.id === csFieldCfg.scope.endFieldId) break;
     }
 
@@ -220,7 +220,7 @@ export function generateFrame(
       reflectOut: csFieldCfg.reflectOut,
     });
 
-    namedValues[field.name] = checksumBytes[0] ?? 0;
+    namedValues[field.name] = checksumBytes[0];
     fieldBytes[field.id] = checksumBytes.slice(0, field.byteWidth);
   }
 
@@ -229,14 +229,14 @@ export function generateFrame(
   const parsedFields: ParsedField[] = [];
 
   for (const field of sortedFields) {
-    const bytes = fieldBytes[field.id] ?? Array(field.byteWidth).fill(0);
+    const bytes = fieldBytes[field.id];
     allBytes.push(...bytes);
 
     const decimalValue = bytes.length === 1
       ? bytes[0]
       : field.endianness === 'little'
-        ? bytes.reduce((acc, b, _i) => acc | (b << (_i * 8)), 0)
-        : bytes.reduce((acc, b) => (acc << 8) | b, 0);
+        ? (bytes.reduce((acc, b, _i) => acc | (b << (_i * 8)), 0) >>> 0)
+        : (bytes.reduce((acc, b) => (acc << 8) | b, 0) >>> 0);
 
     const hexStr = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
@@ -256,8 +256,8 @@ export function generateFrame(
   // Apply signal integrity noise (random bit flips)
   let finalBytes = [...allBytes];
 
-  if (state.signalIntegrity?.bitFlipsEnabled && state.signalIntegrity?.noiseLevel > 0) {
-    finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel);
+  if (state.signalIntegrity?.bitFlipsEnabled) {
+    finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel ?? 0);
   }
 
   // Apply error injection (one-shot logic errors)
