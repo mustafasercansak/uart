@@ -176,14 +176,12 @@ describe('UDS diagnostics over ISO-TP', () => {
   });
 
   it('schedules node recovery when targetNode is present for SID 0x11', () => {
-    // Covers line 502: `if (targetNode)` TRUE branch — requires nodes in engine
     vi.useFakeTimers();
     const engine = new CANSimulationEngine(structuredClone(INITIAL_CAN_STATE));
     const frames: CANFrame[] = [];
     engine.onFrame = f => frames.push(f);
     engine.setUDSConfig({ ...engine.getState().udsConfig, stMinMs: 0 });
 
-    // Add a node so getDiagnosticTargetNode(0x7e0) returns nodes[0]
     engine.addNode({ id: 1, name: 'ECU', profile: 'vital-monitor', color: '#fff', sendIntervalMs: 100, isActive: true, baseArbitrationId: 0x180 });
 
     engine.sendUDSRequest(0x7e0, [0x11, 0x01]);
@@ -192,6 +190,84 @@ describe('UDS diagnostics over ISO-TP', () => {
     const response = frames.find(f => f.arbitrationId === 0x7e8 && f.data[1] === 0x51);
     expect(response).toBeDefined();
 
+    vi.useRealTimers();
+  });
+
+  it('SID 0x2E: renames a node via WriteDID 0xF197 and returns positive response', () => {
+    vi.useFakeTimers();
+    const engine = new CANSimulationEngine(structuredClone(INITIAL_CAN_STATE));
+    const frames: CANFrame[] = [];
+    engine.onFrame = f => frames.push(f);
+    engine.setUDSConfig({ ...engine.getState().udsConfig, stMinMs: 0 });
+    engine.addNode({ id: 1, name: 'OldName', profile: 'vital-monitor', color: '#fff', sendIntervalMs: 100, isActive: true, baseArbitrationId: 0x180 });
+
+    const nameBytes = Array.from('NewName').map(c => c.charCodeAt(0));
+    engine.sendUDSRequest(0x7e0, [0x2e, 0xf1, 0x97, ...nameBytes]);
+    vi.runAllTimers();
+
+    // Positive response: SF PCI=0x07, SID=0x6e, DID high/low
+    const response = frames.find(f => f.arbitrationId === 0x7e8 && f.data[1] === 0x6e);
+    expect(response).toBeDefined();
+    expect(response?.data.slice(1, 4)).toEqual([0x6e, 0xf1, 0x97]);
+    expect(engine.getState().nodes[0].name).toBe('NewName');
+
+    vi.useRealTimers();
+  });
+
+  it('SID 0x2E: returns NRC 0x31 (requestOutOfRange) for empty name, not 0x13', () => {
+    vi.useFakeTimers();
+    const { engine, frames } = createEngine();
+    engine.addNode({ id: 1, name: 'Node', profile: 'vital-monitor', color: '#fff', sendIntervalMs: 100, isActive: true, baseArbitrationId: 0x180 });
+
+    // Payload with DID 0xF197 but only null/whitespace name bytes
+    engine.sendUDSRequest(0x7e0, [0x2e, 0xf1, 0x97, 0x00, 0x00]);
+    vi.runAllTimers();
+
+    const nrc = frames.find(f => f.arbitrationId === 0x7e8 && f.data[1] === 0x7f);
+    expect(nrc?.data.slice(1, 4)).toEqual([0x7f, 0x2e, 0x31]); // 0x31 not 0x13
+    vi.useRealTimers();
+  });
+
+  it('SID 0x2E: returns NRC 0x31 for unknown DID', () => {
+    vi.useFakeTimers();
+    const { engine, frames } = createEngine();
+
+    engine.sendUDSRequest(0x7e0, [0x2e, 0xde, 0xad, 0x01]);
+    vi.runAllTimers();
+
+    const nrc = frames.find(f => f.arbitrationId === 0x7e8 && f.data[1] === 0x7f);
+    expect(nrc?.data.slice(1, 4)).toEqual([0x7f, 0x2e, 0x31]);
+    vi.useRealTimers();
+  });
+
+  it('SID 0x22: returns NRC 0x31 when configured DID has an empty hex value', () => {
+    vi.useFakeTimers();
+    const { engine, frames } = createEngine();
+    engine.setUDSConfig({
+      ...engine.getState().udsConfig,
+      didResponses: [{ id: 'test', label: 'VIN', did: 0xf190, enabled: true, encoding: 'hex', value: '' }],
+    });
+
+    engine.sendUDSRequest(0x7e0, [0x22, 0xf1, 0x90]);
+    vi.runAllTimers();
+
+    // Empty hex value must return NRC, not a malformed positive response
+    const nrc = frames.find(f => f.arbitrationId === 0x7e8 && f.data[1] === 0x7f);
+    expect(nrc?.data.slice(1, 4)).toEqual([0x7f, 0x22, 0x31]);
+    vi.useRealTimers();
+  });
+
+  it('logs an error and starts fresh when a second FF arrives for an in-progress session', () => {
+    vi.useFakeTimers();
+    const { engine, logs } = createEngine();
+
+    // First FF opens a session (totalLength=15, needs CFs)
+    engine.sendCustomFrame(0x7e0, [0x10, 0x0f, 0x22, 0xf1, 0x90, 0xf1, 0x97, 0xf1]);
+    // Second FF on same arb ID before any CF — overwrites the first session
+    engine.sendCustomFrame(0x7e0, [0x10, 0x09, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00]);
+    vi.runAllTimers();
+
+    expect(logs.some(t => t.includes('interrupted in-progress session'))).toBe(true);
     vi.useRealTimers();
   });
 });

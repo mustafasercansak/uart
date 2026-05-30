@@ -448,6 +448,10 @@ export class CANSimulationEngine {
         this.log('rx', `ISO-TP FF (short) request len=${totalLength}; processing directly`);
         this.processUdsPayload(arbitrationId, responseId, payload.slice(0, totalLength));
       } else {
+        const existing = this.isotpRxSessions.get(arbitrationId);
+        if (existing) {
+          this.log('error', `ISO-TP FF on 0x${this.hexId(arbitrationId)} interrupted in-progress session (${existing.payload.length}/${existing.totalLength} bytes received); discarding old session`);
+        }
         this.isotpRxSessions.set(arbitrationId, {
           totalLength,
           payload,
@@ -528,7 +532,7 @@ export class CANSimulationEngine {
       const did = (payload[i] << 8) | payload[i + 1];
       const configured = this.state.udsConfig.didResponses.find(entry => entry.enabled && entry.did === did);
       const value = configured ? this.encodeDidValue(configured, targetNode) : null;
-      if (!value) return [0x7f, 0x22, 0x31];
+      if (!value || value.length === 0) return [0x7f, 0x22, 0x31];
       response.push((did >> 8) & 0xff, did & 0xff, ...value);
     }
     return response;
@@ -545,7 +549,9 @@ export class CANSimulationEngine {
         this.log('nmt', `UDS Write DID 0xF197: Updated Node ${targetNode.id} name to "${newName}"`);
         return [0x6e, 0xf1, 0x97];
       }
-      return [0x7f, 0x2e, 0x13];
+      // 0x31 = requestOutOfRange: message is structurally valid but content is unacceptable
+      // (empty name after trim). 0x13 would be wrong — it means length/format error.
+      return [0x7f, 0x2e, 0x31];
     }
     return [0x7f, 0x2e, 0x31];
   }

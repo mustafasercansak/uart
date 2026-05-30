@@ -303,4 +303,17 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
+## ✅ Closed — v1.6.0 v15 Code Review (2026-05-30)
+
+3 correctness bugs + 4 missing test suites; all fixed in the same session.
+
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 132 | 🟠 High | `CANSimulationEngine.ts` `buildReadDidResponse`: `if (!value)` falsy check does not catch an empty array — a DID response configured with `encoding:'hex'` and an empty value string causes `encodeDidValue` to return `[]`, the guard passes silently, and the positive response `0x62` is emitted with DID bytes but zero data bytes (malformed UDS) | UDS / CAN Simulation | Fixed: guard changed to `if (!value \|\| value.length === 0)` |
+| 133 | 🟠 High | `CANSimulationEngine.ts` `handleIsoTpFrame` FF path: a new First Frame arriving while an ISO-TP session is already in progress silently overwrites the existing session with no log — in-progress reassembly is lost; a tester retransmit or bus glitch discards a valid multi-frame request | CAN / ISO-TP | Fixed: `isotpRxSessions.get()` called before `set()`; if a session exists an error is logged ("interrupted in-progress session … bytes received") before it is replaced |
+| 134 | 🔵 Low | `CANSimulationEngine.ts` `buildWriteDidResponse`: returns NRC `0x13` (incorrectMessageLength) when the name payload is empty after trimming — the message length is structurally valid so `0x13` is wrong; per ISO 14229-1 the correct NRC is `0x31` (requestOutOfRange) | UDS / Protocol | Fixed: `return [0x7f, 0x2e, 0x31]` with explanatory comment |
+| — | 🧪 Tests | Missing coverage for SID `0x2E` (all four branches), `sweepIsoTpRxSessions` background timer, FF-interrupted-session log, empty-hex-DID NRC, `consumePendingSocketCANTx` zero-padding, and `buildIsoTpTxEntries` framing | Testing | Added: 6 tests to `UDSDiagnostics.test.ts`, 2 tests to `CANSimulationEngine.lifecycle.test.ts`, new `socketCANEchoMatching.test.ts` with 11 tests covering both helpers (800 total, all passing) |
+
+---
+
 *Last updated: 2026-05-30*

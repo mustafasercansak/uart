@@ -584,6 +584,41 @@ describe('CANSimulationEngine lifecycle and bus behavior', () => {
     engine.stop();
     expect(engine.getState().status).toBe('stopped');
   });
+
+  it('sweepIsoTpRxSessions evicts an orphaned FF session via the background interval', () => {
+    const { engine, logs } = createEngine();
+
+    engine.start();
+    engine.setUDSConfig({ ...engine.getState().udsConfig, stMinMs: 0 });
+
+    // Open an ISO-TP session by sending an FF but no CFs
+    engine.sendCustomFrame(0x7e0, [0x10, 0x0f, 0x22, 0xf1, 0x90, 0xf1, 0x97, 0xf1]);
+
+    // The sweep fires every 2000 ms and expires sessions older than 2000 ms.
+    // Advancing 4100 ms guarantees the second sweep fires with the session
+    // well past the 2 s threshold (effective max TTL is ~4 s by design).
+    vi.advanceTimersByTime(4100);
+
+    expect(logs.some(t => t.includes('expired'))).toBe(true);
+
+    engine.stop();
+  });
+
+  it('sweepIsoTpRxSessions does not fire after stop()', () => {
+    const { engine, logs } = createEngine();
+
+    engine.start();
+    engine.setUDSConfig({ ...engine.getState().udsConfig, stMinMs: 0 });
+    // Open a session, then stop the engine
+    engine.sendCustomFrame(0x7e0, [0x10, 0x0f, 0x22, 0xf1, 0x90, 0xf1, 0x97, 0xf1]);
+    engine.stop();
+
+    const logsBefore = logs.length;
+    // Advance well past 2 s — sweep timer should have been cancelled by stop()
+    vi.advanceTimersByTime(5000);
+
+    expect(logs.length).toBe(logsBefore); // no new expiry logs after stop
+  });
 });
 
 function makeNodeInput(id: number, patch: Record<string, unknown> = {}) {
