@@ -103,6 +103,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
   const workerRef = useRef<Worker | null>(null);
   const restartCountRef = useRef(0);
+  const stabilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // Tracks serial connection state synchronously (stateRef is only refreshed after render)
@@ -136,10 +137,16 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
       );
       workerRef.current = worker;
 
+      // Reset the crash counter after the worker has run stably for a full
+      // restart-delay window. Resetting on the first message would let a worker
+      // that crashes after every startup message bypass MAX_RESTARTS entirely.
+      if (stabilityTimerRef.current) clearTimeout(stabilityTimerRef.current);
+      stabilityTimerRef.current = setTimeout(() => {
+        restartCountRef.current = 0;
+        stabilityTimerRef.current = null;
+      }, RESTART_DELAY_MS * MAX_RESTARTS);
+
       worker.onmessage = (event: MessageEvent) => {
-        // Worker is alive — reset crash counter so intermittent faults don't
-        // permanently disable the restart path after MAX_RESTARTS total crashes.
-        if (restartCountRef.current > 0) restartCountRef.current = 0;
         const msg = event.data;
         if (!msg?.type) return;
 
@@ -208,6 +215,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
     const handleCrash = (reason: string) => {
       if (!isMountedRef.current) return;
+      if (stabilityTimerRef.current) { clearTimeout(stabilityTimerRef.current); stabilityTimerRef.current = null; }
       workerRef.current?.terminate();
       workerRef.current = null;
       dispatch({ type: 'CAN_SET_STATUS', status: 'stopped' });
@@ -236,6 +244,7 @@ export function CANProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMountedRef.current = false;
+      if (stabilityTimerRef.current) { clearTimeout(stabilityTimerRef.current); stabilityTimerRef.current = null; }
       cancelAnimationFrame(rafId);
       workerRef.current?.terminate();
       workerRef.current = null;

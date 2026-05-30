@@ -242,19 +242,19 @@ All 15 findings from the 9-angle + gap-sweep review resolved in the same release
 
 ---
 
-## 🔴 Open — v1.6.0 v11 Code Review (2026-05-29)
+## ✅ Closed — v1.6.0 v11 Code Review (2026-05-29)
 
-7 findings from 7-angle automated review (A/B line-scan + removed-behavior + cross-file + cleanup); all unresolved.
+7 findings from 7-angle automated review; all fixed in v12 (2026-05-30).
 
-| # | Severity | Title | Area |
-|---|----------|-------|------|
-| 111 | 🔴 Blocker | `lib.rs` `save_can_profiles` / `save_can_node_profiles`: `std::fs::write` is non-atomic — a crash or SIGKILL mid-write truncates `profiles.json` / `can_node_profiles.json`; next launch parses partial JSON, `initCANProfileStorage` falls to `catch` with only `console.error`, and stale localStorage persists instead of resetting to defaults | Rust / Storage |
-| 112 | 🟠 High | `CANContext.tsx` `setOutputMode`: sets `activeSocketCANSessionRef.current = null` before calling `invoke('disconnect_socketcan')`; the resulting `socketcan-status { connected: false, sessionId: X }` event is dropped by the session filter (guard sees `activeSessionId === null`); no eager `CAN_SET_NETWORK_CONNECTED` dispatch is made; `networkConnected` stays `true` in the UI permanently after any non-SocketCAN mode switch | SocketCAN / State |
-| 113 | 🟠 High | `CANContext.tsx` `restartCountRef`: incremented on every worker crash but never reset to 0; after exactly `MAX_RESTARTS` (3) crashes the guard fires and the worker is permanently terminated for the component lifetime; all subsequent `start()` / `sendFrame()` / `injectFault()` calls are silent no-ops | Worker / Reliability |
-| 114 | 🟠 High | `CANContext.tsx` `sendUDSRequest` SF path: stores `data = [norm.length, ...norm]` (1–8 bytes, not padded); `consumePendingSocketCANTx` uses `item.data.every(...)` which only iterates `item.data.length` indices of the 8-byte vcan echo — a real ECU frame on the same arbitration ID whose first N bytes coincide with the tester SF is silently misclassified as a TX echo and suppressed from the monitor | SocketCAN / UDS |
-| 115 | 🟠 High | `CANSimulationEngine.ts` `processUdsPayload`: UDS SID `0x2E` (WriteDataByIdentifier) handler was silently removed in the ISO-TP refactor; requests to rename a node via DID `0xF197` now receive NRC `0x7F 0x2E 0x11` (serviceNotSupported) with no error surfaced to the UI | UDS / CAN Simulation |
-| 116 | 🟡 Medium | `CANSimulationEngine.ts` `sendUDSRequest`: when `stMinMs = 0`, `responseDelay = (cfCount + 1) * 0 = 0`; `processUdsPayload` is queued at the same macrotask horizon as the last CF sent by `transmitIsoTpPayload`; for multi-CF payloads the ECU response fires before the final tester CF, producing a protocol-impossible ordering in the simulation log | UDS / ISO-TP |
-| 117 | 🔵 Low | `lib.rs` `can_node_profiles_dir()`: verbatim duplicate of `can_profiles_dir()` — identical three-line body, both return `uart_profiles/`; a future refactor of the base path must be applied twice and the false name implies separate directories | Rust / Cleanup |
+| # | Severity | Title | Area | Resolution |
+|---|----------|-------|------|------------|
+| 111 | 🔴 Blocker | `lib.rs` `save_can_profiles` / `save_can_node_profiles`: `std::fs::write` is non-atomic — a crash mid-write truncates the JSON file | Rust / Storage | Fixed in v12: `atomic_write()` helper |
+| 112 | 🟠 High | `CANContext.tsx` `setOutputMode`: nulls session ref before disconnect; `networkConnected` stays `true` permanently | SocketCAN / State | Fixed in v12: eager disconnect dispatch added |
+| 113 | 🟠 High | `CANContext.tsx` `restartCountRef`: never reset; worker permanently dead after 3 crashes | Worker / Reliability | Fixed in v12: reset on first worker message |
+| 114 | 🟠 High | `CANContext.tsx` `consumePendingSocketCANTx` prefix-only comparison misclassifies RX frames as TX | SocketCAN / UDS | Fixed in v12: full `payloadDlc`-byte comparison |
+| 115 | 🟠 High | `CANSimulationEngine.ts`: SID `0x2E` WriteDataByIdentifier silently dropped in ISO-TP refactor | UDS / CAN Simulation | Fixed in v12: `buildWriteDidResponse()` added |
+| 116 | 🟡 Medium | `CANSimulationEngine.ts`: `stMinMs=0` causes ECU response to fire before last CF | UDS / ISO-TP | Fixed in v12: `Math.max(1, stMinMs)` floor |
+| 117 | 🔵 Low | `lib.rs` `can_node_profiles_dir()`: byte-for-byte duplicate of `can_profiles_dir()` | Rust / Cleanup | Fixed in v12: duplicate removed |
 
 ---
 
