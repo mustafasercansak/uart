@@ -224,7 +224,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     await invoke('connect_serial', { portName, baudRate }).catch((e: unknown) => {
       dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.serialPortError', { error: e }) });
     });
-  }, []);
+  }, [dispatch, t]);
 
   const disconnectSerial = useCallback(async () => {
     await invoke('disconnect_serial').catch(console.error);
@@ -367,13 +367,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     await invoke('save_recording', { name, data }).catch((e: unknown) => {
       dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.recordingSaveFailed', { error: e }) });
     });
-  }, [dispatch]);
+  }, [dispatch, t]);
 
   const deleteRecording = useCallback(async (id: string) => {
     await invoke('delete_recording', { id }).catch((e: unknown) => {
       dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.recordingDeleteFailed', { error: e }) });
     });
-  }, [dispatch]);
+  }, [dispatch, t]);
 
   const refreshRecordings = useCallback(async () => {
     const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch((e) => { console.error('[recordings] list failed:', e); return []; });

@@ -542,7 +542,7 @@ export class CANSimulationEngine {
     const did = (payload[1] << 8) | payload[2];
     if (did === 0xf197) {
       const nameBytes = payload.slice(3);
-      const newName = String.fromCharCode(...nameBytes).replace(/\x00/g, '').trim();
+      const newName = String.fromCharCode(...nameBytes).split('\0').join('').trim();
       if (newName && targetNode) {
         this.updateNode(targetNode.id, { name: newName });
         this.log('nmt', `UDS Write DID 0xF197: Updated Node ${targetNode.id} name to "${newName}"`);
