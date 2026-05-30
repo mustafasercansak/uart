@@ -16,12 +16,17 @@ This file documents the release flow for UART Simulator Pro. Use `CHANGELOG.md` 
 3. Run the validation suite:
 
 ```bash
+npm run lint
 npm test
 npm run test:coverage
 npx tsc --noEmit
 npm run test:rust
+npm run test:rust:coverage:summary
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
+
+Notes:
+- `npm run lint` ignores generated files under `src-tauri/target/**` to avoid linting Rust/Tauri build artifacts.
 
 4. Build the application:
 

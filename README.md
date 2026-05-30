@@ -49,6 +49,7 @@ For a detailed breakdown of all modules and architectural metrics, see [SHOWCASE
 ### Frontend / TypeScript
 
 ```bash
+npm run lint
 npm test
 npm run test:coverage
 npx tsc --noEmit
@@ -56,11 +57,13 @@ npx tsc --noEmit
 
 The frontend coverage report uses Vitest V8 coverage and is written to `coverage/`.
 The default coverage gate is 95% statements, 90% branches, 95% functions, and 95% lines.
+ESLint is configured to ignore generated files under `src-tauri/target/**` so Rust/Tauri build artifacts do not create false-positive parse errors.
 
 ### Rust / Tauri
 
 ```bash
 npm run test:rust
+npm run test:rust:coverage:summary
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
