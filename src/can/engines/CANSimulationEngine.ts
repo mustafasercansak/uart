@@ -51,7 +51,6 @@ function estimateFrameBits(dlc: number, isExtended: boolean): number {
 export class CANSimulationEngine {
   private state: CANBusState;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
-  private busOffTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
 
   // Callbacks to main thread / UI
   public onFrame: ((frame: CANFrame) => void) | null = null;
@@ -852,8 +851,6 @@ export class CANSimulationEngine {
   private clearTimers(): void {
     if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null; }
     if (this.isotpSessionCleanupTimer) { clearInterval(this.isotpSessionCleanupTimer); this.isotpSessionCleanupTimer = null; }
-    this.busOffTimers.forEach(t => clearTimeout(t));
-    this.busOffTimers.clear();
     this.noiseBurstTimers.forEach(t => clearTimeout(t));
     this.noiseBurstTimers.clear();
     this.isotpTxTimers.forEach(t => clearTimeout(t));

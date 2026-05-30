@@ -539,14 +539,13 @@ describe('CANSimulationEngine lifecycle and bus behavior', () => {
     expect(frames.length).toBeGreaterThan(0);
   });
 
-  it('clearTimers cancels busOff and noiseBurst timers when they are active (forEach lambdas)', () => {
-    // Covers lines 814/816: `t => clearTimeout(t)` in busOffTimers.forEach / noiseBurstTimers.forEach
+  it('clearTimers cancels noiseBurst timers when they are active (forEach lambda)', () => {
     const { engine } = createEngine();
     engine.addNode(makeNodeInput(1));
     engine.addNode(makeNodeInput(2));
 
-    // Schedule timers into both Sets
-    engine.injectFault(1, 'bus-off');      // busOffTimers.set(1, timer)
+    // Schedule timers into noiseBurstTimers
+    engine.injectFault(1, 'bus-off');
     engine.injectFault(2, 'noise-burst');  // noiseBurstTimers.set(2, timer)
 
     // stop() calls clearTimers() which forEach-cancels both sets
@@ -601,6 +600,23 @@ describe('CANSimulationEngine lifecycle and bus behavior', () => {
 
     expect(logs.some(t => t.includes('expired'))).toBe(true);
 
+    engine.stop();
+  });
+
+  it('resume() isotpSessionCleanupTimer fires the sweep callback', () => {
+    // Covers line 113: `() => this.sweepIsoTpRxSessions()` set by resume()
+    const { engine, logs } = createEngine();
+
+    engine.start();
+    engine.pause();      // clearTimers() cancels the timer set by start()
+    engine.resume();     // sets a fresh isotpSessionCleanupTimer
+
+    engine.setUDSConfig({ ...engine.getState().udsConfig, stMinMs: 0 });
+    engine.sendCustomFrame(0x7e0, [0x10, 0x0f, 0x22, 0xf1, 0x90, 0xf1, 0x97, 0xf1]);
+
+    vi.advanceTimersByTime(4100);  // fires the resume()-scheduled sweep interval
+
+    expect(logs.some(t => t.includes('expired'))).toBe(true);
     engine.stop();
   });
 
