@@ -22,13 +22,16 @@ export class FilterEngine {
   static validate(filter: string): FilterResult {
     try {
       if (!filter || filter.trim() === '') return { isValid: true };
-      
-      // Basic validation: check for balanced quotes and common operators
-      // We don't need a full parser just for validation colors, 
-      // but we can try a dry run or simplified regex.
+
+      // Plain text/hex quick-search: no operators → always valid
+      if (!/[=><!&|]/.test(filter) && !filter.toLowerCase().includes('contains')) {
+        return { isValid: true };
+      }
+
+      // Advanced expression: check tokens
       const tokens = filter.split(/\s+/);
-      const invalidTokens = tokens.filter(t => 
-        !/^[a-zA-Z0-9._]+$/.test(t) && 
+      const invalidTokens = tokens.filter(t =>
+        !/^[a-zA-Z0-9._:_\-]+$/.test(t) &&
         !/^==|!=|>=|<=|>|<|&&|\|\||contains|matches|!$/.test(t) &&
         !/^".*"$/.test(t) &&
         !/^0x[0-9a-fA-F]+$/.test(t) &&
@@ -36,14 +39,20 @@ export class FilterEngine {
       );
 
       if (invalidTokens.length > 0 && !filter.includes('"')) {
-          // Allow spaces in quotes, otherwise bad
-          return { isValid: false, error: `Invalid token: ${invalidTokens[0]}` };
+        return { isValid: false, error: `Invalid token: ${invalidTokens[0]}` };
       }
 
       return { isValid: true };
     } catch (_e) {
       return { isValid: false };
     }
+  }
+
+  private static hexToAscii(hex: string): string {
+    return hex.split(' ').filter(Boolean).map(h => {
+      const b = parseInt(h, 16);
+      return b >= 0x20 && b <= 0x7e ? String.fromCharCode(b) : '.';
+    }).join('');
   }
 
   /**
@@ -55,13 +64,19 @@ export class FilterEngine {
     try {
       const normalizedFilter = filter.toLowerCase().trim();
 
-      // Quick shortcut for exact hex search without operators
+      // Quick search (no operators): match hex bytes OR ASCII text
       const keywords = ['error', 'err', 'tx', 'rx'];
       if (!/[=><!&|]/.test(normalizedFilter) && !normalizedFilter.includes('contains') && !keywords.includes(normalizedFilter)) {
+          const txRaw = exchange.tx?.rawHex || '';
+          const rxRaw = exchange.rx?.rawHex || '';
+          const txHex = txRaw.replace(/\s+/g, '').toLowerCase();
+          const rxHex = rxRaw.replace(/\s+/g, '').toLowerCase();
+          const txAscii = this.hexToAscii(txRaw).toLowerCase();
+          const rxAscii = this.hexToAscii(rxRaw).toLowerCase();
           const searchHex = normalizedFilter.replace(/\s+/g, '');
-          const txHex = exchange.tx?.rawHex.replace(/\s+/g, '').toLowerCase() || '';
-          const rxHex = exchange.rx?.rawHex.replace(/\s+/g, '').toLowerCase() || '';
-          return txHex.includes(searchHex) || rxHex.includes(searchHex);
+          const searchText = normalizedFilter;
+          return txHex.includes(searchHex) || rxHex.includes(searchHex) ||
+                 txAscii.includes(searchText) || rxAscii.includes(searchText);
       }
 
       // Advanced Expression Parsing

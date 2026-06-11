@@ -939,7 +939,8 @@
     "bitChangeMap": "Bit-Düzeyinde Değişim Haritası (B)",
     "tip": "İpucu: Kırmızı ile işaretlenmiş alanlar, iki paket arasındaki değişen değerleri göstermektedir. Bit-Düzeyinde harita ise (B) paketinin (A) paketine göre olan değişimlerini gösterir.",
     "bitTooltip": "Bayt {byteIdx}, Bit {bitIdx}",
-    "byteDetail": "Byte {index} ({name}) Detayı:"
+    "byteDetail": "Byte {index} ({name}) Detayı:",
+    "asciiLabel": "ASCII"
   },
   "automation": {
     "lab": "Otomasyon Lab",
@@ -1188,7 +1189,7 @@
   "trace": {
     "title": "Canlı İzleme Akışı",
     "packets": "{count} PAKET",
-    "filterPlaceholder": "Filtre: bpm > 100 && status == ok | id == 0x01 | contains...",
+    "filterPlaceholder": "Filtre: ALARM · 414C · bpm > 100 · size < 20 · status == ok",
     "noTraffic": "Mevcut filtreyle eşleşen trafik tespit edilmedi...",
     "headers": {
       "no": "No.",

@@ -26,8 +26,9 @@ describe('FilterEngine', () => {
             expect(FilterEngine.validate('label == "value with spaces"').isValid).toBe(true);
         });
 
-        it('identifies invalid tokens', () => {
-            expect(FilterEngine.validate('bpm @#$ 100').isValid).toBe(false);
+        it('treats symbol-only queries as valid text searches (no match but not error)', () => {
+            // With text+hex search, any query without operators is a valid search term
+            expect(FilterEngine.validate('bpm @#$ 100').isValid).toBe(true);
         });
 
         it('handles unexpected types in validate', () => {
@@ -173,6 +174,44 @@ describe('FilterEngine', () => {
                 tx: { rawHex: '00' }
             } as unknown as Exchange;
             expect(FilterEngine.evaluate(exchangeWithZeroFlag, 'error == 0', profileWithFlag)).toBe(false);
+        });
+
+        it('searches ASCII text content (quick text search)', () => {
+            // "ALARM" in ASCII is 41 4C 41 52 4D
+            const alarmExchange: Exchange = {
+                id: 'ascii-test',
+                rx: { rawHex: '41 4C 41 52 4D 3A 48 49 47 48' } // "ALARM:HIGH"
+            } as unknown as Exchange;
+            expect(FilterEngine.evaluate(alarmExchange, 'ALARM')).toBe(true);
+            expect(FilterEngine.evaluate(alarmExchange, 'alarm')).toBe(true);
+            expect(FilterEngine.evaluate(alarmExchange, 'HIGH')).toBe(true);
+            expect(FilterEngine.evaluate(alarmExchange, 'STOP')).toBe(false);
+        });
+
+        it('searches hex and ASCII simultaneously (quick search)', () => {
+            // "DATA" in ASCII is 44 41 54 41
+            const dataExchange: Exchange = {
+                id: 'dual-test',
+                rx: { rawHex: '44 41 54 41 3A 42 50 4D' } // "DATA:BPM"
+            } as unknown as Exchange;
+            // hex search
+            expect(FilterEngine.evaluate(dataExchange, '4441')).toBe(true);
+            expect(FilterEngine.evaluate(dataExchange, '44 41')).toBe(true);
+            // text search
+            expect(FilterEngine.evaluate(dataExchange, 'DATA')).toBe(true);
+            expect(FilterEngine.evaluate(dataExchange, 'BPM')).toBe(true);
+            // neither
+            expect(FilterEngine.evaluate(dataExchange, 'XXXX')).toBe(false);
+        });
+
+        it('text search is case-insensitive', () => {
+            const ex: Exchange = {
+                id: 'case-test',
+                rx: { rawHex: '53 54 41 52 54' } // "START"
+            } as unknown as Exchange;
+            expect(FilterEngine.evaluate(ex, 'start')).toBe(true);
+            expect(FilterEngine.evaluate(ex, 'START')).toBe(true);
+            expect(FilterEngine.evaluate(ex, 'Start')).toBe(true);
         });
     });
 });

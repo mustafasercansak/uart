@@ -61,7 +61,7 @@ const DiffLab = memo(({ frameA, frameB, profile, onClear }: DiffLabProps) => {
         {/* ASCII banner when data is text */}
         {isText && (
           <div className="bg-emerald-950/30 border border-emerald-800/30 rounded-lg px-3 py-2">
-            <span className="text-[8px] font-mono font-black uppercase text-emerald-500/60 mr-2">ASCII</span>
+            <span className="text-[8px] font-mono font-black uppercase text-emerald-500/60 mr-2">{t('diffLab.asciiLabel')}</span>
             <span className="text-[11px] font-mono text-emerald-300 break-all">
               {bytesToAscii(frame.rawBytes)}
             </span>
@@ -103,7 +103,7 @@ const DiffLab = memo(({ frameA, frameB, profile, onClear }: DiffLabProps) => {
         {/* Full-frame ASCII banner */}
         {isText && (
           <div className="bg-emerald-950/30 border border-emerald-800/30 rounded-lg px-3 py-2">
-            <span className="text-[8px] font-mono font-black uppercase text-emerald-500/60 mr-2">ASCII</span>
+            <span className="text-[8px] font-mono font-black uppercase text-emerald-500/60 mr-2">{t('diffLab.asciiLabel')}</span>
             <span className="text-[11px] font-mono text-emerald-300 break-all">
               {bytesToAscii(frame.rawBytes)}
             </span>

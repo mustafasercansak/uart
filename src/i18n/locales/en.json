@@ -886,7 +886,8 @@
     "bitChangeMap": "Bit-Level Change Map (B)",
     "tip": "Tip: Highlighted areas show value changes between packets. The bit-level map shows changes in packet (B) relative to (A).",
     "bitTooltip": "Byte {byteIdx}, Bit {bitIdx}",
-    "byteDetail": "Byte {index} ({name}) Detail:"
+    "byteDetail": "Byte {index} ({name}) Detail:",
+    "asciiLabel": "ASCII"
   },
   "visualAnalyzer": {
     "title": "Visual Protocol Stream Analyzer",
@@ -1188,7 +1189,7 @@
   "trace": {
     "title": "Live Trace Stream",
     "packets": "{count} PACKETS",
-    "filterPlaceholder": "Filter: bpm > 100 && status == ok | id == 0x01 | contains...",
+    "filterPlaceholder": "Filter: ALARM · 414C · bpm > 100 · size < 20 · status == ok",
     "noTraffic": "No traffic detected matching current filter...",
     "headers": {
       "no": "No.",
