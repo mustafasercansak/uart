@@ -1,4 +1,5 @@
 import { generateFrame } from './FrameGenerator';
+import { parseFrame } from './FrameParser';
 import { tickScenarioEngine } from './ScenarioEngine';
 import { evaluateTriggers } from './TriggerEngine';
 import { VirtualPeripheralEngine, ScriptableDriver } from './VirtualPeripheralEngine';
@@ -168,11 +169,14 @@ export class SimulationEngine {
           chunk = this.rxBuffer.slice(0, frameSize);
         }
       } else if (framing.mode === 'delimiter') {
-        const delim = framing.delimiter ?? 0x0A; // \n
-        const delimIdx = this.rxBuffer.indexOf(delim);
-        if (delimIdx !== -1) {
-          bytesToSlice = delimIdx + 1;
-          chunk = this.rxBuffer.slice(0, bytesToSlice);
+        const raw = framing.delimiter;
+        const delim: number[] = Array.isArray(raw) ? raw : raw != null ? [raw] : [0x0A];
+        if (delim.length === 1) {
+          const idx = this.rxBuffer.indexOf(delim[0]);
+          if (idx !== -1) { bytesToSlice = idx + 1; chunk = this.rxBuffer.slice(0, bytesToSlice); }
+        } else {
+          const idx = this.findSequence(this.rxBuffer, delim);
+          if (idx !== -1) { bytesToSlice = idx + delim.length; chunk = this.rxBuffer.slice(0, bytesToSlice); }
         }
       }
 
@@ -205,12 +209,25 @@ export class SimulationEngine {
 
   private processFullFrame(chunk: number[]) {
     const hex = chunk.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-    
+
+    let asciiText: string | undefined;
+    if (this.profile?.framing?.mode === 'delimiter') {
+      const raw = this.profile.framing.delimiter;
+      const delim: number[] = Array.isArray(raw) ? raw : raw != null ? [raw] : [0x0A];
+      const endsWithDelim = delim.length <= chunk.length &&
+        delim.every((b, i) => chunk[chunk.length - delim.length + i] === b);
+      const textBytes = endsWithDelim ? chunk.slice(0, -delim.length) : chunk;
+      asciiText = textBytes.map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.').join('');
+    }
+
+    const parsedFields = this.profile ? parseFrame(this.profile, chunk) : null;
     const rxEntry: ConversationEntry = {
         id: uuidv4(),
         timestamp: Date.now(),
         type: 'rx',
-        rawHex: hex
+        rawHex: hex,
+        ...(asciiText !== undefined && { details: asciiText }),
+        ...(parsedFields && parsedFields.length > 0 && { fields: parsedFields }),
     };
     this.addLog(rxEntry);
 

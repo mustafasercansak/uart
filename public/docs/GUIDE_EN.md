@@ -42,6 +42,7 @@
     - [20.11 UDS Diagnostic Terminal (ISO 14229 / ISO-TP)](#can-uds)
     - [20.12 DBC File Import & Signal Decoder](#can-dbc)
     - [20.13 J1939 Frame Decoder](#can-j1939)
+21. [Virtual Serial Port Setup (Linux)](#virtual-serial)
 
 ---
 
@@ -1343,9 +1344,324 @@ When a 29-bit extended frame is selected, the Frame Inspector automatically show
 
 ---
 
+<a name="virtual-serial"></a>
+## 21. Virtual Serial Port Setup (Linux)
+
+This section shows how to create a **virtual serial port pair** on Linux so you can connect UART Pro Lab to any application without physical hardware. The two virtual ports are linked: bytes written to one end appear on the other — exactly like a real null-modem cable.
+
+---
+
+### Why You Need This
+
+UART Pro Lab uses the Tauri/Rust `serialport` crate to open `/dev/ttyUSB*`, `/dev/ttyS*`, or `/dev/pts/*` ports. On a machine with no USB serial adapter, `list_serial_ports` returns an empty list. A virtual PTY pair fills that gap:
+
+```
+UART Pro Lab  →  /dev/pts/3  ↔  /dev/pts/4  ←  Your app (Python, Node, minicom…)
+```
+
+---
+
+### 1. Install socat
+
+`socat` is the standard tool for creating PTY pairs on Linux.
+
+```bash
+sudo apt install socat          # Debian / Ubuntu / Raspberry Pi OS
+sudo dnf install socat          # Fedora / RHEL / CentOS
+sudo pacman -S socat            # Arch Linux
+```
+
+---
+
+### 2. Create a Virtual Port Pair
+
+Run this command in a terminal and **leave it running**:
+
+```bash
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
+```
+
+Sample output:
+```
+2026/06/11 12:00:00 socat[4321] N PTY is /dev/pts/3
+2026/06/11 12:00:00 socat[4321] N PTY is /dev/pts/4
+2026/06/11 12:00:00 socat[4321] N starting data transfer loop
+```
+
+> The port numbers (`/dev/pts/3`, `/dev/pts/4`) are assigned dynamically — yours will likely differ.
+
+**Named symlinks (optional but recommended):**
+```bash
+socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1
+```
+This creates stable paths `/tmp/ttyV0` and `/tmp/ttyV1` that don't change between runs.
+
+---
+
+### 3. Connect UART Pro Lab
+
+1. Open UART Pro Lab and go to the **Simulation Dashboard**.
+2. Click **Connect Serial Port** (the plug icon in the toolbar).
+3. Select `/dev/pts/3` (or `/tmp/ttyV0` if you used symlinks) from the port list.
+4. Click **Connect**.
+
+The app will now transmit frames to that port at the configured baud rate.
+
+---
+
+### 4. Read from the Other End
+
+Open a **second terminal** and read from the paired port:
+
+**Python (pyserial):**
+```python
+import serial
+
+ser = serial.Serial('/dev/pts/4', baudrate=9600, timeout=1)
+while True:
+    data = ser.read(64)
+    if data:
+        print(data.hex(' ').upper())
+```
+
+**Node.js (mock-receiver.js in this repo):**
+> The included `mock-receiver.js` uses TCP/UDP, not serial. For a quick serial read:
+```bash
+cat < /dev/pts/4 | xxd
+```
+
+**minicom:**
+```bash
+minicom -D /dev/pts/4 -b 9600
+# Press Ctrl-A X to exit
+```
+
+**screen:**
+```bash
+screen /dev/pts/4 9600
+# Press Ctrl-A K to exit
+```
+
+---
+
+### 5. Delimiter Mode
+
+If your profile uses **Delimiter framing** (e.g. `\n` / 0x0A), each transmitted frame ends with the delimiter byte. You can then read line-by-line on the receiver:
+
+```python
+import serial
+
+ser = serial.Serial('/dev/pts/4', baudrate=9600)
+for line in ser:
+    print(line.hex(' ').upper())
+```
+
+This is the simplest approach for ASCII text protocols and sensor streams that terminate every message with a newline.
+
+---
+
+### 6. Permissions
+
+If UART Pro Lab shows **"Permission denied"** when connecting:
+
+```bash
+# Add your user to the dialout group
+sudo usermod -aG dialout $USER
+
+# Log out and back in, then verify:
+groups | grep dialout
+```
+
+For PTY devices under `/dev/pts/`, permissions are usually owned by your current user automatically, so this step is only needed for physical ports (`/dev/ttyUSB*`, `/dev/ttyS*`).
+
+---
+
+### 7. Persisting Across Reboots (systemd)
+
+To start the `socat` bridge automatically at boot, create a systemd service:
+
+```ini
+# /etc/systemd/system/virtual-uart.service
+[Unit]
+Description=Virtual UART pair (ttyV0 ↔ ttyV1)
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now virtual-uart.service
+sudo systemctl status virtual-uart.service
+```
+
+---
+
+### 8. Sending Test Data to UART Pro Lab
+
+Use this workflow to push bytes from the terminal into UART Pro Lab — useful for verifying RX decoding, responder rules, or delimiter framing without a physical device.
+
+#### Option A — socat (quick one-liner)
+
+**Step 1 — Start the port pair** (keep this terminal open):
+```bash
+socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1
+```
+
+**Step 2 — Connect UART Pro Lab**
+
+Simulation Dashboard → toolbar **"Connect Serial Port"** → select `/tmp/ttyV0` → **Connect**.
+
+**Step 3 — Send bytes from a second terminal**
+
+```bash
+# Single hex frame (e.g. AA 01 FF followed by newline delimiter)
+printf '\xAA\x01\xFF\x0A' > /tmp/ttyV1
+
+# ASCII line (works great with Delimiter framing set to \n)
+echo -ne "SENSOR:25.3,60.1\n" > /tmp/ttyV1
+```
+
+#### Option B — Python PTY (recommended when socat sets TIOCEXCL)
+
+`socat` applies an exclusive lock (`TIOCEXCL`) to the first PTY slave, which can cause `EBUSY` when UART Pro Lab tries to open it. The Python alternative creates a clean PTY pair without any exclusive lock:
+
+```python
+#!/usr/bin/env python3
+"""Device simulator — each message ends with \\n"""
+import os, time, pty, select, random
+
+LINK = '/tmp/ttyVtest'
+
+master_fd, slave_fd = pty.openpty()
+slave_name = os.ttyname(slave_fd)
+os.close(slave_fd)
+
+try:
+    os.unlink(LINK)
+except FileNotFoundError:
+    pass
+os.symlink(slave_name, LINK)
+
+print(f"Connect UART Pro Lab to: {LINK}  ({slave_name})")
+print("Each message ends with \\n  |  Ctrl-C to stop\n")
+
+def send(fd, msg):
+    print(f"  → {msg}")
+    os.write(fd, (msg + '\n').encode())
+
+def read_pc(fd):
+    r, _, _ = select.select([fd], [], [], 0)
+    if r:
+        try:
+            data = os.read(fd, 256)
+            if data:
+                print(f"  ← {data.decode(errors='replace').strip()}")
+        except OSError:
+            pass
+
+session = 0
+try:
+    while True:
+        session += 1
+        print(f"\n=== SESSION {session} ===")
+        send(master_fd, "STATUS:READY")
+        time.sleep(0.2)
+        send(master_fd, "START")
+        time.sleep(0.15)
+        for i in range(random.randint(15, 25)):
+            read_pc(master_fd)
+            bpm  = 72 + int(10 * abs(((i * 3) % 20) - 10) / 10)
+            spo2 = 98 - (2 if i % 9 == 0 else 0)
+            if spo2 < 97:
+                send(master_fd, f"ALARM:LOW_SPO2,SPO2={spo2}")
+            send(master_fd, f"DATA:BPM={bpm},SPO2={spo2},RR={15 + i%5},TEMP={round(36.8+(i%8)*0.05,2)}")
+            time.sleep(0.1)
+        send(master_fd, "STOP")
+        time.sleep(3.0)
+except KeyboardInterrupt:
+    print("\nStopped.")
+finally:
+    try: os.close(master_fd)
+    except OSError: pass
+    try: os.unlink(LINK)
+    except: pass
+```
+
+Run the script, then connect UART Pro Lab to `/tmp/ttyVtest`. Use a profile with **Delimiter = `\n`** to see each line as a separate card in the Communication Timeline.
+
+**Step 4 — Where to see incoming data in UART Pro Lab**
+
+| Location | What you see |
+|----------|-------------|
+| **Communication Timeline** | One card per frame, split by the selected profile's framing configuration |
+| **ConversationMonitor → RX tab** | Each received message with timestamp |
+| **Lab (Diff)** | Click any two timeline cards to compare byte-by-byte and field-by-field |
+
+> **Delimiter mode tip**: If the profile uses Framing = `Delimiter` with `\n` (0x0A), every line becomes one complete message. Incomplete lines accumulate until the next delimiter arrives.
+
+---
+
+### Quick Reference
+
+| Goal | Command |
+|------|---------|
+| Create ephemeral pair | `socat -d -d pty,raw,echo=0 pty,raw,echo=0` |
+| Create named symlinks | `socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1` |
+| Send a hex frame | `printf '\xAA\x01\xFF\x0A' > /tmp/ttyV1` |
+| Send an ASCII line | `echo -ne "HELLO\n" > /tmp/ttyV1` |
+| Hex dump one end | `cat < /dev/pts/4 \| xxd` |
+| Interactive terminal | `screen /dev/pts/4 9600` |
+| Fix permission errors | `sudo usermod -aG dialout $USER` |
+| List available ports | UART Pro Lab toolbar → Connect Serial Port |
+
+---
+
+---
+
+<a name="framing-timeline"></a>
+## 22. Profile-Aware Framing in the Communication Timeline
+
+### How it works
+
+When data arrives on the serial port, UART Pro Lab inspects the **selected profile's framing configuration** before displaying it in the Communication Timeline:
+
+| Framing mode | Timeline behaviour |
+|---|---|
+| **Fixed N bytes** | Every N bytes → one card. If 350 bytes arrive at once (25 × 14-byte frames), 25 separate cards appear. |
+| **Delimiter** | Data is split on the configured delimiter (single or multi-byte). Each line/record → one card. |
+| **No profile selected** | Raw OS burst shown as a single card (fallback). |
+
+This applies both when the simulation is running (framing engine inside the worker) and when the port is idle/BOŞTA (main-thread split via `chunkByProfile`).
+
+### Supported delimiter formats
+
+Open the Profile Editor → Framing → Delimiter mode to configure the split byte sequence:
+
+| Preset | Bytes | Use case |
+|---|---|---|
+| `\n` (LF) | `0x0A` | Unix newline, most sensors |
+| `\r` (CR) | `0x0D` | Legacy devices |
+| `\r\n` (CRLF) | `0x0D 0x0A` | Windows / AT-command style |
+| Custom hex | any sequence | proprietary framing |
+
+### Lab (Diff) profile-aware view
+
+The **LAB (DIFF)** tab automatically adapts to the selected profile:
+
+- **Profile with fields**: Bytes are grouped by field. Each cell shows the **field name**, **hex bytes**, **decoded decimal value**, and an **ASCII representation** if the bytes are printable text.
+- **No profile / text data**: Flat byte grid with an ASCII character shown under each byte and a full-frame ASCII banner at the top.
+- Cells where the two frames **differ** are highlighted in red; the other frame's decoded value appears struck-through for quick comparison.
+
+---
+
 ## Conclusion
 
-**UART Pro Lab v1.6.0** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
+**UART Pro Lab v1.7.0** is not a simulator — it is a complete **medical-grade, regulatory-ready signal engineering environment** that runs entirely in your browser.
 
 Every feature was designed around a real engineering problem: framing errors that escape unit tests, jitter that only appears under thermal stress, waveform anomalies invisible to the naked eye. This tool surfaces all of them — before they reach silicon.
 

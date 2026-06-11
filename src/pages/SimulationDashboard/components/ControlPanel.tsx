@@ -1,42 +1,30 @@
 import React, { memo, useRef, useEffect } from 'react';
 import { FileDown } from 'lucide-react';
-import type { FrameProfile, ErrorType, FlagsConfig, RangeConfig, Field, Exchange } from '../../../types';
+import type { FlagsConfig, RangeConfig, Field } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 interface ControlPanelProps {
-  status: string;
   flagsFields: Field[];
   allRangeFields: Field[];
   bitOverrides: Record<string, number>;
   fieldOverrides: Record<string, number>;
-  pendingErrors: ErrorType[];
   logEntries: Array<{ type: string; time: string; text: string }>;
-  errorTypes: Array<{ type: ErrorType; label: string; color: string }>;
   onOverrideField: (id: string, value: number) => void;
   onOverrideBit: (key: string, value: number) => void;
-  onInjectError: (type: ErrorType) => void;
   onResetOverrides: () => void;
   onExportLogs: () => void;
-  signalIntegrity: { noiseLevel: number; jitterMs: number; bitFlipsEnabled: boolean };
-  onSetSignalIntegrity: (integrity: Partial<{ noiseLevel: number; jitterMs: number; bitFlipsEnabled: boolean }>) => void;
 }
 
 const ControlPanel = memo(({
-  status,
   flagsFields,
   allRangeFields,
   bitOverrides,
   fieldOverrides,
-  pendingErrors,
   logEntries,
-  errorTypes,
   onOverrideField,
   onOverrideBit,
-  onInjectError,
   onResetOverrides,
   onExportLogs,
-  signalIntegrity,
-  onSetSignalIntegrity
 }: ControlPanelProps) => {
   const { t } = useTranslation();
   const logRef = useRef<HTMLDivElement>(null);
@@ -234,73 +222,6 @@ const ControlPanel = memo(({
           </div>
         </div>
       )}
-
-      {/* Error Injection */}
-      <div className="p-3 border-b border-gray-800/50">
-        <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest mb-2">{t('controls.injection')}</div>
-        <div className="grid grid-cols-2 gap-1">
-          {errorTypes.map(({ type, label, color }) => (
-            <button
-              key={type}
-              onClick={() => onInjectError(type)}
-              disabled={status !== 'running'}
-              className={`text-[9px] font-mono px-1.5 py-1 rounded-[3px] border transition-all disabled:opacity-20 disabled:cursor-not-allowed ${color}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {pendingErrors.length > 0 && (
-          <div className="mt-1.5 text-orange-500 text-[8.5px] font-mono flex items-center gap-1">
-            <span className="w-1 h-1 bg-orange-500 rounded-full animate-pulse" />
-            {t('controls.pendingErrors', { count: pendingErrors.length })}
-          </div>
-        )}
-      </div>
-
-      {/* Signal Integrity Controls */}
-      <div className="p-3 border-b border-gray-800/50 bg-gray-900/40">
-        <div className="flex items-center justify-between mb-2 text-gray-600 text-[9px] font-mono uppercase tracking-widest">
-          <span>{t('controls.signalQuality')}</span>
-          <div className="flex items-center gap-1.5">
-             <span className="text-[8px] text-gray-600 uppercase font-black">{t('controls.bitFlip')}</span>
-             <button 
-               onClick={() => onSetSignalIntegrity({ bitFlipsEnabled: !signalIntegrity.bitFlipsEnabled })}
-               className={`w-6 h-3 rounded-full relative transition-colors ${signalIntegrity.bitFlipsEnabled ? 'bg-amber-600' : 'bg-gray-700'}`}
-             >
-               <div className={`absolute top-0.5 w-2 h-2 bg-white rounded-full transition-all ${signalIntegrity.bitFlipsEnabled ? 'left-3.5' : 'left-0.5'}`} />
-             </button>
-          </div>
-        </div>
-        
-        <div className="space-y-3">
-          <div>
-            <div className="flex justify-between text-[9px] font-mono mb-0.5">
-              <span className="text-gray-500">{t('controls.noise')}</span>
-              <span className="text-amber-500 font-bold">{(signalIntegrity.noiseLevel * 100).toFixed(1)}%</span>
-            </div>
-            <input
-              type="range" min="0" max="0.05" step="0.001"
-              value={signalIntegrity.noiseLevel}
-              onChange={(e) => onSetSignalIntegrity({ noiseLevel: parseFloat(e.target.value) })}
-              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-            />
-          </div>
-
-          <div>
-             <div className="flex justify-between text-[9px] font-mono mb-0.5">
-              <span className="text-gray-500">{t('controls.jitter')}</span>
-              <span className="text-blue-500 font-bold">{signalIntegrity.jitterMs.toFixed(1)}{t('time.ms')}</span>
-            </div>
-            <input
-              type="range" min="0" max="50" step="0.5"
-              value={signalIntegrity.jitterMs}
-              onChange={(e) => onSetSignalIntegrity({ jitterMs: parseFloat(e.target.value) })}
-              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Log */}
       <div className="flex-1 flex flex-col min-h-[200px] p-2">

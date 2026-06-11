@@ -93,9 +93,10 @@ export default function TabContent({
       ) : null;
     case 'lab':
       return (
-        <DiffLab 
-          frameA={diffFrames[0]} 
-          frameB={diffFrames[1]} 
+        <DiffLab
+          frameA={diffFrames[0]}
+          frameB={diffFrames[1]}
+          profile={selectedProfile}
           onClear={() => {
               hooks.setDiffFrame(0, null);
               hooks.setDiffFrame(1, null);

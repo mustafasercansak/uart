@@ -9,6 +9,15 @@ interface ConversationMonitorProps {
   entries: ConversationEntry[];
 }
 
+function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  const ss = d.getSeconds().toString().padStart(2, '0');
+  const ms = d.getMilliseconds().toString().padStart(3, '0');
+  return `${hh}:${mm}:${ss}.${ms}`;
+}
+
 const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<FilterType>('all');
@@ -67,10 +76,17 @@ const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[9px] font-mono font-bold text-blue-500 uppercase tracking-tighter">{t('conversationMonitor.incoming')}</span>
-                    <span className="text-[8px] font-mono text-gray-600">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                    <span className="text-[9px] font-mono text-gray-400">{fmtTime(entry.timestamp)}</span>
                   </div>
-                  <div className="bg-blue-900/10 p-2 rounded-lg border border-blue-500/10 font-mono text-[11px] text-blue-100 break-all">
-                    {entry.rawHex}
+                  <div className="bg-blue-900/10 p-2 rounded-lg border border-blue-500/10 font-mono text-[11px] break-all">
+                    {entry.details ? (
+                      <>
+                        <span className="text-blue-100">{entry.details}</span>
+                        <div className="text-blue-500/40 text-[9px] mt-1 leading-relaxed">{entry.rawHex}</div>
+                      </>
+                    ) : (
+                      <span className="text-blue-100">{entry.rawHex}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -84,6 +100,7 @@ const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[9px] font-mono font-bold text-yellow-500 uppercase tracking-tighter">{t('conversationMonitor.ruleTriggered')}</span>
+                    <span className="text-[9px] font-mono text-gray-400">{fmtTime(entry.timestamp)}</span>
                   </div>
                   <div className="bg-yellow-900/10 px-2 py-1 rounded-md border border-yellow-500/10 font-mono text-[10px] text-yellow-200">
                     {entry.details}
@@ -100,6 +117,7 @@ const ConversationMonitor = memo(({ entries }: ConversationMonitorProps) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[9px] font-mono font-bold text-emerald-500 uppercase tracking-tighter">{t('conversationMonitor.autoResponse')}</span>
+                    <span className="text-[9px] font-mono text-gray-400">{fmtTime(entry.timestamp)}</span>
                   </div>
                   <div className="bg-emerald-900/10 p-2 rounded-lg border border-emerald-500/10 font-mono text-[10px] text-emerald-100 break-all">
                     {entry.rawHex}

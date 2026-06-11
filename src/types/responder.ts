@@ -24,6 +24,7 @@ export interface ConversationEntry {
   linkedId?: string;
   latencyMs?: number;
   status?: 'success' | 'fail' | 'warning';
+  fields?: import('./field').ParsedField[];
 }
 
 export interface Exchange {

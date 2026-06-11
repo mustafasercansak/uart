@@ -3,6 +3,7 @@ import type React from 'react';
 import type { SimulationState } from '../types';
 import type { FrameProfile } from '../types';
 import { parseFrame } from '../engines/FrameParser';
+import { chunkByProfile } from '../utils/frameChunking';
 import type { SimAction } from './simulationReducer';
 import type { ConversationEntry, Exchange, GeneratedFrame } from '../types';
 
@@ -122,21 +123,23 @@ export function useUIUpdateLoop({
                 pushLog({ time: timeStr, text: `RX: ${msg.hex}`, type: 'rx' });
 
                 // Restore immediate RX pairing for Lab reliability
+                const rxFields = profile
+                  ? (() => { const bytes = msg.hex.split(' ').map((h: string) => parseInt(h, 16)); return parseFrame(profile, bytes); })()
+                  : null;
                 const rxEntry: ConversationEntry = {
                   id: `local-rx-${Date.now()}-${Math.random()}`,
                   timestamp: Date.now(),
                   type: 'rx',
                   rawHex: msg.hex,
-                  details: 'Raw Data'
+                  ...(rxFields && rxFields.length > 0 && { fields: rxFields }),
                 };
                 conversationBufferRef.current.push(rxEntry);
 
-                // Pairing logic for Timeline
+                // Pair with pending TX if one exists (manual send via GÖNDER)
                 const recentExchanges = [...exchangeBufferRef.current, ...stateRef.current.exchanges];
                 const pendingTx = recentExchanges.find(e =>
                   e.tx && !e.rx && (Date.now() - e.startTime < 2000)
                 );
-
                 if (pendingTx) {
                   pendingTx.rx = rxEntry;
                   pendingTx.latencyMs = rxEntry.timestamp - pendingTx.startTime;
@@ -144,13 +147,33 @@ export function useUIUpdateLoop({
                   if (!exchangeBufferRef.current.includes(pendingTx)) {
                     exchangeBufferRef.current.push(pendingTx);
                   }
-                } else {
-                  exchangeBufferRef.current.push({
-                    id: `local-ex-rx-${Date.now()}-${Math.random()}`,
-                    startTime: rxEntry.timestamp,
-                    rx: rxEntry,
-                    status: 'done'
-                  });
+                } else if (stateRef.current.status !== 'running') {
+                  const frameChunks = chunkByProfile(msg.hex, profile);
+                  if (frameChunks.length > 0) {
+                    const baseTs = rxEntry.timestamp;
+                    frameChunks.forEach((chunk, ci) => {
+                      const chunkEntry: ConversationEntry = {
+                        id: `local-rx-${baseTs}-${ci}-${Math.random()}`,
+                        timestamp: baseTs + ci,
+                        type: 'rx',
+                        rawHex: chunk.hex,
+                        ...(chunk.fields && chunk.fields.length > 0 && { fields: chunk.fields }),
+                      };
+                      exchangeBufferRef.current.push({
+                        id: `local-ex-rx-${baseTs}-${ci}-${Math.random()}`,
+                        startTime: chunkEntry.timestamp,
+                        rx: chunkEntry,
+                        status: 'done'
+                      });
+                    });
+                  } else {
+                    exchangeBufferRef.current.push({
+                      id: `local-ex-rx-${Date.now()}-${Math.random()}`,
+                      startTime: rxEntry.timestamp,
+                      rx: rxEntry,
+                      status: 'done'
+                    });
+                  }
                 }
 
                 if (profile) {

@@ -6,6 +6,28 @@ All notable milestones of the UART Sensor Simulator's evolution toward a "Medica
 
 ---
 
+## [v1.7.0] — 2026-06-11
+### ✨ Timeline Framing + Lab Diff Profile Awareness
+
+#### New Features
+- **Timeline profile-aware framing** (`useUIUpdateLoop.ts`, `frameChunking.ts`): In idle mode (BOŞTA), incoming raw bytes are now split into per-frame chunks according to the selected profile's framing configuration before being shown in the Communication Timeline. Fixed-mode profiles split every N bytes; delimiter-mode profiles split on single or multi-byte delimiter sequences. Each chunk appears as a separate timeline card.
+- **Multi-byte delimiter support** (`protocol.ts`, `SimulationEngine.ts`, `FrameGenerator.ts`): The `delimiter` field in `FramingConfig` now accepts `number | number[]`. Multi-byte sequences such as `\r\n` (`[0x0D, 0x0A]`) are supported for both frame generation and parsing.
+- **Lab (Diff) profile-aware view** (`DiffLab.tsx`): The bit-diff analyser now receives the selected profile and groups bytes by field. Each cell shows the field name, hex bytes, and decoded decimal value. Differing fields are highlighted in red; the other frame's decoded value is shown struck-through for quick comparison.
+- **`chunkByProfile` utility** (`src/utils/frameChunking.ts`): Pure function extracted from `useUIUpdateLoop` for splitting raw hex strings into frame chunks by profile framing. Reusable and fully tested.
+- **Timestamp and field chips on Timeline RX cards** (`CommunicationTimeline.tsx`): Every RX card now shows a `HH:MM:SS.mmm` timestamp and inline field chips (field name + decoded decimal) for profiles that define fields.
+- **`DelimiterPicker` component** (`ProfileEditor/index.tsx`): Profile editor's delimiter field now provides preset buttons (`\n`, `\r`, `\r\n`) and a custom hex input for multi-byte delimiter entry.
+- **Virtual port Python helper** (`/tmp/uart_ys2000a.py`): New Python PTY script that creates a master/slave PTY pair without socat's TIOCEXCL lock, sends `\n`-terminated ASCII commands (`START`, `STOP`, `STATUS:READY`, `DATA:BPM=…`, `ALARM:…`) and reads back commands from UART Pro Lab.
+
+#### Bug Fixes
+- Raw burst cards are no longer shown in the Timeline when the simulation engine is running — framing-engine-produced per-frame exchanges are used instead.
+- Fixed `FrameGenerator.applyFraming` delimiter type (`number` → `number | number[]`) to prevent TypeScript errors when multi-byte delimiters are configured.
+
+#### Tests Added
+- `src/utils/__tests__/frameChunking.test.ts` — 11 tests covering fixed-mode splitting, remainder discard, null/undefined profile, multi-byte delimiter, trailing incomplete data, and default-delimiter fallback.
+- `src/engines/__tests__/FrameGenerator.test.ts` — 2 additional tests: multi-byte `\r\n` delimiter appended correctly; delimiter omitted defaults to `\n`.
+
+---
+
 ## [v1.6.0] — 2026-05-28 (patch)
 ### 🔧 v3 Code Review Fixes
 

@@ -14,6 +14,7 @@ import type {
   ComputedConfig,
   RampConfig,
   FlagBit,
+  FramingMode,
 } from '../../types';
 import { loadProfiles, saveProfile, deleteProfile, exportAsJson, importFromJson } from '../../store/storage';
 import { SENSOR_TEMPLATES } from '../../data/templates';
@@ -21,6 +22,40 @@ import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { FramePreview } from './FramePreview';
 import { FieldEditor } from './FieldEditor';
 import ProfileCompare from '../SimulationDashboard/components/ProfileCompare';
+
+function DelimiterPicker({ delimiter, onChange, labelText }: {
+  delimiter: number | number[] | undefined;
+  onChange: (bytes: number[]) => void;
+  labelText: string;
+}) {
+  const delimBytes: number[] = Array.isArray(delimiter) ? delimiter : delimiter != null ? [delimiter] : [0x0A];
+  const delimDisplay = delimBytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  const isActive = (opt: number[]) => delimBytes.length === opt.length && delimBytes.every((b, i) => b === opt[i]);
+  const presets = [{ label: '\\n', value: [0x0A] }, { label: '\\r', value: [0x0D] }, { label: '\\r\\n', value: [0x0D, 0x0A] }];
+  return (
+    <div>
+      <label className="text-gray-500 text-xs font-mono block mb-1">{labelText}</label>
+      <div className="flex items-center gap-1 flex-wrap">
+        {presets.map(({ label, value }) => (
+          <button key={label} onClick={() => onChange(value)}
+            className={`text-xs font-mono px-2 py-1 rounded border transition-colors ${
+              isActive(value) ? 'bg-green-900/40 border-green-700 text-green-300' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'
+            }`}>{label}</button>
+        ))}
+        <input type="text" maxLength={11} placeholder="0A"
+          className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-24 uppercase"
+          value={delimDisplay}
+          onChange={(e) => {
+            const bytes = e.target.value.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(v => !isNaN(v) && v >= 0 && v <= 255);
+            if (bytes.length >= 1 && bytes.length <= 4) onChange(bytes);
+          }} />
+        <span className="text-gray-600 text-[10px] font-mono">
+          [{delimBytes.map(b => `0x${b.toString(16).toUpperCase().padStart(2, '0')}`).join(', ')}]
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function newField(order: number, t: (key: string, params?: Record<string, unknown>) => string): Field {
   return {
@@ -432,7 +467,7 @@ export default function ProfileEditor() {
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.baudRate')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
                   value={profile.baudRate} onChange={(e) => setProfileWithHistory({ ...profile, baudRate: Number(e.target.value) })}>
-                  {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map((r) => (
+                  {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600].map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
@@ -455,6 +490,40 @@ export default function ProfileEditor() {
                   {[1, 1.5, 2].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.framing')}</label>
+                <select
+                  className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
+                  value={profile.framing.mode}
+                  onChange={(e) => {
+                    const mode = e.target.value as FramingMode;
+                    setProfileWithHistory({
+                      ...profile,
+                      framing: {
+                        ...profile.framing,
+                        mode,
+                        delimiter: mode === 'delimiter'
+                      ? (Array.isArray(profile.framing.delimiter) ? profile.framing.delimiter
+                         : profile.framing.delimiter != null ? [profile.framing.delimiter] : [0x0A])
+                      : profile.framing.delimiter,
+                      },
+                    });
+                  }}
+                >
+                  <option value="fixed">{t('profileEditor.fixed')}</option>
+                  <option value="delimiter">{t('profileEditor.modeDelimiter')}</option>
+                  <option value="slip">{t('profileEditor.modeSlip')}</option>
+                  <option value="cobs">{t('profileEditor.modeCobs')}</option>
+                  <option value="modbus">{t('profileEditor.modeModbus')}</option>
+                </select>
+              </div>
+              {profile.framing.mode === 'delimiter' && (
+                <DelimiterPicker
+                  delimiter={profile.framing.delimiter}
+                  onChange={(bytes) => setProfileWithHistory({ ...profile, framing: { ...profile.framing, delimiter: bytes } })}
+                  labelText={t('profileEditor.delimiterLabel')}
+                />
+              )}
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.sendInterval')}</label>
                 <input type="number" min={1} className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-24"

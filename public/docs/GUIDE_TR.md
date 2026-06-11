@@ -42,6 +42,7 @@
     - [20.11 UDS Tanı Terminali (ISO 14229 / ISO-TP)](#can-uds)
     - [20.12 DBC Dosyası İçe Aktarma ve Sinyal Çözümleyici](#can-dbc)
     - [20.13 J1939 Çerçeve Çözümleyici](#can-j1939)
+21. [Sanal Seri Port Kurulumu (Linux)](#virtual-serial)
 
 ---
 
@@ -1343,13 +1344,322 @@ Bit 28-26 │ Bit 25 │ Bit 24 │ Bit 23-16 │ Bit 15-8 │ Bit 7-0
 
 ---
 
+<a name="virtual-serial"></a>
+## 21. Sanal Seri Port Kurulumu (Linux)
+
+Bu bölüm, fiziksel donanım olmadan UART Pro Lab'ı başka bir uygulamaya bağlayabilmek için Linux'ta **sanal seri port çifti** nasıl oluşturulacağını açıklar. İki sanal port birbiriyle bağlantılıdır: bir uca yazılan baytlar diğer uçta görünür — tıpkı gerçek bir null-modem kablosu gibi.
+
+---
+
+### Neden Gerekli?
+
+UART Pro Lab, Tauri/Rust'ın `serialport` kütüphanesini kullanarak `/dev/ttyUSB*`, `/dev/ttyS*` veya `/dev/pts/*` portlarını açar. USB serial adaptörü olmayan bir makinede `list_serial_ports` boş liste döner. Sanal PTY çifti bu sorunu giderir:
+
+```
+UART Pro Lab  →  /dev/pts/3  ↔  /dev/pts/4  ←  Uygulamanız (Python, Node, minicom…)
+```
+
+---
+
+### 1. socat Kurulumu
+
+```bash
+sudo apt install socat          # Debian / Ubuntu / Raspberry Pi OS
+sudo dnf install socat          # Fedora / RHEL / CentOS
+sudo pacman -S socat            # Arch Linux
+```
+
+---
+
+### 2. Sanal Port Çifti Oluşturma
+
+Aşağıdaki komutu bir terminalde çalıştırın ve **terminali açık bırakın**:
+
+```bash
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
+```
+
+Örnek çıktı:
+```
+2026/06/11 12:00:00 socat[4321] N PTY is /dev/pts/3
+2026/06/11 12:00:00 socat[4321] N PTY is /dev/pts/4
+2026/06/11 12:00:00 socat[4321] N starting data transfer loop
+```
+
+> Port numaraları (`/dev/pts/3`, `/dev/pts/4`) dinamik olarak atanır — sizinki farklı olabilir.
+
+**İsimli sembolik bağlantılar (isteğe bağlı, önerilen):**
+```bash
+socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1
+```
+Bu yöntem çalıştırmalar arasında değişmeyen sabit yollar (`/tmp/ttyV0`, `/tmp/ttyV1`) oluşturur.
+
+---
+
+### 3. UART Pro Lab'ı Bağlama
+
+1. UART Pro Lab'ı açın ve **Simulation Dashboard**'a gidin.
+2. Araç çubuğundaki **Serial Port Bağla** (fiş simgesi) düğmesine tıklayın.
+3. Port listesinden `/dev/pts/3` (veya sembolik bağlantı kullandıysanız `/tmp/ttyV0`) seçin.
+4. **Bağlan**'a tıklayın.
+
+Uygulama artık yapılandırılmış baud hızında frame'leri bu porta iletecektir.
+
+---
+
+### 4. Diğer Uçtan Okuma
+
+**İkinci bir terminal** açın ve bağlı porta erişin:
+
+**Python (pyserial):**
+```python
+import serial
+
+ser = serial.Serial('/dev/pts/4', baudrate=9600, timeout=1)
+while True:
+    data = ser.read(64)
+    if data:
+        print(data.hex(' ').upper())
+```
+
+**Hızlı hex dökümü:**
+```bash
+cat < /dev/pts/4 | xxd
+```
+
+**minicom:**
+```bash
+minicom -D /dev/pts/4 -b 9600
+# Çıkış: Ctrl-A X
+```
+
+**screen:**
+```bash
+screen /dev/pts/4 9600
+# Çıkış: Ctrl-A K
+```
+
+---
+
+### 5. Delimiter Modu ile Kullanım
+
+Profilinizde **Delimiter framing** (örn. `\n` / 0x0A) seçiliyse, iletilen her frame delimiter baytıyla biter. Alıcı tarafta satır satır okuyabilirsiniz:
+
+```python
+import serial
+
+ser = serial.Serial('/dev/pts/4', baudrate=9600)
+for line in ser:
+    print(line.hex(' ').upper())
+```
+
+Delimiter modunu etkinleştirmek için Profile Editor'da **Framing** açılır menüsünden `Delimiter` seçin ve `\n` / `\r` preset butonlarından birini ya da özel bir hex değeri girin.
+
+---
+
+### 6. İzin Hatası Durumunda
+
+UART Pro Lab "Permission denied" hatası gösteriyorsa:
+
+```bash
+# Kullanıcınızı dialout grubuna ekleyin
+sudo usermod -aG dialout $USER
+
+# Oturumu kapatıp açın, ardından kontrol edin:
+groups | grep dialout
+```
+
+`/dev/pts/*` altındaki PTY aygıtları genellikle oturum açmış kullanıcıya otomatik olarak atanır; bu adım yalnızca fiziksel portlar (`/dev/ttyUSB*`, `/dev/ttyS*`) için gereklidir.
+
+---
+
+### 7. Sistem Başlangıcında Otomatik Başlatma (systemd)
+
+`socat` köprüsünün her açılışta otomatik başlaması için systemd servisi oluşturun:
+
+```ini
+# /etc/systemd/system/virtual-uart.service
+[Unit]
+Description=Sanal UART çifti (ttyV0 ↔ ttyV1)
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now virtual-uart.service
+sudo systemctl status virtual-uart.service
+```
+
+---
+
+### 8. UART Pro Lab'a Test Verisi Gönderme
+
+Bu akış, fiziksel cihaz olmadan terminalden UART Pro Lab'a bayt göndermek için kullanılır — RX çözümleme, responder kuralları veya delimiter framing'i doğrulamak için idealdir.
+
+#### Seçenek A — socat (tek satır)
+
+**Adım 1 — Port çiftini başlat** (bu terminali açık bırak):
+```bash
+socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1
+```
+
+**Adım 2 — UART Pro Lab'ı bağla**
+
+Simulation Dashboard → araç çubuğu **"Connect Serial Port"** → listeden `/tmp/ttyV0` seç → **Bağlan**.
+
+**Adım 3 — İkinci terminalden veri gönder**
+
+```bash
+printf '\xAA\x01\xFF\x0A' > /tmp/ttyV1
+echo -ne "SENSOR:25.3,60.1\n" > /tmp/ttyV1
+```
+
+#### Seçenek B — Python PTY (socat TIOCEXCL sorununda önerilir)
+
+`socat` ilk PTY slave üzerinde `TIOCEXCL` (exclusive lock) uygular; bu durum UART Pro Lab bağlanmaya çalıştığında `EBUSY` hatasına yol açabilir. Python alternatifi kilit olmadan temiz bir PTY çifti oluşturur:
+
+```python
+#!/usr/bin/env python3
+"""Cihaz simülatörü — her mesaj \\n ile biter"""
+import os, time, pty, select, random
+
+LINK = '/tmp/ttyVtest'
+
+master_fd, slave_fd = pty.openpty()
+slave_name = os.ttyname(slave_fd)
+os.close(slave_fd)
+
+try:
+    os.unlink(LINK)
+except FileNotFoundError:
+    pass
+os.symlink(slave_name, LINK)
+
+print(f"UART Pro Lab bağlantı portu: {LINK}  ({slave_name})")
+print("Her mesaj \\n ile biter  |  Ctrl-C = çık\n")
+
+def send(fd, msg):
+    print(f"  → {msg}")
+    os.write(fd, (msg + '\n').encode())
+
+def read_pc(fd):
+    r, _, _ = select.select([fd], [], [], 0)
+    if r:
+        try:
+            data = os.read(fd, 256)
+            if data:
+                print(f"  ← {data.decode(errors='replace').strip()}")
+        except OSError:
+            pass
+
+oturum = 0
+try:
+    while True:
+        oturum += 1
+        print(f"\n=== OTURUM {oturum} ===")
+        send(master_fd, "STATUS:READY")
+        time.sleep(0.2)
+        send(master_fd, "START")
+        time.sleep(0.15)
+        for i in range(random.randint(15, 25)):
+            read_pc(master_fd)
+            bpm  = 72 + int(10 * abs(((i * 3) % 20) - 10) / 10)
+            spo2 = 98 - (2 if i % 9 == 0 else 0)
+            if spo2 < 97:
+                send(master_fd, f"ALARM:LOW_SPO2,SPO2={spo2}")
+            send(master_fd, f"DATA:BPM={bpm},SPO2={spo2},RR={15+i%5},TEMP={round(36.8+(i%8)*0.05,2)}")
+            time.sleep(0.1)
+        send(master_fd, "STOP")
+        time.sleep(3.0)
+except KeyboardInterrupt:
+    print("\nDurduruldu.")
+finally:
+    try: os.close(master_fd)
+    except OSError: pass
+    try: os.unlink(LINK)
+    except: pass
+```
+
+Script'i çalıştırın, ardından UART Pro Lab'ı `/tmp/ttyVtest` portuna bağlayın. **Delimiter = `\n`** seçili profil kullanın; her satır Zaman Çizelgesi'nde ayrı bir kart olarak görünür.
+
+**Adım 4 — UART Pro Lab'da nereye bakılır?**
+
+| Konum | Ne görünür |
+|-------|-----------|
+| **Zaman Çizelgesi** | Seçili profilin framing ayarına göre bölünmüş her frame ayrı kart |
+| **ConversationMonitor → RX sekmesi** | Zaman damgalı her alınan mesaj |
+| **LAB (DIFF)** | İki karta tıklayarak bayt ve alan bazlı karşılaştırma |
+
+> **Delimiter modu notu**: Profilde `Delimiter = \n` seçiliyse, `\n` ile biten her satır tek bir tam mesaj olarak algılanır.
+
+---
+
+### Hızlı Başvuru
+
+| Amaç | Komut |
+|------|-------|
+| Geçici port çifti oluştur | `socat -d -d pty,raw,echo=0 pty,raw,echo=0` |
+| İsimli sembolik bağlantılar | `socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 pty,raw,echo=0,link=/tmp/ttyV1` |
+| Hex frame gönder | `printf '\xAA\x01\xFF\x0A' > /tmp/ttyV1` |
+| ASCII satır gönder | `echo -ne "MERHABA\n" > /tmp/ttyV1` |
+| Hex dökümü al | `cat < /dev/pts/4 \| xxd` |
+| Etkileşimli terminal | `screen /dev/pts/4 9600` |
+| İzin hatası çözümü | `sudo usermod -aG dialout $USER` |
+| Mevcut portları listele | UART Pro Lab araç çubuğu → Serial Port Bağla |
+
+---
+
+---
+
+<a name="framing-timeline"></a>
+## 22. Profil Tabanlı Framing ve Zaman Çizelgesi
+
+### Nasıl çalışır?
+
+Seri porta veri geldiğinde UART Pro Lab, **seçili profilin framing konfigürasyonuna** göre Zaman Çizelgesi'ni günceller:
+
+| Framing modu | Zaman Çizelgesi davranışı |
+|---|---|
+| **Sabit N byte** | Her N byte → bir kart. 350 byte aynı anda gelirse (25 × 14-byte frame), 25 ayrı kart görünür. |
+| **Delimiter** | Yapılandırılan delimiter'a (tek veya çok byte) göre bölünür. Her satır/kayıt → bir kart. |
+| **Profil seçili değil** | Ham OS burst'ü tek kart olarak görünür (geri dönüş). |
+
+Bu davranış hem simülasyon çalışırken (worker'daki framing motoru) hem de port boşta/BOŞTA iken (ana thread'deki `chunkByProfile` fonksiyonu) geçerlidir.
+
+### Desteklenen delimiter formatları
+
+Profil Düzenleyici → Framing → Delimiter modunda bölme byte dizisini yapılandırabilirsiniz:
+
+| Önayar | Byte'lar | Kullanım alanı |
+|---|---|---|
+| `\n` (LF) | `0x0A` | Unix satır sonu, çoğu sensör |
+| `\r` (CR) | `0x0D` | Eski cihazlar |
+| `\r\n` (CRLF) | `0x0D 0x0A` | Windows / AT komut stili |
+| Özel hex | herhangi dizi | tescilli framing |
+
+### LAB (DIFF) profil tabanlı görünüm
+
+**LAB (DIFF)** sekmesi seçili profile göre otomatik olarak uyum sağlar:
+
+- **Alanlı profil**: Byte'lar alana göre gruplanır. Her hücre **alan adı**, **hex byte'lar**, **çözümlenmiş ondalık değer** ve byte'lar yazdırılabilir metinse **ASCII gösterim** içerir.
+- **Profil yok / metin verisi**: Her byte'ın altında ASCII karakter ve üstte tam frame ASCII başlığı olan düz byte ızgarası görünür.
+- İki frame arasında **farklı olan** hücreler kırmızıyla vurgulanır; diğer frame'in değeri üzeri çizili olarak gösterilir.
+
+---
+
 ## Sonuç
 
-**UART Pro Lab v1.6.0** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
+**UART Pro Lab v1.7.0** bir simülatör değildir — tamamen tarayıcınızda çalışan eksiksiz bir **tıbbi kalitede, düzenleyici kuruluşlara hazır sinyal mühendisliği ortamıdır**.
 
 Her özellik gerçek bir mühendislik sorununa yönelik tasarlandı: birim testlerinden kaçan çerçeveleme hataları, yalnızca termal stres altında görünen jitter, çıplak gözle görünmeyen dalga formu anomalileri. Bu araç hepsini ortaya çıkarır — silikon aşamasına ulaşmadan önce.
 
 ---
 
 *Mustafa Sercan Sak — Baş Mimar*  
-*© 2026 Mustafa Sercan Sak Diagnostics · v1.6.0-STABLE*
+*© 2026 Mustafa Sercan Sak Diagnostics · v1.7.0-STABLE*

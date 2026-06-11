@@ -2,24 +2,18 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ControlPanel from '../ControlPanel';
 import { LanguageProvider } from '../../../../i18n/LanguageProvider';
-import type { Field, ErrorType } from '../../../../types';
+import type { Field } from '../../../../types';
 
 const defaultProps = {
-  status: 'stopped',
   flagsFields: [],
   allRangeFields: [],
   bitOverrides: {},
   fieldOverrides: {},
-  pendingErrors: [],
   logEntries: [],
-  errorTypes: [],
   onOverrideField: vi.fn(),
   onOverrideBit: vi.fn(),
-  onInjectError: vi.fn(),
   onResetOverrides: vi.fn(),
   onExportLogs: vi.fn(),
-  signalIntegrity: { noiseLevel: 0, jitterMs: 0, bitFlipsEnabled: false },
-  onSetSignalIntegrity: vi.fn(),
 };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -53,60 +47,9 @@ describe('ControlPanel', () => {
     localStorage.setItem('uart_locale', 'en');
   });
 
-  it('renders without crash with valid signalIntegrity', () => {
+  it('renders without crash', () => {
     render(<ControlPanel {...defaultProps} />, { wrapper });
     expect(document.body).toBeTruthy();
-  });
-
-  it('displays noise level percentage from signalIntegrity', () => {
-    render(
-      <ControlPanel {...defaultProps} signalIntegrity={{ noiseLevel: 0.42, jitterMs: 0, bitFlipsEnabled: false }} />,
-      { wrapper }
-    );
-    expect(screen.getByText('42.0%')).toBeInTheDocument();
-  });
-
-  it('displays jitter value from signalIntegrity', () => {
-    render(
-      <ControlPanel {...defaultProps} signalIntegrity={{ noiseLevel: 0, jitterMs: 5.5, bitFlipsEnabled: false }} />,
-      { wrapper }
-    );
-    expect(screen.getByText(/5\.5/)).toBeInTheDocument();
-  });
-
-  it('does not crash when signalIntegrity has zero values', () => {
-    expect(() =>
-      render(
-        <ControlPanel {...defaultProps} signalIntegrity={{ noiseLevel: 0, jitterMs: 0, bitFlipsEnabled: false }} />,
-        { wrapper }
-      )
-    ).not.toThrow();
-  });
-
-  it('reflects bitFlipsEnabled toggle state via re-render', () => {
-    const { rerender } = render(
-      <ControlPanel {...defaultProps} signalIntegrity={{ noiseLevel: 0, jitterMs: 0, bitFlipsEnabled: false }} />,
-      { wrapper }
-    );
-    expect(() =>
-      rerender(
-        <LanguageProvider>
-          <ControlPanel {...defaultProps} signalIntegrity={{ noiseLevel: 0, jitterMs: 0, bitFlipsEnabled: true }} />
-        </LanguageProvider>
-      )
-    ).not.toThrow();
-  });
-
-  it('calls onSetSignalIntegrity when bit-flip toggle is clicked', () => {
-    const onSetSignalIntegrity = vi.fn();
-    render(
-      <ControlPanel {...defaultProps} onSetSignalIntegrity={onSetSignalIntegrity} signalIntegrity={{ noiseLevel: 0, jitterMs: 0, bitFlipsEnabled: false }} />,
-      { wrapper }
-    );
-    // The toggle button is the only button in the Signal Quality section
-    const toggleBtn = screen.getAllByRole('button').find(b => b.className.includes('rounded-full'));
-    if (toggleBtn) fireEvent.click(toggleBtn);
-    expect(onSetSignalIntegrity).toHaveBeenCalledWith({ bitFlipsEnabled: true });
   });
 
   it('renders flags field with bit buttons', () => {
@@ -158,7 +101,6 @@ describe('ControlPanel', () => {
       <ControlPanel {...defaultProps} allRangeFields={[rangeField]} onOverrideField={onOverrideField} />,
       { wrapper }
     );
-    // Range field slider renders before signal integrity sliders, so index 0
     const sliders = screen.getAllByRole('slider');
     fireEvent.change(sliders[0], { target: { value: '75' } });
     expect(onOverrideField).toHaveBeenCalledWith('temp', 75);
@@ -185,53 +127,6 @@ describe('ControlPanel', () => {
     expect(onResetOverrides).toHaveBeenCalledTimes(1);
   });
 
-  it('renders error injection buttons', () => {
-    const errorTypes = [
-      { type: 'corrupt_checksum' as ErrorType, label: 'CRC Error', color: 'text-red-400 border-red-800' },
-      { type: 'wrong_sync' as ErrorType, label: 'Sync Error', color: 'text-orange-400 border-orange-800' },
-    ];
-    render(<ControlPanel {...defaultProps} errorTypes={errorTypes} />, { wrapper });
-    expect(screen.getByText('CRC Error')).toBeInTheDocument();
-    expect(screen.getByText('Sync Error')).toBeInTheDocument();
-  });
-
-  it('disables error injection buttons when status is not running', () => {
-    const errorTypes = [
-      { type: 'corrupt_checksum' as ErrorType, label: 'CRC Error', color: '' },
-    ];
-    render(<ControlPanel {...defaultProps} errorTypes={errorTypes} status="stopped" />, { wrapper });
-    expect(screen.getByRole('button', { name: 'CRC Error' })).toBeDisabled();
-  });
-
-  it('enables error injection when status is running', () => {
-    const errorTypes = [
-      { type: 'corrupt_checksum' as ErrorType, label: 'CRC Error', color: '' },
-    ];
-    render(<ControlPanel {...defaultProps} errorTypes={errorTypes} status="running" />, { wrapper });
-    expect(screen.getByRole('button', { name: 'CRC Error' })).not.toBeDisabled();
-  });
-
-  it('calls onInjectError when error button is clicked during running', () => {
-    const onInjectError = vi.fn();
-    const errorTypes = [
-      { type: 'corrupt_checksum' as ErrorType, label: 'CRC Error', color: '' },
-    ];
-    render(
-      <ControlPanel {...defaultProps} errorTypes={errorTypes} status="running" onInjectError={onInjectError} />,
-      { wrapper }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'CRC Error' }));
-    expect(onInjectError).toHaveBeenCalledWith('corrupt_checksum');
-  });
-
-  it('shows pending errors count when pendingErrors is non-empty', () => {
-    render(
-      <ControlPanel {...defaultProps} pendingErrors={['corrupt_checksum', 'wrong_sync']} />,
-      { wrapper }
-    );
-    expect(screen.getByText(/2/)).toBeInTheDocument();
-  });
-
   it('renders log entries when provided', () => {
     const logEntries = [
       { type: 'info', time: '12:00:00.000', text: 'Simulation started' },
@@ -240,30 +135,6 @@ describe('ControlPanel', () => {
     render(<ControlPanel {...defaultProps} logEntries={logEntries} />, { wrapper });
     expect(screen.getByText('Simulation started')).toBeInTheDocument();
     expect(screen.getByText('Frame error detected')).toBeInTheDocument();
-  });
-
-  it('does not crash when noise slider changes', () => {
-    const onSetSignalIntegrity = vi.fn();
-    render(
-      <ControlPanel {...defaultProps} onSetSignalIntegrity={onSetSignalIntegrity} />,
-      { wrapper }
-    );
-    // defaultProps has allRangeFields:[], so only noise (0) and jitter (1) sliders
-    const sliders = screen.getAllByRole('slider');
-    expect(() => fireEvent.change(sliders[0], { target: { value: '0.02' } })).not.toThrow();
-    expect(onSetSignalIntegrity).toHaveBeenCalledWith({ noiseLevel: 0.02 });
-  });
-
-  it('does not crash when jitter slider changes', () => {
-    const onSetSignalIntegrity = vi.fn();
-    render(
-      <ControlPanel {...defaultProps} onSetSignalIntegrity={onSetSignalIntegrity} />,
-      { wrapper }
-    );
-    // defaultProps has allRangeFields:[], so only noise (0) and jitter (1) sliders
-    const sliders = screen.getAllByRole('slider');
-    expect(() => fireEvent.change(sliders[1], { target: { value: '10' } })).not.toThrow();
-    expect(onSetSignalIntegrity).toHaveBeenCalledWith({ jitterMs: 10 });
   });
 
   it('renders tx log entry with correct color class', () => {
@@ -312,6 +183,18 @@ describe('ControlPanel', () => {
     render(<ControlPanel {...defaultProps} logEntries={[]} />, { wrapper });
     expect(document.body.textContent).toMatch(/logs will appear|simulation starts/i);
   });
+
+  it('triggers auto-scroll effect when logEntries are updated', () => {
+    const { rerender } = render(<ControlPanel {...defaultProps} logEntries={[]} />, { wrapper });
+    expect(() =>
+      rerender(
+        <ControlPanel
+          {...defaultProps}
+          logEntries={[{ type: 'info', time: '00:00:01.000', text: 'New entry' }]}
+        />
+      )
+    ).not.toThrow();
+  });
 });
 
 // ─── Alarm Threshold Branch Coverage ─────────────────────────────────────────
@@ -335,7 +218,6 @@ describe('ControlPanel — alarm thresholds', () => {
   });
 
   it('renders alarm zone track (alarmLow + alarmHigh) without crashing', () => {
-    // min=0, max=100, midpoint=50 — distinct from alarmLow=30 and alarmHigh=80
     const field = makeAlarmField('spo2', 'SpO2', 0, 100, 30, 80);
     render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper });
     expect(screen.getByText('SpO2')).toBeInTheDocument();
@@ -364,7 +246,6 @@ describe('ControlPanel — alarm thresholds', () => {
   it('shows secondary alarm coloring on other fields when one field is in alarm', () => {
     const hrField = makeAlarmField('hr', 'HR', 0, 200, 60, 100);
     const spo2Field = makeAlarmField('spo2', 'SpO2', 80, 100, 90, 99);
-    // hr override = 150 > 100 → inAlarm; spo2 uses midpoint ≈ 90 → inSecondaryAlarm
     render(
       <ControlPanel {...defaultProps} allRangeFields={[hrField, spo2Field]} fieldOverrides={{ hr: 150 }} />,
       { wrapper },
@@ -380,7 +261,6 @@ describe('ControlPanel — alarm thresholds', () => {
   });
 
   it('renders with only alarmHigh set (no alarmLow)', () => {
-    // min=0, max=200, midpoint=100 — distinct from alarmHigh=150
     const field = makeAlarmField('hr', 'HR', 0, 200, undefined, 150);
     render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper });
     expect(screen.getByText('150')).toBeInTheDocument();
@@ -396,8 +276,6 @@ describe('ControlPanel — alarm thresholds', () => {
   });
 
   it('uses fieldOverrides ?? midpoint for anyFieldInAlarm calculation', () => {
-    // alarmLow = 50, alarmHigh = 90, no override → midpoint = 50 → on boundary
-    // midpoint of 0..100 = 50, which equals alarmLow — "not < 50" → no alarm
     const field = makeAlarmField('val', 'Val', 0, 100, 50, 90);
     expect(() =>
       render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper })
@@ -405,24 +283,9 @@ describe('ControlPanel — alarm thresholds', () => {
   });
 
   it('handles range field with min === max without dividing by zero', () => {
-    // range = 0 → `|| 1` fallback in ControlPanel
     const field = makeRangeField('flat', 'Flat', 50, 50);
     expect(() =>
       render(<ControlPanel {...defaultProps} allRangeFields={[field]} />, { wrapper })
     ).not.toThrow();
   });
-
-  it('triggers auto-scroll effect when logEntries are updated', () => {
-    const { rerender } = render(<ControlPanel {...defaultProps} logEntries={[]} />, { wrapper });
-    // Rerender with new log entries — effect fires and tries to scroll logRef.current
-    expect(() =>
-      rerender(
-        <ControlPanel
-          {...defaultProps}
-          logEntries={[{ type: 'info', time: '00:00:01.000', text: 'New entry' }]}
-        />
-      )
-    ).not.toThrow();
-  });
-
 });

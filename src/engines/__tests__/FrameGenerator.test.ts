@@ -273,10 +273,29 @@ describe('FrameGenerator', () => {
     expect(frame.rawBytes.length).toBe(3 + 2); // 3 data + 2 crc
   });
 
-  it('applies delimiter framing', () => {
+  it('applies delimiter framing — single byte (\\n)', () => {
     const delimProfile = {
       ...mockProfile,
       framing: { mode: 'delimiter', delimiter: 0x0A }
+    } as unknown as FrameProfile;
+    const frame = generateFrame(delimProfile, mockState, 1);
+    expect(frame.rawBytes[frame.rawBytes.length - 1]).toBe(0x0A);
+  });
+
+  it('applies delimiter framing — multi-byte (\\r\\n)', () => {
+    const delimProfile = {
+      ...mockProfile,
+      framing: { mode: 'delimiter', delimiter: [0x0D, 0x0A] }
+    } as unknown as FrameProfile;
+    const frame = generateFrame(delimProfile, mockState, 1);
+    const last2 = frame.rawBytes.slice(-2);
+    expect(last2).toEqual([0x0D, 0x0A]);
+  });
+
+  it('applies delimiter framing — defaults to \\n when delimiter omitted', () => {
+    const delimProfile = {
+      ...mockProfile,
+      framing: { mode: 'delimiter' }
     } as unknown as FrameProfile;
     const frame = generateFrame(delimProfile, mockState, 1);
     expect(frame.rawBytes[frame.rawBytes.length - 1]).toBe(0x0A);

@@ -277,7 +277,9 @@ fn connect_serial(
     let app_clone = app.clone();
     thread::spawn(move || {
         let mut port = port;
-        let mut buf = vec![0u8; 256];
+        // At 921600 baud, up to ~9216 bytes arrive per 100 ms window.
+        // 8192-byte read buffer catches most frames in a single syscall.
+        let mut buf = vec![0u8; 8192];
         let mut rx_buffer: Vec<u8> = Vec::new();
 
         app_clone
@@ -293,7 +295,19 @@ fn connect_serial(
                 Ok(n) if n > 0 => {
                     rx_buffer.extend_from_slice(&buf[..n]);
 
-                    // Port timeout(100ms) already accumulates extra bytes; no additional sleep needed.
+                    // Drain any additional bytes already sitting in the OS receive buffer
+                    // so we emit one event per burst instead of many small ones.
+                    while let Ok(avail) = port.bytes_to_read() {
+                        if avail == 0 {
+                            break;
+                        }
+                        let to_read = (avail as usize).min(buf.len());
+                        match port.read(&mut buf[..to_read]) {
+                            Ok(m) if m > 0 => rx_buffer.extend_from_slice(&buf[..m]),
+                            _ => break,
+                        }
+                    }
+
                     let hex = rx_buffer
                         .iter()
                         .map(|b| format!("{:02X}", b))

@@ -27,7 +27,7 @@ import {
   ArrowLeftRight,
   MessageSquare,
 } from 'lucide-react';
-import type { FrameProfile, Scenario, ErrorType, OutputMode, GeneratedFrame } from '../../types';
+import type { FrameProfile, Scenario, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
 import { useNavigate } from 'react-router-dom';
 import { useSimulation } from '../../hooks/useSimulation';
@@ -48,13 +48,6 @@ import LiveDashboard from './components/LiveDashboard';
 import TabContent from './components/TabContent';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 
-const ERROR_TYPES: Array<{ type: ErrorType; key: string; color: string }> = [
-  { type: 'corrupt_checksum', key: 'errors.checksum', color: 'text-red-400 border-red-800/50 bg-red-900/20 hover:bg-red-900/40' },
-  { type: 'wrong_sync', key: 'errors.sync', color: 'text-orange-400 border-orange-800/50 bg-orange-900/20 hover:bg-orange-900/40' },
-  { type: 'skip_bytes', key: 'errors.skip', color: 'text-yellow-400 border-yellow-800/50 bg-yellow-900/20 hover:bg-yellow-900/40' },
-  { type: 'extra_bytes', key: 'errors.extra', color: 'text-purple-400 border-purple-800/50 bg-purple-900/20 hover:bg-purple-900/40' },
-  { type: 'delay_frame', key: 'errors.delay', color: 'text-blue-400 border-blue-800/50 bg-blue-900/20 hover:bg-blue-900/40' },
-];
 
 
 export default function SimulationDashboard() {
@@ -77,10 +70,6 @@ export default function SimulationDashboard() {
     return `${s} ${units.s} ${ms % 1000} ${units.ms}`;
   }, [t]);
 
-  const errorTypes = useMemo(() => ERROR_TYPES.map(et => ({
-    ...et,
-    label: t(et.key)
-  })), [t]);
   const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
@@ -92,7 +81,7 @@ export default function SimulationDashboard() {
   const { 
     state, 
     start, stop, pause, resume, 
-    overrideField, overrideBit, injectError, resetOverrides, 
+    overrideField, overrideBit, resetOverrides,
     connectSerial, disconnectSerial, 
     connectNetwork, disconnectNetwork,
     setProfile, setScenario, setOutputMode, setUiVisible,
@@ -123,7 +112,6 @@ export default function SimulationDashboard() {
     recentFrames,
     bitOverrides,
     fieldOverrides,
-    pendingErrors,
     exchanges,
     timingStats,
     analyzerMode,
@@ -194,8 +182,22 @@ export default function SimulationDashboard() {
     { id: 'profile-compare', icon: GitCompare, label: 'dashboard.profileCompare', color: 'bg-violet-600', shadow: 'shadow-violet-900/40' },
   ];
 
-  const handleAddProfile = () => navigate('/profiles?new=1&from=dashboard');
-  const handleEditProfile = (profile: FrameProfile) => navigate(`/profiles?edit=${profile.id}&from=dashboard`);
+  const handleAddProfile = () => {
+    if (status === 'running') {
+      sessionStorage.setItem('uart_resume_on_return', '1');
+      setUiVisible(false);
+      pause();
+    }
+    navigate('/profiles?new=1&from=dashboard');
+  };
+  const handleEditProfile = (profile: FrameProfile) => {
+    if (status === 'running') {
+      sessionStorage.setItem('uart_resume_on_return', '1');
+      setUiVisible(false);
+      pause();
+    }
+    navigate(`/profiles?edit=${profile.id}&from=dashboard`);
+  };
 
   useEffect(() => {
     setProfiles(profiles);
@@ -205,6 +207,13 @@ export default function SimulationDashboard() {
     setUiVisible(true);
     return () => setUiVisible(false);
   }, [setUiVisible]);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('uart_resume_on_return') !== '1') return;
+    sessionStorage.removeItem('uart_resume_on_return');
+    if (status === 'paused' && selectedProfile) resume(selectedProfile, selectedScenario);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!selectedProfileId && profiles.length > 0) {
@@ -482,22 +491,16 @@ export default function SimulationDashboard() {
           }`}
         >
           <div className="w-80 h-full overflow-y-auto custom-scrollbar">
-            <ControlPanel 
-              status={status}
+            <ControlPanel
               flagsFields={flagsFields}
               allRangeFields={allRangeFields}
               bitOverrides={bitOverrides}
               fieldOverrides={fieldOverrides}
-              pendingErrors={pendingErrors}
               logEntries={logEntries}
-              errorTypes={errorTypes}
               onOverrideField={overrideField}
               onOverrideBit={overrideBit}
-              onInjectError={injectError}
               onResetOverrides={resetOverrides}
               onExportLogs={exportLogs}
-              signalIntegrity={state.signalIntegrity}
-              onSetSignalIntegrity={setSignalIntegrity}
             />
           </div>
         </div>

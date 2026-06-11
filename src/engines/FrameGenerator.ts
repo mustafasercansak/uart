@@ -348,7 +348,7 @@ function calculateParity(byte: number, mode: Parity): number {
 /**
  * Level 1: Protocol Framing Wrappers
  */
-function applyFraming(bytes: number[], config: { mode?: string; header?: number[]; footer?: number[]; delimiter?: number }): number[] {
+function applyFraming(bytes: number[], config: { mode?: string; header?: number[]; footer?: number[]; delimiter?: number | number[] }): number[] {
   if (!config || !config.mode || config.mode === 'fixed') {
     const header = config?.header || [];
     const footer = config?.footer || [];
@@ -363,8 +363,9 @@ function applyFraming(bytes: number[], config: { mode?: string; header?: number[
     case 'modbus':
       return encodeModbus(bytes);
     case 'delimiter': {
-      const delim = config.delimiter !== undefined ? config.delimiter : 0x0A;
-      return [...bytes, delim];
+      const raw = config.delimiter;
+      const delim = Array.isArray(raw) ? raw : raw != null ? [raw] : [0x0A];
+      return [...bytes, ...delim];
     }
     default:
       return bytes;

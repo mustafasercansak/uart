@@ -11,6 +11,15 @@ interface TimelineProps {
   onSendFrame?: (bytes: number[]) => void;
 }
 
+function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  const ss = d.getSeconds().toString().padStart(2, '0');
+  const ms = d.getMilliseconds().toString().padStart(3, '0');
+  return `${hh}:${mm}:${ss}.${ms}`;
+}
+
 const toAscii = (hexStr: string) => {
   if (!hexStr) return '';
   return hexStr.split(' ').map(h => {
@@ -131,7 +140,10 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                       })}
                       className="bg-blue-900/20 border border-blue-800/50 hover:border-blue-500/50 p-2.5 rounded-xl transition-all hover:bg-blue-900/40 text-left max-w-[280px] relative group/btn"
                     >
-                      <div className="text-[8px] font-mono font-black text-blue-400 mb-1 uppercase tracking-tighter opacity-60">{t('timeline.txOut')}</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[8px] font-mono font-black text-blue-400 uppercase tracking-tighter opacity-60">{t('timeline.txOut')}</span>
+                        <span className="text-[8px] font-mono text-gray-500">{fmtTime(ex.startTime)}</span>
+                      </div>
                       <div className="text-[10px] font-mono text-blue-100 break-all leading-tight">{ex.tx.rawHex}</div>
                       <div className="text-[9px] font-mono text-blue-400/60 break-all leading-tight mt-1 tracking-widest">{toAscii(ex.tx.rawHex)}</div>
                       {hasRealDevice && (
@@ -164,14 +176,25 @@ const Timeline = memo(({ exchanges, onSelectFrame, onClear, hasRealDevice = fals
                         })}
                         className="bg-emerald-900/20 border border-emerald-800/50 hover:border-emerald-500/50 p-2.5 rounded-xl transition-all hover:bg-emerald-900/40 text-left max-w-[280px] relative group/btn"
                       >
-                        <div className="text-[8px] font-mono font-black text-emerald-400 mb-1 uppercase tracking-tighter opacity-60">
-                          {t('timeline.rxIn')}
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[8px] font-mono font-black text-emerald-400 uppercase tracking-tighter opacity-60">{t('timeline.rxIn')}</span>
                           {ex.latencyMs != null && (
-                            <span className="ml-2 text-gray-500 normal-case">{ex.latencyMs}ms</span>
+                            <span className="text-[8px] font-mono text-gray-500">{ex.latencyMs}ms</span>
                           )}
+                          <span className="text-[8px] font-mono text-gray-500">{fmtTime(ex.rx?.timestamp ?? ex.startTime)}</span>
                         </div>
                         <div className="text-[10px] font-mono text-emerald-100 break-all leading-tight">{ex.rx.rawHex}</div>
                         <div className="text-[9px] font-mono text-emerald-500/60 break-all leading-tight mt-1 tracking-widest">{toAscii(ex.rx.rawHex)}</div>
+                        {ex.rx.fields && ex.rx.fields.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {ex.rx.fields.map((f) => (
+                              <span key={f.name} className="bg-emerald-900/20 border border-emerald-700/30 rounded px-1.5 py-0.5 text-[8px] font-mono">
+                                <span className="text-emerald-500/70">{f.name}:</span>
+                                <span className="text-emerald-100 font-bold ml-0.5">{f.decimal}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="absolute top-1/2 -left-8 -translate-y-1/2 text-emerald-500 opacity-0 group-hover/btn:opacity-100 transition-opacity">
                           <ArrowLeft size={18} />
                         </div>

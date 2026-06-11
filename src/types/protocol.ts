@@ -17,7 +17,7 @@ export type FramingMode = 'fixed' | 'delimiter' | 'slip' | 'cobs' | 'modbus';
 
 export interface FramingConfig {
   mode: FramingMode;
-  delimiter?: number;
+  delimiter?: number | number[];  // single byte or multi-byte sequence (e.g. [0x0D, 0x0A])
   header?: number[];
   footer?: number[];
 }
