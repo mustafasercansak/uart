@@ -142,7 +142,7 @@ export default function SimulationDashboard() {
   type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn' | 'exchange' | 'conversation' | 'profile-compare' | 'messages' | 'console';
   const location = useLocation();
   const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>(
-    (location.state as { tab?: CenterTabType } | null)?.tab ?? 'waveforms'
+    (location.state as { tab?: CenterTabType } | null)?.tab ?? 'builder'
   );
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -158,10 +158,33 @@ export default function SimulationDashboard() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(checkScroll, 100);
+    const el = tabContainerRef.current;
+    if (!el) return;
+    
+    // Initial check
+    checkScroll();
+    
+    const observer = new ResizeObserver(() => {
+      checkScroll();
+    });
+    
+    observer.observe(el);
+    Array.from(el.children).forEach(child => observer.observe(child));
+    
     window.addEventListener('resize', checkScroll);
+    
+    // Add mouse wheel horizontal scrolling support
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    
     return () => {
-      clearTimeout(timer);
+      observer.disconnect();
+      el.removeEventListener('wheel', handleWheel);
       window.removeEventListener('resize', checkScroll);
     };
   }, [checkScroll]);
@@ -174,6 +197,7 @@ export default function SimulationDashboard() {
   };
 
   const tabs: Array<{ id: CenterTabType; icon: import('lucide-react').LucideIcon; label: string; color: string; shadow: string }> = [
+    { id: 'builder', icon: Hammer, label: 'dashboard.builder', color: 'bg-amber-600', shadow: 'shadow-amber-900/40' },
     { id: 'console',  icon: TerminalSquare, label: 'dashboard.console', color: 'bg-emerald-700', shadow: 'shadow-emerald-900/40' },
     { id: 'messages', icon: Send, label: 'dashboard.messages', color: 'bg-green-600', shadow: 'shadow-green-900/40' },
     { id: 'waveforms', icon: LineChart, label: 'dashboard.waveforms', color: 'bg-blue-600', shadow: 'shadow-blue-900/20' },
@@ -191,7 +215,6 @@ export default function SimulationDashboard() {
     { id: 'decoder', icon: Binary, label: 'dashboard.decoder', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/40' },
     { id: 'testsuite', icon: ClipboardList, label: 'dashboard.testsuite', color: 'bg-purple-600', shadow: 'shadow-purple-900/40' },
     { id: 'report', icon: FileDown, label: 'dashboard.report', color: 'bg-rose-600', shadow: 'shadow-rose-900/40' },
-    { id: 'builder', icon: Hammer, label: 'dashboard.builder', color: 'bg-amber-600', shadow: 'shadow-amber-900/40' },
     { id: 'learn', icon: GraduationCap, label: 'dashboard.learn', color: 'bg-pink-600', shadow: 'shadow-pink-900/40' },
     { id: 'exchange', icon: ArrowLeftRight, label: 'dashboard.exchange', color: 'bg-teal-600', shadow: 'shadow-teal-900/40' },
     { id: 'conversation', icon: MessageSquare, label: 'dashboard.conversation', color: 'bg-cyan-600', shadow: 'shadow-cyan-900/40' },
