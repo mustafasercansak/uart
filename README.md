@@ -18,6 +18,9 @@
 - **20+ Specialized Modules:** Bit-level logic analysis, protocol diffing, signal integrity simulation, 3D visualization, and more.
 - **Automation & Scenarios:** Scripted clinical events and automated handshakes for comprehensive HIL (Hardware-in-the-Loop) testing.
 - **CAN Bus Tooling:** Dedicated CAN Dashboard with multi-node simulation, arbitration visibility, fault injection, medical profiles, and passive Smart Listen baud-rate detection.
+- **UART Device Library:** GPS/NMEA, AT-command, Modbus RTU, IMU/AHRS binary, barcode, RFID, and digital-scale simulators with serial/TCP output.
+- **Binary-Aware Console:** Switch between ASCII, grouped hexadecimal, and combined views while inspecting live frames.
+- **Persistent Device Workbench:** Device configurations and recent event-device history are restored across application restarts.
 - **UDS / ISO-TP Diagnostics:** Full ISO 14229 diagnostic layer over CAN — Session Control, Read DID, Read DTC, multi-frame ISO-TP segmentation/reassembly, and a Symphony auto-responder ECU simulator.
 - **J1939 Frame Decoder:** Decodes all SAE J1939 fields (priority, PGN, PF/PS, source/destination) from 29-bit extended IDs with PGN name lookup directly in the Frame Inspector.
 - **DBC File Parser:** Full signal extraction — Intel/Motorola byte order, multiplexing, value tables, and physical-value decoding via `extractSignalValue()`.
@@ -48,6 +51,37 @@ For a detailed breakdown of all modules and architectural metrics, see [SHOWCASE
 
 ---
 
+## 🔌 UART Device Library
+
+Open **Devices** to configure and run the included simulators. Each device can
+write to the internal log, a physical or virtual serial port, a TCP client, or
+a TCP server.
+
+| Phase | Device family | Protocol behavior | Example |
+|------:|---------------|-------------------|---------|
+| 1 | GPS / GNSS | NMEA 0183 GPGGA, GPRMC, and GPGSV streams | [`01_gps_nmea`](public/examples/01_gps_nmea/) |
+| 2 | AT Commands | SIM800, HC-05, and ESP-AT responses and events | [`02_at_commands`](public/examples/02_at_commands/) |
+| 3 | Modbus RTU | FC01, FC03, FC04, and FC06 slave behavior | [`03_modbus_rtu`](public/examples/03_modbus_rtu/) |
+| 4 | IMU / AHRS | Little-endian MPU-6050 and BNO055 binary frames | [`04_imu_binary`](public/examples/04_imu_binary/) |
+| 5 | Event Devices | Barcode, RFID, and digital-scale ASCII bursts | [`05_event_devices`](public/examples/05_event_devices/) |
+
+Phase 5 supports manual triggers and automatic intervals. Device settings are
+saved locally, and recent event history remains available after restart.
+
+The serial console provides **ASCII**, **HEX**, and **BOTH** display modes.
+
+### Virtual Serial Validation
+
+```bash
+pip install pyserial
+npm run test:serial
+```
+
+The smoke harness validates all five shipped Python examples through real
+pseudo-terminal serial devices, including Modbus request/response and CRC.
+
+---
+
 ## ✅ Test & Coverage Procedure
 
 ### Frontend / TypeScript
@@ -55,6 +89,7 @@ For a detailed breakdown of all modules and architectural metrics, see [SHOWCASE
 ```bash
 npm run lint
 npm test
+npm run test:serial
 npm run test:coverage
 npx tsc --noEmit
 ```

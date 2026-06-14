@@ -15,7 +15,7 @@ import type {
   Exchange,
   ErrorType,
   SimulationStatus,
-  ScriptablePeripheral
+  ScriptablePeripheral,
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,8 +29,14 @@ export class SimulationEngine {
   private startTime = 0;
   private pausedAt = 0;
 
-  // FPS tracking
-  private fpsFrameTimes: number[] = [];
+  // FPS tracking — simple 1-second sliding window counter
+  private fpsWindowStart = 0;
+  private fpsWindowCount = 0;
+  private fpsValue = 0;
+
+  // Rate-limit TX conversation/exchange UI events to avoid flooding the main thread
+  private txUiSampleCounter = 0;
+  private static readonly TX_UI_SAMPLE_EVERY = 10;
 
   // Recording & Replay State
   private isRecording = false;
@@ -50,6 +56,7 @@ export class SimulationEngine {
 
   // Peripherals
   private peripheralEngine: VirtualPeripheralEngine;
+
 
   constructor(initialState: SimulationState) {
     this.state = initialState;
@@ -253,12 +260,14 @@ export class SimulationEngine {
   }
 
   private addLog(entry: ConversationEntry) {
-    this.state.conversationLogs = [entry, ...this.state.conversationLogs].slice(0, 100);
+    this.state.conversationLogs.unshift(entry);
+    if (this.state.conversationLogs.length > 100) this.state.conversationLogs.length = 100;
     this.onConversation?.(entry);
   }
 
   private addExchange(exchange: Exchange) {
-    this.state.exchanges = [exchange, ...this.state.exchanges].slice(0, 50);
+    this.state.exchanges.unshift(exchange);
+    if (this.state.exchanges.length > 50) this.state.exchanges.length = 50;
     this.onExchange?.(exchange);
   }
 
@@ -514,7 +523,11 @@ export class SimulationEngine {
     }
   }
 
-  public start(profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) {
+  public start(
+    profile: FrameProfile,
+    scenario: Scenario | null,
+    outputMode: OutputMode,
+  ) {
     this.stop();
     this.profile = profile;
     this.scenario = scenario;
@@ -522,7 +535,7 @@ export class SimulationEngine {
     this.startTime = Date.now();
     this.state.status = 'running' as SimulationStatus;
     this.state.outputMode = outputMode;
-    
+
     // Clear buffers for a clean run
     this.rxBuffer = [];
     this.pendingExchanges = [];
@@ -569,67 +582,48 @@ export class SimulationEngine {
     this.playbackData = null;
   }
 
-  private run(resumeStart?: number) {
-    if (this.state.status !== 'running' || !this.profile) return;
+  /**
+   * Generates one frame from `profile` and pushes it through the full TX pipeline:
+   * conversation log → hardware output → exchange → recording → triggers → onFrame →
+   * virtual peripheral pass-through → one-shot error consumption.
+   * Shared by the main loop and the multi-message scheduler.
+   */
+  private emitFrame(profile: FrameProfile, frameNumber: number, msgOverrides?: Record<string, number>) {
+    const state = msgOverrides && Object.keys(msgOverrides).length > 0
+      ? { ...this.state, fieldOverrides: { ...this.state.fieldOverrides, ...msgOverrides } }
+      : this.state;
+    const frame = generateFrame(profile, state, frameNumber, { includeBitStream: state.analyzerMode });
 
-    const profile = this.profile;
-    const nextTickAt = Date.now() + profile.sendIntervalMs;
-    
-    // Calculate elapsed time
-    if (resumeStart) {
-        this.state.elapsedMs = this.pausedAt + (Date.now() - resumeStart);
-    } else {
-        this.state.elapsedMs = Date.now() - this.startTime;
-    }
-    
-    this.frameCount++;
-
-    // FPS calculation (rolling 2-second window)
+    // Log as TX — only forward to UI every N frames to avoid flooding postMessage at high Hz
     const now = Date.now();
-    this.fpsFrameTimes.push(now);
-    const cutoff = now - 2000;
-    this.fpsFrameTimes = this.fpsFrameTimes.filter(t => t >= cutoff);
-    this.state.framesPerSecond = this.fpsFrameTimes.length / 2;
+    this.txUiSampleCounter++;
+    const shouldNotifyUI = this.txUiSampleCounter >= SimulationEngine.TX_UI_SAMPLE_EVERY;
+    if (shouldNotifyUI) this.txUiSampleCounter = 0;
 
-    // Process scenario
-    let scenarioUpdates = {};
-    if (this.scenario) {
-      const result = tickScenarioEngine(this.scenario, profile, { ...this.state });
-      scenarioUpdates = result.updates;
-    }
-
-    // Update internal state — preserve required fields that scenarios must not clobber
-    this.state = {
-      ...this.state,
-      ...scenarioUpdates,
-      frameCount: this.frameCount,
-      signalIntegrity: this.state.signalIntegrity,
-    };
-
-    // Generate frame
-    const frame = generateFrame(profile, this.state, this.frameCount);
-    
-    // Log as TX in conversation
     const txEntry: ConversationEntry = {
         id: uuidv4(),
-        timestamp: Date.now(),
+        timestamp: now,
         type: 'tx',
         rawHex: frame.rawHex
     };
-    this.addLog(txEntry);
+    this.state.conversationLogs.unshift(txEntry);
+    if (this.state.conversationLogs.length > 100) this.state.conversationLogs.length = 100;
+    if (shouldNotifyUI) this.onConversation?.(txEntry);
 
     // Send the generated frame bytes to the hardware output pipeline (TCP/Serial)
     this.onRawResponse?.(frame.rawBytes);
 
-    // Start/Update Exchange
+    // Start/Update Exchange — track internally always; notify UI at the same rate
     const txExchange: Exchange = {
         id: uuidv4(),
         startTime: txEntry.timestamp,
         tx: txEntry
     };
     this.pendingExchanges.push(txExchange);
-    this.addExchange(txExchange);
-    
+    this.state.exchanges.unshift(txExchange);
+    if (this.state.exchanges.length > 50) this.state.exchanges.length = 50;
+    if (shouldNotifyUI) this.onExchange?.(txExchange);
+
     // Clean up old pending exchanges that never got a response (prevent leak)
     if (this.pendingExchanges.length > 20) {
         this.pendingExchanges = this.pendingExchanges.slice(-20);
@@ -642,11 +636,11 @@ export class SimulationEngine {
 
     // ── TRIGGER EVALUATION ────────────────────
     const triggerResults = evaluateTriggers(this.state.triggers || [], frame, this.state);
-    
+
     for (const res of triggerResults) {
       if (res.triggered) {
         if (import.meta.env.DEV) console.log(`\x1b[33m[TRIGGERED]\x1b[0m ${res.triggerName} -> ${res.action}`);
-        
+
         switch (res.action) {
           case 'stop_simulation':
             this.stop();
@@ -682,9 +676,9 @@ export class SimulationEngine {
     // ── VIRTUAL PERIPHERAL PASS-THROUGH ───────
     // If the tool is acting as a master, check if a virtual peripheral responds to this frame
     if (!this.state.serialConnected) {
-      const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' : 
-                       (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
-      
+      const protocol = (profile.name.includes('SPI') || profile.name.includes('Ethernet')) ? 'SPI' :
+                       (profile.name.includes('I2C')) ? 'I2C' : 'UART';
+
       const pResponses = this.peripheralEngine.processIncoming(protocol as import('../types').ProtocolType, frame.rawBytes);
 
       pResponses.forEach(res => {
@@ -699,7 +693,7 @@ export class SimulationEngine {
               details: res.log
             });
           }
-          
+
           if (res.bytes.length > 0) {
             this.processIncomingData(res.bytes);
           }
@@ -713,6 +707,49 @@ export class SimulationEngine {
       this.state.pendingErrors = this.state.pendingErrors.slice(1);
       if (import.meta.env.DEV) console.log(`\x1b[35m[ERROR]\x1b[0m Hata başarıyla enjekte edildi: ${consumed}`);
     }
+
+    return frame;
+  }
+
+  private run(resumeStart?: number) {
+    if (this.state.status !== 'running' || !this.profile) return;
+
+    const profile = this.profile;
+    const nextTickAt = Date.now() + profile.sendIntervalMs;
+
+    // Calculate elapsed time
+    if (resumeStart) {
+        this.state.elapsedMs = this.pausedAt + (Date.now() - resumeStart);
+    } else {
+        this.state.elapsedMs = Date.now() - this.startTime;
+    }
+
+    this.frameCount++;
+
+    // FPS calculation — 1-second sliding window, no array allocation
+    const now = Date.now();
+    if (now - this.fpsWindowStart >= 1000) {
+      this.fpsValue = this.fpsWindowCount;
+      this.fpsWindowCount = 0;
+      this.fpsWindowStart = now;
+    }
+    this.fpsWindowCount++;
+    this.state.framesPerSecond = this.fpsValue;
+    this.state.frameCount = this.frameCount;
+
+    // Process scenario — only spread state when a scenario is active
+    if (this.scenario) {
+      const result = tickScenarioEngine(this.scenario, profile, { ...this.state });
+      this.state = {
+        ...this.state,
+        ...result.updates,
+        frameCount: this.frameCount,
+        signalIntegrity: this.state.signalIntegrity,
+      };
+    }
+
+    // Generate + emit the frame through the full TX pipeline
+    this.emitFrame(profile, this.frameCount);
 
     // Schedule next
     const drift = Date.now() - nextTickAt;

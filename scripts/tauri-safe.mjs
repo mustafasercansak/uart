@@ -7,6 +7,7 @@ const env = { ...process.env };
 // VS Code Snap on Linux can leak incompatible runtime libs into GUI app launch.
 if (process.platform === 'linux') {
   const isSnapSession = Boolean(env.SNAP) || String(env.GTK_PATH || '').includes('/snap/');
+  const isCLocale = (value) => /^(C|POSIX)(\.UTF-?8)?$/i.test(String(value || ''));
 
   if (isSnapSession) {
     delete env.LD_LIBRARY_PATH;
@@ -18,6 +19,13 @@ if (process.platform === 'linux') {
     delete env.GDK_PIXBUF_MODULE_FILE;
     delete env.GTK_EXE_PREFIX;
     delete env.GTK_IM_MODULE_FILE;
+  }
+
+  // WebKit exposes C/C.UTF-8 as navigator.language="C". Libraries such as
+  // uPlot pass that value to Intl.NumberFormat, which rejects it as an invalid
+  // BCP-47 language tag before React can mount.
+  if (isCLocale(env.LC_ALL)) {
+    env.LC_ALL = !isCLocale(env.LANG) && env.LANG ? env.LANG : 'en_US.UTF-8';
   }
 }
 

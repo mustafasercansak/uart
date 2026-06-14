@@ -68,7 +68,6 @@ export default function TemplateBrowser() {
     if (firstScenarioId) {
       setScenario(firstScenarioId);
     }
-
     setApplied(template.id);
     setApplying(null);
     

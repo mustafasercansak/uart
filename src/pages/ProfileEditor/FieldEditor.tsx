@@ -9,6 +9,9 @@ import type {
   FlagsConfig,
   ComputedConfig,
   ScriptConfig,
+  CounterConfig,
+  LengthConfig,
+  LengthScope,
   FlagBit,
   BitBehavior,
   ChecksumAlgorithm,
@@ -42,6 +45,8 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       flags: { bits: [{ index: 0, name: t('profileEditor.bit0'), defaultValue: 0, behavior: 'fixed', behaviorConfig: {} }] },
       computed: { expression: t('profileEditor.exampleExpression'), clampMin: 0, clampMax: 255 },
       script: { code: t('profileEditor.scriptHeader') + "\nreturn Math.sin(t/1000) * 100 + 128;" },
+      counter: { start: 0, step: 1, direction: 'up', min: 0, max: 255, wrap: true },
+      length: { scope: 'payload', startFieldId: allFields[0]?.id ?? '', endFieldId: allFields[allFields.length - 1]?.id ?? '', includeSelf: false },
     };
     localStorage.setItem('uart_last_field_type', type);
     onChange({ ...field, type, typeConfig: defaultConfigs[type] as Field['typeConfig'] });
@@ -83,12 +88,14 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
             <option value="flags">{t('profileEditor.flagsBit')}</option>
             <option value="computed">{t('profileEditor.computed')}</option>
             <option value="script">{t('profileEditor.script')}</option>
+            <option value="counter">{t('profileEditor.counterType')}</option>
+            <option value="length">{t('profileEditor.lengthType')}</option>
           </select>
         </div>
       </div>
 
       {/* Type-specific config */}
-      {field.type === 'fixed' && <FixedEditor config={field.typeConfig as FixedConfig} onChange={updateConfig} />}
+      {field.type === 'fixed' && <FixedEditor config={field.typeConfig as FixedConfig} onChange={updateConfig} byteWidth={field.byteWidth} />}
       {field.type === 'range' && <RangeEditor config={field.typeConfig as RangeConfig} onChange={updateConfig} />}
       {field.type === 'ramp' && <RampEditor config={field.typeConfig as RampConfig} onChange={updateConfig} />}
       {field.type === 'waveform' && <WaveformEditor config={field.typeConfig as WaveformConfig} onChange={updateConfig} allFields={allFields} />}
@@ -96,6 +103,8 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
       {field.type === 'flags' && <FlagsEditor config={field.typeConfig as FlagsConfig} onChange={updateConfig} byteWidth={field.byteWidth} />}
       {field.type === 'computed' && <ComputedEditor config={field.typeConfig as ComputedConfig} onChange={updateConfig} allFields={allFields} />}
       {field.type === 'script' && <ScriptEditor config={field.typeConfig as ScriptConfig} onChange={updateConfig} />}
+      {field.type === 'counter' && <CounterEditor config={field.typeConfig as CounterConfig} onChange={updateConfig} />}
+      {field.type === 'length' && <LengthEditor config={field.typeConfig as LengthConfig} allFields={allFields} field={field} onChange={updateConfig} />}
 
       {/* ── Alarm Thresholds ── */}
       {(['fixed', 'range', 'ramp', 'waveform'] as FieldType[]).includes(field.type) && (
@@ -148,20 +157,23 @@ export function FieldEditor({ field, allFields, onChange }: Props) {
   );
 }
 
-function FixedEditor({ config, onChange }: { config: FixedConfig; onChange: (p: Partial<FixedConfig>) => void }) {
+function FixedEditor({ config, onChange, byteWidth }: { config: FixedConfig; onChange: (p: Partial<FixedConfig>) => void; byteWidth: number }) {
   const { t } = useTranslation();
+  const maxVal = Math.pow(2, byteWidth * 8) - 1;
+  const hexLen = byteWidth * 2;
   return (
     <div>
       <label className={labelCls}>{t('profileEditor.fixedValue')}</label>
       <input
         className={inputCls}
-        value={`0x${config.value.toString(16).toUpperCase().padStart(2, '0')}`}
+        value={`0x${config.value.toString(16).toUpperCase().padStart(hexLen, '0')}`}
         onChange={(e) => {
-          const v = parseInt(e.target.value, 16);
-          if (!isNaN(v)) onChange({ value: v & 0xff });
+          const raw = e.target.value.replace(/^0x/i, '');
+          const v = parseInt(raw, 16);
+          if (!isNaN(v)) onChange({ value: Math.min(v, maxVal) });
         }}
       />
-      <div className="text-gray-600 text-xs mt-1 font-mono">{t('profileEditor.decimal')}: {config.value}</div>
+      <div className="text-gray-600 text-xs mt-1 font-mono">{t('profileEditor.decimal')}: {config.value} / max: 0x{maxVal.toString(16).toUpperCase()}</div>
     </div>
   );
 }
@@ -385,6 +397,98 @@ function ChecksumEditor({ config, allFields, field, onChange }: {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CounterEditor({ config, onChange }: {
+  config: CounterConfig;
+  onChange: (p: Partial<CounterConfig>) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>{t('profileEditor.counterStart')}</label>
+          <input type="number" className={inputCls} value={config.start}
+            onChange={(e) => onChange({ start: Number(e.target.value) })} />
+        </div>
+        <div>
+          <label className={labelCls}>{t('profileEditor.counterStep')}</label>
+          <input type="number" className={inputCls} value={config.step}
+            onChange={(e) => onChange({ step: Number(e.target.value) })} />
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>{t('profileEditor.counterDirection')}</label>
+        <select className={inputCls} value={config.direction}
+          onChange={(e) => onChange({ direction: e.target.value as CounterConfig['direction'] })}>
+          <option value="up">{t('profileEditor.counterUp')}</option>
+          <option value="down">{t('profileEditor.counterDown')}</option>
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>{t('profileEditor.counterMin')}</label>
+          <input type="number" className={inputCls} value={config.min}
+            onChange={(e) => onChange({ min: Number(e.target.value) })} />
+        </div>
+        <div>
+          <label className={labelCls}>{t('profileEditor.counterMax')}</label>
+          <input type="number" className={inputCls} value={config.max}
+            onChange={(e) => onChange({ max: Number(e.target.value) })} />
+        </div>
+      </div>
+      <label className="flex items-center gap-1 text-xs font-mono text-gray-400 cursor-pointer">
+        <input type="checkbox" checked={config.wrap} onChange={(e) => onChange({ wrap: e.target.checked })} className="accent-green-500" />
+        {t('profileEditor.counterWrap')}
+      </label>
+    </div>
+  );
+}
+
+function LengthEditor({ config, allFields, field, onChange }: {
+  config: LengthConfig;
+  allFields: Field[];
+  field: Field;
+  onChange: (p: Partial<LengthConfig>) => void;
+}) {
+  const { t } = useTranslation();
+  const otherFields = allFields.filter((f) => f.id !== field.id);
+  return (
+    <div className="space-y-2">
+      <div>
+        <label className={labelCls}>{t('profileEditor.lengthScope')}</label>
+        <select className={inputCls} value={config.scope}
+          onChange={(e) => onChange({ scope: e.target.value as LengthScope })}>
+          <option value="data">{t('profileEditor.lengthScopeData')}</option>
+          <option value="payload">{t('profileEditor.lengthScopePayload')}</option>
+          <option value="frame">{t('profileEditor.lengthScopeFrame')}</option>
+        </select>
+      </div>
+      {config.scope === 'data' && (
+        <>
+          <div>
+            <label className={labelCls}>{t('profileEditor.startField')}</label>
+            <select className={inputCls} value={config.startFieldId ?? ''}
+              onChange={(e) => onChange({ startFieldId: e.target.value })}>
+              {otherFields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>{t('profileEditor.endField')}</label>
+            <select className={inputCls} value={config.endFieldId ?? ''}
+              onChange={(e) => onChange({ endFieldId: e.target.value })}>
+              {otherFields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        </>
+      )}
+      <label className="flex items-center gap-1 text-xs font-mono text-gray-400 cursor-pointer">
+        <input type="checkbox" checked={config.includeSelf ?? false} onChange={(e) => onChange({ includeSelf: e.target.checked })} className="accent-green-500" />
+        {t('profileEditor.lengthIncludeSelf')}
+      </label>
     </div>
   );
 }

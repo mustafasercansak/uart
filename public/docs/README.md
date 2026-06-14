@@ -41,6 +41,21 @@ Complete **English** and **Turkish** localization with a built-in compliance tes
 
 ---
 
+## 🔌 UART Device Library
+
+The **Devices** page includes GPS/NMEA, AT-command modules, Modbus RTU,
+MPU-6050/BNO055 binary IMU streams, and event-driven barcode, RFID, and scale
+simulators.
+
+Device configurations are persisted locally. Event devices support manual and
+automatic triggering with recent transmission history. The serial console can
+show traffic as ASCII, HEX, or both.
+
+Runnable receivers and virtual-port helpers are under
+[`public/examples`](../examples/).
+
+---
+
 ## 🏃 Quick Start
 1. **Install**: `npm install`
 2. **Server**: `npm run server`

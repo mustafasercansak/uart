@@ -14,7 +14,7 @@ const MAX_MSG_BUFFER = 2000;
  */
 export function useSimulationEngine(
   dispatch: React.Dispatch<SimAction>,
-  msgBufferRef: React.MutableRefObject<string[]>,
+  msgBufferRef: React.MutableRefObject<unknown[]>,
   stateRef: React.MutableRefObject<{ outputMode: string }>
 ) {
   const { t } = useTranslation();
@@ -26,15 +26,27 @@ export function useSimulationEngine(
 
   useEffect(() => {
     isMountedRef.current = true;
+    serialConnectedRef.current = false;
+    networkConnectedRef.current = false;
+    dispatch({ type: 'SET_SERIAL_CONNECTED', connected: false });
+    dispatch({ type: 'SET_NETWORK_CONNECTED', connected: false });
+
+    // Tauri survives frontend hot reloads, so close transports left open by the
+    // previous UI instance before accepting new connection requests.
+    void Promise.allSettled([
+      invoke('disconnect_serial'),
+      invoke('disconnect_tcp'),
+      invoke('stop_tcp_server'),
+    ]);
 
     // ── Tauri hardware listeners (registered once, survive worker restarts) ──
     const unlisteners: Array<() => void> = [];
 
-    const pushMsg = (entry: object) => {
+    const pushMsg = (entry: unknown) => {
       if (msgBufferRef.current.length >= MAX_MSG_BUFFER) {
         msgBufferRef.current.splice(0, MAX_MSG_BUFFER / 2);
       }
-      msgBufferRef.current.push(JSON.stringify(entry));
+      msgBufferRef.current.push(entry);
     };
 
     listen('serial-data', (payload) => {
@@ -112,7 +124,7 @@ export function useSimulationEngine(
         if (msgBufferRef.current.length >= MAX_MSG_BUFFER) {
           msgBufferRef.current.splice(0, MAX_MSG_BUFFER / 2);
         }
-        msgBufferRef.current.push(JSON.stringify(msg));
+        msgBufferRef.current.push(msg);
       };
 
       worker.onerror = (e) => {

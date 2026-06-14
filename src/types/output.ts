@@ -2,6 +2,7 @@ import type { Parity, StopBits, FrameProfile } from './protocol';
 import type { Scenario } from './scenario';
 import type { OutputMode, DashboardLayout } from './simulation';
 import type { WidgetType } from './field';
+import type { ResponderRule } from './responder';
 
 export interface SerialConfig {
   portName: string;
@@ -31,6 +32,7 @@ export interface SensorTemplate {
   profile: Omit<FrameProfile, 'id' | 'createdAt' | 'updatedAt'>;
   scenarios: Array<Omit<Scenario, 'id' | 'profileId' | 'createdAt' | 'updatedAt'>>;
   defaultLayout?: DashboardLayout;
+  responderRules?: ResponderRule[];
 }
 
 export interface LogEntry {

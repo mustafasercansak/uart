@@ -18,7 +18,7 @@ import type {
   AutomationSequence,
   Field,
   ValidationTarget,
-  ScriptablePeripheral
+  ScriptablePeripheral,
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseFrame } from '../engines/FrameParser';
@@ -27,12 +27,14 @@ import { useSimulationEngine } from './useSimulationEngine';
 import { useUIUpdateLoop } from './useUIUpdateLoop';
 import { invoke } from '../lib/tauri-bridge';
 import { loadLastSettings, saveLastSettings } from '../lib/lastSettings';
+import { translateBackendError } from '../utils/backendError';
 // SimulationEngine is now in a Web Worker — commands go via workerRef.postMessage()
 import type { SimulationState } from '../types';
 import {
   loadSequences,
   saveSequence,
-  deleteSequence
+  deleteSequence,
+  loadProfiles,
 } from './storage';
 import { usePeripheralStore } from './usePeripheralStore';
 import type { PeripheralState } from './usePeripheralStore';
@@ -45,7 +47,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     stateRef.current = state;
   }, [state]);
 
-  const msgBufferRef = useRef<string[]>([]);
+  const msgBufferRef = useRef<unknown[]>([]);
   const profilesRef = useRef<FrameProfile[]>([]);
   const uiVisibleRef = useRef(false);
   const conversationBufferRef = useRef<ConversationEntry[]>([]);
@@ -110,12 +112,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     const toPersist = {
       watchlist: state.watchlist,
       snapshots: state.snapshots,
-      analyzerMode: state.analyzerMode,
       dashboardLayout: state.dashboardLayout,
       signalIntegrity: state.signalIntegrity,
     };
     localStorage.setItem('uart_pro_state', JSON.stringify(toPersist));
-  }, [state.watchlist, state.snapshots, state.analyzerMode, state.dashboardLayout, state.signalIntegrity]);
+  }, [state.watchlist, state.snapshots, state.dashboardLayout, state.signalIntegrity]);
 
   // ── MEDICAL VALIDATION MONITORING ────────────────────────────────────────────
   React.useEffect(() => {
@@ -172,7 +173,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [peripherals]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SIMULATION CONTROLS ───────────────────────────────────────────────────────
-  const start = useCallback((profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => {
+  // ── MULTI-MESSAGE SCHEDULER ──────────────────────────────────────────────────
+  /** Resolves a scheduled message's profileId to a full FrameProfile for the worker. */
+  const start = useCallback((
+    profile: FrameProfile,
+    scenario: Scenario | null,
+    outputMode: OutputMode,
+  ) => {
     waveformHistoryRef.current = [];
     send({ type: 'START', profile, scenario, outputMode });
     dispatch({ type: 'START', profileId: profile.id, scenarioId: scenario?.id ?? null, outputMode });
@@ -221,9 +228,16 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   // ── SERIAL / NETWORK ──────────────────────────────────────────────────────────
   const connectSerial = useCallback(async (portName: string, baudRate: number) => {
-    await invoke('connect_serial', { portName, baudRate }).catch((e: unknown) => {
-      dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('errors.serialPortError', { error: e }) });
-    });
+    try {
+      await invoke('connect_serial', { portName, baudRate });
+      return null;
+    } catch (error: unknown) {
+      const message = t('errors.serialPortError', {
+        error: translateBackendError(t, String(error)),
+      });
+      dispatch({ type: 'ADD_LOG', entryType: 'error', text: message });
+      return message;
+    }
   }, [dispatch, t]);
 
   const disconnectSerial = useCallback(async () => {
@@ -377,7 +391,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   const refreshRecordings = useCallback(async () => {
     const recordings = await invoke<Array<{ id: string; name: string; createdAt: number; frameCount: number; durationMs: number }>>('list_recordings').catch((e) => { console.error('[recordings] list failed:', e); return []; });
-    msgBufferRef.current.push(JSON.stringify({ type: 'RECORDINGS_LIST', recordings }));
+    msgBufferRef.current.push({ type: 'RECORDINGS_LIST', recordings });
   }, [msgBufferRef]);
 
   const startPlayback = useCallback((data: Array<{ time: number; frame: GeneratedFrame }>) => {
@@ -496,12 +510,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         getPorts: () => {
           invoke<Array<{ path: string }>>('list_serial_ports')
             .then(ports => {
-              msgBufferRef.current.push(JSON.stringify({ type: 'PORTS_LIST', ports }));
+              msgBufferRef.current.push({ type: 'PORTS_LIST', ports });
             })
             .catch(console.error);
         },
         selectExchange: (exchangeId) => dispatch({ type: 'SELECT_EXCHANGE', exchangeId }),
-        setAnalyzerMode: (enabled) => dispatch({ type: 'SET_ANALYZER_MODE', enabled }),
+        setAnalyzerMode: (enabled) => {
+          dispatch({ type: 'SET_ANALYZER_MODE', enabled });
+          send({ type: 'SET_ANALYZER_MODE', enabled });
+        },
         setDisplayFilter: (filter) => dispatch({ type: 'SET_DISPLAY_FILTER', filter }),
         toggleWatchlist: (fieldName) => dispatch({ type: 'TOGGLE_WATCHLIST', fieldName }),
         saveSnapshot: (frame) => dispatch({ type: 'SAVE_SNAPSHOT', frame }),
@@ -524,7 +541,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         sendRawData: (hex: string) => {
           const bytes = hex.trim().split(/\s+/).map(h => parseInt(h, 16)).filter(b => !isNaN(b));
           if (bytes.length === 0) return;
-
+          send({ type: 'INJECT_RAW_TX', bytes });
+        },
+        sendTextData: (text: string) => {
+          const bytes = Array.from(text).map(c => c.charCodeAt(0));
+          if (bytes.length === 0) return;
           send({ type: 'INJECT_RAW_TX', bytes });
         },
         automation: {
@@ -543,7 +564,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setCustomWaveform: (waveform: number[] | null) => {
           send({ type: 'SET_CUSTOM_WAVEFORM', waveform });
           dispatch({ type: 'SET_CUSTOM_WAVEFORM', waveform });
-        }
+        },
       }}
     >
       {children}

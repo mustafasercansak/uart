@@ -113,7 +113,10 @@ export function loadCANProfiles(): CANProfile[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILES));
       return DEFAULT_PROFILES;
     }
-    return parsed as CANProfile[];
+    return (parsed as CANProfile[]).map(p => ({
+      ...p,
+      nodes: Array.isArray(p.nodes) ? p.nodes : [],
+    }));
   } catch {
     return DEFAULT_PROFILES;
   }

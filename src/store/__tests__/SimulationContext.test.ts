@@ -85,7 +85,8 @@ describe('validateAndMigrateState', () => {
             analyzerMode: false,
         });
         expect(result.signalIntegrity).toEqual({ noiseLevel: 0.5, jitterMs: 10, bitFlipsEnabled: true });
-        expect(result.analyzerMode).toBe(false);
+        // analyzerMode is transient — always reset to INITIAL_STATE value regardless of stored value
+        expect(result.analyzerMode).toBe(INITIAL_STATE.analyzerMode);
     });
 
     it('replaces null/undefined fields with defaults', () => {
@@ -94,12 +95,31 @@ describe('validateAndMigrateState', () => {
         expect(result.analyzerMode).toBe(INITIAL_STATE.analyzerMode);
     });
 
+    it('does not restore transient runtime state from persistence', () => {
+        const result = validateAndMigrateState({
+            status: 'running',
+            serialConnected: true,
+            networkConnected: true,
+            startedAt: 123456,
+            isRecording: true,
+            outputMode: 'serial',
+        });
+
+        expect(result.status).toBe('stopped');
+        expect(result.serialConnected).toBe(false);
+        expect(result.networkConnected).toBe(false);
+        expect(result.startedAt).toBeNull();
+        expect(result.isRecording).toBe(false);
+        expect(result.outputMode).toBe('serial');
+    });
+
     it('INIT_STATE with missing signalIntegrity does not crash reducer', () => {
         const stateWithoutSignal = reducer(INITIAL_STATE, {
             type: 'INIT_STATE',
             newState: validateAndMigrateState({ analyzerMode: false }),
         });
         expect(stateWithoutSignal.signalIntegrity).toEqual(INITIAL_STATE.signalIntegrity);
-        expect(stateWithoutSignal.analyzerMode).toBe(false);
+        // analyzerMode is transient — always restored to INITIAL_STATE.analyzerMode
+        expect(stateWithoutSignal.analyzerMode).toBe(INITIAL_STATE.analyzerMode);
     });
 });

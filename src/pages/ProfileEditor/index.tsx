@@ -16,7 +16,7 @@ import type {
   FlagBit,
   FramingMode,
 } from '../../types';
-import { loadProfiles, saveProfile, deleteProfile, exportAsJson, importFromJson } from '../../store/storage';
+import { loadProfiles, saveProfile, saveProfiles, deleteProfile, exportAsJson, importFromJson } from '../../store/storage';
 import { SENSOR_TEMPLATES } from '../../data/templates';
 import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { FramePreview } from './FramePreview';
@@ -295,8 +295,25 @@ export default function ProfileEditor() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const imported = await importFromJson<FrameProfile>(file);
+      const imported = await importFromJson<FrameProfile | FrameProfile[]>(file);
       const now = new Date().toISOString();
+
+      // Bulk import: JSON array of profiles
+      if (Array.isArray(imported)) {
+        const valid = imported.filter(p => p && typeof p === 'object' && Array.isArray(p.fields));
+        if (valid.length === 0) { alert(t('profileEditor.invalidFile')); e.target.value = ''; return; }
+        valid.forEach(p => saveProfile({ ...p, createdAt: p.createdAt ?? now, updatedAt: now }));
+        setProfiles(loadProfiles());
+        openProfile({ ...valid[0], createdAt: valid[0].createdAt ?? now, updatedAt: now });
+        return;
+      }
+
+      // Single profile import
+      if (!imported || !Array.isArray(imported.fields)) {
+        alert(t('profileEditor.invalidFile'));
+        e.target.value = '';
+        return;
+      }
       const p = { ...imported, id: uuidv4(), createdAt: now, updatedAt: now };
       saveProfile(p);
       setProfiles(loadProfiles());
@@ -307,7 +324,7 @@ export default function ProfileEditor() {
     e.target.value = '';
   };
 
-  const selectedField = profile?.fields.find((f) => f.id === selectedFieldId) ?? null;
+  const selectedField = profile?.fields?.find((f) => f.id === selectedFieldId) ?? null;
   const sortedFields = useMemo(
     () => profile ? [...profile.fields].sort((a, b) => a.order - b.order) : [],
     [profile]
@@ -351,6 +368,13 @@ export default function ProfileEditor() {
               ↑
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
+            {profiles.length > 0 && (
+              <button
+                onClick={() => { if (window.confirm(t('profileEditor.deleteAllConfirm'))) { saveProfiles([]); setProfiles([]); setProfile(null); setSelectedId(null); } }}
+                className="text-red-500 hover:text-red-400 text-xs px-1.5 py-0.5 rounded hover:bg-red-900/20 transition-colors"
+                title={t('profileEditor.deleteAll')}
+              >⊘</button>
+            )}
             <button onClick={createNew} className="text-green-400 hover:text-green-300 text-xs px-1.5 py-0.5 rounded hover:bg-green-900/20 transition-colors" title={t('profileEditor.newProfile')}>+</button>
           </div>
         </div>
@@ -467,8 +491,10 @@ export default function ProfileEditor() {
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.baudRate')}</label>
                 <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
                   value={profile.baudRate} onChange={(e) => setProfileWithHistory({ ...profile, baudRate: Number(e.target.value) })}>
-                  {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600].map((r) => (
-                    <option key={r} value={r}>{r}</option>
+                  {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1000000, 1500000, 2000000, 3000000, 4000000].map((r) => (
+                    <option key={r} value={r}>
+                      {r >= 1000000 ? `${r / 1000000} Mbps (${r})` : r >= 1000 ? `${r / 1000}k` : r}
+                    </option>
                   ))}
                 </select>
               </div>

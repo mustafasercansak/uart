@@ -241,7 +241,7 @@ describe('FrameGenerator', () => {
       dataBits: 8,
       stopBits: 1
     } as unknown as FrameProfile;
-    const frame = generateFrame(parityProfile, mockState, 1);
+    const frame = generateFrame(parityProfile, mockState, 1, { includeBitStream: true });
     expect(frame.bitStream?.some(t => t.label === 'PARITY')).toBe(true);
   });
 
@@ -393,7 +393,7 @@ describe('FrameGenerator', () => {
     const modes = ['Even', 'Odd', 'Space'] as const;
     for (const mode of modes) {
       const pProfile = { ...mockProfile, parity: mode, stopBits: 1.5 } as unknown as FrameProfile;
-      const frame = generateFrame(pProfile, mockState, 1);
+      const frame = generateFrame(pProfile, mockState, 1, { includeBitStream: true });
       expect(frame.bitStream?.length).toBeGreaterThan(0);
     }
   });
@@ -506,7 +506,7 @@ describe('FrameGenerator', () => {
       // We can't hit parity default easily from generateFrame without adding 'UNKNOWN' to Parity type
       // But we can test it if we cast
       const parityProfile = { ...mockProfile, parity: 'UNKNOWN' as unknown as Parity } as unknown as FrameProfile;
-      const frameParity = generateFrame(parityProfile, mockState, 1);
+      const frameParity = generateFrame(parityProfile, mockState, 1, { includeBitStream: true });
       expect(frameParity.bitStream?.some(t => t.label === 'PARITY')).toBe(true); // Still adds parity bit but it defaults to 0
     });
 
@@ -734,6 +734,98 @@ describe('FrameGenerator', () => {
       expect(frame.rawBytes.length).toBe(5);
       expect(frame.fields.find(f => f.name === 'CS1')).toBeDefined();
       expect(frame.fields.find(f => f.name === 'CS2')).toBeDefined();
+    });
+  });
+
+  describe('Counter (watchdog) field', () => {
+    const counterProfile = (cfg: object): FrameProfile => ({
+      ...mockProfile,
+      fields: [
+        { id: 'wd', name: 'WD', byteWidth: 1, order: 0, type: 'counter', typeConfig: cfg, endianness: 'big' },
+      ],
+    } as unknown as FrameProfile);
+
+    it('increments by step each frame (1-based, first frame = start)', () => {
+      const profile = counterProfile({ start: 10, step: 5, direction: 'up', min: 0, max: 255, wrap: true });
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(10);
+      expect(generateFrame(profile, mockState, 2).rawBytes[0]).toBe(15);
+      expect(generateFrame(profile, mockState, 3).rawBytes[0]).toBe(20);
+    });
+
+    it('decrements when direction is down', () => {
+      const profile = counterProfile({ start: 100, step: 10, direction: 'down', min: 0, max: 255, wrap: false });
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(100);
+      expect(generateFrame(profile, mockState, 4).rawBytes[0]).toBe(70);
+    });
+
+    it('wraps around [min, max] when wrap is true', () => {
+      const profile = counterProfile({ start: 0, step: 1, direction: 'up', min: 0, max: 3, wrap: true });
+      // n: 1->0, 2->1, 3->2, 4->3, 5->0
+      expect(generateFrame(profile, mockState, 5).rawBytes[0]).toBe(0);
+      expect(generateFrame(profile, mockState, 6).rawBytes[0]).toBe(1);
+    });
+
+    it('wraps correctly when counting down below min', () => {
+      const profile = counterProfile({ start: 0, step: 1, direction: 'down', min: 0, max: 3, wrap: true });
+      // n: 1->0, 2->-1 wraps to 3, 3->-2 wraps to 2
+      expect(generateFrame(profile, mockState, 2).rawBytes[0]).toBe(3);
+      expect(generateFrame(profile, mockState, 3).rawBytes[0]).toBe(2);
+    });
+
+    it('clamps to [min, max] when wrap is false', () => {
+      const profile = counterProfile({ start: 250, step: 10, direction: 'up', min: 0, max: 255, wrap: false });
+      expect(generateFrame(profile, mockState, 5).rawBytes[0]).toBe(255);
+    });
+
+    it('acts as a constant byte when step is 0', () => {
+      const profile = counterProfile({ start: 0xAA, step: 0, direction: 'up', min: 0, max: 255, wrap: true });
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(0xAA);
+      expect(generateFrame(profile, mockState, 99).rawBytes[0]).toBe(0xAA);
+    });
+  });
+
+  describe('Length (size) field', () => {
+    const lenProfile = (lenCfg: object, extra: Partial<FrameProfile> = {}): FrameProfile => ({
+      ...mockProfile,
+      fields: [
+        { id: 'len', name: 'LEN', byteWidth: 1, order: 0, type: 'length', typeConfig: lenCfg, endianness: 'big' },
+        { id: 'a', name: 'A', byteWidth: 2, order: 1, type: 'fixed', typeConfig: { value: 0x1122 }, endianness: 'big' },
+        { id: 'b', name: 'B', byteWidth: 1, order: 2, type: 'fixed', typeConfig: { value: 0x33 }, endianness: 'big' },
+        { id: 'cs', name: 'CS', byteWidth: 1, order: 3, type: 'checksum', typeConfig: { algorithm: 'sum_mod256', scope: { startFieldId: 'a', endFieldId: 'b' } }, endianness: 'big' },
+      ],
+      ...extra,
+    } as unknown as FrameProfile);
+
+    it('payload scope counts all fields except checksum and length', () => {
+      const profile = lenProfile({ scope: 'payload' });
+      // A(2) + B(1) = 3
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(3);
+    });
+
+    it('data scope counts only fields in [start, end]', () => {
+      const profile = lenProfile({ scope: 'data', startFieldId: 'a', endFieldId: 'b' });
+      // A(2) + B(1) = 3
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(3);
+    });
+
+    it('frame scope includes the delimiter byte count', () => {
+      const profile = lenProfile({ scope: 'frame' }, { framing: { mode: 'delimiter', delimiter: [0x0D, 0x0A] } } as Partial<FrameProfile>);
+      // LEN(1) + A(2) + B(1) + CS(1) = 5 fields + 2 delimiter = 7
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(7);
+    });
+
+    it('includeSelf adds the length field own width', () => {
+      const profile = lenProfile({ scope: 'payload', includeSelf: true });
+      // payload A(2)+B(1)=3, +self(1) = 4
+      expect(generateFrame(profile, mockState, 1).rawBytes[0]).toBe(4);
+    });
+
+    it('checksum after a length field covers the length byte', () => {
+      // CS scope a..b is unaffected; ensure length resolves before checksum without error
+      const profile = lenProfile({ scope: 'payload' });
+      const frame = generateFrame(profile, mockState, 1);
+      // sum of A bytes (0x11+0x22) + B (0x33) = 0x66
+      expect(frame.rawBytes[frame.rawBytes.length - 1]).toBe(0x66);
     });
   });
 });

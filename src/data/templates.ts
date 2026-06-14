@@ -1086,4 +1086,5 @@ export const SENSOR_TEMPLATES: SensorTemplate[] = [
       ]
     }
   },
+
 ];

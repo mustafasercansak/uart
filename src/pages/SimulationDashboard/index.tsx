@@ -26,10 +26,12 @@ import {
   GraduationCap,
   ArrowLeftRight,
   MessageSquare,
+  Send,
+  TerminalSquare,
 } from 'lucide-react';
 import type { FrameProfile, Scenario, OutputMode, GeneratedFrame } from '../../types';
 import { loadProfiles, loadScenarios } from '../../store/storage';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSimulation } from '../../hooks/useSimulation';
 import TriggerManager from './components/TriggerManager';
 import ValidationControls from './components/ValidationControls';
@@ -70,19 +72,20 @@ export default function SimulationDashboard() {
     return `${s} ${units.s} ${ms % 1000} ${units.ms}`;
   }, [t]);
 
-  const [profiles] = useState<FrameProfile[]>(() => loadProfiles());
+  const [profiles, setProfilesList] = useState<FrameProfile[]>(() => loadProfiles());
+  const refreshProfiles = useCallback(() => setProfilesList(loadProfiles()), []);
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
   const [selectedSnapshotFrame, setSelectedSnapshotFrame] = useState<GeneratedFrame | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  
-  const { 
-    state, 
-    start, stop, pause, resume, 
+
+  const {
+    state,
+    start, stop, pause, resume,
     overrideField, overrideBit, resetOverrides,
-    connectSerial, disconnectSerial, 
+    connectSerial, disconnectSerial,
     connectNetwork, disconnectNetwork,
     setProfile, setScenario, setOutputMode, setUiVisible,
     exportLogs, setProfiles,
@@ -92,10 +95,16 @@ export default function SimulationDashboard() {
     setAnalyzerMode, selectExchange, setDisplayFilter,
     setDiffFrame, setResponderRules,
     deleteRecording, refreshRecordings,
-    setSignalIntegrity, setTriggers,
+    setTriggers,
     startValidation, stopValidation,
-    clearExchanges, sendRawData
+    clearExchanges, sendRawData, sendTextData,
   } = useSimulation();
+
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) refreshProfiles(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshProfiles]);
 
   const { 
     waveformHistory, logEntries, 
@@ -128,8 +137,11 @@ export default function SimulationDashboard() {
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn' | 'exchange' | 'conversation' | 'profile-compare';
-  const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>('waveforms');
+  type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn' | 'exchange' | 'conversation' | 'profile-compare' | 'messages' | 'console';
+  const location = useLocation();
+  const [activeCenterTab, setActiveCenterTab] = useState<CenterTabType>(
+    (location.state as { tab?: CenterTabType } | null)?.tab ?? 'waveforms'
+  );
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -160,6 +172,8 @@ export default function SimulationDashboard() {
   };
 
   const tabs: Array<{ id: CenterTabType; icon: import('lucide-react').LucideIcon; label: string; color: string; shadow: string }> = [
+    { id: 'console',  icon: TerminalSquare, label: 'dashboard.console', color: 'bg-emerald-700', shadow: 'shadow-emerald-900/40' },
+    { id: 'messages', icon: Send, label: 'dashboard.messages', color: 'bg-green-600', shadow: 'shadow-green-900/40' },
     { id: 'waveforms', icon: LineChart, label: 'dashboard.waveforms', color: 'bg-blue-600', shadow: 'shadow-blue-900/20' },
     { id: 'logic', icon: Zap, label: 'dashboard.logic', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
     { id: 'telemetry', icon: GaugeIcon, label: 'dashboard.telemetry', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/20' },
@@ -209,20 +223,21 @@ export default function SimulationDashboard() {
   }, [setUiVisible]);
 
   useEffect(() => {
-    if (sessionStorage.getItem('uart_resume_on_return') !== '1') return;
-    sessionStorage.removeItem('uart_resume_on_return');
-    if (status === 'paused' && selectedProfile) resume(selectedProfile, selectedScenario);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (!selectedProfileId && profiles.length > 0) {
       setProfile(profiles[0].id);
     }
   }, [selectedProfileId, profiles, setProfile]);
 
-  const selectedProfile = useMemo(() => profiles.find((p) => p.id === selectedProfileId) ?? null, [profiles, selectedProfileId]);
-  const selectedScenario = useMemo(() => scenarios.find((s) => s.id === selectedScenarioId) ?? null, [scenarios, selectedScenarioId]);
+  const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
+  const selectedScenario = scenarios.find((s) => s.id === selectedScenarioId) ?? null;
+
+  useEffect(() => {
+    if (sessionStorage.getItem('uart_resume_on_return') !== '1') return;
+    sessionStorage.removeItem('uart_resume_on_return');
+    if (status === 'paused' && selectedProfile) resume(selectedProfile, selectedScenario);
+  // The resume marker is intentionally consumed only when the dashboard mounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -346,7 +361,7 @@ export default function SimulationDashboard() {
           {analyzerMode ? (
             <div className="flex-1 min-h-0 p-3 flex gap-3 overflow-hidden relative">
                 <div className="flex-[3] min-h-0 flex flex-col gap-3">
-                    <TraceTable 
+                    <TraceTable
                         exchanges={exchanges}
                         selectedId={selectedExchangeId}
                         onSelect={selectExchange}
@@ -354,9 +369,6 @@ export default function SimulationDashboard() {
                         onFilterChange={setDisplayFilter}
                         profile={selectedProfile}
                     />
-                    <div className="h-64 shrink-0 glass-panel rounded-xl overflow-hidden shadow-2xl">
-                         <LogicAnalyzer />
-                    </div>
                 </div>
 
                 <div className="flex shrink-0">
@@ -464,7 +476,7 @@ export default function SimulationDashboard() {
                       const hex = bytes.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
                       console.info(`[Frame Builder TX] ${bytes.length}B → ${hex}`);
                       sendRawData(hex);
-                    }
+                    },
                   }}
                 />
               </div>

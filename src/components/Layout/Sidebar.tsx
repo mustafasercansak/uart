@@ -91,6 +91,7 @@ export function Sidebar({ onOpenSystem }: SidebarProps) {
             </div>
           )}
           {collapsed && <div className="h-px bg-cyan-900/40 mx-2 mb-1" />}
+
           {UART_ITEMS.map((item) => (
             <NavLink
               key={item.path}

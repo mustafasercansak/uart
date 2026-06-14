@@ -28,7 +28,7 @@ engine.onFrame = (frame) => {
     status: st.status,
     selectedProfileId: engine.getProfile()?.id,
     pendingErrors: st.pendingErrors,
-    exchanges: st.exchanges,
+    // exchanges omitted — each exchange is sent individually via onExchange
   });
   frame.errors.forEach(err =>
     self.postMessage({ type: 'LOG', entry: { time: formatNow(), text: err, type: 'error' } })
@@ -157,6 +157,10 @@ self.onmessage = (event: MessageEvent) => {
 
     case 'SET_CUSTOM_WAVEFORM':
       engine.updateOverrides({ customWaveform: msg.waveform } as never);
+      break;
+
+    case 'SET_ANALYZER_MODE':
+      engine.updateOverrides({ analyzerMode: msg.enabled as boolean });
       break;
   }
 };

@@ -39,6 +39,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
+    "test:serial": "python3 scripts/serial-smoke.py",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml --lib --html",
     "test:rust:coverage:summary": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml --lib --summary-only",

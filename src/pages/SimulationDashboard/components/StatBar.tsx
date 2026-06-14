@@ -303,7 +303,7 @@ const StatBar = memo(({
       )}
 
       <div className="flex items-center gap-1 ml-auto">
-        <button 
+        <button
           onClick={onToggleAnalyzerMode}
           className={`px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1 border ${
             analyzerMode ? 'bg-emerald-900/20 border-emerald-800/40 text-emerald-400' : 'bg-blue-900/20 border-blue-800/40 text-blue-400'
@@ -312,7 +312,7 @@ const StatBar = memo(({
           <Activity size={10} className={analyzerMode ? 'animate-pulse' : ''} />
           {analyzerMode ? t('dashboard.standardMode') : t('dashboard.analyzerMode')}
         </button>
-        <button 
+        <button
           onClick={handleExport}
           className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1 border bg-gray-900/40 border-gray-800 text-gray-500 hover:text-white hover:border-gray-600"
         >
@@ -322,7 +322,7 @@ const StatBar = memo(({
 
         {/* MEDICAL VALIDATION BUTTONS */}
         {!validationSession ? (
-          <button 
+          <button
             onClick={onStartValidation}
             className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1 border border-emerald-500/30 bg-emerald-500/5 text-emerald-500 hover:bg-emerald-400/10"
           >
@@ -330,7 +330,7 @@ const StatBar = memo(({
             {t('dashboard.compliance')}
           </button>
         ) : validationSession.status === 'running' ? (
-          <button 
+          <button
             onClick={onStopValidation}
             className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1 border border-rose-500/50 bg-rose-500/10 text-rose-500 animate-pulse"
           >
@@ -338,7 +338,7 @@ const StatBar = memo(({
             {t('common.stop').toUpperCase()}
           </button>
         ) : (
-          <button 
+          <button
             onClick={onViewReport}
             className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1 border border-blue-500/40 bg-blue-500/10 text-blue-400 hover:text-white"
           >
@@ -347,7 +347,7 @@ const StatBar = memo(({
           </button>
         )}
 
-        <button 
+        <button
           onClick={isRecording ? onStopRecording : onStartRecording}
           disabled={status !== 'running'}
           className={`px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-wider transition-all flex items-center gap-1 border ${

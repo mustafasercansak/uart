@@ -13,7 +13,11 @@ export interface SimulationContextType {
   state: SimulationState;
   /** Waveform data ref — updated outside React state for zero-render chart updates */
   waveformHistoryRef: React.MutableRefObject<Array<Record<string, number>>>;
-  start: (profile: FrameProfile, scenario: Scenario | null, outputMode: OutputMode) => void;
+  start: (
+    profile: FrameProfile,
+    scenario: Scenario | null,
+    outputMode: OutputMode,
+  ) => void;
   stop: () => void;
   pause: () => void;
   resume: (profile: FrameProfile, scenario: Scenario | null) => void;
@@ -21,7 +25,8 @@ export interface SimulationContextType {
   overrideBit: (bitKey: string, value: number) => void;
   injectError: (errorType: ErrorType) => void;
   resetOverrides: () => void;
-  connectSerial: (portName: string, baudRate: number) => Promise<void>;
+  /** Returns a localized error message when the connection fails. */
+  connectSerial: (portName: string, baudRate: number) => Promise<string | null>;
   disconnectSerial: () => Promise<void>;
   setProfile: (profileId: string | null) => void;
   setScenario: (scenarioId: string | null) => void;
@@ -61,6 +66,7 @@ export interface SimulationContextType {
   cancelValidation: () => void;
   deleteValidationSession: (id: string) => void;
   sendRawData: (hex: string) => void;
+  sendTextData: (text: string) => void;
   automation: {
     saveSequence: (sequence: AutomationSequence) => void;
     deleteSequence: (id: string) => void;

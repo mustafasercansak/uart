@@ -58,9 +58,9 @@ describe('TemplateBrowser Component', () => {
       </LanguageProvider>
     );
     
-    // Find the 'Bu Şablonu Kullan' button for the Ventilator
+    // Second template (YS2000A Patient Monitor) has both defaultLayout and scenarios
     const applyButtons = screen.getAllByText(/Bu Şablonu Kullan/i);
-    fireEvent.click(applyButtons[applyButtons.length - 1]); // Last one is the Ventilator we added
+    fireEvent.click(applyButtons[1]);
 
     // applyTemplate yields once to render the applying state
     await act(async () => {

@@ -8,6 +8,8 @@ import type {
   FlagsConfig,
   ComputedConfig,
   ScriptConfig,
+  CounterConfig,
+  LengthConfig,
   GeneratedFrame,
   ParsedField,
   SimulationState,
@@ -22,6 +24,15 @@ import { evaluateExpression } from './ExpressionEvaluator';
 // ─────────────────────────────────────────────
 // FRAME ÜRETICISI
 // ─────────────────────────────────────────────
+
+// Cache compiled generator functions — avoids re-parsing the script string on every frame tick.
+const _scriptFnCache = new Map<string, (...args: unknown[]) => unknown>();
+function getScriptFn(script: string): (...args: unknown[]) => unknown {
+  if (!_scriptFnCache.has(script)) {
+    _scriptFnCache.set(script, new Function('t', 'frameCount', 'state', `"use strict"; ${script}`) as (...args: unknown[]) => unknown);
+  }
+  return _scriptFnCache.get(script)!;
+}
 
 function gaussianRandom(mean: number, stddev: number): number {
   const u1 = Math.random();
@@ -55,6 +66,7 @@ function getFieldValue(
   state: SimulationState,
   elapsedMs: number,
   namedValues: Record<string, number>,
+  frameNumber: number,
 ): number {
   const { id, type, typeConfig, byteWidth } = field;
   const maxVal = Math.pow(256, byteWidth) - 1;
@@ -164,27 +176,140 @@ function getFieldValue(
         return 0;
       }
     }
+    case 'counter': {
+      const cfg = typeConfig as CounterConfig;
+      // frameNumber is 1-based; first emitted frame yields `start`.
+      const n = Math.max(0, frameNumber - 1);
+      const raw = cfg.direction === 'down'
+        ? cfg.start - cfg.step * n
+        : cfg.start + cfg.step * n;
+
+      const lo = Math.min(cfg.min, cfg.max);
+      const hi = Math.max(cfg.min, cfg.max);
+      const span = hi - lo + 1;
+
+      if (cfg.wrap && span > 0) {
+        // Modulo into [lo, hi], handling negatives from downward counting.
+        const wrapped = ((Math.round(raw) - lo) % span + span) % span + lo;
+        return wrapped & maxVal;
+      }
+      return Math.max(lo, Math.min(hi, Math.round(raw))) & maxVal;
+    }
+    case 'length': {
+      // Length is resolved in a dedicated pass (see generateFrame); never reached here.
+      return 0;
+    }
     default:
       return 0;
   }
+}
+
+/** Deterministic byte overhead added by the framing layer (best-effort for slip/cobs). */
+function framingOverhead(config?: FrameProfile['framing']): number {
+  if (!config || !config.mode || config.mode === 'fixed') {
+    return (config?.header?.length || 0) + (config?.footer?.length || 0);
+  }
+  switch (config.mode) {
+    case 'delimiter': {
+      const raw = config.delimiter;
+      return Array.isArray(raw) ? raw.length : raw != null ? 1 : 1;
+    }
+    case 'modbus':
+      return 2; // CRC16
+    case 'slip':
+      return 2; // END markers (escapes are data-dependent)
+    case 'cobs':
+      return 2; // overhead + terminator (block bytes are data-dependent)
+    default:
+      return 0;
+  }
+}
+
+/** Computes a `length` field's value from the frame's field widths and framing. */
+function computeLength(field: Field, sortedFields: Field[], profile: FrameProfile): number {
+  const cfg = field.typeConfig as LengthConfig;
+  let count = 0;
+
+  if (cfg.scope === 'data') {
+    let inScope = false;
+    for (const f of sortedFields) {
+      if (f.type === 'checksum') continue;
+      if (f.id === cfg.startFieldId) inScope = true;
+      if (inScope && f.id !== field.id) count += f.byteWidth;
+      if (f.id === cfg.endFieldId) break;
+    }
+  } else if (cfg.scope === 'payload') {
+    for (const f of sortedFields) {
+      if (f.type === 'checksum' || f.type === 'length') continue;
+      count += f.byteWidth;
+    }
+  } else {
+    // 'frame': all field bytes + framing overhead.
+    for (const f of sortedFields) count += f.byteWidth;
+    count += framingOverhead(profile.framing);
+  }
+
+  if (cfg.includeSelf) count += field.byteWidth;
+  return count;
 }
 
 export function generateFrame(
   profile: FrameProfile,
   state: SimulationState,
   frameNumber: number,
+  options?: { includeBitStream?: boolean },
 ): GeneratedFrame {
   const elapsedMs = state.elapsedMs;
   const errors: string[] = [];
+
+  // ── Generator Script path: entire frame produced by a single JS function ──
+  if (profile.generatorScript) {
+    let rawBytes: number[] = [];
+    try {
+      const fn = getScriptFn(profile.generatorScript);
+      const result: unknown = fn(elapsedMs, frameNumber, state);
+      if (typeof result === 'string') {
+        rawBytes = Array.from(result).map(c => c.charCodeAt(0));
+      } else if (Array.isArray(result)) {
+        rawBytes = (result as unknown[]).map(b => (typeof b === 'number' ? b & 0xff : 0));
+      }
+    } catch (_e) {
+      errors.push(`generatorScript error: ${String(_e)}`);
+    }
+
+    let finalBytes = [...rawBytes];
+    if (state.signalIntegrity?.bitFlipsEnabled) {
+      finalBytes = applySignalNoise(finalBytes, state.signalIntegrity.noiseLevel ?? 0);
+    }
+    const pendingError = state.pendingErrors[0];
+    if (pendingError) {
+      const errResult = applyError(finalBytes, pendingError);
+      finalBytes = errResult.bytes;
+      if (errResult.error) errors.push(errResult.error);
+    }
+
+    const bitStream = options?.includeBitStream ? bytesToBitstream(finalBytes, profile, elapsedMs) : [];
+    const rawHex = finalBytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    return {
+      uId: `generated-${elapsedMs}-${Math.random()}`,
+      frameNumber,
+      timestampMs: elapsedMs,
+      rawHex,
+      rawBytes: finalBytes,
+      fields: [],
+      bitStream,
+      errors,
+    };
+  }
 
   const sortedFields = [...profile.fields].sort((a, b) => a.order - b.order);
   const namedValues: Record<string, number> = {};
   const fieldBytes: Record<string, number[]> = {};
 
-  // Pass 1: non-checksum, non-computed
+  // Pass 1: non-checksum, non-computed, non-length
   for (const field of sortedFields) {
-    if (field.type === 'checksum' || field.type === 'computed') continue;
-    const value = getFieldValue(field, state, elapsedMs, namedValues);
+    if (field.type === 'checksum' || field.type === 'computed' || field.type === 'length') continue;
+    const value = getFieldValue(field, state, elapsedMs, namedValues, frameNumber);
     namedValues[field.name] = value;
     fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
   }
@@ -192,7 +317,15 @@ export function generateFrame(
   // Pass 2: computed fields
   for (const field of sortedFields) {
     if (field.type !== 'computed') continue;
-    const value = getFieldValue(field, state, elapsedMs, namedValues);
+    const value = getFieldValue(field, state, elapsedMs, namedValues, frameNumber);
+    namedValues[field.name] = value;
+    fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
+  }
+
+  // Pass 2.5: length fields (before checksum so a checksum can cover the length byte)
+  for (const field of sortedFields) {
+    if (field.type !== 'length') continue;
+    const value = computeLength(field, sortedFields, profile);
     namedValues[field.name] = value;
     fieldBytes[field.id] = numberToBytes(value, field.byteWidth, field.endianness, field.isAscii);
   }
@@ -271,8 +404,8 @@ export function generateFrame(
   // Apply framing protocol wrappers (Level 1: Smart Protocol Decoders)
   finalBytes = applyFraming(finalBytes, profile.framing);
 
-  // Level 4: Generate Logic Bitstream
-  const bitStream = bytesToBitstream(finalBytes, profile, elapsedMs);
+  // Level 4: Generate Logic Bitstream (only when logic analyzer is active)
+  const bitStream = options?.includeBitStream ? bytesToBitstream(finalBytes, profile, elapsedMs) : [];
 
   const rawHex = finalBytes.map((b: number) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 

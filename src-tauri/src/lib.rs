@@ -242,18 +242,35 @@ fn connect_serial(
             let _ = sender.send(());
         }
     }
+    {
+        let mut wp = state.write_port.lock().unwrap();
+        *wp = None;
+    }
 
-    let port = serialport::new(&port_name, baud_rate)
-        .timeout(Duration::from_millis(100))
+    let builder = serialport::new(&port_name, baud_rate).timeout(Duration::from_millis(100));
+
+    // socat-created PTYs already have their master side open. They must be
+    // opened non-exclusively, while physical serial devices remain protected.
+    #[cfg(unix)]
+    let builder = {
+        let is_virtual_pty = std::fs::canonicalize(&port_name)
+            .map(|path| path.starts_with("/dev/pts/"))
+            .unwrap_or(false);
+        builder.exclusive(!is_virtual_pty)
+    };
+
+    let port = builder
         .open()
         .map_err(|e| {
-            let msg = if e.to_string().contains("Access denied")
-                || e.to_string().contains("Permission denied")
-            {
-                "ERR_PORT_LOCKED".to_string()
-            } else {
-                e.to_string()
-            };
+        let raw_error = e.to_string();
+        let msg = if raw_error.contains("Access denied")
+            || raw_error.contains("Permission denied")
+            || raw_error.contains("Unable to acquire exclusive lock")
+        {
+            "ERR_PORT_LOCKED".to_string()
+        } else {
+            raw_error
+        };
             let _ = app.emit(
                 "serial-status",
                 serde_json::json!({ "connected": false, "error": msg }),
@@ -1206,11 +1223,398 @@ fn delete_recording(id: String) -> Result<(), String> {
     }
 }
 
+// ── SOCAT VIRTUAL PORT BRIDGE ─────────────────────────────────────────────────
+
+struct SocatState {
+    pid: Mutex<Option<u32>>,
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn spawn_socat_bridge(app: AppHandle, state: tauri::State<SocatState>) -> Result<String, String> {
+    use std::io::BufRead;
+    use std::process::{Command, Stdio};
+    use std::sync::mpsc;
+
+    // Kill any existing instance first
+    {
+        let mut pid_guard = state.pid.lock().unwrap();
+        if let Some(pid) = pid_guard.take() {
+            let _ = Command::new("kill").arg(pid.to_string()).output();
+        }
+    }
+
+    let mut child = Command::new("socat")
+        .args(["-d", "-d", "pty,raw,echo=0", "pty,raw,echo=0"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn socat: {}", e))?;
+
+    let pid = child.id();
+    *state.pid.lock().unwrap() = Some(pid);
+
+    let stderr = child.stderr.take().ok_or("no stderr")?;
+    let (tx, rx) = mpsc::channel::<String>();
+    let app_clone = app.clone();
+
+    thread::spawn(move || {
+        let reader = std::io::BufReader::new(stderr);
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => break,
+            };
+            let _ = app_clone.emit("socat-log", &line);
+            let _ = tx.send(line);
+        }
+        // socat exited
+        let _ = app_clone.emit("socat-log", "[socat exited]");
+        // wait so we don't leave zombie
+        let _ = child.wait();
+    });
+
+    // Collect the two PTY path lines socat writes to stderr within 3 seconds
+    let mut paths: Vec<String> = Vec::new();
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    while paths.len() < 2 {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        if let Ok(line) = rx.recv_timeout(remaining) {
+            // socat lines look like: "... PTY is /dev/pts/N"
+            if let Some(pos) = line.rfind("/dev/pts/") {
+                paths.push(line[pos..].trim().to_string());
+            }
+        }
+    }
+
+    Ok(paths.join(","))
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn spawn_socat_bridge(_app: AppHandle, _state: tauri::State<SocatState>) -> Result<String, String> {
+    Err("socat bridge is only supported on Linux".to_string())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn kill_socat_bridge(state: tauri::State<SocatState>) -> Result<(), String> {
+    use std::process::Command;
+    let mut pid_guard = state.pid.lock().unwrap();
+    if let Some(pid) = pid_guard.take() {
+        Command::new("kill").arg(pid.to_string()).output().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn kill_socat_bridge(_state: tauri::State<SocatState>) -> Result<(), String> {
+    Ok(())
+}
+
+// ── PYTHON B-SIDE RUNNER ──────────────────────────────────────────────────────
+
+struct BSideState {
+    child_stdin: Mutex<Option<std::process::ChildStdin>>,
+    child_pid:   Mutex<Option<u32>>,
+}
+
+// ── DEVICE EMULATOR ───────────────────────────────────────────────────────────
+
+struct EmulatorState {
+    child_pid: Mutex<Option<u32>>,
+}
+
+#[tauri::command]
+fn start_python_bside(
+    app: AppHandle,
+    state: tauri::State<BSideState>,
+    port: String,
+    baud: u32,
+    script: String,
+) -> Result<(), String> {
+    use std::io::BufRead;
+    use std::process::{Command, Stdio};
+
+    // Kill any existing child
+    {
+        let mut pid_guard = state.child_pid.lock().unwrap();
+        if let Some(pid) = pid_guard.take() {
+            let _ = Command::new("kill").arg(pid.to_string()).output();
+        }
+        *state.child_stdin.lock().unwrap() = None;
+    }
+
+    let script = script.replace("{PORT}", &port).replace("{BAUD}", &baud.to_string());
+
+    let mut child = Command::new("python3")
+        .args(["-u", "-c", &script])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start python3: {}", e))?;
+
+    let pid    = child.id();
+    let stdin  = child.stdin.take().ok_or("no stdin")?;
+    let stdout = child.stdout.take().ok_or("no stdout")?;
+    let stderr = child.stderr.take().ok_or("no stderr")?;
+
+    *state.child_pid.lock().unwrap()   = Some(pid);
+    *state.child_stdin.lock().unwrap() = Some(stdin);
+
+    // Forward stdout
+    let app1 = app.clone();
+    thread::spawn(move || {
+        let reader = std::io::BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = app1.emit("bside-data", l);
+            }
+        }
+    });
+
+    // Forward stderr + wait
+    let app2 = app.clone();
+    thread::spawn(move || {
+        let reader = std::io::BufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = app2.emit("bside-data", format!("[err] {}", l));
+            }
+        }
+        let _ = child.wait();
+        let _ = app2.emit("bside-data", "[python exited]");
+        let _ = app2.emit("bside-stopped", ());
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn send_to_bside(state: tauri::State<BSideState>, data: String) -> Result<(), String> {
+    use std::io::Write;
+    let mut guard = state.child_stdin.lock().unwrap();
+    if let Some(stdin) = guard.as_mut() {
+        stdin.write_all(data.as_bytes()).map_err(|e| e.to_string())?;
+        stdin.flush().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_bside(state: tauri::State<BSideState>) -> Result<(), String> {
+    use std::process::Command;
+    let mut pid_guard = state.child_pid.lock().unwrap();
+    if let Some(pid) = pid_guard.take() {
+        let _ = Command::new("kill").arg(pid.to_string()).output();
+    }
+    *state.child_stdin.lock().unwrap() = None;
+    Ok(())
+}
+
+// ── DEVICE EMULATOR COMMANDS ──────────────────────────────────────────────────
+
+#[tauri::command]
+#[cfg(not(coverage))]
+fn spawn_device_emulator(
+    port: String,
+    mode: String,
+    state: tauri::State<'_, EmulatorState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    use std::io::BufRead;
+    use std::process::{Command, Stdio};
+
+    // Kill any running instance first
+    {
+        let mut pid_guard = state.child_pid.lock().unwrap();
+        if let Some(pid) = pid_guard.take() {
+            let _ = Command::new("kill").arg(pid.to_string()).output();
+        }
+    }
+
+    // Walk up from the executable until we find scripts/device_emulator.py.
+    // In dev mode the exe lives at src-tauri/target/debug/; the script is at
+    // the project root three levels above.
+    let script_path = {
+        let target = std::path::Path::new("scripts").join("device_emulator.py");
+        let mut found = None;
+
+        // 1. current working directory
+        if let Ok(cwd) = std::env::current_dir() {
+            let p = cwd.join(&target);
+            if p.exists() { found = Some(p); }
+        }
+
+        // 2. walk up from the executable (up to 8 levels)
+        if found.is_none() {
+            if let Ok(exe) = std::env::current_exe() {
+                let mut dir = exe.parent().map(|p| p.to_path_buf());
+                for _ in 0..8 {
+                    if let Some(d) = dir {
+                        let p = d.join(&target);
+                        if p.exists() { found = Some(p); break; }
+                        dir = d.parent().map(|p| p.to_path_buf());
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        match found {
+            Some(p) => p,
+            None => return Err(
+                "device_emulator.py not found — walked up 8 levels from exe".to_string()
+            ),
+        }
+    };
+
+    let mut child = Command::new("python3")
+        .args([
+            "-u",
+            script_path.to_str().unwrap_or(""),
+            &port,
+            "--mode",
+            &mode,
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start python3: {}", e))?;
+
+    *state.child_pid.lock().unwrap() = Some(child.id());
+
+    let app1 = app.clone();
+    let stdout = child.stdout.take().ok_or("no stdout")?;
+    thread::spawn(move || {
+        let reader = std::io::BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = app1.emit("emulator-log", l);
+            }
+        }
+    });
+
+    let app2 = app.clone();
+    let stderr = child.stderr.take().ok_or("no stderr")?;
+    thread::spawn(move || {
+        let reader = std::io::BufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = app2.emit("emulator-log", format!("[err] {}", l));
+            }
+        }
+        let _ = child.wait();
+        let _ = app2.emit("emulator-stopped", ());
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+#[cfg(not(coverage))]
+fn stop_device_emulator(state: tauri::State<'_, EmulatorState>) -> Result<(), String> {
+    use std::process::Command;
+    let mut pid_guard = state.child_pid.lock().unwrap();
+    if let Some(pid) = pid_guard.take() {
+        let _ = Command::new("kill").arg(pid.to_string()).output();
+    }
+    Ok(())
+}
+
+// ── HTTP FETCH ────────────────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+struct FetchResult {
+    status: u16,
+    body:   String,
+}
+
+#[tauri::command]
+#[cfg(not(coverage))]
+async fn http_fetch(url: String, method: String, body: Option<String>) -> Result<FetchResult, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let req = match method.to_uppercase().as_str() {
+        "POST"   => client.post(&url),
+        "PUT"    => client.put(&url),
+        "PATCH"  => client.patch(&url),
+        "DELETE" => client.delete(&url),
+        _        => client.get(&url),
+    };
+
+    let req = match body {
+        Some(b) => req.header("Content-Type", "application/json").body(b),
+        None    => req,
+    };
+
+    let resp   = req.send().await.map_err(|e| e.to_string())?;
+    let status = resp.status().as_u16();
+    let body   = resp.text().await.map_err(|e| e.to_string())?;
+    Ok(FetchResult { status, body })
+}
+
+#[tauri::command]
+#[cfg(coverage)]
+async fn http_fetch(_url: String, _method: String, _body: Option<String>) -> Result<FetchResult, String> {
+    Ok(FetchResult { status: 200, body: "{}".into() })
+}
+
+// ── OPEN URL IN DEFAULT BROWSER ───────────────────────────────────────────────
+
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    std::process::Command::new("xdg-open").arg(&url).spawn().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    std::process::Command::new("open").arg(&url).spawn().map_err(|e| e.to_string())?;
+    #[cfg(windows)]
+    std::process::Command::new("cmd").args(["/C", "start", "", &url]).spawn().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ── APP ENTRY ─────────────────────────────────────────────────────────────────
+
+#[cfg(target_os = "linux")]
+#[cfg(not(coverage))]
+fn normalize_webkit_locale() {
+    fn is_c_locale(value: &str) -> bool {
+        matches!(
+            value.to_ascii_uppercase().as_str(),
+            "C" | "C.UTF-8" | "C.UTF8" | "POSIX" | "POSIX.UTF-8" | "POSIX.UTF8"
+        )
+    }
+
+    let lc_all = std::env::var("LC_ALL").unwrap_or_default();
+    if !is_c_locale(&lc_all) {
+        return;
+    }
+
+    let lang = std::env::var("LANG").unwrap_or_default();
+    let fallback = if lang.is_empty() || is_c_locale(&lang) {
+        "en_US.UTF-8"
+    } else {
+        &lang
+    };
+    std::env::set_var("LC_ALL", fallback);
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[cfg(not(coverage))]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    normalize_webkit_locale();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -1235,7 +1639,17 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             session_id: AtomicU64::new(0),
         })
+        .manage(SocatState { pid: Mutex::new(None) })
+        .manage(BSideState {
+            child_stdin: Mutex::new(None),
+            child_pid:   Mutex::new(None),
+        })
+        .manage(EmulatorState {
+            child_pid: Mutex::new(None),
+        })
         .invoke_handler(tauri::generate_handler![
+            spawn_socat_bridge,
+            kill_socat_bridge,
             list_serial_ports,
             connect_serial,
             disconnect_serial,
@@ -1257,6 +1671,13 @@ pub fn run() {
             save_can_profiles,
             load_can_node_profiles,
             save_can_node_profiles,
+            start_python_bside,
+            send_to_bside,
+            stop_bside,
+            spawn_device_emulator,
+            stop_device_emulator,
+            http_fetch,
+            open_url,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start Tauri application");

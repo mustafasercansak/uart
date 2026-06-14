@@ -16,7 +16,7 @@ import type {
   ValidationSession,
   ValidationEvent,
   AutomationSequence,
-  AutomationStep
+  AutomationStep,
 } from '../types';
 
 const MAX_RECENT_FRAMES = 50;
@@ -82,7 +82,7 @@ export const INITIAL_STATE: SimulationState = {
   ],
   validationSession: null,
   sequences: [],
-  activeSequenceId: null
+  activeSequenceId: null,
 };
 
 /**
@@ -91,8 +91,19 @@ export const INITIAL_STATE: SimulationState = {
  */
 export function validateAndMigrateState(raw: Record<string, unknown>): Partial<SimulationState> {
   const result: Partial<SimulationState> = {};
+  const transientKeys = new Set<keyof SimulationState>([
+    'status',
+    'serialConnected',
+    'networkConnected',
+    'startedAt',
+    'isRecording',
+    'analyzerMode', // always start in Pro/Analyzer mode — not persisted
+  ]);
+
   for (const key of Object.keys(INITIAL_STATE) as Array<keyof SimulationState>) {
-    if (key in raw && raw[key] !== undefined && raw[key] !== null) {
+    if (transientKeys.has(key)) {
+      (result as Record<string, unknown>)[key] = INITIAL_STATE[key];
+    } else if (key in raw && raw[key] !== undefined && raw[key] !== null) {
       (result as Record<string, unknown>)[key] = raw[key];
     } else {
       (result as Record<string, unknown>)[key] = INITIAL_STATE[key];

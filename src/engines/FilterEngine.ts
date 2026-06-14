@@ -31,7 +31,7 @@ export class FilterEngine {
       // Advanced expression: check tokens
       const tokens = filter.split(/\s+/);
       const invalidTokens = tokens.filter(t =>
-        !/^[a-zA-Z0-9._:_\-]+$/.test(t) &&
+        !/^[a-zA-Z0-9._:_-]+$/.test(t) &&
         !/^==|!=|>=|<=|>|<|&&|\|\||contains|matches|!$/.test(t) &&
         !/^".*"$/.test(t) &&
         !/^0x[0-9a-fA-F]+$/.test(t) &&
@@ -202,4 +202,3 @@ export class FilterEngine {
     return undefined;
   }
 }
-

@@ -9,7 +9,7 @@ import type { ConversationEntry, Exchange, GeneratedFrame } from '../types';
 
 interface UIUpdateLoopDeps {
   stateRef: React.MutableRefObject<SimulationState>;
-  msgBufferRef: React.MutableRefObject<string[]>;
+  msgBufferRef: React.MutableRefObject<unknown[]>;
   profilesRef: React.MutableRefObject<FrameProfile[]>;
   uiVisibleRef: React.MutableRefObject<boolean>;
   conversationBufferRef: React.MutableRefObject<ConversationEntry[]>;
@@ -61,10 +61,10 @@ export function useUIUpdateLoop({
 
       for (const raw of rawMsgs) {
         try {
-          const parsed = JSON.parse(raw);
-          const msgs = Array.isArray(parsed) ? parsed : [parsed];
-
-          for (const msg of msgs) {
+          // Buffer now stores live objects (no JSON round-trip); keep Array.isArray for safety.
+          const items = Array.isArray(raw) ? raw : [raw];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const msg of items as Array<Record<string, any>>) {
             switch (msg.type) {
               case 'INITIAL_STATE':
                 waveformHistoryRef.current = [];
@@ -225,7 +225,7 @@ export function useUIUpdateLoop({
             }
           }
         } catch (e) {
-          console.error('[UI UPDATE] JSON parse hatası veya işleme hatası:', e);
+          console.error('[UI UPDATE] mesaj işleme hatası:', e);
         }
       }
 

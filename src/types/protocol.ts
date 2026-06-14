@@ -36,4 +36,15 @@ export interface FrameProfile {
   createdAt: string;
   updatedAt: string;
   tags?: string[];
+  /**
+   * Optional JavaScript generator function body. When set, replaces field-by-field
+   * generation with a single script that returns the complete frame as a string
+   * (ASCII) or number[] (raw bytes).
+   *
+   * Available variables: t (elapsed ms), frameCount, state
+   *
+   * Example (NMEA GPS):
+   *   return '$GPGGA,...*XX\r\n$GPRMC,...*XX\r\n';
+   */
+  generatorScript?: string;
 }

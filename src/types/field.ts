@@ -6,7 +6,9 @@ export type FieldType =
   | 'checksum'
   | 'flags'
   | 'computed'
-  | 'script';
+  | 'script'
+  | 'counter'
+  | 'length';
 
 export interface ParsedField {
   name: string;
@@ -123,6 +125,36 @@ export interface ScriptConfig {
   code: string;
 }
 
+/**
+ * Watchdog / heartbeat counter. Increments (or decrements) by `step` every frame.
+ * `step: 0` makes it a constant byte (magic watchdog value).
+ */
+export interface CounterConfig {
+  start: number;
+  step: number;
+  direction: 'up' | 'down';
+  min: number;
+  max: number;
+  /** true: wraps around [min, max]; false: clamps to [min, max]. */
+  wrap: boolean;
+}
+
+export type LengthScope = 'data' | 'payload' | 'frame';
+
+/**
+ * Auto-computed size field.
+ * - `data`: byte count of fields between startFieldId..endFieldId (checksum excluded).
+ * - `payload`: byte count of all fields except checksum and length.
+ * - `frame`: total bytes of the emitted message including framing delimiter.
+ */
+export interface LengthConfig {
+  scope: LengthScope;
+  startFieldId?: string;
+  endFieldId?: string;
+  /** Include this length field's own bytes in the count (default false). */
+  includeSelf?: boolean;
+}
+
 export type FieldTypeConfig =
   | FixedConfig
   | RangeConfig
@@ -131,7 +163,9 @@ export type FieldTypeConfig =
   | ChecksumConfig
   | FlagsConfig
   | ComputedConfig
-  | ScriptConfig;
+  | ScriptConfig
+  | CounterConfig
+  | LengthConfig;
 
 export interface WidgetConfig {
   type: WidgetType;

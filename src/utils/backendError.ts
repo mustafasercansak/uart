@@ -1,6 +1,10 @@
 type TranslateFn = (path: string, params?: Record<string, unknown>) => string;
 
 export function translateBackendError(t: TranslateFn, error: string): string {
+  if (error.includes('No such file or directory') || error.includes('not found')) {
+    return t('errors.serialPortNotFound');
+  }
+
   const colonIdx = error.indexOf(':');
   const code = colonIdx >= 0 ? error.slice(0, colonIdx) : error;
   const param = colonIdx >= 0 ? error.slice(colonIdx + 1) : undefined;

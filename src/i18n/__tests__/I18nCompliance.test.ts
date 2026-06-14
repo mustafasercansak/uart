@@ -103,6 +103,30 @@ const IGNORE_VALUES = new Set([
     'Baud', 'Parity', 'Stop', 'Start', 'Sync', 'CRC', 'XOR', 'Checksum',
     'Hanning', 'Hamming', 'CCITT', 'Modbus', 'RTU', 'NMEA',
     'Big Endian', 'Little Endian', 'Modbus RTU', 'NMEA 0183', 'UART-X1',
+    // AT command protocol identifiers (GSM/BT/WiFi module commands — not UI text)
+    'AT+GMI', 'AT+GMM', 'AT+GMR', 'AT+CGSN', 'AT+CPIN?', 'AT+CSQ', 'AT+CREG?',
+    'AT+COPS?', 'AT+CMGF=1', 'AT+CMGL', 'AT+CMGR=1', 'AT+CPAS', 'AT+CCLK?',
+    'AT+IPR?', 'AT+CLCC', 'AT+CGDCONT?', 'AT+CIFSR', 'AT+CWJAP?', 'AT+CIPMUX?',
+    'AT+CIPSTATUS', 'AT+CWMODE?', 'AT+RST', 'AT+NAME?', 'AT+BAUD?', 'AT+ADDR?',
+    'AT+VERSION?', 'AT+ROLE?', 'AT+CREG=1', 'AT+CREG=2', 'AT+SAPBR=3', 'AT+SAPBR=1',
+    'AT+SAPBR=2', 'ATE0', 'ATE1', 'ATZ', 'AT Commands',
+    // Short AT label chips in quick-send templates (technical identifiers, not prose)
+    '+CSQ', '+CREG?', '+COPS?', '+CPIN?', '+CBC', '+CMGF=1', 'AT+CBC',
+    '+GMI', '+GMM', '+GMR', '+CGSN', '+CCLK?',
+    '+CMGL', '+CMGR', '+CMGS', '+CMGD', '+CLCC', '+CPAS',
+    'Ctrl+Z', 'AT+CMGD=1', 'ATD+905001234567;',
+    // Built-in script content (AT command sequences — technical, not UI prose)
+    'AT Cihaz Bilgisi', 'Ağ Durumu Kontrolü', 'SMS Gönderme Akışı',
+    'SMS Listele ve Oku', 'AT+CMGL=',
+    // Modbus function-code chips
+    'FC03 HR', 'FC04 IR', 'FC01', 'FC06',
+    // Raw hex byte strings used as template values / placeholders
+    '01 03 00 00 00 06 C5 C8', '01 04 00 00 00 03 B1 CB',
+    '01 01 00 00 00 08 3D CC', 'FF FF FF', 'FF 00 A1...',
+    // Terminal log direction markers and internal code sentinel
+    'RX ←', 'TX →', '[URL]',
+    // AT Modem category label (same in all locales — brand/protocol name)
+    'AT Modem',
     'Hz', 'MHz', 'kHz',
     // Locale codes
     'tr-TR', 'en-US', 'en-GB',

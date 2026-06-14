@@ -8,6 +8,7 @@ import { AutomationSequence } from './automation';
 export type SimulationStatus = 'stopped' | 'running' | 'paused';
 export type OutputMode = 'serial' | 'tcp' | 'tcp-server' | 'log';
 
+
 export interface BitTransition {
   t: number;
   v: 0 | 1;
