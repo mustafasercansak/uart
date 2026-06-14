@@ -1,5 +1,5 @@
-import React, { memo, useRef, useEffect } from 'react';
-import { FileDown } from 'lucide-react';
+import React, { memo, useRef, useEffect, useState } from 'react';
+import { FileDown, ChevronDown, ChevronRight } from 'lucide-react';
 import type { FlagsConfig, RangeConfig, Field } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
@@ -28,14 +28,14 @@ const ControlPanel = memo(({
 }: ControlPanelProps) => {
   const { t } = useTranslation();
   const logRef = useRef<HTMLDivElement>(null);
+  const [consoleOpen, setConsoleOpen] = useState(true);
 
-  // Auto-scroll log
   useEffect(() => {
-    logRef.current!.scrollTop = logRef.current!.scrollHeight;
-  }, [logEntries]);
+    if (consoleOpen) logRef.current!.scrollTop = logRef.current!.scrollHeight;
+  }, [logEntries, consoleOpen]);
 
   return (
-    <div className="w-80 flex flex-col border-l border-gray-800 bg-gray-900/30 shrink-0">
+    <div className="w-80 h-full flex flex-col border-l border-gray-800 bg-gray-900/30 shrink-0">
       {/* Flag Toggles */}
       {flagsFields.length > 0 && (
         <div className="p-3 border-b border-gray-800/50">
@@ -224,51 +224,65 @@ const ControlPanel = memo(({
       )}
 
       {/* Log */}
-      <div className="flex-1 flex flex-col min-h-[200px] p-2">
-        <div className="flex flex-col gap-1.5 mb-2">
-          <div className="flex items-center justify-between">
-            <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest">{t('controls.console')}</div>
-            <button 
-              onClick={onExportLogs}
-              className="text-[8px] font-mono text-gray-700 hover:text-green-500 flex items-center gap-1 transition-colors uppercase"
-            >
-              <FileDown size={10} />
-              {t('controls.csvExport')}
-            </button>
+      <div className={`flex flex-col p-2 ${consoleOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
+        <button
+          onClick={() => setConsoleOpen(v => !v)}
+          className="flex items-center justify-between w-full mb-2 group"
+        >
+          <div className="flex items-center gap-1.5">
+            {consoleOpen
+              ? <ChevronDown size={11} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
+              : <ChevronRight size={11} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
+            }
+            <span className="text-gray-600 group-hover:text-gray-400 text-[9px] font-mono uppercase tracking-widest transition-colors">
+              {t('controls.console')}
+            </span>
+            {logEntries.length > 0 && (
+              <span className="text-[7px] text-gray-700 font-mono">{logEntries.length}</span>
+            )}
           </div>
-        </div>
-        <div ref={logRef} className="flex-1 overflow-y-auto bg-gray-950/50 rounded border border-gray-800/50 p-1.5 font-mono text-[9px] space-y-0.5 custom-scrollbar">
-          {logEntries.length === 0 && (
-            <div className="text-gray-800 italic">{t('controls.logEmpty')}</div>
-          )}
-          {logEntries.map((entry, i) => {
-            const isTx = entry.type === 'tx';
-            const isRx = entry.type === 'rx';
-            const isError = entry.type === 'error';
-            
-            return (
-              <div key={i} className="flex flex-col border-b border-gray-900/30 pb-0.5 mb-0.5 last:border-0 hover:bg-white/[0.01]">
-                <div className="flex items-center gap-1.5">
-                   <span className="text-gray-800 text-[8px] shrink-0">[{entry.time}]</span>
-                   <span className={`px-1 py-0 rounded-[2px] text-[7px] font-black uppercase tracking-tighter ${
-                     isTx ? 'bg-green-500/10 text-green-600 border border-green-500/10' : 
-                     isRx ? 'bg-blue-500/10 text-blue-500 border border-blue-500/10' : 
-                     isError ? 'bg-red-500/10 text-red-600 border border-red-500/10' : 'bg-gray-800 text-gray-400'
-                   }`}>
-                     {entry.type}
-                   </span>
+          <button
+            onClick={e => { e.stopPropagation(); onExportLogs(); }}
+            className="text-[8px] font-mono text-gray-700 hover:text-green-500 flex items-center gap-1 transition-colors uppercase"
+          >
+            <FileDown size={10} />
+            {t('controls.csvExport')}
+          </button>
+        </button>
+
+        {consoleOpen && (
+          <div ref={logRef} className="flex-1 min-h-0 overflow-y-auto bg-gray-950/50 rounded border border-gray-800/50 p-1.5 font-mono text-[9px] space-y-0.5 custom-scrollbar">
+            {logEntries.length === 0 && (
+              <div className="text-gray-800 italic">{t('controls.logEmpty')}</div>
+            )}
+            {logEntries.map((entry, i) => {
+              const isTx = entry.type === 'tx';
+              const isRx = entry.type === 'rx';
+              const isError = entry.type === 'error';
+              return (
+                <div key={i} className="flex flex-col border-b border-gray-900/30 pb-0.5 mb-0.5 last:border-0 hover:bg-white/[0.01]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-800 text-[8px] shrink-0">[{entry.time}]</span>
+                    <span className={`px-1 py-0 rounded-[2px] text-[7px] font-black uppercase tracking-tighter ${
+                      isTx ? 'bg-green-500/10 text-green-600 border border-green-500/10' :
+                      isRx ? 'bg-blue-500/10 text-blue-500 border border-blue-500/10' :
+                      isError ? 'bg-red-500/10 text-red-600 border border-red-500/10' : 'bg-gray-800 text-gray-400'
+                    }`}>
+                      {entry.type}
+                    </span>
+                  </div>
+                  <div className={`mt-0.5 pl-1.5 border-l ${
+                    isTx ? 'border-green-900 text-green-700' :
+                    isRx ? 'border-blue-900 text-blue-700' :
+                    isError ? 'border-red-900 text-red-700' : 'border-gray-800 text-gray-600'
+                  } font-mono break-all leading-tight text-[8.5px]`}>
+                    {entry.text.replace(/^\[RAW RX\]: |^TX: /, '')}
+                  </div>
                 </div>
-                <div className={`mt-0.5 pl-1.5 border-l ${
-                  isTx ? 'border-green-900 text-green-700' : 
-                  isRx ? 'border-blue-900 text-blue-700' : 
-                  isError ? 'border-red-900 text-red-700' : 'border-gray-800 text-gray-600'
-                } font-mono break-all leading-tight text-[8.5px]`}>
-                  {entry.text.replace(/^\[RAW RX\]: |^TX: /, '')}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

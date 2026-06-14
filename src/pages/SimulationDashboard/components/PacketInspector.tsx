@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { X, Activity, Camera, Code2, Copy, FileJson, Hash, ChartLine, Gauge as GaugeIcon, Lightbulb, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { memo, useState, useEffect } from 'react';
+import { X, Activity, Camera, Code2, FileJson, Hash, ChartLine, Gauge as GaugeIcon, Lightbulb, ArrowUp, ArrowDown } from 'lucide-react';
 import { useSimulation } from '../../../hooks/useSimulation';
 import { parseFrame } from '../../../engines/FrameParser';
 import { useTranslation } from '../../../i18n/context';
@@ -15,26 +15,24 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
   const { t } = useTranslation();
   const { addWidget, saveSnapshot } = useSimulation();
   
+  const txFrame: GeneratedFrame | null = exchange?.tx ? toFrame(exchange.tx) : null;
+  const rxFrame: GeneratedFrame | null = exchange?.rx ? toFrame(exchange.rx) : null;
+
+  const [activeTab, setActiveTab] = useState<'tx' | 'rx'>('rx');
+
+  useEffect(() => {
+    if (exchange) {
+      if (exchange.rx) {
+        setActiveTab('rx');
+      } else if (exchange.tx) {
+        setActiveTab('tx');
+      }
+    }
+  }, [exchange]);
+
   if (!exchange) return null;
 
-  const copyToClipboard = (type: 'json' | 'cstruct' | 'hex') => {
-    const frame = txFrame || rxFrame;
-    if (!frame) return;
-
-    let text = '';
-    if (type === 'json') {
-      text = JSON.stringify(frame, null, 2);
-    } else if (type === 'hex') {
-      text = frame.rawHex;
-    } else if (type === 'cstruct') {
-      text = `struct UART_Packet {\n${frame.fields.map((f) => `  uint${f.byteWidth * 8}_t ${f.name.replace(/\s+/g, '_')}; // ${f.hex}`).join('\n')}\n};`;
-    }
-
-    navigator.clipboard.writeText(text);
-  };
-
-  // Decide which frame to show primary or show comparison
-  const toFrame = (entry: { id: string; timestamp: number; rawHex: string }): GeneratedFrame => {
+  function toFrame(entry: { id: string; timestamp: number; rawHex: string }): GeneratedFrame {
     const rawBytes = entry.rawHex.split(' ').map(h => parseInt(h, 16));
     const fields: ParsedField[] = profile ? parseFrame(profile, rawBytes) || [] : [];
     return {
@@ -46,17 +44,27 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
       fields,
       errors: [],
     };
+  }
+
+  const activeFrame = activeTab === 'rx' ? rxFrame || txFrame : txFrame || rxFrame;
+
+  const copyToClipboard = (type: 'json' | 'cstruct' | 'hex') => {
+    if (!activeFrame) return;
+
+    let text = '';
+    if (type === 'json') {
+      text = JSON.stringify(activeFrame, null, 2);
+    } else if (type === 'hex') {
+      text = activeFrame.rawHex;
+    } else if (type === 'cstruct') {
+      text = `struct UART_Packet {\n${activeFrame.fields.map((f) => `  uint${f.byteWidth * 8}_t ${f.name.replace(/\s+/g, '_')}; // ${f.hex}`).join('\n')}\n};`;
+    }
+
+    navigator.clipboard.writeText(text);
   };
 
-  const txFrame: GeneratedFrame | null = exchange.tx ? toFrame(exchange.tx) : null;
-  const rxFrame: GeneratedFrame | null = exchange.rx ? toFrame(exchange.rx) : null;
-
-  const renderFieldTable = (frame: { fields: ParsedField[]; rawHex: string }, label: string, colorClass: string) => (
+  const renderFieldTable = (frame: GeneratedFrame) => (
     <div className="flex-1 flex flex-col min-h-0 border border-gray-800 rounded-lg overflow-hidden bg-gray-900/20 shadow-inner">
-      <div className={`px-3 py-2 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between`}>
-        <span className={`text-[10px] font-bold uppercase tracking-widest ${colorClass}`}>{label}</span>
-        <span className="text-[9px] font-mono text-gray-600">{frame.rawHex.split(' ').length}B</span>
-      </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <table className="w-full text-left border-collapse font-mono text-[10px]">
            <thead className="sticky top-0 bg-gray-900 z-10">
@@ -71,38 +79,38 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
              {frame.fields.map((f) => {
                return (
                  <tr key={f.name} className="hover:bg-white/5 transition-colors group">
-                   <td className="p-2 text-gray-500 font-bold">{f.name}</td>
-                   <td className="p-2 text-blue-500">{f.hex}</td>
-                   <td className="p-2 text-emerald-500">{f.decimal}</td>
+                   <td className="p-2 text-gray-400 font-bold">{f.name}</td>
+                   <td className="p-2 text-blue-400">{f.hex}</td>
+                   <td className="p-2 text-emerald-400">{f.decimal}</td>
                    <td className="p-2">
                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                            onClick={() => addWidget('chart', f.name)}
-                           className="p-1 text-gray-700 hover:text-blue-400"
+                           className="p-1 text-gray-500 hover:text-blue-400"
                            title={t('inspector.addChart')}
                         >
-                          <ChartLine size={10} />
+                           <ChartLine size={10} />
                         </button>
                         <button 
                            onClick={() => addWidget('gauge', f.name)}
-                           className="p-1 text-gray-700 hover:text-amber-400"
+                           className="p-1 text-gray-500 hover:text-amber-400"
                            title={t('inspector.addGauge')}
                         >
-                          <GaugeIcon size={10} />
+                           <GaugeIcon size={10} />
                         </button>
                         <button 
                            onClick={() => addWidget('led', f.name)}
-                           className="p-1 text-gray-700 hover:text-emerald-400"
+                           className="p-1 text-gray-500 hover:text-emerald-400"
                            title={t('inspector.addLed')}
                         >
-                          <Lightbulb size={10} />
+                           <Lightbulb size={10} />
                         </button>
                         <button 
                            onClick={() => addWidget('7segment', f.name)}
-                           className="p-1 text-gray-700 hover:text-red-400"
+                           className="p-1 text-gray-500 hover:text-red-400"
                            title={t('inspector.add7Segment')}
                         >
-                          <Hash size={10} />
+                           <Hash size={10} />
                         </button>
                      </div>
                    </td>
@@ -124,8 +132,8 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
           </div>
           <div className="flex flex-col">
             <h2 className="text-xs font-black text-white uppercase tracking-widest font-mono line-height-none">{t('inspector.title')}</h2>
-            <div className={`text-[9px] uppercase font-black font-mono ${exchange.isLoopbackMatch ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {exchange.isLoopbackMatch ? t('inspector.verified') : t('inspector.deepAnalysis')}
+            <div className="text-[9px] uppercase font-black font-mono text-blue-400">
+                {activeTab === 'tx' ? t('inspector.txStream') : t('inspector.rxStream')}
             </div>
           </div>
         </div>
@@ -155,8 +163,7 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
            </div>
            <button 
             onClick={() => {
-                const primaryFrame = txFrame || rxFrame;
-                if (primaryFrame) saveSnapshot(primaryFrame);
+                if (activeFrame) saveSnapshot(activeFrame);
             }}
             className="p-1.5 text-gray-400 hover:text-white transition-all bg-white/5 border border-white/10 rounded-lg shadow-xl"
             title={t('inspector.snapshot')}
@@ -173,57 +180,55 @@ const PacketInspector = memo(({ exchange, profile, onClose }: PacketInspectorPro
       </div>
 
       <div className="flex-1 p-3 flex flex-col gap-3 min-h-0 overflow-hidden bg-gray-950/50">
-        <div className="flex gap-2 h-1/2 min-h-0">
-            {txFrame && renderFieldTable(txFrame, t('inspector.masterTx'), 'text-blue-400')}
-            {rxFrame && renderFieldTable(rxFrame, t('inspector.slaveRx'), 'text-emerald-400')}
+        {/* Tab Selection if both TX and RX exist */}
+        {txFrame && rxFrame && (
+          <div className="flex border border-gray-800 bg-gray-900/50 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('tx')}
+              className={`flex-1 py-1.5 text-xs font-mono font-bold rounded-md transition-all ${
+                activeTab === 'tx'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              TX (Master)
+            </button>
+            <button
+              onClick={() => setActiveTab('rx')}
+              className={`flex-1 py-1.5 text-xs font-mono font-bold rounded-md transition-all ${
+                activeTab === 'rx'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              RX (Slave)
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col min-h-0">
+          {activeFrame && renderFieldTable(activeFrame)}
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col bg-black/60 border border-gray-800 rounded-lg p-3 shadow-2xl">
+        {activeFrame && (
+          <div className="h-40 min-h-0 flex flex-col bg-black/60 border border-gray-800 rounded-lg p-3 shadow-2xl shrink-0">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest font-mono">{t('inspector.diffAnalysis')}</span>
-                {!exchange.isLoopbackMatch && txFrame && rxFrame && (
-                    <span className="text-[9px] font-bold text-red-500 animate-pulse bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">{t('inspector.integrityFailure')}</span>
-                )}
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest font-mono">
+                {t('inspector.rawBytes')} ({activeFrame.rawBytes.length}B)
+              </span>
             </div>
             <div className="flex-1 overflow-y-auto font-mono text-[9px] text-gray-500 custom-scrollbar">
-                {txFrame && (
-                    <div className="mb-4">
-                        <div className="text-blue-500/60 mb-1.5 flex items-center gap-2 border-b border-blue-900/30 pb-1 text-[8px] font-bold uppercase tracking-tighter">
-                            <ArrowUp size={10} /> {t('inspector.masterStream')}
-                        </div>
-                        <div className="grid grid-cols-5 sm:grid-cols-4 lg:grid-cols-5 gap-1.5">
-                            {txFrame.rawBytes.map((b: number, i: number) => (
-                                <div key={i} className="flex flex-col items-center p-1.5 bg-blue-900/5 border border-blue-900/10 rounded">
-                                    <span className="text-blue-400 font-bold mb-1">{b.toString(16).toUpperCase().padStart(2, '0')}</span>
-                                    <span className="text-[7px] opacity-40 leading-none">{b.toString(2).padStart(8, '0')}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                {rxFrame && (
-                    <div>
-                        <div className="text-emerald-500/60 mb-1.5 flex items-center gap-2 border-b border-emerald-900/30 pb-1 text-[8px] font-bold uppercase tracking-tighter">
-                            <ArrowDown size={10} /> {t('inspector.slaveStream')}
-                        </div>
-                        <div className="grid grid-cols-5 sm:grid-cols-4 lg:grid-cols-5 gap-1.5">
-                            {rxFrame.rawBytes.map((b: number, i: number) => {
-                                const txByte = txFrame?.rawBytes[i];
-                                const isMismatch = txByte !== undefined && txByte !== b;
-                                return (
-                                    <div key={i} className={`flex flex-col items-center p-1.5 rounded border ${isMismatch ? 'bg-red-500/10 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-emerald-900/5 border-emerald-900/10'}`}>
-                                        <span className={`font-bold mb-1 ${isMismatch ? 'text-red-400' : 'text-emerald-400'}`}>
-                                            {b.toString(16).toUpperCase().padStart(2, '0')}
-                                        </span>
-                                        <span className="text-[7px] opacity-40 leading-none">{b.toString(2).padStart(8, '0')}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+              <div className="grid grid-cols-5 gap-1.5">
+                {activeFrame.rawBytes.map((b: number, i: number) => (
+                  <div key={i} className="flex flex-col items-center p-1.5 bg-blue-900/5 border border-blue-900/10 rounded">
+                    <span className="text-blue-400 font-bold mb-1">{b.toString(16).toUpperCase().padStart(2, '0')}</span>
+                    <span className="text-[7px] opacity-40 leading-none">{b.toString(2).padStart(8, '0')}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

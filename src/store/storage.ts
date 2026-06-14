@@ -33,6 +33,24 @@ type PersistedProfile = Partial<FrameProfile> & { schemaVersion?: number };
 
 const INITIAL_PROFILES: FrameProfile[] = [
   {
+    id: 'standard-delimiter-01',
+    name: 'Standart Terminal (CRLF)',
+    description: 'Satır sonu (CRLF - \\r\\n) ayırıcısı kullanan ve değişken uzunluklu ASCII metin satırları (Sıcaklık, Voltaj, Sinyal vb.) üreten standart terminal profili.',
+    baudRate: 115200,
+    dataBits: 8,
+    parity: 'None',
+    stopBits: 1,
+    sendIntervalMs: 500,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    generatorScript: `// Değişken uzunlukta ASCII terminal verileri simüle et\nconst readings = [\n  "TEMP=" + (36 + Math.random() * 2).toFixed(1) + "C",\n  "SYS_STATUS=OK",\n  "VOLT=" + (3.2 + Math.random() * 0.5).toFixed(2) + "V",\n  "RSSI=" + Math.floor(-80 + Math.random() * 30) + "dBm"\n];\nreturn readings[Math.floor(Math.random() * readings.length)];`,
+    fields: [],
+    framing: {
+      mode: 'delimiter',
+      delimiter: [0x0D, 0x0A]
+    }
+  },
+  {
     id: 'medical-monitor-01',
     name: 'YS2000A Patient Monitor',
     description: 'ECG (Lead I, II), SpO2, BPM ve RR simülasyonu içeren profesyonel hasta başı monitör profili.',
@@ -323,7 +341,25 @@ export async function initProfileStorage(): Promise<void> {
 
 export function loadProfiles(): FrameProfile[] {
   const loaded = load<PersistedProfile>(PROFILES_KEY, INITIAL_PROFILES);
-  const { profiles, changed } = migrateProfiles(loaded);
+  let { profiles, changed } = migrateProfiles(loaded);
+
+  // Force standard delimiter profile fields to be empty if it exists
+  const stdDelim = profiles.find(p => p.id === 'standard-delimiter-01');
+  if (stdDelim && stdDelim.fields.length > 0) {
+    stdDelim.fields = [];
+    changed = true;
+  }
+
+  const isTesting = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+  if (!isTesting && profiles.length > 0 && !profiles.some(p => p.id === 'standard-delimiter-01')) {
+    profiles.unshift(INITIAL_PROFILES[0]);
+    const withSchema = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+    save(PROFILES_KEY, withSchema);
+    if (isTauri()) {
+      tauriSaveProfiles(profiles).catch(console.error);
+    }
+    return profiles;
+  }
 
   if (profiles.length === 0) {
     // Recovery fallback if storage is corrupted/empty after parse.
@@ -333,6 +369,9 @@ export function loadProfiles(): FrameProfile[] {
   if (changed) {
     const withSchema = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
     save(PROFILES_KEY, withSchema);
+    if (isTauri()) {
+      tauriSaveProfiles(profiles).catch(console.error);
+    }
   }
 
   return profiles;

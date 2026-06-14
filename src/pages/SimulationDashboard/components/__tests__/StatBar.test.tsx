@@ -46,6 +46,7 @@ const defaultProps = {
   onStartValidation: vi.fn(),
   onStopValidation: vi.fn(),
   onViewReport: vi.fn(),
+  onUpdateBaudRate: vi.fn(),
 };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -122,20 +123,6 @@ describe('StatBar', () => {
     expect(container.querySelector('.text-emerald-500')).toBeTruthy();
   });
 
-  it('shows LIVE status indicator when running', () => {
-    render(<StatBar {...defaultProps} status="running" />, { wrapper });
-    expect(screen.getByText(/live/i)).toBeInTheDocument();
-  });
-
-  it('shows PAUSED status indicator when paused', () => {
-    render(<StatBar {...defaultProps} status="paused" />, { wrapper });
-    expect(screen.getByText(/paused/i)).toBeInTheDocument();
-  });
-
-  it('shows IDLE status indicator when stopped', () => {
-    render(<StatBar {...defaultProps} status="stopped" />, { wrapper });
-    expect(screen.getByText(/idle/i)).toBeInTheDocument();
-  });
 
   it('renders profile in select when profiles provided', () => {
     render(<StatBar {...defaultProps} profiles={[sampleProfile]} />, { wrapper });
@@ -182,12 +169,45 @@ describe('StatBar', () => {
     expect(onSetScenario).toHaveBeenCalledWith('s2');
   });
 
-  it('shows baud rate badge when a profile is selected', () => {
+  it('shows baud rate selector when a profile is selected', () => {
     render(
-      <StatBar {...defaultProps} profiles={[sampleProfile]} selectedProfileId="p1" />,
+      <StatBar {...defaultProps} outputMode="serial" profiles={[sampleProfile]} selectedProfileId="p1" />,
       { wrapper }
     );
-    expect(screen.getByText('9600')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /baud/i })).toHaveValue('9600');
+  });
+
+  it('offers high-speed baud rates and updates the selected profile', () => {
+    const onUpdateBaudRate = vi.fn();
+    render(
+      <StatBar
+        {...defaultProps}
+        outputMode="serial"
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+        onUpdateBaudRate={onUpdateBaudRate}
+      />,
+      { wrapper }
+    );
+
+    const baudRateSelect = screen.getByRole('combobox', { name: /baud/i });
+    expect(screen.getByRole('option', { name: '4 Mbps' })).toHaveValue('4000000');
+    fireEvent.change(baudRateSelect, { target: { value: '3000000' } });
+    expect(onUpdateBaudRate).toHaveBeenCalledWith(3000000);
+  });
+
+  it('hides the baud rate selector for TCP communication', () => {
+    render(
+      <StatBar
+        {...defaultProps}
+        outputMode="tcp"
+        profiles={[sampleProfile]}
+        selectedProfileId="p1"
+      />,
+      { wrapper }
+    );
+
+    expect(screen.queryByRole('combobox', { name: /baud/i })).not.toBeInTheDocument();
   });
 
   it('calls onSetProfile when profile select changes', () => {
@@ -497,40 +517,6 @@ describe('StatBar', () => {
     clickSpy.mockRestore();
   });
 
-  // --- Backend status button ---
-
-  it('calls onConnectNetwork when backend button clicked while offline', () => {
-    const onConnectNetwork = vi.fn();
-    render(
-      <StatBar {...defaultProps} outputMode="tcp" networkConnected={false} onConnectNetwork={onConnectNetwork} />,
-      { wrapper }
-    );
-    // The ENGINE: OFFLINE button in the backend status section
-    const offlineBtn = screen.getAllByRole('button').find(b => b.textContent?.includes('OFFLINE'));
-    if (offlineBtn) fireEvent.click(offlineBtn);
-    expect(onConnectNetwork).toHaveBeenCalled();
-  });
-
-  it('calls onConnectNetwork with tcp-server URL from backend status button', () => {
-    const onConnectNetwork = vi.fn();
-    render(
-      <StatBar {...defaultProps} outputMode="tcp-server" networkConnected={false} onConnectNetwork={onConnectNetwork} />,
-      { wrapper }
-    );
-    fireEvent.click(screen.getByRole('button', { name: /offline/i }));
-    expect(onConnectNetwork).toHaveBeenCalledWith(expect.stringContaining('tcp-server://'));
-  });
-
-  it('calls onDisconnectNetwork when backend button clicked while online', () => {
-    const onDisconnectNetwork = vi.fn();
-    render(
-      <StatBar {...defaultProps} outputMode="tcp" networkConnected={true} onDisconnectNetwork={onDisconnectNetwork} />,
-      { wrapper }
-    );
-    const onlineBtn = screen.getAllByRole('button').find(b => b.textContent?.includes('ONLINE'));
-    if (onlineBtn) fireEvent.click(onlineBtn);
-    expect(onDisconnectNetwork).toHaveBeenCalled();
-  });
 
   // --- Language switcher & help ---
 
@@ -634,15 +620,6 @@ describe('StatBar', () => {
     expect(container.querySelector('.text-emerald-400')).toBeTruthy();
   });
 
-  it('shows online status when tcp mode is connected', () => {
-    render(<StatBar {...defaultProps} outputMode="tcp" networkConnected={true} />, { wrapper });
-    expect(screen.getByText(/online/i)).toBeInTheDocument();
-  });
-
-  it('shows tcp-server listening status when tcp-server mode is connected', () => {
-    render(<StatBar {...defaultProps} outputMode="tcp-server" networkConnected={true} />, { wrapper });
-    expect(screen.getByText(/listening/i)).toBeInTheDocument();
-  });
 
   it('toggles locale when Globe button is clicked', () => {
     localStorage.setItem('uart_locale', 'en');
@@ -660,7 +637,7 @@ describe('StatBar', () => {
     expect(startBtn).toBeDisabled();
   });
 
-  it('disables Start button in serial mode when serial is not connected', () => {
+  it('does not disable Start button in serial mode when serial is not connected', () => {
     render(
       <StatBar
         {...defaultProps}
@@ -672,10 +649,10 @@ describe('StatBar', () => {
       />,
       { wrapper }
     );
-    expect(screen.getByRole('button', { name: /start/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /start/i })).toBeEnabled();
   });
 
-  it('disables Start button in tcp mode when network is not connected', () => {
+  it('does not disable Start button in tcp mode when network is not connected', () => {
     render(
       <StatBar
         {...defaultProps}
@@ -687,7 +664,7 @@ describe('StatBar', () => {
       />,
       { wrapper }
     );
-    expect(screen.getByRole('button', { name: /start/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /start/i })).toBeEnabled();
   });
 
   it('shows validationSession view-report button when session exists', () => {

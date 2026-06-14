@@ -141,8 +141,6 @@ export class SimulationEngine {
   }
 
   public processIncomingData(bytes: number[]) {
-    if (this.state.status !== 'running') return;
-
     // 1. Accumulate all incoming bytes into the persistent buffer
     this.rxBuffer.push(...bytes);
 
@@ -194,9 +192,11 @@ export class SimulationEngine {
       }
     }
 
-    // Buffer safety limit
-    if (this.rxBuffer.length > 1024) {
-      this.rxBuffer = this.rxBuffer.slice(-512);
+    // Keep enough room for large modem HTTP payloads while still bounding
+    // malformed streams that never deliver the configured delimiter.
+    const maxBufferedBytes = 64 * 1024;
+    if (this.rxBuffer.length > maxBufferedBytes) {
+      this.rxBuffer = this.rxBuffer.slice(-maxBufferedBytes);
     }
   }
 

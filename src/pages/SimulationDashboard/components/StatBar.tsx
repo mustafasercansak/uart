@@ -5,6 +5,23 @@ import { useTranslation } from '../../../i18n/context';
 import { loadLastSettings, saveLastSettings } from '../../../lib/lastSettings';
 import { useNavigate } from 'react-router-dom';
 
+const UART_BAUD_RATES = [
+  110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400,
+  56000, 57600, 76800, 115200, 128000, 230400, 250000, 256000, 460800,
+  500000, 576000, 921600, 1000000, 1152000, 1500000, 2000000,
+  2500000, 3000000, 3500000, 4000000,
+];
+
+function formatBaudRate(baudRate: number): string {
+  if (baudRate >= 1000000) {
+    return `${(baudRate / 1000000).toLocaleString('en-US', { maximumFractionDigits: 2 })} Mbps`;
+  }
+  if (baudRate >= 1000) {
+    return `${(baudRate / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} kbps`;
+  }
+  return `${baudRate} bps`;
+}
+
 interface StatBarProps {
   status: SimulationState['status'];
   frameCount: number;
@@ -54,6 +71,7 @@ interface StatBarProps {
   onStartValidation: () => void;
   onStopValidation: () => void;
   onViewReport: () => void;
+  onUpdateBaudRate: (baudRate: number) => void;
 }
 
 const StatBar = memo(({
@@ -94,7 +112,8 @@ const StatBar = memo(({
   validationSession,
   onStartValidation,
   onStopValidation,
-  onViewReport
+  onViewReport,
+  onUpdateBaudRate
 }: StatBarProps) => {
   const { t, locale, setLocale } = useTranslation();
   const navigate = useNavigate();
@@ -143,23 +162,6 @@ const StatBar = memo(({
 
   return (
     <div className="px-3 py-1 glass-panel border-b-0 m-1 rounded-lg flex flex-wrap items-center gap-x-2 gap-y-1 shrink-0 relative z-50 overflow-visible transition-all duration-300">
-      <div className="flex items-center gap-1.5 pr-2 border-r border-white/5 h-5">
-        <div className={`w-1.5 h-1.5 rounded-full ${status === 'running' ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.4)]' : status === 'paused' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'bg-gray-600'}`} />
-        <span className={`text-[9px] font-mono uppercase font-black tracking-widest ${status === 'running' ? 'text-emerald-400' : status === 'paused' ? 'text-amber-400' : 'text-gray-500'}`}>
-          {status === 'running' ? t('common.live') : status === 'paused' ? t('common.paused') : t('common.idle')}
-        </span>
-      </div>
-
-      {/* Backend Status */}
-      <div className="flex items-center gap-1.5 pr-2 border-r border-white/5 h-5">
-        <div className={`w-1.5 h-1.5 rounded-full ${networkConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`} />
-        <button 
-          onClick={networkConnected ? onDisconnectNetwork : () => onConnectNetwork(outputMode === 'tcp-server' ? `tcp-server://${tcpPort}` : `tcp://${tcpHost}:${tcpPort}`)}
-          className={`text-[8px] font-mono font-black uppercase tracking-tight hover:underline ${networkConnected ? 'text-emerald-400' : 'text-red-500'}`}>
-          {outputMode === 'tcp-server' ? t('statBar.tcpServerMode') : t('common.engine')}: {networkConnected ? (outputMode === 'tcp-server' ? t('statBar.tcpListening') : t('common.online')) : t('common.offline')}
-        </button>
-      </div>
-
       <div className="flex items-center gap-1 p-0.5 bg-gray-900/50 rounded border border-gray-800">
         <select 
           className="bg-gray-950 border border-transparent hover:border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none focus:border-green-700 w-24 transition-all"
@@ -208,16 +210,30 @@ const StatBar = memo(({
           onChange={(e) => onSetOutputMode(e.target.value as OutputMode)} 
           disabled={status !== 'stopped'}
         >
-          <option value="log">{t('common.log')}</option>
           <option value="serial">{t('statBar.serialPort')}</option>
           <option value="tcp">{t('statBar.tcpClient')}</option>
-          <option value="tcp-server">{t('statBar.tcpServer')}</option>
         </select>
         
-        {selectedProfile && (
-          <div className="text-[7.5px] font-mono text-gray-500 border border-gray-800 px-1 py-0.5 rounded bg-gray-950">
-            {selectedProfile.baudRate}
-          </div>
+        {outputMode === 'serial' && selectedProfile && (
+          <select
+            aria-label={t('statBar.baudRate')}
+            className="bg-gray-950 border border-gray-800 rounded px-1 py-0.5 text-[7.5px] font-mono text-gray-300 outline-none focus:border-green-700 w-24"
+            value={selectedProfile.baudRate}
+            onChange={(e) => onUpdateBaudRate(Number(e.target.value))}
+            disabled={status !== 'stopped'}
+            title={`${t('statBar.baudRate')}: ${selectedProfile.baudRate.toLocaleString()} baud`}
+          >
+            {!UART_BAUD_RATES.includes(selectedProfile.baudRate) && (
+              <option value={selectedProfile.baudRate}>
+                {formatBaudRate(selectedProfile.baudRate)}
+              </option>
+            )}
+            {UART_BAUD_RATES.map((rate) => (
+              <option key={rate} value={rate}>
+                {formatBaudRate(rate)}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 
@@ -391,7 +407,7 @@ const StatBar = memo(({
           {status === 'stopped' ? (
             <button 
               onClick={onStart} 
-              disabled={!selectedProfileId || (outputMode === 'serial' && !serialConnected) || (outputMode === 'tcp' && !networkConnected)}
+              disabled={!selectedProfileId}
               className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-30 text-white text-[9px] font-mono rounded font-bold transition-all shadow-sm"
             >
               {t('common.start').toUpperCase()}

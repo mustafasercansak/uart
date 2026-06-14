@@ -95,9 +95,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         type: 'INIT_STATE', newState: {
           ...migrated,
           sequences: loadSequences(),
-          profileId: last.profileId,
+          profileId: 'standard-delimiter-01',
           scenarioId: last.scenarioId,
-          outputMode: (last.outputMode as SimulationState['outputMode']) || migrated.outputMode || 'log',
+          outputMode: (() => {
+            const mode = (last.outputMode as SimulationState['outputMode']) || migrated.outputMode || 'serial';
+            return (mode === 'log' || mode === 'tcp-server') ? 'serial' : mode;
+          })(),
         }
       });
       isInitializedRef.current = true;
@@ -224,6 +227,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const clearExchanges = useCallback(() => {
     exchangeBufferRef.current = [];
     dispatch({ type: 'CLEAR_EXCHANGES' });
+  }, [dispatch]);
+
+  const clearConversation = useCallback(() => {
+    dispatch({ type: 'CLEAR_CONVERSATION' });
   }, [dispatch]);
 
   // ── SERIAL / NETWORK ──────────────────────────────────────────────────────────
@@ -492,6 +499,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         setScenario: (scenarioId) => dispatch({ type: 'SET_SCENARIO', scenarioId }),
         setOutputMode: (outputMode) => dispatch({ type: 'SET_OUTPUT_MODE', outputMode }),
         clearExchanges,
+        clearConversation,
         setUiVisible: (visible) => { uiVisibleRef.current = visible; },
         exportLogs,
         setProfiles: (profiles) => { profilesRef.current = profiles; },

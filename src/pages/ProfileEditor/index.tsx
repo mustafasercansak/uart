@@ -489,14 +489,24 @@ export default function ProfileEditor() {
             <div className="px-4 py-3 border-b border-gray-800 flex gap-4">
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.baudRate')}</label>
-                <select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700"
-                  value={profile.baudRate} onChange={(e) => setProfileWithHistory({ ...profile, baudRate: Number(e.target.value) })}>
-                  {[300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1000000, 1500000, 2000000, 3000000, 4000000].map((r) => (
+                <input 
+                  type="text"
+                  list="baud-rates"
+                  className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono text-gray-200 outline-none focus:border-green-700 w-28"
+                  value={profile.baudRate === 0 ? '' : profile.baudRate}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                    setProfileWithHistory({ ...profile, baudRate: isNaN(parsed) ? 0 : parsed });
+                  }}
+                  placeholder="e.g. 115200"
+                />
+                <datalist id="baud-rates">
+                  {[110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 56000, 57600, 76800, 115200, 128000, 230400, 256000, 460800, 921600, 1000000, 1500000, 2000000, 3000000, 4000000].map((r) => (
                     <option key={r} value={r}>
-                      {r >= 1000000 ? `${r / 1000000} Mbps (${r})` : r >= 1000 ? `${r / 1000}k` : r}
+                      {r >= 1000000 ? `${r / 1000000} Mbps` : r >= 1000 ? `${r / 1000}k` : `${r} bps`}
                     </option>
                   ))}
-                </select>
+                </datalist>
               </div>
               <div>
                 <label className="text-gray-500 text-xs font-mono block mb-1">{t('profileEditor.parity')}</label>

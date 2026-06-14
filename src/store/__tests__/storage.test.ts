@@ -42,7 +42,7 @@ describe('storage.ts', () => {
     it('loads initial profiles when storage is empty', () => {
         const profiles = loadProfiles();
         expect(profiles.length).toBeGreaterThan(0);
-        expect(profiles[0].name).toBe('YS2000A Patient Monitor');
+        expect(profiles[0].name).toBe('Standart Terminal (CRLF)');
     });
 
     it('saves and retrieves a profile', () => {
@@ -72,7 +72,7 @@ describe('storage.ts', () => {
         localStorage.setItem('uart_profiles', JSON.stringify([]));
         const profiles = loadProfiles();
         expect(profiles.length).toBeGreaterThan(0);
-        expect(profiles[0].name).toBe('YS2000A Patient Monitor');
+        expect(profiles[0].name).toBe('Standart Terminal (CRLF)');
     });
 
     it('handles corrupted JSON in storage gracefully', () => {

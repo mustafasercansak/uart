@@ -28,7 +28,7 @@ export const INITIAL_STATE: SimulationState = {
   status: 'stopped',
   profileId: null,
   scenarioId: null,
-  outputMode: 'log',
+  outputMode: 'serial',
   serialConnected: false,
   networkConnected: false,
   startedAt: null,
@@ -164,6 +164,7 @@ export type SimAction =
   | { type: 'DELETE_SEQUENCE'; id: string }
   | { type: 'SET_SEQUENCES'; sequences: AutomationSequence[] }
   | { type: 'CLEAR_EXCHANGES' }
+  | { type: 'CLEAR_CONVERSATION' }
   | { type: 'SET_CUSTOM_WAVEFORM'; waveform: number[] | null };
 
 export function reducer(state: SimulationState, action: SimAction): SimulationState {
@@ -318,7 +319,7 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
         snapshots: action.newState.snapshots || state.snapshots || []
       };
     case 'SET_BACKEND_CONNECTED':
-      return { ...state, networkConnected: action.connected };
+      return state;
     case 'SET_STATUS':
       return { ...state, status: action.status };
     case 'UPDATE_TIMING_STATS':
@@ -412,6 +413,8 @@ export function reducer(state: SimulationState, action: SimAction): SimulationSt
       return { ...state, sequences: action.sequences };
     case 'CLEAR_EXCHANGES':
       return { ...state, exchanges: [], selectedExchangeId: null };
+    case 'CLEAR_CONVERSATION':
+      return { ...state, conversationLogs: [] };
     default:
       return state;
   }

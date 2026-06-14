@@ -5,7 +5,8 @@ import {
   Menu,
   Activity,
   Settings2,
-  LayoutDashboard,
+  TerminalSquare,
+  ScrollText,
   LineChart,
   Gauge as GaugeIcon,
   FlaskConical,
@@ -27,10 +28,9 @@ import {
   ArrowLeftRight,
   MessageSquare,
   Send,
-  TerminalSquare,
 } from 'lucide-react';
 import type { FrameProfile, Scenario, OutputMode, GeneratedFrame } from '../../types';
-import { loadProfiles, loadScenarios } from '../../store/storage';
+import { loadProfiles, loadScenarios, saveProfile } from '../../store/storage';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSimulation } from '../../hooks/useSimulation';
 import TriggerManager from './components/TriggerManager';
@@ -44,9 +44,9 @@ import FrameMonitor from './components/FrameMonitor';
 import RxMonitor from './components/RxMonitor';
 import ControlPanel from './components/ControlPanel';
 import LogicAnalyzer from './components/LogicAnalyzer';
-import PacketInspector from './components/PacketInspector';
+import ExchangeDetail from './components/ExchangeDetail';
 import TraceTable from './components/TraceTable';
-import LiveDashboard from './components/LiveDashboard';
+import AtAutomationPanel from './components/AtAutomationPanel';
 import TabContent from './components/TabContent';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 
@@ -76,10 +76,10 @@ export default function SimulationDashboard() {
   const refreshProfiles = useCallback(() => setProfilesList(loadProfiles()), []);
   const [scenarios] = useState<Scenario[]>(() => loadScenarios());
   const [selectedFrame, setSelectedFrame] = useState<GeneratedFrame | null>(null);
-  const [selectedSnapshotFrame, setSelectedSnapshotFrame] = useState<GeneratedFrame | null>(null);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isConsolePanelOpen, setIsConsolePanelOpen] = useState(false);
 
   const {
     state,
@@ -136,6 +136,8 @@ export default function SimulationDashboard() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isReportViewOpen, setIsReportViewOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
+  const selectedScenario = scenarios.find((s) => s.id === selectedScenarioId) ?? null;
 
   type CenterTabType = 'waveforms' | 'logic' | 'telemetry' | 'timeline' | 'lab' | 'scripting' | 'diagnostics' | 'playback' | 'hardware' | 'testing' | 'spectrum' | 'triggers' | 'visualizer' | 'decoder' | 'testsuite' | 'report' | 'builder' | 'learn' | 'exchange' | 'conversation' | 'profile-compare' | 'messages' | 'console';
   const location = useLocation();
@@ -212,6 +214,12 @@ export default function SimulationDashboard() {
     }
     navigate(`/profiles?edit=${profile.id}&from=dashboard`);
   };
+  const handleUpdateBaudRate = useCallback((baudRate: number) => {
+    if (!selectedProfile) return;
+    const updated = { ...selectedProfile, baudRate, updatedAt: new Date().toISOString() };
+    saveProfile(updated);
+    setProfilesList(loadProfiles());
+  }, [selectedProfile]);
 
   useEffect(() => {
     setProfiles(profiles);
@@ -227,9 +235,6 @@ export default function SimulationDashboard() {
       setProfile(profiles[0].id);
     }
   }, [selectedProfileId, profiles, setProfile]);
-
-  const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
-  const selectedScenario = scenarios.find((s) => s.id === selectedScenarioId) ?? null;
 
   useEffect(() => {
     if (sessionStorage.getItem('uart_resume_on_return') !== '1') return;
@@ -321,6 +326,7 @@ export default function SimulationDashboard() {
         onStartValidation={() => setIsValidationModalOpen(true)}
         onStopValidation={stopValidation}
         onViewReport={() => setIsReportViewOpen(true)}
+        onUpdateBaudRate={handleUpdateBaudRate}
       />
 
       <div className="flex-1 min-h-0 flex relative bg-[#0a0a0d] overflow-hidden">
@@ -368,40 +374,49 @@ export default function SimulationDashboard() {
                         displayFilter={displayFilter}
                         onFilterChange={setDisplayFilter}
                         profile={selectedProfile}
+                        onSendText={sendTextData}
+                        onSendRaw={sendRawData}
+                        isConnected={outputMode === 'serial' ? serialConnected : (outputMode === 'tcp' || outputMode === 'tcp-server') ? networkConnected : false}
                     />
                 </div>
 
                 <div className="flex shrink-0">
                   {analyzerMode && selectedExchange && (
-                    <div className="w-[400px] shrink-0 border-l border-white/5 relative z-30 glass-panel rounded-l-xl">
-                      <PacketInspector 
-                        exchange={selectedExchange} 
-                        profile={selectedProfile} 
-                        onClose={() => selectExchange(null)} 
+                    <div className="w-80 shrink-0 border-l border-white/5 relative z-30">
+                      <ExchangeDetail
+                        exchange={selectedExchange}
+                        onClose={() => selectExchange(null)}
                       />
                     </div>
                   )}
 
                   {isDashboardOpen && (
-                    <div className={`${(analyzerMode && selectedExchange) ? 'w-72' : 'w-80'} shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-md transition-all duration-300 relative z-20`}>
-                      <LiveDashboard 
-                        onSelectSnapshot={setSelectedSnapshotFrame}
-                        selectedSnapshotId={selectedSnapshotFrame?.frameNumber}
-                      />
+                    <div className={`${(analyzerMode && selectedExchange) ? 'w-72' : 'w-80'} shrink-0 border-l border-white/5 transition-all duration-300 relative z-20`}>
+                      <AtAutomationPanel />
                     </div>
                   )}
                 </div>
 
-                <button
+                {/* Right-side toggle buttons — stacked top to bottom */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1">
+                  <button
                     onClick={() => setIsDashboardOpen(!isDashboardOpen)}
-                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 bg-brand/10 hover:bg-brand/20 border border-brand/20 text-brand rounded-l-lg shadow-lg transition-all duration-300 ${
-                      isDashboardOpen ? 'translate-x-0' : 'translate-x-[-8px] scale-105'
+                    className={`p-1.5 bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-700/20 text-emerald-400 rounded-l-lg shadow-lg transition-all duration-300 relative ${
+                      isDashboardOpen ? '' : 'scale-105'
                     }`}
-                    title={isDashboardOpen ? t('dashboard.closeDashboard') : t('dashboard.openDashboard')}
-                >
-                    <LayoutDashboard size={14} />
-                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-brand rounded-full animate-pulse border-2 border-[#030712]" />}
-                </button>
+                    title={isDashboardOpen ? t('atAuto.closePanel') : t('atAuto.openPanel')}
+                  >
+                    <TerminalSquare size={14} />
+                    {!isDashboardOpen && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse border-2 border-[#030712]" />}
+                  </button>
+                  <button
+                    onClick={() => setIsConsolePanelOpen(v => !v)}
+                    className="p-1.5 bg-gray-800/60 hover:bg-gray-700 border border-gray-700/40 text-gray-500 hover:text-gray-200 rounded-l-lg shadow-lg transition-all duration-300"
+                    title={isConsolePanelOpen ? 'Konsol Kapat' : 'Konsol Logları'}
+                  >
+                    <ScrollText size={14} />
+                  </button>
+                </div>
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-hidden relative p-3 flex flex-col">
@@ -497,12 +512,13 @@ export default function SimulationDashboard() {
           </button>
         )}
 
-        <div 
+
+        <div
           className={`shrink-0 flex flex-col bg-gray-900 border-l border-gray-800/50 transition-all duration-300 ease-in-out relative ${
-            (isRightPanelOpen || analyzerMode) ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0'
+            (isRightPanelOpen || (analyzerMode && isConsolePanelOpen)) ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0'
           }`}
         >
-          <div className="w-80 h-full overflow-y-auto custom-scrollbar">
+          <div className="w-80 h-full flex flex-col">
             <ControlPanel
               flagsFields={flagsFields}
               allRangeFields={allRangeFields}

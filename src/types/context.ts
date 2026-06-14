@@ -73,5 +73,6 @@ export interface SimulationContextType {
     setActiveSequence: (id: string | null) => void;
   };
   clearExchanges: () => void;
+  clearConversation: () => void;
   setCustomWaveform: (waveform: number[] | null) => void;
 }

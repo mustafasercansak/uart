@@ -137,7 +137,7 @@ describe('simulationReducer', () => {
     state = reducer(state, { type: 'SET_NETWORK_CONNECTED' as const, connected: true });
     expect(state.networkConnected).toBe(true);
     state = reducer(state, { type: 'SET_BACKEND_CONNECTED' as const, connected: false });
-    expect(state.networkConnected).toBe(false);
+    expect(state.networkConnected).toBe(true);
   });
 
   it('handles ADD_LOG', () => {

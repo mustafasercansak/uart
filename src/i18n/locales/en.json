@@ -246,6 +246,7 @@
     "edit": "Edit"
   },
   "statBar": {
+    "baudRate": "Baud Rate",
     "serialPort": "Serial Port (COM)",
     "tcpClient": "TCP Client",
     "tcpServer": "TCP Server (Virtual Port)",
@@ -1419,6 +1420,23 @@
     "packets": "{count} PACKETS",
     "filterPlaceholder": "Filter: ALARM · 414C · bpm > 100 · size < 20 · status == ok",
     "noTraffic": "No traffic detected matching current filter...",
+    "viewChat": "CHAT",
+    "viewTable": "TABLE",
+    "formatText": "TEXT",
+    "formatHex": "HEX",
+    "formatAscii": "ASCII",
+    "titleChatMode": "Chat View (WhatsApp style)",
+    "titleTableMode": "Classic Table View",
+    "titleFormatText": "Show messages as text (ASCII)",
+    "titleFormatHex": "Show messages as HEX codes",
+    "placeholderSendText": "Enter text message to send... (Ex: TEMP=38C)",
+    "placeholderSendHex": "Enter HEX bytes to send... (Ex: AA BB 01 02)",
+    "placeholderConnectFirst": "Establish a connection to send messages...",
+    "btnSend": "SEND",
+    "largePayload": "Large web payload",
+    "expandPayload": "Show full payload",
+    "sourceGiden": "TX (OUTGOING)",
+    "sourceGelen": "RX (INCOMING)",
     "headers": {
       "no": "No.",
       "time": "Time",
@@ -1496,7 +1514,10 @@
     "diffAnalysis": "Binary Diff Analysis",
     "integrityFailure": "INTEGRITY FAILURE",
     "masterStream": "Master Data Stream",
-    "slaveStream": "Slave Data Stream"
+    "slaveStream": "Slave Data Stream",
+    "rawBytes": "Raw Bytes",
+    "txStream": "TX Stream",
+    "rxStream": "RX Stream"
   },
   "liveDashboard": {
     "hudEmpty": "HUD Empty",
@@ -2418,5 +2439,29 @@
     "eventsHistoryEmpty": "No events emitted yet",
     "eventsManual": "manual",
     "eventsAutomatic": "auto"
+  },
+  "atAuto": {
+    "title": "AT AUTOMATION",
+    "connected": "CONNECTED",
+    "offline": "OFFLINE",
+    "openPanel": "Open AT Automation",
+    "closePanel": "Close AT Automation",
+    "presets": "PRESETS",
+    "customSequences": "SAVED SEQUENCES",
+    "noCustom": "No saved sequences — create one in the Testing tab.",
+    "transcript": "TRANSCRIPT",
+    "noTraffic": "No traffic yet — connect and run a sequence.",
+    "running": "RUNNING",
+    "run": "RUN",
+    "stop": "STOP",
+    "offlineHint": "Connect via TCP or Serial to run sequences.",
+    "groups": {
+      "init": "Modem Init",
+      "network": "Network Status",
+      "sms": "SMS Workflow",
+      "data": "Data Bearer",
+      "http": "HTTP Request",
+      "info": "Device Info"
+    }
   }
 }

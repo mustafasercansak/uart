@@ -246,6 +246,7 @@
     "edit": "Düzenle"
   },
   "statBar": {
+    "baudRate": "Baud Hızı",
     "serialPort": "Seri Port (COM)",
     "tcpClient": "TCP İstemci",
     "tcpServer": "TCP Sunucu (Sanal Port)",
@@ -1419,6 +1420,23 @@
     "packets": "{count} PAKET",
     "filterPlaceholder": "Filtre: ALARM · 414C · bpm > 100 · size < 20 · status == ok",
     "noTraffic": "Mevcut filtreyle eşleşen trafik tespit edilmedi...",
+    "viewChat": "SOHBET",
+    "viewTable": "TABLO",
+    "formatText": "METİN",
+    "formatHex": "HEX",
+    "formatAscii": "ASCII",
+    "titleChatMode": "Sohbet Görünümü (WhatsApp tarzı)",
+    "titleTableMode": "Klasik Tablo Görünümü",
+    "titleFormatText": "Mesajları metin (ASCII) olarak göster",
+    "titleFormatHex": "Mesajları HEX kodları olarak göster",
+    "placeholderSendText": "Gönderilecek metin mesajını girin... (Örn: TEMP=38C)",
+    "placeholderSendHex": "Gönderilecek HEX baytlarını girin... (Örn: AA BB 01 02)",
+    "placeholderConnectFirst": "Mesaj göndermek için bir bağlantı kurun...",
+    "btnSend": "GÖNDER",
+    "largePayload": "Büyük web verisi",
+    "expandPayload": "Tüm veriyi göster",
+    "sourceGiden": "TX (GİDEN)",
+    "sourceGelen": "RX (GELEN)",
     "headers": {
       "no": "No.",
       "time": "Zaman",
@@ -1496,7 +1514,10 @@
     "diffAnalysis": "Binary Fark Analizi",
     "integrityFailure": "BÜTÜNLÜK HATASI",
     "masterStream": "Master Veri Akışı",
-    "slaveStream": "Slave Veri Akışı"
+    "slaveStream": "Slave Veri Akışı",
+    "rawBytes": "Ham Veri",
+    "txStream": "TX Akışı",
+    "rxStream": "RX Akışı"
   },
   "liveDashboard": {
     "hudEmpty": "HUD Boş",
@@ -2418,5 +2439,29 @@
     "eventsHistoryEmpty": "Henüz olay gönderilmedi",
     "eventsManual": "elle",
     "eventsAutomatic": "otomatik"
+  },
+  "atAuto": {
+    "title": "AT OTOMASYON",
+    "connected": "BAĞLI",
+    "offline": "BAĞLI DEĞİL",
+    "openPanel": "AT Otomasyon Aç",
+    "closePanel": "AT Otomasyon Kapat",
+    "presets": "HAZIR DIZILER",
+    "customSequences": "KAYITLI DİZİLER",
+    "noCustom": "Kayıtlı dizi yok — Testing sekmesinden oluşturun.",
+    "transcript": "TRANSKRİPT",
+    "noTraffic": "Henüz trafik yok — bağlanın ve bir dizi çalıştırın.",
+    "running": "ÇALIŞIYOR",
+    "run": "ÇALIŞTIR",
+    "stop": "DURDUR",
+    "offlineHint": "Dizileri çalıştırmak için TCP veya Seri bağlantısı kurun.",
+    "groups": {
+      "init": "Modem Başlatma",
+      "network": "Ağ Durumu",
+      "sms": "SMS İş Akışı",
+      "data": "Veri Taşıyıcı",
+      "http": "HTTP İsteği",
+      "info": "Cihaz Bilgisi"
+    }
   }
 }

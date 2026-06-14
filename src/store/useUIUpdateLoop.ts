@@ -54,6 +54,7 @@ export function useUIUpdateLoop({
       let latestElapsed = stateRef.current.elapsedMs;
 
       const pushLog = (entry: SimulationState['logEntries'][0]) => {
+        if (entry.type === 'rx' || entry.type === 'tx') return;
         if (newLogs.length < MAX_LOGS_PER_CYCLE) newLogs.push(entry);
       };
 
@@ -89,7 +90,9 @@ export function useUIUpdateLoop({
                 break;
               }
               case 'LOG':
-                newLogs.push(msg.entry);
+                if (msg.entry.type !== 'rx' && msg.entry.type !== 'tx') {
+                  newLogs.push(msg.entry);
+                }
                 break;
               case 'EXCHANGE':
                 exchangeBufferRef.current.push(msg.exchange);
@@ -107,13 +110,6 @@ export function useUIUpdateLoop({
 
                 conversationBufferRef.current.push(msg.entry);
                 if (conversationBufferRef.current.length > 500) conversationBufferRef.current = conversationBufferRef.current.slice(-500);
-                const cDate = msg.entry.timestamp ? new Date(msg.entry.timestamp) : new Date();
-                const cTimeStr = `${cDate.getHours().toString().padStart(2, '0')}:${cDate.getMinutes().toString().padStart(2, '0')}:${cDate.getSeconds().toString().padStart(2, '0')}.${cDate.getMilliseconds().toString().padStart(3, '0')}`;
-                pushLog({
-                  time: cTimeStr,
-                  text: `${msg.entry.type.toUpperCase()}: ${msg.entry.rawHex}${msg.entry.details ? ` (${msg.entry.details})` : ''}`,
-                  type: msg.entry.type
-                });
                 break;
               }
               case 'RAW_RX_DATA': {
@@ -147,7 +143,7 @@ export function useUIUpdateLoop({
                   if (!exchangeBufferRef.current.includes(pendingTx)) {
                     exchangeBufferRef.current.push(pendingTx);
                   }
-                } else if (stateRef.current.status !== 'running') {
+                } else {
                   const frameChunks = chunkByProfile(msg.hex, profile);
                   if (frameChunks.length > 0) {
                     const baseTs = rxEntry.timestamp;
@@ -243,8 +239,19 @@ export function useUIUpdateLoop({
 
         exEntries.forEach(ex => {
           const idx = currentExchanges.findIndex(e => e.id === ex.id);
-          if (idx !== -1) currentExchanges[idx] = ex;
-          else currentExchanges.unshift(ex);
+          if (idx !== -1) {
+            currentExchanges[idx] = ex;
+          } else {
+            // Deduplicate standalone RX/TX exchanges that represent the same data within 200ms
+            const isDup = ex.rx && currentExchanges.some(existing => 
+              existing.rx && 
+              existing.rx.rawHex === ex.rx?.rawHex && 
+              Math.abs(existing.startTime - ex.startTime) < 200
+            );
+            if (!isDup) {
+              currentExchanges.unshift(ex);
+            }
+          }
           if (ex.latencyMs !== undefined) latestLat = ex.latencyMs;
         });
 
