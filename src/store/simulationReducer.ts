@@ -59,7 +59,10 @@ export const INITIAL_STATE: SimulationState = {
   signalIntegrity: {
     noiseLevel: 0,
     jitterMs: 0,
-    bitFlipsEnabled: false
+    bitFlipsEnabled: false,
+    lossRate: 0,
+    corruptRate: 0,
+    parityErrorsEnabled: false,
   },
   dashboardLayout: {
     widgets: []

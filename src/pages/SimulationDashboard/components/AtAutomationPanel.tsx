@@ -260,7 +260,6 @@ export default function AtAutomationPanel() {
 
   // Custom sequence runner
   const [selectedCustomId, setSelectedCustomId] = useState<string | null>(null);
-  const [customStatuses, setCustomStatuses] = useState<StepStatus[]>([]);
   const [customRunning, setCustomRunning] = useState(false);
   const cancelCustomRef = useRef(false);
 
@@ -390,17 +389,15 @@ export default function AtAutomationPanel() {
     setHttpRunning(false);
   }, []);
 
-  // ── Custom sequence run ─────────────────────────────────────────────────────
   const runCustom = useCallback(async () => {
     const seq = sequences.find(s => s.id === selectedCustomId) ?? sequences[0];
     if (!seq || customRunning || anyRunning || httpRunning || !isConnected) return;
     cancelCustomRef.current = false;
     setCustomRunning(true);
-    setCustomStatuses(seq.steps.map(() => 'idle'));
     await executePreset(
       seq.steps.map(s => ({ type: s.type as 'send' | 'expect' | 'wait', payload: s.payload })),
       sendTextData, () => stateRef.current.conversationLogs,
-      (idx, status) => setCustomStatuses(prev => { const n = [...prev]; n[idx] = status; return n; }),
+      () => {},
       cancelCustomRef,
     );
     setCustomRunning(false);
@@ -658,7 +655,7 @@ export default function AtAutomationPanel() {
               <div className="relative flex-1">
                 <select
                   value={selectedCustomId ?? sequences[0]?.id ?? ''}
-                  onChange={e => { setSelectedCustomId(e.target.value); setCustomStatuses([]); }}
+                  onChange={e => { setSelectedCustomId(e.target.value); }}
                   disabled={customRunning || anyRunning || httpRunning}
                   className="w-full appearance-none bg-gray-900 border border-gray-700/60 text-gray-300 rounded px-2 py-1 pr-6 text-[10px] focus:outline-none disabled:opacity-50"
                 >

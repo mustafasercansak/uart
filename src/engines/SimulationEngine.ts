@@ -141,8 +141,27 @@ export class SimulationEngine {
   }
 
   public processIncomingData(bytes: number[]) {
+    const lossChance = this.state.signalIntegrity.lossRate || 0;
+    const corruptChance = this.state.signalIntegrity.corruptRate || 0;
+    
+    let processedBytes = [...bytes];
+    if (lossChance > 0 && Math.random() * 100 < lossChance) {
+      if (import.meta.env.DEV) console.log(`[NOISE] RX chunk dropped (loss simulation).`);
+      return;
+    }
+    
+    if (corruptChance > 0) {
+      processedBytes = processedBytes.map(b => {
+        if (Math.random() * 100 < corruptChance) {
+          const bitPos = Math.floor(Math.random() * 8);
+          return b ^ (1 << bitPos);
+        }
+        return b;
+      });
+    }
+
     // 1. Accumulate all incoming bytes into the persistent buffer
-    this.rxBuffer.push(...bytes);
+    this.rxBuffer.push(...processedBytes);
 
     // 2. Decode frames based on the framing mode
     const framing = this.profile?.framing || { mode: 'fixed' as const };
@@ -610,8 +629,33 @@ export class SimulationEngine {
     if (this.state.conversationLogs.length > 100) this.state.conversationLogs.length = 100;
     if (shouldNotifyUI) this.onConversation?.(txEntry);
 
+    // Apply physical layer noise (loss, corrupt)
+    let finalBytes = [...frame.rawBytes];
+    let isDropped = false;
+    
+    const lossChance = this.state.signalIntegrity.lossRate || 0;
+    const corruptChance = this.state.signalIntegrity.corruptRate || 0;
+    
+    if (lossChance > 0 && Math.random() * 100 < lossChance) {
+      isDropped = true;
+    }
+    
+    if (!isDropped && corruptChance > 0) {
+      finalBytes = finalBytes.map(b => {
+        if (Math.random() * 100 < corruptChance) {
+          const bitPos = Math.floor(Math.random() * 8);
+          return b ^ (1 << bitPos);
+        }
+        return b;
+      });
+    }
+
     // Send the generated frame bytes to the hardware output pipeline (TCP/Serial)
-    this.onRawResponse?.(frame.rawBytes);
+    if (!isDropped) {
+      this.onRawResponse?.(finalBytes);
+    } else {
+      if (import.meta.env.DEV) console.log(`[NOISE] Frame ${frameNumber} was dropped (loss simulation).`);
+    }
 
     // Start/Update Exchange — track internally always; notify UI at the same rate
     const txExchange: Exchange = {

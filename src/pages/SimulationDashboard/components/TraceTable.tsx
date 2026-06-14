@@ -91,7 +91,6 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
   useEffect(() => { setMatchIndex(0); }, [displayFilter]);
 
   const matchCount = filteredExchanges.length;
-  const currentMatch = displayFilter && matchCount > 0 ? filteredExchanges[matchIndex] : null;
 
   const goNext = useCallback(() => {
     if (matchCount === 0) return;
@@ -205,7 +204,13 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
               value={displayFilter}
               onChange={(e) => { onFilterChange(e.target.value); }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.shiftKey ? goPrev() : goNext(); }
+                if (e.key === 'Enter') {
+                  if (e.shiftKey) {
+                    goPrev();
+                  } else {
+                    goNext();
+                  }
+                }
               }}
             />
             <div className="absolute right-2.5 top-1/2 -translate-y-1/2">

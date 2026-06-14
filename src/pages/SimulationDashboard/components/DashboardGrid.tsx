@@ -10,6 +10,8 @@ import CanvasWaveform from './CanvasWaveform';
 import AnalogGauge from './Widgets/AnalogGauge';
 import LedIndicator from './Widgets/LedIndicator';
 import SevenSegment from './Widgets/SevenSegment';
+import SweepChartWidget from './Widgets/SweepChartWidget';
+import HeatmapWidget from './Widgets/HeatmapWidget';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -118,6 +120,10 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
         return <LedIndicator active={value > 0} color={panel.color} label={panel.fieldName} />;
       case '7segment':
         return <SevenSegment value={value} color={panel.color} label={panel.fieldName} />;
+      case 'sparkline':
+        return <SweepChartWidget dataKey={panel.fieldName} waveformHistoryRef={waveformHistoryRef} color={panel.color} label={panel.fieldName} />;
+      case 'bar':
+        return <HeatmapWidget dataKey={panel.fieldName} waveformHistoryRef={waveformHistoryRef} color={panel.color} label={panel.fieldName} />;
       case 'chart':
       default:
         return (
@@ -133,6 +139,8 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
       case 'gauge': return <GaugeIcon size={10} />;
       case 'led': return <Lightbulb size={10} />;
       case '7segment': return <Activity size={10} />;
+      case 'sparkline': return <Activity size={10} className="text-red-400" />;
+      case 'bar': return <Settings size={10} className="text-yellow-400" />;
       case 'chart': return <ChartLine size={10} />;
       default: return <GripHorizontal size={10} />;
     }
@@ -226,6 +234,8 @@ export default function DashboardGrid({ panels, waveformHistoryRef, onRemovePane
                          <option value="gauge">{t('dashboard.widgets.gauge')}</option>
                          <option value="led">{t('dashboard.widgets.led')}</option>
                          <option value="7segment">{t('dashboard.widgets.7segment')}</option>
+                         <option value="sparkline">ECG Sweep Chart</option>
+                         <option value="bar">Matrix Heatmap</option>
                        </select>
                      </div>
                      <div className="flex gap-2">

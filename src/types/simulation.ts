@@ -37,6 +37,9 @@ export interface SignalIntegrity {
   noiseLevel: number;
   jitterMs: number;
   bitFlipsEnabled: boolean;
+  lossRate: number;        // probability percentage of packet/byte drop (0 - 100)
+  corruptRate: number;     // probability percentage of byte corruption (0 - 100)
+  parityErrorsEnabled: boolean;
 }
 
 export interface DashboardWidget {

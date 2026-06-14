@@ -376,15 +376,129 @@ export function decodeNMEA(bytes: number[]): NMEASentence {
 }
 
 // ─────────────────────────────────────────────
+// OBD-II (ELM327)
+// ─────────────────────────────────────────────
+
+export interface OBD2Frame {
+  valid: boolean;
+  raw: string;
+  command: string;
+  isResponse: boolean;
+  pid?: string;
+  pidName?: string;
+  value?: string | number;
+  fields: DecodedField[];
+}
+
+export function decodeOBD2(bytes: number[]): OBD2Frame {
+  const raw = bytes.map((b) => String.fromCharCode(b)).join('').trim().toUpperCase().replace(/\s+/g, '');
+  
+  const empty: OBD2Frame = {
+    valid: false,
+    raw,
+    command: '',
+    isResponse: false,
+    fields: []
+  };
+
+  if (raw.length < 2) return empty;
+
+  if (raw.startsWith('AT')) {
+    return {
+      valid: true,
+      raw,
+      command: raw,
+      isResponse: false,
+      fields: [
+        { name: 'Tip', value: 'ELM327 AT Komutu', hex: 'AT' },
+        { name: 'Komut', value: raw, hex: raw }
+      ]
+    };
+  }
+
+  const isResponse = raw.startsWith('41');
+  const isRequest = raw.startsWith('01');
+  
+  if (!isRequest && !isResponse) return empty;
+
+  const pid = raw.slice(2, 4);
+  let pidName = `Bilinmeyen PID (0x${pid})`;
+  let value: string | number = '';
+  const fields: DecodedField[] = [
+    { name: 'Yön', value: isResponse ? 'Cevap (Response)' : 'İstek (Request)', hex: raw.slice(0, 2) },
+    { name: 'PID', value: `0x${pid}`, hex: pid }
+  ];
+
+  const dataHex = raw.slice(4);
+  const dataBytes: number[] = [];
+  for (let i = 0; i < dataHex.length; i += 2) {
+    const val = parseInt(dataHex.slice(i, i + 2), 16);
+    if (!isNaN(val)) dataBytes.push(val);
+  }
+
+  if (pid === '0C') {
+    pidName = 'Motor Devri (RPM)';
+    if (isResponse && dataBytes.length >= 2) {
+      const rpm = ((dataBytes[0] * 256) + dataBytes[1]) / 4;
+      value = `${rpm} RPM`;
+      fields.push({ name: pidName, value, hex: dataHex, highlight: 'ok' });
+    }
+  } else if (pid === '0D') {
+    pidName = 'Araç Hızı (Speed)';
+    if (isResponse && dataBytes.length >= 1) {
+      const speed = dataBytes[0];
+      value = `${speed} km/h`;
+      fields.push({ name: pidName, value, hex: dataHex, highlight: 'ok' });
+    }
+  } else if (pid === '05') {
+    pidName = 'Motor Soğutma Suyu Sıcaklığı';
+    if (isResponse && dataBytes.length >= 1) {
+      const temp = dataBytes[0] - 40;
+      value = `${temp} °C`;
+      fields.push({ name: pidName, value, hex: dataHex, highlight: 'ok' });
+    }
+  } else if (pid === '11') {
+    pidName = 'Gaz Kelebeği Pozisyonu';
+    if (isResponse && dataBytes.length >= 1) {
+      const throttle = (dataBytes[0] * 100) / 255;
+      value = `${throttle.toFixed(1)} %`;
+      fields.push({ name: pidName, value, hex: dataHex, highlight: 'ok' });
+    }
+  } else {
+    fields.push({ name: 'Ham Veri (Hex)', value: dataHex || '—', hex: dataHex });
+  }
+
+  return {
+    valid: true,
+    raw,
+    command: raw.slice(0, 4),
+    isResponse,
+    pid,
+    pidName,
+    value: value || undefined,
+    fields
+  };
+}
+
+// ─────────────────────────────────────────────
 // AUTO-DETECT: ham byte dizisini hangi protokol
 // olduğunu tahmin eder
 // ─────────────────────────────────────────────
-export type HighLevelProtocol = 'modbus_rtu' | 'nmea' | 'unknown';
+export type HighLevelProtocol = 'modbus_rtu' | 'nmea' | 'obd2' | 'unknown';
 
 export function detectProtocol(bytes: number[]): HighLevelProtocol {
   if (!bytes || !Array.isArray(bytes) || bytes.length === 0) return 'unknown';
   // NMEA starts with '$' (0x24)
   if (bytes[0] === 0x24) return 'nmea';
+  
+  // OBD-II ASCII check (e.g. starts with '0', '4', 'A' in ASCII)
+  if (bytes[0] === 0x30 || bytes[0] === 0x34 || bytes[0] === 0x41) {
+    const raw = bytes.map((b) => String.fromCharCode(b)).join('').trim().toUpperCase().replace(/\s+/g, '');
+    if (raw.startsWith('AT') || raw.startsWith('01') || raw.startsWith('41')) {
+      return 'obd2';
+    }
+  }
+
   // Modbus RTU: device address 1–247, valid function code, at least 4 bytes
   if (bytes.length >= 4) {
     const addr = bytes[0];

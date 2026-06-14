@@ -95,7 +95,7 @@ export default function SimulationDashboard() {
     setAnalyzerMode, selectExchange, setDisplayFilter,
     setDiffFrame, setResponderRules,
     deleteRecording, refreshRecordings,
-    setTriggers,
+    setTriggers, setSignalIntegrity,
     startValidation, stopValidation,
     clearExchanges, sendRawData, sendTextData,
   } = useSimulation();
@@ -548,10 +548,12 @@ export default function SimulationDashboard() {
               bitOverrides={bitOverrides}
               fieldOverrides={fieldOverrides}
               logEntries={logEntries}
+              signalIntegrity={state.signalIntegrity}
               onOverrideField={overrideField}
               onOverrideBit={overrideBit}
               onResetOverrides={resetOverrides}
               onExportLogs={exportLogs}
+              onSetSignalIntegrity={setSignalIntegrity}
             />
           </div>
         </div>

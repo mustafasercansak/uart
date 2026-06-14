@@ -10,10 +10,19 @@ const defaultProps = {
   bitOverrides: {},
   fieldOverrides: {},
   logEntries: [],
+  signalIntegrity: {
+    noiseLevel: 0,
+    jitterMs: 0,
+    bitFlipsEnabled: false,
+    lossRate: 0,
+    corruptRate: 0,
+    parityErrorsEnabled: false,
+  },
   onOverrideField: vi.fn(),
   onOverrideBit: vi.fn(),
   onResetOverrides: vi.fn(),
   onExportLogs: vi.fn(),
+  onSetSignalIntegrity: vi.fn(),
 };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -97,12 +106,13 @@ describe('ControlPanel', () => {
   it('calls onOverrideField when range slider changes', () => {
     const onOverrideField = vi.fn();
     const rangeField = makeRangeField('temp', 'Temperature', 0, 100);
-    render(
+    const { container } = render(
       <ControlPanel {...defaultProps} allRangeFields={[rangeField]} onOverrideField={onOverrideField} />,
       { wrapper }
     );
-    const sliders = screen.getAllByRole('slider');
-    fireEvent.change(sliders[0], { target: { value: '75' } });
+    const slider = container.querySelector('.alarm-slider');
+    expect(slider).toBeTruthy();
+    fireEvent.change(slider!, { target: { value: '75' } });
     expect(onOverrideField).toHaveBeenCalledWith('temp', 75);
   });
 

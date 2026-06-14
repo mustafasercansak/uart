@@ -1,6 +1,6 @@
 import React, { memo, useRef, useEffect, useState } from 'react';
 import { FileDown, ChevronDown, ChevronRight } from 'lucide-react';
-import type { FlagsConfig, RangeConfig, Field } from '../../../types';
+import type { FlagsConfig, RangeConfig, Field, SignalIntegrity } from '../../../types';
 import { useTranslation } from '../../../i18n/context';
 
 interface ControlPanelProps {
@@ -9,10 +9,12 @@ interface ControlPanelProps {
   bitOverrides: Record<string, number>;
   fieldOverrides: Record<string, number>;
   logEntries: Array<{ type: string; time: string; text: string }>;
+  signalIntegrity: SignalIntegrity;
   onOverrideField: (id: string, value: number) => void;
   onOverrideBit: (key: string, value: number) => void;
   onResetOverrides: () => void;
   onExportLogs: () => void;
+  onSetSignalIntegrity: (integrity: Partial<SignalIntegrity>) => void;
 }
 
 const ControlPanel = memo(({
@@ -21,10 +23,12 @@ const ControlPanel = memo(({
   bitOverrides,
   fieldOverrides,
   logEntries,
+  signalIntegrity,
   onOverrideField,
   onOverrideBit,
   onResetOverrides,
   onExportLogs,
+  onSetSignalIntegrity,
 }: ControlPanelProps) => {
   const { t } = useTranslation();
   const logRef = useRef<HTMLDivElement>(null);
@@ -35,7 +39,91 @@ const ControlPanel = memo(({
   }, [logEntries, consoleOpen]);
 
   return (
-    <div className="w-80 h-full flex flex-col border-l border-gray-800 bg-gray-900/30 shrink-0">
+    <div className="w-80 h-full flex flex-col border-l border-gray-800 bg-gray-900/30 shrink-0 overflow-y-auto custom-scrollbar">
+      {/* Physical Layer & Noise Injector */}
+      <div className="p-3 border-b border-gray-800/50">
+        <div className="text-gray-600 text-[9px] font-mono uppercase tracking-widest mb-2">Fiziksel Katman ve Hata Enjektörü</div>
+        <div className="space-y-2.5">
+          {/* Noise Level */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-gray-500 text-[8.5px] font-mono">Gürültü Seviyesi (Noise)</span>
+              <span className="text-[9px] font-mono font-bold text-gray-400">{(signalIntegrity.noiseLevel * 100).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={signalIntegrity.noiseLevel}
+              onChange={(e) => onSetSignalIntegrity({ noiseLevel: parseFloat(e.target.value) })}
+              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+            />
+          </div>
+
+          {/* Jitter */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-gray-500 text-[8.5px] font-mono">Gecikme Sapması (Jitter)</span>
+              <span className="text-[9px] font-mono font-bold text-gray-400">{signalIntegrity.jitterMs} ms</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={250}
+              step={5}
+              value={signalIntegrity.jitterMs}
+              onChange={(e) => onSetSignalIntegrity({ jitterMs: parseInt(e.target.value) })}
+              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+          </div>
+
+          {/* Loss Rate */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-gray-500 text-[8.5px] font-mono">Paket Kayıp Oranı (Loss)</span>
+              <span className="text-[9px] font-mono font-bold text-gray-400">{(signalIntegrity.lossRate ?? 0).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={signalIntegrity.lossRate ?? 0}
+              onChange={(e) => onSetSignalIntegrity({ lossRate: parseInt(e.target.value) })}
+              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
+          </div>
+
+          {/* Corruption Rate */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-gray-500 text-[8.5px] font-mono">Bozulma Oranı (Corruption)</span>
+              <span className="text-[9px] font-mono font-bold text-gray-400">{(signalIntegrity.corruptRate ?? 0).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={signalIntegrity.corruptRate ?? 0}
+              onChange={(e) => onSetSignalIntegrity({ corruptRate: parseInt(e.target.value) })}
+              className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+            />
+          </div>
+
+          {/* Parity Error Checkbox */}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-gray-500 text-[8.5px] font-mono">Parite Hataları Eşle</span>
+            <button
+              onClick={() => onSetSignalIntegrity({ parityErrorsEnabled: !signalIntegrity.parityErrorsEnabled })}
+              className={`w-8 h-4 rounded-full relative transition-colors ${signalIntegrity.parityErrorsEnabled ? 'bg-emerald-600' : 'bg-gray-800'}`}
+            >
+              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${signalIntegrity.parityErrorsEnabled ? 'left-4.5' : 'left-0.5'}`} />
+            </button>
+          </div>
+        </div>
+      </div>
       {/* Flag Toggles */}
       {flagsFields.length > 0 && (
         <div className="p-3 border-b border-gray-800/50">
@@ -225,11 +313,13 @@ const ControlPanel = memo(({
 
       {/* Log */}
       <div className={`flex flex-col p-2 ${consoleOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
-        <button
-          onClick={() => setConsoleOpen(v => !v)}
-          className="flex items-center justify-between w-full mb-2 group"
+        <div
+          className="flex items-center justify-between w-full mb-2 group select-none"
         >
-          <div className="flex items-center gap-1.5">
+          <div
+            onClick={() => setConsoleOpen(v => !v)}
+            className="flex items-center gap-1.5 cursor-pointer"
+          >
             {consoleOpen
               ? <ChevronDown size={11} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
               : <ChevronRight size={11} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
@@ -248,7 +338,7 @@ const ControlPanel = memo(({
             <FileDown size={10} />
             {t('controls.csvExport')}
           </button>
-        </button>
+        </div>
 
         {consoleOpen && (
           <div ref={logRef} className="flex-1 min-h-0 overflow-y-auto bg-gray-950/50 rounded border border-gray-800/50 p-1.5 font-mono text-[9px] space-y-0.5 custom-scrollbar">

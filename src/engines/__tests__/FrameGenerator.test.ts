@@ -53,7 +53,10 @@ describe('FrameGenerator', () => {
     signalIntegrity: {
       bitFlipsEnabled: false,
       noiseLevel: 0,
-      jitterMs: 0
+      jitterMs: 0,
+      lossRate: 0,
+      corruptRate: 0,
+      parityErrorsEnabled: false
     }
   } as unknown as SimulationState;
 
@@ -184,7 +187,10 @@ describe('FrameGenerator', () => {
       signalIntegrity: {
         bitFlipsEnabled: true,
         noiseLevel: 1.0, // Flip ALL bits
-        jitterMs: 0
+        jitterMs: 0,
+        lossRate: 0,
+        corruptRate: 0,
+        parityErrorsEnabled: false
       }
     };
     const frame = generateFrame(mockProfile, noisyState, 1);
@@ -604,14 +610,14 @@ describe('FrameGenerator', () => {
 
       const noiseDisabledByLevel = generateFrame(mockProfile, {
         ...mockState,
-        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: 0, jitterMs: 0 },
+        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: 0, jitterMs: 0, lossRate: 0, corruptRate: 0, parityErrorsEnabled: false },
       }, 1);
       expect(noiseDisabledByLevel.rawBytes).toEqual([0xab, 0xcd, 0x55]);
 
       const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(1);
       const noiseMiss = generateFrame(mockProfile, {
         ...mockState,
-        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: 0.5, jitterMs: 0 },
+        signalIntegrity: { bitFlipsEnabled: true, noiseLevel: 0.5, jitterMs: 0, lossRate: 0, corruptRate: 0, parityErrorsEnabled: false },
       }, 1);
       expect(noiseMiss.rawBytes).toEqual([0xab, 0xcd, 0x55]);
       randomSpy.mockRestore();

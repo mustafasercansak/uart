@@ -337,11 +337,10 @@ export async function initProfileStorage(): Promise<void> {
   }
 }
 
-// ── Profiles ─────────────────────────────────
-
 export function loadProfiles(): FrameProfile[] {
   const loaded = load<PersistedProfile>(PROFILES_KEY, INITIAL_PROFILES);
-  let { profiles, changed } = migrateProfiles(loaded);
+  const { profiles, changed: initialChanged } = migrateProfiles(loaded);
+  let changed = initialChanged;
 
   // Force standard delimiter profile fields to be empty if it exists
   const stdDelim = profiles.find(p => p.id === 'standard-delimiter-01');

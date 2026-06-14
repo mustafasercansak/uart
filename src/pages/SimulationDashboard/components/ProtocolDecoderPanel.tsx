@@ -5,6 +5,7 @@ import { useTranslation } from '../../../i18n/context';
 import {
   decodeModbusRTU,
   decodeNMEA,
+  decodeOBD2,
   detectProtocol,
   type DecodedField,
   type DecodedResult,
@@ -16,7 +17,7 @@ interface Props {
   profile: FrameProfile | null;
 }
 
-type Protocol = 'auto' | 'modbus_rtu' | 'nmea';
+type Protocol = 'auto' | 'modbus_rtu' | 'nmea' | 'obd2';
 
 function FieldRow({ field }: { field: DecodedField }) {
   const highlightClass =
@@ -63,6 +64,7 @@ function FrameDecodeCard({
     try {
       if (detected === 'modbus_rtu') return decodeModbusRTU(frame.rawBytes);
       if (detected === 'nmea') return decodeNMEA(frame.rawBytes);
+      if (detected === 'obd2') return decodeOBD2(frame.rawBytes);
       
       // Fallback: Aktif Profil Tanımı
       if (profile) {
@@ -99,6 +101,8 @@ function FrameDecodeCard({
       ? t('protocolDecoder.modbusRtu')
       : detected === 'nmea'
       ? t('protocolDecoder.nmea0183')
+      : detected === 'obd2'
+      ? 'OBD-II (ELM327)'
       : profile ? profile.name : t('protocolDecoder.unknown');
 
   return (
@@ -188,7 +192,7 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
 
         {/* Protocol selector */}
         <div className="flex items-center gap-1 ml-4">
-          {(['auto', 'modbus_rtu', 'nmea'] as Protocol[]).map((p) => (
+          {(['auto', 'modbus_rtu', 'nmea', 'obd2'] as Protocol[]).map((p) => (
             <button
               key={p}
               onClick={() => setProtocol(p)}
@@ -199,10 +203,12 @@ export default function ProtocolDecoderPanel({ frames, profile: _profile }: Prop
               }`}
             >
               {p === 'auto'
-                ? `${t('protocolDecoder.auto')}${autoDetected !== 'unknown' ? ` (${autoDetected === 'nmea' ? 'NMEA' : 'Modbus RTU'})` : ''}`
+                ? `${t('protocolDecoder.auto')}${autoDetected !== 'unknown' ? ` (${autoDetected === 'nmea' ? 'NMEA' : autoDetected === 'modbus_rtu' ? 'Modbus RTU' : 'OBD-II'})` : ''}`
                 : p === 'modbus_rtu'
                 ? 'Modbus RTU'
-                : 'NMEA 0183'}
+                : p === 'nmea'
+                ? 'NMEA 0183'
+                : 'OBD-II'}
             </button>
           ))}
         </div>

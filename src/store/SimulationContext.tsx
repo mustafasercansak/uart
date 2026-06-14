@@ -34,7 +34,6 @@ import {
   loadSequences,
   saveSequence,
   deleteSequence,
-  loadProfiles,
 } from './storage';
 import { usePeripheralStore } from './usePeripheralStore';
 import type { PeripheralState } from './usePeripheralStore';
