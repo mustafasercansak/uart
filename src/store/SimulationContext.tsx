@@ -494,14 +494,26 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         resetOverrides,
         connectSerial,
         disconnectSerial,
-        setProfile: (profileId) => dispatch({ type: 'SET_PROFILE', profileId }),
+        setProfile: (profileId) => {
+          dispatch({ type: 'SET_PROFILE', profileId });
+          const profile = profilesRef.current.find(p => p.id === profileId);
+          if (profile) {
+            send({ type: 'SET_PROFILE', profile });
+          }
+        },
         setScenario: (scenarioId) => dispatch({ type: 'SET_SCENARIO', scenarioId }),
         setOutputMode: (outputMode) => dispatch({ type: 'SET_OUTPUT_MODE', outputMode }),
         clearExchanges,
         clearConversation,
         setUiVisible: (visible) => { uiVisibleRef.current = visible; },
         exportLogs,
-        setProfiles: (profiles) => { profilesRef.current = profiles; },
+        setProfiles: (profiles) => {
+          profilesRef.current = profiles;
+          const profile = profiles.find(p => p.id === stateRef.current.profileId);
+          if (profile) {
+            send({ type: 'SET_PROFILE', profile });
+          }
+        },
         connectNetwork,
         disconnectNetwork,
         startRecording,

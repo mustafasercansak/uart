@@ -160,6 +160,67 @@ export class SimulationEngine {
       });
     }
 
+    if (this.state.serialConnected || this.state.networkConnected) {
+      const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' :
+                       (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
+
+      const handleResponse = (res: { bytes: number[]; log: string }) => {
+        setTimeout(() => {
+          if (res.log) {
+            this.onConversation?.({
+              id: uuidv4(),
+              timestamp: Date.now(),
+              type: 'match',
+              rawHex: '',
+              details: res.log
+            });
+          }
+
+          if (res.bytes.length > 0) {
+            const hex = res.bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+            const asciiText = res.bytes.map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : b === 0x0D || b === 0x0A ? '' : '.').join('');
+            
+            const txEntry: ConversationEntry = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              type: 'tx',
+              rawHex: hex,
+              ...(asciiText.trim().length > 0 && { details: asciiText.trim() })
+            };
+            this.addLog(txEntry);
+
+            // Try to match with the most recent rx exchange that doesn't have a tx yet (within 2 seconds)
+            const unackedExchange = this.state.exchanges.find(e => e.rx && !e.tx && (txEntry.timestamp - e.startTime < 2000));
+            if (unackedExchange) {
+              unackedExchange.tx = txEntry;
+              unackedExchange.latencyMs = txEntry.timestamp - unackedExchange.startTime;
+              if (unackedExchange.rx) {
+                unackedExchange.isLoopbackMatch = (unackedExchange.rx.rawHex === txEntry.rawHex);
+              }
+              this.updateExchange(unackedExchange);
+            } else {
+              const txExchange: Exchange = {
+                id: uuidv4(),
+                startTime: txEntry.timestamp,
+                tx: txEntry
+              };
+              this.addExchange(txExchange);
+            }
+
+            this.onRawResponse?.(res.bytes);
+          }
+        }, 5 + Math.random() * 10);
+      };
+
+      const pResponses = this.peripheralEngine.processIncoming(
+        protocol as import('../types').ProtocolType,
+        processedBytes,
+        handleResponse
+      );
+
+      pResponses.forEach(handleResponse);
+    }
+
     // 1. Accumulate all incoming bytes into the persistent buffer
     this.rxBuffer.push(...processedBytes);
 
@@ -257,7 +318,16 @@ export class SimulationEngine {
     };
     this.addLog(rxEntry);
 
-    if (this.pendingExchanges.length > 0) {
+    // Try to find a recent tx-only exchange to match this rx
+    const unreadTxExchange = this.state.exchanges.find(e => e.tx && !e.rx);
+    if (unreadTxExchange && (rxEntry.timestamp - unreadTxExchange.startTime < 2000)) {
+        unreadTxExchange.rx = rxEntry;
+        unreadTxExchange.latencyMs = rxEntry.timestamp - unreadTxExchange.startTime;
+        if (unreadTxExchange.tx) {
+            unreadTxExchange.isLoopbackMatch = (unreadTxExchange.tx.rawHex === rxEntry.rawHex);
+        }
+        this.updateExchange(unreadTxExchange);
+    } else if (this.pendingExchanges.length > 0) {
         const exchange = this.pendingExchanges.shift()!;
         exchange.rx = rxEntry;
         exchange.latencyMs = rxEntry.timestamp - exchange.startTime;
@@ -723,10 +793,7 @@ export class SimulationEngine {
       const protocol = (profile.name.includes('SPI') || profile.name.includes('Ethernet')) ? 'SPI' :
                        (profile.name.includes('I2C')) ? 'I2C' : 'UART';
 
-      const pResponses = this.peripheralEngine.processIncoming(protocol as import('../types').ProtocolType, frame.rawBytes);
-
-      pResponses.forEach(res => {
-        // Small delay to simulate processing time
+      const handleResponse = (res: { bytes: number[]; log: string }) => {
         setTimeout(() => {
           if (res.log) {
             this.onConversation?.({
@@ -742,7 +809,15 @@ export class SimulationEngine {
             this.processIncomingData(res.bytes);
           }
         }, 5 + Math.random() * 10);
-      });
+      };
+
+      const pResponses = this.peripheralEngine.processIncoming(
+        protocol as import('../types').ProtocolType,
+        frame.rawBytes,
+        handleResponse
+      );
+
+      pResponses.forEach(handleResponse);
     }
 
     // Clear one-shot error if it was applied

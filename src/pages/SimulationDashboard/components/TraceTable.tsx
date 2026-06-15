@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Filter, Activity, Terminal, AlertCircle, CheckCircle2, MessageSquare, Table, Send, Eye, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Filter, Activity, Terminal, AlertCircle, CheckCircle2, MessageSquare, Table, Send, Eye, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import type { Exchange, FrameProfile } from '../../../types';
 import { FilterEngine } from '../../../engines/FilterEngine';
 import { useTranslation } from '../../../i18n/context';
@@ -47,6 +47,7 @@ interface TraceTableProps {
   onSendText?: (text: string) => void;
   onSendRaw?: (hex: string) => void;
   isConnected?: boolean;
+  onClear?: () => void;
 }
 
 function framingLabel(profile: FrameProfile | null | undefined): string {
@@ -69,7 +70,7 @@ function framingLabel(profile: FrameProfile | null | undefined): string {
   return mode.toUpperCase();
 }
 
-const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFilterChange, profile, onSendText, onSendRaw, isConnected = false }: TraceTableProps) => {
+const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFilterChange, profile, onSendText, onSendRaw, isConnected = false, onClear }: TraceTableProps) => {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<'chat' | 'table'>('chat');
   const [dataFormat, setDataFormat] = useState<'text' | 'hex'>('text');
@@ -106,10 +107,20 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
     onSelect(filteredExchanges[prev].id);
   }, [matchIndex, matchCount, filteredExchanges, onSelect]);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastLengthRef = useRef(filteredExchanges.length);
+
   // Auto scroll to bottom in chat view when new messages arrive
   useEffect(() => {
-    if (viewMode === 'chat') {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (viewMode === 'chat' && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+
+      const lengthChanged = filteredExchanges.length !== lastLengthRef.current;
+      if (!lengthChanged || isAtBottom) {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+      lastLengthRef.current = filteredExchanges.length;
     }
   }, [filteredExchanges.length, viewMode]);
 
@@ -143,9 +154,8 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
         <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-gray-800 shrink-0">
           <button
             onClick={() => setViewMode('chat')}
-            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${
-              viewMode === 'chat' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
-            }`}
+            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${viewMode === 'chat' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
+              }`}
             title={t('trace.titleChatMode')}
           >
             <MessageSquare size={10} />
@@ -153,9 +163,8 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
           </button>
           <button
             onClick={() => setViewMode('table')}
-            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${
-              viewMode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
-            }`}
+            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${viewMode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
+              }`}
             title={t('trace.titleTableMode')}
           >
             <Table size={10} />
@@ -167,40 +176,48 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
         <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-gray-800 shrink-0">
           <button
             onClick={() => setDataFormat('text')}
-            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${
-              dataFormat === 'text' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
-            }`}
+            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${dataFormat === 'text' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
+              }`}
             title={t('trace.titleFormatText')}
           >
             {t('trace.formatText')}
           </button>
           <button
             onClick={() => setDataFormat('hex')}
-            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${
-              dataFormat === 'hex' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
-            }`}
+            className={`px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 transition-all ${dataFormat === 'hex' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'
+              }`}
             title={t('trace.titleFormatHex')}
           >
             {t('trace.formatHex')}
           </button>
         </div>
 
+        {/* Clear Button */}
+        {onClear && (
+          <button
+            onClick={onClear}
+            className="px-2 py-1 rounded text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-800/40 text-rose-400 transition-all hover:text-rose-200 shrink-0"
+            title={t('terminal.clear')}
+          >
+            <Trash2 size={10} />
+            {t('terminal.clear')}
+          </button>
+        )}
+
         {/* Filter input + navigation */}
         <div className="flex items-center gap-1.5 flex-1 max-w-xs">
           <div className="relative flex-1 group">
-            <Search size={12} className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors ${
-              !displayFilter ? 'text-gray-600' : (filterStatus.isValid ? 'text-emerald-500' : 'text-rose-500')
-            }`} />
+            <Search size={12} className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors ${!displayFilter ? 'text-gray-600' : (filterStatus.isValid ? 'text-emerald-500' : 'text-rose-500')
+              }`} />
             <input
               type="text"
               placeholder={t('trace.filterPlaceholder')}
-              className={`w-full bg-black/60 border rounded-lg py-1.5 pl-8 pr-8 text-[11px] font-mono transition-all placeholder:text-gray-700 focus:outline-none ${
-                !displayFilter
+              className={`w-full bg-black/60 border rounded-lg py-1.5 pl-8 pr-8 text-[11px] font-mono transition-all placeholder:text-gray-700 focus:outline-none ${!displayFilter
                 ? 'border-gray-800 text-gray-300 focus:border-blue-500/50'
                 : (filterStatus.isValid
                   ? 'border-emerald-500/30 text-emerald-100 bg-emerald-500/5 focus:border-emerald-500/50'
                   : 'border-rose-500/30 text-rose-100 bg-rose-500/5 focus:border-rose-500/50')
-              }`}
+                }`}
               value={displayFilter}
               onChange={(e) => { onFilterChange(e.target.value); }}
               onKeyDown={(e) => {
@@ -216,8 +233,8 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
             <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
               {displayFilter && (
                 filterStatus.isValid
-                ? <CheckCircle2 size={12} className="text-emerald-500/50" />
-                : <AlertCircle size={12} className="text-rose-500/50" />
+                  ? <CheckCircle2 size={12} className="text-emerald-500/50" />
+                  : <AlertCircle size={12} className="text-rose-500/50" />
               )}
             </div>
           </div>
@@ -248,7 +265,7 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
       </div>
 
       {/* Main Content Pane */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-3">
         {filteredExchanges.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-gray-700 italic py-20">
             <Activity size={32} className="opacity-20 animate-pulse mb-3" />
@@ -309,16 +326,14 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
                     onClick={() => onSelect(bubble.exId)}
                   >
                     <div
-                      className={`max-w-[75%] flex flex-col cursor-pointer ${
-                        bubble.isOutgoing ? 'items-end' : 'items-start'
-                      }`}
+                      className={`max-w-[75%] flex flex-col cursor-pointer ${bubble.isOutgoing ? 'items-end' : 'items-start'
+                        }`}
                     >
                       <div
-                        className={`rounded-2xl px-3.5 py-2.5 shadow-lg transition-all border ${
-                          bubble.isOutgoing
-                            ? 'bg-blue-600/10 hover:bg-blue-600/20 border-blue-500/30 text-blue-100 rounded-tr-none'
-                            : 'bg-emerald-600/10 hover:bg-emerald-600/20 border-emerald-500/20 text-emerald-100 rounded-tl-none'
-                        } ${bubble.isSelected ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-950 scale-[1.01]' : ''}`}
+                        className={`rounded-2xl px-3.5 py-2.5 shadow-lg transition-all border ${bubble.isOutgoing
+                          ? 'bg-emerald-600/10 hover:bg-emerald-600/20 border-emerald-500/20 text-emerald-100 rounded-tr-none'
+                          : 'bg-blue-600/10 hover:bg-blue-600/20 border-blue-500/30 text-blue-100 rounded-tl-none'
+                          } ${bubble.isSelected ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-950 scale-[1.01]' : ''}`}
                       >
                         {isLargePayload ? (
                           <details className="group/payload min-w-64 max-w-xl">
@@ -345,9 +360,8 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
                         )}
                       </div>
                       <div
-                        className={`mt-1 flex items-center gap-1.5 text-[9px] font-mono text-gray-500 ${
-                          bubble.isOutgoing ? 'pr-1' : 'pl-1'
-                        }`}
+                        className={`mt-1 flex items-center gap-1.5 text-[9px] font-mono text-gray-500 ${bubble.isOutgoing ? 'pr-1' : 'pl-1'
+                          }`}
                       >
                         <time dateTime={new Date(bubble.timeSort).toISOString()}>{bubble.timeStr}</time>
                         <span aria-hidden="true">·</span>
@@ -376,52 +390,77 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-900/50 font-mono text-[11px]">
-                {filteredExchanges.map((ex, idx) => {
-                  const isSelected = selectedId === ex.id;
-                  const time = new Date(ex.startTime).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + (ex.startTime % 1000).toString().padStart(3, '0');
-                  const hasError = (ex.tx?.status === 'fail' || ex.rx?.status === 'fail' || (ex.tx && ex.rx && !ex.isLoopbackMatch)) && !ex.isLoopbackMatch;
-                  const rawHex = ex.tx?.rawHex || ex.rx?.rawHex || '';
-                  const rawBytes = hexToBytes(rawHex);
-                  const displayStr = dataFormat === 'text' ? bytesToAsciiString(rawBytes) : rawHex;
+                {(() => {
+                  const rows = filteredExchanges.flatMap((ex) => {
+                    const list = [];
+                    if (ex.tx) {
+                      list.push({
+                        exId: ex.id,
+                        isTx: true,
+                        timestamp: ex.tx.timestamp || ex.startTime,
+                        rawHex: ex.tx.rawHex,
+                        status: ex.tx.status,
+                        isLoopbackMatch: ex.isLoopbackMatch,
+                        hasError: ex.tx.status === 'fail'
+                      });
+                    }
+                    if (ex.rx) {
+                      list.push({
+                        exId: ex.id,
+                        isTx: false,
+                        timestamp: ex.rx.timestamp || (ex.startTime + (ex.latencyMs || 0)),
+                        rawHex: ex.rx.rawHex,
+                        status: ex.rx.status,
+                        isLoopbackMatch: ex.isLoopbackMatch,
+                        hasError: ex.rx.status === 'fail'
+                      });
+                    }
+                    return list;
+                  });
 
-                  return (
-                    <tr
-                      key={ex.id}
-                      onClick={() => onSelect(ex.id)}
-                      className={`cursor-pointer group transition-all ${
-                        isSelected
+                  // Sort rows by timestamp desc
+                  rows.sort((a, b) => b.timestamp - a.timestamp);
+
+                  return rows.map((row, idx) => {
+                    const isSelected = selectedId === row.exId;
+                    const time = new Date(row.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + (row.timestamp % 1000).toString().padStart(3, '0');
+                    const rawBytes = hexToBytes(row.rawHex);
+                    const displayStr = dataFormat === 'text' ? bytesToAsciiString(rawBytes) : row.rawHex;
+
+                    return (
+                      <tr
+                        key={`${row.exId}-${row.isTx ? 'tx' : 'rx'}`}
+                        onClick={() => onSelect(row.exId)}
+                        className={`cursor-pointer group transition-all ${isSelected
                           ? 'bg-blue-500/10 border-l-4 border-l-blue-500'
-                          : hasError ? 'bg-red-500/5 hover:bg-red-500/10 border-l-4 border-l-red-500/50' : 'hover:bg-white/5 border-l-4 border-l-transparent'
-                      }`}
-                    >
-                      <td className="p-3 text-gray-600 tabular-nums">{idx + 1}</td>
-                      <td className="p-3 text-gray-400 tabular-nums">{time}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold border ${
-                          ex.tx ? 'bg-blue-900/20 border-blue-500/20 text-blue-400' : 'bg-emerald-900/20 border-emerald-500/20 text-emerald-400'
-                        }`}>
-                          {ex.tx ? t('trace.source.tx') : t('trace.source.rx')}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-500">{rawBytes.length}{t('common.byte').charAt(0).toUpperCase()}</td>
-                      <td className="p-3">
-                        <div className="flex flex-col gap-0.5 overflow-hidden">
-                          <span className="font-mono text-[11px] text-gray-200 truncate group-hover:text-white transition-colors">
-                            {displayStr}
+                          : row.hasError ? 'bg-red-500/5 hover:bg-red-500/10 border-l-4 border-l-red-500/50' : 'hover:bg-white/5 border-l-4 border-l-transparent'
+                          }`}
+                      >
+                        <td className="p-3 text-gray-600 tabular-nums">{idx + 1}</td>
+                        <td className="p-3 text-gray-400 tabular-nums">{time}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold border ${row.isTx ? 'bg-emerald-900/20 border-emerald-500/20 text-emerald-400' : 'bg-blue-900/20 border-blue-500/20 text-blue-400'
+                            }`}>
+                            {row.isTx ? t('trace.source.tx') : t('trace.source.rx')}
                           </span>
-                          {dataFormat === 'hex' && (
-                            <span className="font-mono text-[10px] text-emerald-400/50 truncate">
-                              {bytesToAsciiString(rawBytes)}
+                        </td>
+                        <td className="p-3 text-gray-500">{rawBytes.length}{t('common.byte').charAt(0).toUpperCase()}</td>
+                        <td className="p-3">
+                          <div className="flex flex-col gap-0.5 overflow-hidden">
+                            <span className="font-mono text-[11px] text-gray-200 truncate group-hover:text-white transition-colors">
+                              {displayStr}
                             </span>
-                          )}
-                          {ex.latencyMs !== undefined && (
-                            <span className="text-[10px] text-gray-600 italic">({t('trace.latency', { ms: ex.latencyMs })})</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                            {dataFormat === 'hex' && (
+                              <span className="font-mono text-[10px] text-emerald-400/50 truncate">
+                                {bytesToAsciiString(rawBytes)}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
@@ -436,9 +475,8 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
             type="button"
             disabled={!isConnected}
             onClick={() => setSendFormat('text')}
-            className={`px-2 py-1 rounded text-[8px] font-mono font-black uppercase tracking-wider transition-all disabled:opacity-30 ${
-              sendFormat === 'text' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300'
-            }`}
+            className={`px-2 py-1 rounded text-[8px] font-mono font-black uppercase tracking-wider transition-all disabled:opacity-30 ${sendFormat === 'text' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
           >
             {t('trace.formatAscii')}
           </button>
@@ -446,9 +484,8 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
             type="button"
             disabled={!isConnected}
             onClick={() => setSendFormat('hex')}
-            className={`px-2 py-1 rounded text-[8px] font-mono font-black uppercase tracking-wider transition-all disabled:opacity-30 ${
-              sendFormat === 'hex' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300'
-            }`}
+            className={`px-2 py-1 rounded text-[8px] font-mono font-black uppercase tracking-wider transition-all disabled:opacity-30 ${sendFormat === 'hex' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
           >
             {t('trace.formatHex')}
           </button>
@@ -485,11 +522,11 @@ const TraceTable = memo(({ exchanges, selectedId, onSelect, displayFilter, onFil
       <div className="p-2.5 bg-gray-900/60 border-t border-gray-800 flex justify-between items-center text-[10px] font-mono text-gray-500">
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-blue-400" />
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
             <span>{t('trace.source.tx')}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="w-2 h-2 rounded-full bg-blue-400" />
             <span>{t('trace.source.rx')}</span>
           </div>
         </div>

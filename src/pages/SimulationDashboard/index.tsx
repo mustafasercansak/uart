@@ -399,6 +399,7 @@ export default function SimulationDashboard() {
                         profile={selectedProfile}
                         onSendText={sendTextData}
                         onSendRaw={sendRawData}
+                        onClear={clearExchanges}
                         isConnected={outputMode === 'serial' ? serialConnected : (outputMode === 'tcp' || outputMode === 'tcp-server') ? networkConnected : false}
                     />
                 </div>

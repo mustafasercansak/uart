@@ -204,6 +204,33 @@ const StatBar = memo(({
         </select>
       </div>
 
+      {/* Mode Badge */}
+      {(() => {
+        const isConn = serialConnected || networkConnected;
+        if (status === 'running') {
+          return (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 font-mono text-[8px] font-black tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {t('statBar.modeActive')}
+            </div>
+          );
+        } else if (isConn) {
+          return (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 font-mono text-[8px] font-black tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              {t('statBar.modePassive')}
+            </div>
+          );
+        } else {
+          return (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-500/10 border border-gray-800 rounded text-gray-500 font-mono text-[8px] font-black tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+              {t('statBar.modeOffline')}
+            </div>
+          );
+        }
+      })()}
+
       <div className="flex items-center gap-1 border-l border-gray-800/50 pl-2">
         <select 
           className="bg-gray-800/50 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none focus:border-green-700"
@@ -213,6 +240,7 @@ const StatBar = memo(({
         >
           <option value="serial">{t('statBar.serialPort')}</option>
           <option value="tcp">{t('statBar.tcpClient')}</option>
+          <option value="tcp-server">{t('statBar.tcpServer')}</option>
         </select>
         
         {outputMode === 'serial' && selectedProfile && (

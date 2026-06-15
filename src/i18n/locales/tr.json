@@ -256,7 +256,10 @@
     "tcpListening": "DİNLENİYOR",
     "tcpServerMode": "TCP SUNUCU",
     "tcpListen": "DİNLE",
-    "examplePort": "COM1 / /dev/tty"
+    "examplePort": "COM1 / /dev/tty",
+    "modeActive": "AKTİF (VERİCİ / CLIENT)",
+    "modePassive": "PASİF (DİNLEYİCİ / SERVER)",
+    "modeOffline": "ÇEVRİMDIŞI"
   },
   "smartListen": {
     "button": "Akıllı Dinle",

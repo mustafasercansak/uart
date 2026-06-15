@@ -55,6 +55,10 @@ self.onmessage = (event: MessageEvent) => {
       self.postMessage({ type: 'STATUS_UPDATE', status: 'running' });
       break;
 
+    case 'SET_PROFILE':
+      engine.setProfile(msg.profile);
+      break;
+
     case 'STOP':
       engine.stop();
       self.postMessage({ type: 'STATUS_UPDATE', status: 'stopped' });

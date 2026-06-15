@@ -51,6 +51,24 @@ const INITIAL_PROFILES: FrameProfile[] = [
     }
   },
   {
+    id: 'sim-modem-client-01',
+    name: 'SIM Card / Modem Tester',
+    description: 'Sanal SIM Kart modülünü test etmek için sırayla AT komutları (AT, CSQ, GPRS, HTTP vb.) gönderen aktif test istemcisi profili.',
+    baudRate: 115200,
+    dataBits: 8,
+    parity: 'None',
+    stopBits: 1,
+    sendIntervalMs: 2000,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    generatorScript: `// SIM Kart / Modem Test Istemcisi\n// Sirayla AT komutlari gondererek modulu test eder\nconst commands = [\n  "AT",\n  "ATE0",\n  "AT+CSQ",\n  "AT+CREG?",\n  "AT+CGATT?",\n  "AT+SAPBR=3,1,\\"CONTYPE\\",\\"GPRS\\"",\n  "AT+SAPBR=1,1",\n  "AT+HTTPINIT",\n  "AT+HTTPPARA=\\"URL\\",\\"http://httpbin.org/get\\"",\n  "AT+HTTPACTION=0",\n  "AT+HTTPREAD",\n  "AT+HTTPTERM"\n];\nif (typeof state.atCmdIndex === 'undefined') {\n  state.atCmdIndex = 0;\n}\nconst cmd = commands[state.atCmdIndex];\nstate.atCmdIndex = (state.atCmdIndex + 1) % commands.length;\nreturn cmd + "\\r\\n";`,
+    fields: [],
+    framing: {
+      mode: 'delimiter',
+      delimiter: [0x0D, 0x0A]
+    }
+  },
+  {
     id: 'medical-monitor-01',
     name: 'YS2000A Patient Monitor',
     description: 'ECG (Lead I, II), SpO2, BPM ve RR simülasyonu içeren profesyonel hasta başı monitör profili.',
@@ -350,14 +368,30 @@ export function loadProfiles(): FrameProfile[] {
   }
 
   const isTesting = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-  if (!isTesting && profiles.length > 0 && !profiles.some(p => p.id === 'standard-delimiter-01')) {
-    profiles.unshift(INITIAL_PROFILES[0]);
-    const withSchema = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
-    save(PROFILES_KEY, withSchema);
-    if (isTauri()) {
-      tauriSaveProfiles(profiles).catch(console.error);
+  if (!isTesting && profiles.length > 0) {
+    let changedList = false;
+    if (!profiles.some(p => p.id === 'standard-delimiter-01')) {
+      const pStd = INITIAL_PROFILES.find(p => p.id === 'standard-delimiter-01');
+      if (pStd) {
+        profiles.unshift(pStd);
+        changedList = true;
+      }
     }
-    return profiles;
+    if (!profiles.some(p => p.id === 'sim-modem-client-01')) {
+      const pModem = INITIAL_PROFILES.find(p => p.id === 'sim-modem-client-01');
+      if (pModem) {
+        profiles.push(pModem);
+        changedList = true;
+      }
+    }
+    if (changedList) {
+      const withSchema = profiles.map((p) => ({ ...p, schemaVersion: PROFILE_SCHEMA_VERSION }));
+      save(PROFILES_KEY, withSchema);
+      if (isTauri()) {
+        tauriSaveProfiles(profiles).catch(console.error);
+      }
+      return profiles;
+    }
   }
 
   if (profiles.length === 0) {

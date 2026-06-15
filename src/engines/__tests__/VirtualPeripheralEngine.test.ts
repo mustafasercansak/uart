@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { VirtualPeripheralEngine, LM75Driver, EEPROMDriver, ScriptableDriver } from '../VirtualPeripheralEngine';
+import { VirtualPeripheralEngine, LM75Driver, EEPROMDriver, ScriptableDriver, SimCardDriver } from '../VirtualPeripheralEngine';
 
 describe('VirtualPeripheralEngine', () => {
   let engine: VirtualPeripheralEngine;
@@ -217,6 +217,184 @@ describe('VirtualPeripheralEngine', () => {
       const eeprom = new EEPROMDriver();
       expect(eeprom.process([])).toBeNull();
       expect(eeprom.process([0x03])).toBeNull();
+    });
+  });
+  describe('SimCardDriver', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should respond to AT with OK', () => {
+      const input = Array.from('AT\r\n').map(c => c.charCodeAt(0));
+      const res = engine.processIncoming('UART', input);
+      const simRes = res.find(r => r.log && r.log.includes('AT OK'));
+      expect(simRes).toBeDefined();
+      expect(String.fromCharCode(...simRes!.bytes)).toContain('OK');
+    });
+
+    it('should support HTTP GET action with mock fetch', async () => {
+      const mockFetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          status: 200,
+          text: () => Promise.resolve('{"status":"ok"}')
+        })
+      );
+      vi.stubGlobal('fetch', mockFetch);
+
+      const asyncCallback = vi.fn();
+      
+      // 1. Set URL
+      let input = Array.from('AT+HTTPPARA="URL","http://example.com/api"\r\n').map(c => c.charCodeAt(0));
+      engine.processIncoming('UART', input);
+
+      // 2. Trigger HTTPACTION=0
+      input = Array.from('AT+HTTPACTION=0\r\n').map(c => c.charCodeAt(0));
+      const res = engine.processIncoming('UART', input, asyncCallback);
+      
+      const actionRes = res.find(r => r.log && r.log.includes('HTTPACTION triggered'));
+      expect(actionRes).toBeDefined();
+
+      // Wait for async fetch callback to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockFetch).toHaveBeenCalledWith('http://example.com/api', {
+        method: 'GET',
+        headers: undefined,
+        body: undefined
+      });
+
+      expect(asyncCallback).toHaveBeenCalled();
+      const asyncCallArg = asyncCallback.mock.calls[0][0];
+      expect(asyncCallArg.log).toContain('HTTP Async Response -> 200');
+      expect(String.fromCharCode(...asyncCallArg.bytes)).toContain('+HTTPACTION: 0,200,15');
+    });
+
+    it('should upload files using FSCREATE and FSWRITE', () => {
+      // 1. Create file
+      let input = Array.from('AT+FSCREATE="client.pem"\r\n').map(c => c.charCodeAt(0));
+      let res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('Created file "client.pem"');
+
+      // 2. Start write
+      input = Array.from('AT+FSWRITE="client.pem",0,10,5\r\n').map(c => c.charCodeAt(0));
+      res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('Writing 10 bytes to file "client.pem"');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('>');
+
+      // 3. Write data bytes
+      input = Array.from('CERTIFICATE').map(c => c.charCodeAt(0));
+      res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('Saved file "client.pem" (10 bytes)');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('OK');
+    });
+
+    it('should configure SSL context using CSSLCFG', () => {
+      let input = Array.from('AT+CSSLCFG="authmode",1,3\r\n').map(c => c.charCodeAt(0));
+      let res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('SSL Config -> AuthMode = 3');
+
+      input = Array.from('AT+CSSLCFG="clientcert",1,"client.pem"\r\n').map(c => c.charCodeAt(0));
+      res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('SSL Config -> ClientCert = client.pem');
+    });
+
+    it('should fail secure HTTPS action if client auth required but cert/key missing', async () => {
+      const asyncCallback = vi.fn();
+
+      // Configure URL and SSL mode requiring client credentials
+      engine.processIncoming('UART', Array.from('AT+HTTPPARA="URL","https://secure.example.com"\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('AT+CSSLCFG="authmode",1,3\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('AT+CSSLCFG="clientcert",1,"cert.pem"\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('AT+CSSLCFG="clientkey",1,"key.pem"\r\n').map(c => c.charCodeAt(0)));
+
+      // Trigger HTTP GET action
+      const input = Array.from('AT+HTTPACTION=0\r\n').map(c => c.charCodeAt(0));
+      engine.processIncoming('UART', input, asyncCallback);
+
+      expect(asyncCallback).toHaveBeenCalled();
+      const asyncCallArg = asyncCallback.mock.calls[0][0];
+      expect(asyncCallArg.log).toContain('HTTP SSL Handshake Failed');
+      expect(String.fromCharCode(...asyncCallArg.bytes)).toContain('+HTTPACTION: 0,603,0');
+    });
+
+    it('should validate secure CIPSTART and fail if credentials missing', () => {
+      // Configure SSL mutual auth
+      engine.processIncoming('UART', Array.from('AT+CSSLCFG="authmode",1,3\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('AT+CSSLCFG="clientcert",1,"cert.pem"\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('AT+CSSLCFG="clientkey",1,"key.pem"\r\n').map(c => c.charCodeAt(0)));
+
+      const input = Array.from('AT+CIPSTART="SSL","secure.example.com","443"\r\n').map(c => c.charCodeAt(0));
+      const res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('TCP SSL Connection failed');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('CONNECTION FAILED');
+    });
+
+    it('should support network/SIM queries', () => {
+      let res = engine.processIncoming('UART', Array.from('AT+CPIN?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('READY');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('READY');
+
+      res = engine.processIncoming('UART', Array.from('AT+COPS?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Turkcell');
+
+      res = engine.processIncoming('UART', Array.from('AT+CIFSR\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('10.78.12.143');
+    });
+
+    it('should support advanced filesystem query commands', () => {
+      // 1. Create file and write data
+      engine.processIncoming('UART', Array.from('AT+FSCREATE="test.txt"\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('AT+FSWRITE="test.txt",0,5,5\r\n').map(c => c.charCodeAt(0)));
+      engine.processIncoming('UART', Array.from('HELLO').map(c => c.charCodeAt(0)));
+
+      // 2. FSLS
+      let res = engine.processIncoming('UART', Array.from('AT+FSLS\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('test.txt');
+
+      // 3. FSFLSIZE
+      res = engine.processIncoming('UART', Array.from('AT+FSFLSIZE="test.txt"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('5 bytes');
+
+      // 4. FSREAD
+      res = engine.processIncoming('UART', Array.from('AT+FSREAD="test.txt",0,5,0\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Read 5 bytes');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('HELLO');
+
+      // 5. FSDEL
+      res = engine.processIncoming('UART', Array.from('AT+FSDEL="test.txt"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Deleted file');
+    });
+
+    it('should simulate MQTT and MQTTS operations', () => {
+      // 1. Fail publish when not connected
+      let res = engine.processIncoming('UART', Array.from('AT+MQTTPUB="sensors","data"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Publish failed');
+
+      // 2. Connect
+      res = engine.processIncoming('UART', Array.from('AT+MQTTCONN="broker.hivemq.com",1883\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Connected to MQTT Broker');
+
+      // 3. Subscribe
+      res = engine.processIncoming('UART', Array.from('AT+MQTTSUB="telemetry"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Subscribed');
+
+      // 4. Publish
+      res = engine.processIncoming('UART', Array.from('AT+MQTTPUB="telemetry","value=42"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Published');
+    });
+
+    it('should support SMS CMGS sending command', () => {
+      // 1. Trigger CMGS
+      let res = engine.processIncoming('UART', Array.from('AT+CMGS="+905554443322"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Preparing SMS');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('>');
+
+      // 2. Write body and terminate with Ctrl+Z (0x1A)
+      const input = Array.from('Hello SMS').map(c => c.charCodeAt(0));
+      input.push(0x1A);
+      res = engine.processIncoming('UART', input);
+      expect(res[0].log).toContain('Sent SMS to +905554443322');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+CMGS:');
     });
   });
 });

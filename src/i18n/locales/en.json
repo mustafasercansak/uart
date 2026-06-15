@@ -256,7 +256,10 @@
     "tcpListening": "LISTENING",
     "tcpServerMode": "TCP SERVER",
     "tcpListen": "LISTEN",
-    "examplePort": "COM1 / /dev/tty"
+    "examplePort": "COM1 / /dev/tty",
+    "modeActive": "ACTIVE (TRANSMITTER / CLIENT)",
+    "modePassive": "PASSIVE (LISTENER / SERVER)",
+    "modeOffline": "OFFLINE"
   },
   "smartListen": {
     "button": "Smart Listen",

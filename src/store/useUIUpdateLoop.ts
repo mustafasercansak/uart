@@ -113,6 +113,9 @@ export function useUIUpdateLoop({
                 break;
               }
               case 'RAW_RX_DATA': {
+                if (stateRef.current.serialConnected || stateRef.current.networkConnected) {
+                  break;
+                }
                 const profile = profilesRef.current.find(p => p.id === stateRef.current.profileId);
                 const now = new Date();
                 const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
