@@ -584,6 +584,18 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           send({ type: 'SET_CUSTOM_WAVEFORM', waveform });
           dispatch({ type: 'SET_CUSTOM_WAVEFORM', waveform });
         },
+        setGpsPosition: (lat: number, lon: number, alt: number) => {
+          send({ type: 'SET_GPS_POSITION', lat, lon, alt });
+        },
+        setGpsWalkMode: (enabled: boolean) => {
+          send({ type: 'SET_GPS_WALK_MODE', enabled });
+        },
+        simulateIncomingCall: (number?: string) => {
+          send({ type: 'SIMULATE_INCOMING_CALL', number });
+        },
+        setRoaming: (enabled: boolean, operator?: string) => {
+          send({ type: 'SET_ROAMING', enabled, operator });
+        },
       }}
     >
       {children}

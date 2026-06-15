@@ -2464,7 +2464,12 @@
       "sms": "SMS Workflow",
       "data": "Data Bearer",
       "http": "HTTP Request",
-      "info": "Device Info"
+      "info": "Device Info",
+      "pin": "SIM PIN Flow",
+      "psm": "PSM / eDRX",
+      "phonebook": "Phonebook",
+      "cell": "Cell Info / CREG",
+      "pdu": "SMS PDU Mode"
     }
   }
 }

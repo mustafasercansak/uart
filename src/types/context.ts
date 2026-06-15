@@ -75,4 +75,8 @@ export interface SimulationContextType {
   clearExchanges: () => void;
   clearConversation: () => void;
   setCustomWaveform: (waveform: number[] | null) => void;
+  setGpsPosition: (lat: number, lon: number, alt: number) => void;
+  setGpsWalkMode: (enabled: boolean) => void;
+  simulateIncomingCall: (number?: string) => void;
+  setRoaming: (enabled: boolean, operator?: string) => void;
 }

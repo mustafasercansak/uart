@@ -519,6 +519,22 @@ export class SimulationEngine {
     this.state.signalIntegrity = { ...this.state.signalIntegrity, ...integrity };
   }
 
+  public setGpsPosition(lat: number, lon: number, alt: number) {
+    this.peripheralEngine.setGpsPosition(lat, lon, alt);
+  }
+
+  public setGpsWalkMode(enabled: boolean) {
+    this.peripheralEngine.setGpsWalkMode(enabled);
+  }
+
+  public simulateIncomingCall(number?: string) {
+    this.peripheralEngine.simulateIncomingCall(number);
+  }
+
+  public setRoaming(enabled: boolean, operator?: string) {
+    this.peripheralEngine.setRoaming(enabled, operator);
+  }
+
   public onRawResponse: (bytes: number[]) => void = () => {};
   public onConversation: (entry: ConversationEntry) => void = () => {};
   public onExchange: (exchange: Exchange) => void = () => {};

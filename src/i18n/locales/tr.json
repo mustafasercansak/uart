@@ -2464,7 +2464,12 @@
       "sms": "SMS İş Akışı",
       "data": "Veri Taşıyıcı",
       "http": "HTTP İsteği",
-      "info": "Cihaz Bilgisi"
+      "info": "Cihaz Bilgisi",
+      "pin": "SIM PIN Akışı",
+      "psm": "PSM / eDRX",
+      "phonebook": "Rehber (Phonebook)",
+      "cell": "Hücre Bilgisi / CREG",
+      "pdu": "SMS PDU Modu"
     }
   }
 }

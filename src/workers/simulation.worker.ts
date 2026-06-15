@@ -166,5 +166,21 @@ self.onmessage = (event: MessageEvent) => {
     case 'SET_ANALYZER_MODE':
       engine.updateOverrides({ analyzerMode: msg.enabled as boolean });
       break;
+
+    case 'SET_GPS_POSITION':
+      engine.setGpsPosition(msg.lat as number, msg.lon as number, msg.alt as number);
+      break;
+
+    case 'SET_GPS_WALK_MODE':
+      engine.setGpsWalkMode(msg.enabled as boolean);
+      break;
+
+    case 'SIMULATE_INCOMING_CALL':
+      engine.simulateIncomingCall(msg.number as string | undefined);
+      break;
+
+    case 'SET_ROAMING':
+      engine.setRoaming(msg.enabled as boolean, msg.operator as string | undefined);
+      break;
   }
 };

@@ -698,6 +698,193 @@ fn write_tcp_server(
     }
 }
 
+// ── PTY (VIRTUAL COM PORT) SERVER ─────────────────────────────────────────────
+//
+// Creates a PTY pair; the slave side (/dev/pts/N) is a virtual COM port that
+// any serial application can open. Our app holds the master fd and relays data
+// to/from the SimCardDriver just like the TCP server does, reusing the same
+// tcp-server-data / tcp-server-status events so the JS layer is unchanged.
+
+#[cfg(not(coverage))]
+struct PtyServerState {
+    stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    master_fd: Arc<Mutex<Option<i32>>>,
+}
+
+#[tauri::command]
+#[cfg(target_os = "linux")]
+#[cfg(not(coverage))]
+fn start_pty_server(
+    state: tauri::State<'_, PtyServerState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    // Stop existing PTY server if running
+    {
+        let mut tx = state.stop_tx.lock().unwrap();
+        if let Some(s) = tx.take() {
+            let _ = s.send(());
+        }
+    }
+    {
+        let mut fd = state.master_fd.lock().unwrap();
+        if let Some(f) = fd.take() {
+            unsafe { libc::close(f); }
+        }
+    }
+
+    // Open PTY master
+    let master = unsafe {
+        let fd = libc::posix_openpt(libc::O_RDWR | libc::O_NOCTTY);
+        if fd < 0 {
+            return Err(format!("posix_openpt: {}", std::io::Error::last_os_error()));
+        }
+        if libc::grantpt(fd) < 0 {
+            libc::close(fd);
+            return Err(format!("grantpt: {}", std::io::Error::last_os_error()));
+        }
+        if libc::unlockpt(fd) < 0 {
+            libc::close(fd);
+            return Err(format!("unlockpt: {}", std::io::Error::last_os_error()));
+        }
+        // Non-blocking reads so the thread can check stop_rx
+        let flags = libc::fcntl(fd, libc::F_GETFL);
+        libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        fd
+    };
+
+    // Get slave PTY path (e.g. /dev/pts/3)
+    let slave_path = unsafe {
+        let ptr = libc::ptsname(master);
+        if ptr.is_null() {
+            libc::close(master);
+            return Err("ptsname returned null".to_string());
+        }
+        std::ffi::CStr::from_ptr(ptr).to_string_lossy().to_string()
+    };
+
+    {
+        let mut fd = state.master_fd.lock().unwrap();
+        *fd = Some(master);
+    }
+
+    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    {
+        let mut tx = state.stop_tx.lock().unwrap();
+        *tx = Some(stop_tx);
+    }
+
+    let master_arc = state.master_fd.clone();
+    let app_clone = app.clone();
+    let slave_for_event = slave_path.clone();
+
+    app_clone
+        .emit(
+            "tcp-server-status",
+            serde_json::json!({ "status": "listening", "port": slave_for_event }),
+        )
+        .ok();
+
+    thread::spawn(move || {
+        let mut buf = vec![0u8; 1024];
+
+        loop {
+            if stop_rx.try_recv().is_ok() {
+                break;
+            }
+
+            let fd = {
+                let guard = master_arc.lock().unwrap();
+                match *guard {
+                    Some(f) => f,
+                    None => break,
+                }
+            };
+
+            // poll_readable gives a 100 ms window so stop_rx is checked frequently
+            let ready = poll_readable(fd, 100);
+            if ready < 0 {
+                // poll error — back off
+                thread::sleep(Duration::from_millis(10));
+                continue;
+            }
+            if ready == 0 {
+                // Timeout — loop back to check stop_rx
+                continue;
+            }
+
+            let n = unsafe {
+                libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
+            };
+
+            if n > 0 {
+                let bytes = buf[..n as usize].to_vec();
+                let hex = bytes
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                app_clone
+                    .emit(
+                        "tcp-server-data",
+                        serde_json::json!({ "hex": hex, "bytes": bytes, "timestamp": now_ms() }),
+                    )
+                    .ok();
+            } else if n < 0 {
+                let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
+                // EIO = slave side closed (no process holding it) — keep waiting
+                if errno != libc::EAGAIN && errno != libc::EWOULDBLOCK && errno != libc::EIO {
+                    break; // real error
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+        }
+    });
+
+    Ok(slave_path)
+}
+
+#[tauri::command]
+#[cfg(target_os = "linux")]
+#[cfg(not(coverage))]
+fn stop_pty_server(
+    state: tauri::State<'_, PtyServerState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let mut tx = state.stop_tx.lock().unwrap();
+    if let Some(s) = tx.take() {
+        let _ = s.send(());
+    }
+    let mut fd = state.master_fd.lock().unwrap();
+    if let Some(f) = fd.take() {
+        unsafe { libc::close(f); }
+    }
+    app.emit("tcp-server-status", serde_json::json!({ "status": "stopped" }))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[cfg(target_os = "linux")]
+#[cfg(not(coverage))]
+fn write_pty_server(
+    bytes: Vec<u8>,
+    state: tauri::State<'_, PtyServerState>,
+) -> Result<(), String> {
+    let fd = state.master_fd.lock().unwrap();
+    match *fd {
+        Some(f) => {
+            let ret = unsafe {
+                libc::write(f, bytes.as_ptr() as *const libc::c_void, bytes.len())
+            };
+            if ret < 0 {
+                Err(format!("write_pty: {}", std::io::Error::last_os_error()))
+            } else {
+                Ok(())
+            }
+        }
+        None => Err("PTY not open".to_string()),
+    }
+}
+
 // ── SOCKETCAN COMMANDS ────────────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]
@@ -1640,6 +1827,10 @@ pub fn run() {
             session_id: AtomicU64::new(0),
         })
         .manage(SocatState { pid: Mutex::new(None) })
+        .manage(PtyServerState {
+            stop_tx: Mutex::new(None),
+            master_fd: Arc::new(Mutex::new(None)),
+        })
         .manage(BSideState {
             child_stdin: Mutex::new(None),
             child_pid:   Mutex::new(None),
@@ -1660,6 +1851,12 @@ pub fn run() {
             start_tcp_server,
             stop_tcp_server,
             write_tcp_server,
+            #[cfg(target_os = "linux")]
+            start_pty_server,
+            #[cfg(target_os = "linux")]
+            stop_pty_server,
+            #[cfg(target_os = "linux")]
+            write_pty_server,
             connect_socketcan,
             disconnect_socketcan,
             write_socketcan_frame,

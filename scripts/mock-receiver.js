@@ -83,7 +83,7 @@ Examples:
 }
 
 const config = {
-  mode: args.includes('--udp') ? 'udp' : 'tcp',
+  mode: args.includes('--stdio') ? 'stdio' : args.includes('--udp') ? 'udp' : 'tcp',
   port: Math.trunc(readNumberOption(args, '--port', sharedPort)),
   operator: readOption(args, '--operator', 'UART Mobile'),
   signal: Math.min(31, Math.max(0, Math.trunc(readNumberOption(args, '--signal', 24)))),
@@ -628,12 +628,36 @@ class GsmSession {
   }
 }
 
-console.log(
-  `${COLORS.label}[GSM-MODEM]${COLORS.reset} Starting ${config.mode.toUpperCase()} ` +
-  `on port ${config.port} (${config.operator}, CSQ ${config.signal})`,
-);
+if (import.meta.url !== `file://${process.argv[1]}`) {
+  // Imported as module — don't start server
+} else {
 
-if (config.mode === 'tcp') {
+if (config.mode === 'stdio') {
+  // stdio modunda stdout AT stream'i taşır — tüm loglar stderr'e
+  const origLog = console.log.bind(console);
+  const origError = console.error.bind(console);
+  console.log = (...a) => process.stderr.write(a.join(' ') + '\n');
+  console.error = (...a) => process.stderr.write(a.join(' ') + '\n');
+
+  process.stderr.write(
+    `${COLORS.label}[GSM-MODEM]${COLORS.reset} stdio mode (${config.operator}, CSQ ${config.signal})\n`,
+  );
+
+  const session = new GsmSession((payload) => process.stdout.write(payload), 'stdio');
+
+  if (config.urcSeconds > 0) {
+    setInterval(() => session.addIncomingSms(), config.urcSeconds * 1000);
+  }
+
+  process.stdin.on('data', (data) => session.receive(data));
+  process.stdin.on('end', () => { session.close(); process.exit(0); });
+  process.on('SIGINT', () => { session.close(); process.exit(0); });
+
+} else if (config.mode === 'tcp') {
+  console.log(
+    `${COLORS.label}[GSM-MODEM]${COLORS.reset} Starting TCP on port ${config.port} (${config.operator}, CSQ ${config.signal})`,
+  );
+
   const sessions = new Set();
   const server = net.createServer((socket) => {
     const peer = `${socket.remoteAddress}:${socket.remotePort}`;
@@ -671,7 +695,12 @@ if (config.mode === 'tcp') {
     sessions.forEach((session) => session.close());
     server.close(() => process.exit(0));
   });
+
 } else {
+  console.log(
+    `${COLORS.label}[GSM-MODEM]${COLORS.reset} Starting UDP on port ${config.port} (${config.operator}, CSQ ${config.signal})`,
+  );
+
   const server = dgram.createSocket('udp4');
   const sessions = new Map();
 
@@ -709,4 +738,6 @@ if (config.mode === 'tcp') {
     sessions.forEach((session) => session.close());
     server.close(() => process.exit(0));
   });
+}
+
 }
