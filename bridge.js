@@ -12,11 +12,23 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import net from 'net';
 import dgram from 'dgram';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+let sharedPort = 5000;
+try {
+  const configRaw = fs.readFileSync(path.join(__dirname, 'shared-config.json'), 'utf8');
+  sharedPort = JSON.parse(configRaw).port || 5000;
+} catch (e) {
+  // fallback
+}
 
 const args = process.argv.slice(2);
 const help = args.includes('--help') || args.includes('-h');
 const mode = args.includes('--udp') ? 'udp' : 'tcp';
-const targetStr = args.find(a => a.includes(':')) || 'localhost:5000';
+const targetStr = args.find(a => a.includes(':')) || `localhost:${sharedPort}`;
 const [host, port] = targetStr.split(':');
 const wsPortArg = args.find((a, i) => i > 0 && args[i - 1] === '--ws-port');
 const wsPort = Number.parseInt(wsPortArg || '8081', 10);

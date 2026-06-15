@@ -4,6 +4,7 @@ import type { SimulationState, FrameProfile, Scenario, OutputMode } from '../../
 import { useTranslation } from '../../../i18n/context';
 import { loadLastSettings, saveLastSettings } from '../../../lib/lastSettings';
 import { useNavigate } from 'react-router-dom';
+import sharedConfig from '../../../../shared-config.json';
 
 const UART_BAUD_RATES = [
   110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400,
@@ -120,7 +121,7 @@ const StatBar = memo(({
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
   const [selectedPort, setSelectedPort] = React.useState(() => loadLastSettings().selectedPort);
   const [tcpHost, setTcpHost] = React.useState('127.0.0.1');
-  const [tcpPort, setTcpPort] = React.useState('5000');
+  const [tcpPort, setTcpPort] = React.useState(String(sharedConfig.port || 5000));
 
   const handlePortChange = (port: string) => {
     setSelectedPort(port);
@@ -295,7 +296,7 @@ const StatBar = memo(({
                 value={tcpPort}
                 onChange={(e) => setTcpPort(e.target.value)}
                 className="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-[8.5px] font-mono text-gray-200 outline-none w-12 focus:border-blue-500"
-                placeholder="5000"
+                placeholder={String(sharedConfig.port || 5000)}
                 disabled={status !== 'stopped'}
               />
               <button 

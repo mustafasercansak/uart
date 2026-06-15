@@ -37,6 +37,7 @@ import {
 } from './storage';
 import { usePeripheralStore } from './usePeripheralStore';
 import type { PeripheralState } from './usePeripheralStore';
+import sharedConfig from '../../shared-config.json';
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -254,7 +255,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const connectNetwork = useCallback(async (url: string) => {
     if (url.startsWith('tcp-server://')) {
       const portPart = url.replace('tcp-server://', '');
-      const port = Number.parseInt(portPart || '5000', 10);
+      const port = Number.parseInt(portPart || String(sharedConfig.port || 5000), 10);
 
       if (!Number.isInteger(port) || port < 1 || port > 65535) {
         dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('simulation.network.invalidPort', { port: portPart ?? '' }) });
@@ -271,7 +272,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       const target = url.replace('tcp://', '');
       const [hostPart, portPart] = target.split(':');
       const host = hostPart || '127.0.0.1';
-      const port = Number.parseInt(portPart || '5000', 10);
+      const port = Number.parseInt(portPart || String(sharedConfig.port || 5000), 10);
 
       if (!Number.isInteger(port) || port < 1 || port > 65535) {
         dispatch({ type: 'ADD_LOG', entryType: 'error', text: t('simulation.network.invalidPort', { port: portPart ?? '' }) });

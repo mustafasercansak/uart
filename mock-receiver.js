@@ -2,17 +2,29 @@
  * UART Simulator - Stateful GSM modem emulator
  *
  * Usage:
- *   node mock-receiver.js --tcp --port 5000
- *   node mock-receiver.js --udp --port 5000
- *   node mock-receiver.js --port 5000 --operator Turkcell --signal 24
- *   node mock-receiver.js --port 5000 --urc 30
- *   node mock-receiver.js --port 5000 --real-http
+ *   node mock-receiver.js --tcp --port 5011
+ *   node mock-receiver.js --udp --port 5011
+ *   node mock-receiver.js --port 5011 --operator Turkcell --signal 24
+ *   node mock-receiver.js --port 5011 --urc 30
+ *   node mock-receiver.js --port 5011 --real-http
  *
  * --urc N adds a simulated incoming SMS every N seconds.
  */
 
 import net from 'net';
 import dgram from 'dgram';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+let sharedPort = 5011;
+try {
+  const configRaw = fs.readFileSync(path.join(__dirname, 'shared-config.json'), 'utf8');
+  sharedPort = JSON.parse(configRaw).port || 5011;
+} catch (e) {
+  // fallback to 5011
+}
 
 const COLORS = {
   label: '\x1b[35m',
@@ -44,7 +56,7 @@ if (args.includes('--help')) {
 Options:
   --tcp                 Listen with TCP (default)
   --udp                 Listen with UDP
-  --port N              Listen port (default: 5000)
+  --port N              Listen port (default: ${sharedPort})
   --operator NAME       Network operator (default: UART Mobile)
   --signal N            CSQ value from 0 to 31 (default: 24)
   --imei NUMBER         15-digit modem IMEI
@@ -53,16 +65,16 @@ Options:
   --help                Show this help
 
 Examples:
-  node mock-receiver.js --port 5000
-  node mock-receiver.js --udp --port 5000
-  node mock-receiver.js --port 5000 --operator Turkcell --signal 28 --urc 30
-  node mock-receiver.js --port 5000 --real-http`);
+  node mock-receiver.js --port ${sharedPort}
+  node mock-receiver.js --udp --port ${sharedPort}
+  node mock-receiver.js --port ${sharedPort} --operator Turkcell --signal 28 --urc 30
+  node mock-receiver.js --port ${sharedPort} --real-http`);
   process.exit(0);
 }
 
 const config = {
   mode: args.includes('--udp') ? 'udp' : 'tcp',
-  port: Math.trunc(readNumberOption(args, '--port', 5000)),
+  port: Math.trunc(readNumberOption(args, '--port', sharedPort)),
   operator: readOption(args, '--operator', 'UART Mobile'),
   signal: Math.min(31, Math.max(0, Math.trunc(readNumberOption(args, '--signal', 24)))),
   imei: readOption(args, '--imei', '359762081234567'),
@@ -371,7 +383,7 @@ class GsmSession {
     if (upper === 'AT+CGSN' || upper === 'AT+GSN') return this.sendResult([config.imei]);
     if (upper === 'AT+CPIN?') return this.sendResult(['+CPIN: READY']);
     if (upper === 'AT+CIMI') return this.sendResult(['286010123456789']);
-    if (upper === 'AT+CNUM') return this.sendResult(['+CNUM: "UART SIM","+905550000001",145']);
+    if (upper === 'AT+CNUM') return this.sendResult(['+CNUM: "UART SIM","+905550110001",145']);
     if (upper === 'AT+CSQ') return this.sendResult([`+CSQ: ${config.signal},0`]);
     if (upper === 'AT+CBC') return this.sendResult(['+CBC: 0,87,4072']);
     if (upper === 'AT+CCLK?') return this.sendResult([`+CCLK: "${gsmTimestamp()}"`]);
