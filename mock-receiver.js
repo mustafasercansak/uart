@@ -20,8 +20,18 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let sharedPort = 5011;
 try {
-  const configRaw = fs.readFileSync(path.join(__dirname, 'shared-config.json'), 'utf8');
-  sharedPort = JSON.parse(configRaw).port || 5011;
+  if (process.env.VITE_DEFAULT_TCP_PORT) {
+    sharedPort = parseInt(process.env.VITE_DEFAULT_TCP_PORT, 10);
+  } else {
+    const envPath = path.join(__dirname, '.env');
+    if (fs.existsSync(envPath)) {
+      const envRaw = fs.readFileSync(envPath, 'utf8');
+      const match = envRaw.match(/VITE_DEFAULT_TCP_PORT\s*=\s*(\d+)/);
+      if (match && match[1]) {
+        sharedPort = parseInt(match[1], 10);
+      }
+    }
+  }
 } catch (e) {
   // fallback to 5011
 }
