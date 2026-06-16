@@ -420,5 +420,89 @@ describe('VirtualPeripheralEngine', () => {
       res = engine.processIncoming('UART', Array.from('AT+CGATT?\r\n').map(c => c.charCodeAt(0)));
       expect(res[0].log).toContain('attached');
     });
+
+    it('should support SIMCom and Quectel TCP/IP client/server commands', () => {
+      // 1. SIMCom CIPMUX
+      let res = engine.processIncoming('UART', Array.from('AT+CIPMUX=1\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Multi-connection mode set to 1');
+      res = engine.processIncoming('UART', Array.from('AT+CIPMUX?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query CIPMUX');
+
+      // 2. SIMCom CIPSERVER
+      res = engine.processIncoming('UART', Array.from('AT+CIPSERVER=1,5000\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('TCP Server started on port 5000');
+
+      // 3. SIMCom CIPSTATUS & CIPCLOSE
+      res = engine.processIncoming('UART', Array.from('AT+CIPSTATUS\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query CIPSTATUS');
+      res = engine.processIncoming('UART', Array.from('AT+CIPCLOSE\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Closed connection');
+
+      // 4. SIMCom CIPSHUT
+      res = engine.processIncoming('UART', Array.from('AT+CIPSHUT\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('SHUT OK');
+
+      // 5. Quectel QIOPEN
+      const driver = engine.peripherals.find(p => p.id === 'simcard') as SimCardDriver;
+      driver.setVendor('quectel');
+
+      res = engine.processIncoming('UART', Array.from('AT+QIOPEN=1,0,"TCP","12.34.56.78",80\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('QIOPEN connectID=0');
+
+      // 6. Quectel QISTATE
+      res = engine.processIncoming('UART', Array.from('AT+QISTATE\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query QISTATE');
+
+      // 7. Quectel QISEND
+      res = engine.processIncoming('UART', Array.from('AT+QISEND=0,10\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('QISEND ready');
+
+      // Exit transparent mode
+      engine.processIncoming('UART', [0x1A]);
+
+      // 8. Quectel QICLOSE
+      res = engine.processIncoming('UART', Array.from('AT+QICLOSE=0\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('QICLOSE connectID=0');
+
+      // 9. Quectel QFCFG
+      res = engine.processIncoming('UART', Array.from('AT+QFCFG="urc/delay",1\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Configure QFCFG urc/delay = 1');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('OK');
+
+      res = engine.processIncoming('UART', Array.from('AT+QFCFG="urc/delay"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query QFCFG urc/delay -> 1');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+QFCFG: "urc/delay",1');
+
+      res = engine.processIncoming('UART', Array.from('AT+QFCFG?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query all QFCFG');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+QFCFG: "urc/ri/ring"');
+
+      // 10. Quectel QCFG
+      res = engine.processIncoming('UART', Array.from('AT+QCFG="gprsurc",0\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Configure QCFG gprsurc = 0');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('OK');
+
+      res = engine.processIncoming('UART', Array.from('AT+QCFG="gprsurc"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query QCFG gprsurc -> 0');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+QCFG: "gprsurc",0');
+
+      res = engine.processIncoming('UART', Array.from('AT+QCFG?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Query all QCFG');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+QCFG: "nwscanmode"');
+
+      // 11. AT+SETVENDOR
+      res = engine.processIncoming('UART', Array.from('AT+SETVENDOR=QUECTEL\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Vendor switched to Quectel');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('OK');
+      expect(driver.vendor).toBe('quectel');
+
+      res = engine.processIncoming('UART', Array.from('AT+SETVENDOR=SIMCOM\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Vendor switched to SIMCOM');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('OK');
+      expect(driver.vendor).toBe('simcom');
+
+      // Reset vendor back to simcom for subsequent tests
+      driver.setVendor('simcom');
+    });
   });
 });

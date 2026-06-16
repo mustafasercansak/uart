@@ -371,6 +371,21 @@ export interface ModemSharedState {
   gpsCourse: number;
   gpsSatellites: number;
   subscriberNumber: string;
+  cipmux: number;
+  cipserverActive: boolean;
+  cipserverPort: number;
+  connections: Array<{ id: number; active: boolean; type: string; host: string; port: number; state: string }>;
+  qcfg: Record<string, string>;
+  qfcfg: Record<string, string>;
+  qhttpcfg: Record<string, string>;
+  qindcfg: Record<string, string>;
+  ftpConnected: boolean;
+  ftpHost: string;
+  ftpUser: string;
+  ntpSynced: boolean;
+  sslConns: Record<number, { host: string; port: number; sslCtx: number; connected: boolean }>;
+  qirdBuffer: Record<number, string>;
+  quectelModel: string;
   onAsyncResponse?: (res: PeripheralResponse) => void;
 }
 
@@ -451,6 +466,52 @@ function createInitialModemState(): ModemSharedState {
     gpsCourse: 0.0,
     gpsSatellites: 7,
     subscriberNumber: '+905552223344',
+    cipmux: 0,
+    cipserverActive: false,
+    cipserverPort: 0,
+    connections: [
+      { id: 0, active: false, type: '', host: '', port: 0, state: 'INITIAL' },
+      { id: 1, active: false, type: '', host: '', port: 0, state: 'INITIAL' },
+      { id: 2, active: false, type: '', host: '', port: 0, state: 'INITIAL' },
+      { id: 3, active: false, type: '', host: '', port: 0, state: 'INITIAL' },
+      { id: 4, active: false, type: '', host: '', port: 0, state: 'INITIAL' },
+    ],
+    qcfg: {
+      "gprsurc": "1",
+      "nwscanmode": "0",
+      "nwscanseq": "010203",
+      "roamservice": "2",
+      "servicedomain": "2",
+      "band": "0,0,0",
+      "hsdpa/hsupa": "1,1"
+    },
+    qfcfg: {
+      "urc/ri/ring": "\"active\",120,120,80,\"off\",1",
+      "urc/ri/smsincoming": "\"active\",120",
+      "urc/ri/other": "\"off\",1",
+      "urc/delay": "0",
+      "risignaltype": "\"physical\"",
+      "ims": "1"
+    },
+    qhttpcfg: {
+      "responseheader": "0",
+      "sslctxid": "1",
+      "contenttype": "0",
+      "requestheader": "0",
+      "outputpower": "0",
+    },
+    qindcfg: {
+      "smsfull": "0",
+      "ring": "0",
+      "smsincoming": "0",
+    },
+    ftpConnected: false,
+    ftpHost: '',
+    ftpUser: '',
+    ntpSynced: false,
+    sslConns: {},
+    qirdBuffer: {},
+    quectelModel: 'EC21',
   };
 }
 
@@ -855,6 +916,11 @@ class QuectelDialect implements ModemDialect {
   private q_writeLength = 0;
   private q_mqttConns: Record<number, { host: string; port: number; connected: boolean }> = {};
   private q_mqttPub: { connId: number; msgId: number; topic: string } | null = null;
+  private q_httpputLength = 0;
+  private q_ftpPutLength = 0;
+  private q_sslSendConn = -1;
+  private q_sslSendLength = 0;
+  private q_qisendexConn = -1;
 
   handleCommand(cmd: string, state: ModemSharedState): { bytes: number[]; log: string } | null {
     const upperCmd = cmd.toUpperCase();
@@ -1065,6 +1131,58 @@ class QuectelDialect implements ModemDialect {
         reply = '\r\nERROR\r\n';
         log = `Modem [Quectel]: Invalid QMTCLOSE format: ${cmd}`;
       }
+    } else if (upperCmd.startsWith('AT+QIOPEN=')) {
+      const match = cmd.match(/AT\+QIOPEN=(\d+),(\d+),"([^"]+)","([^"]+)",(\d+)/i);
+      if (match) {
+        const contextID = parseInt(match[1], 10);
+        const connectID = parseInt(match[2], 10);
+        const type = match[3];
+        const host = match[4];
+        const port = parseInt(match[5], 10);
+        state.connections[connectID] = { id: connectID, active: true, type, host, port, state: 'CONNECTED' };
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QIOPEN connectID=${connectID} -> ${type} ${host}:${port}`;
+        setTimeout(() => state.onAsyncResponse?.({
+          bytes: toBytes(`\r\n+QIOPEN: ${connectID},0\r\n`),
+          log: `Modem [Quectel]: QIOPEN URC connectID=${connectID} connected`
+        }), 50);
+      } else {
+        reply = '\r\nERROR\r\n';
+        log = `Modem [Quectel]: Invalid QIOPEN format: ${cmd}`;
+      }
+    } else if (upperCmd.startsWith('AT+QISEND=')) {
+      const match = upperCmd.match(/AT\+QISEND=(\d+)(?:,(\d+))?/);
+      if (match) {
+        const connectID = parseInt(match[1], 10);
+        state.mode = 'transparent';
+        state.transparentBuffer = [];
+        reply = '\r\n> ';
+        log = `Modem [Quectel]: QISEND ready, connectID=${connectID}, waiting for data (Ctrl+Z)`;
+      } else {
+        reply = '\r\nERROR\r\n';
+      }
+    } else if (upperCmd.startsWith('AT+QICLOSE=')) {
+      const match = upperCmd.match(/AT\+QICLOSE=(\d+)/);
+      if (match) {
+        const connectID = parseInt(match[1], 10);
+        if (state.connections[connectID]) {
+          state.connections[connectID].active = false;
+          state.connections[connectID].state = 'CLOSED';
+        }
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QICLOSE connectID=${connectID}`;
+      } else {
+        reply = '\r\nERROR\r\n';
+      }
+    } else if (upperCmd === 'AT+QISTATE') {
+      let activeConns = '';
+      state.connections.forEach(c => {
+        if (c.active) {
+          activeConns += `\r\n+QISTATE: ${c.id},"${c.type}","${c.host}",${c.port},0,2,1\r\n`;
+        }
+      });
+      reply = `${activeConns}\r\nOK\r\n`;
+      log = `Modem [Quectel]: Query QISTATE`;
     }
     // ── GPS/GNSS (BG96 / EC21 series) ────────────────────────────────────
     else if (upperCmd.startsWith('AT+QGPS=')) {
@@ -1109,6 +1227,692 @@ class QuectelDialect implements ModemDialect {
       }
     } else if (upperCmd.startsWith('AT+QGPSCFG=')) {
       reply = '\r\nOK\r\n'; log = `Modem [Quectel]: QGPSCFG set (${cmd})`;
+    } else if (upperCmd.startsWith('AT+QFCFG=')) {
+      const match = cmd.match(/AT\+QFCFG="?([^",\s]+)"?(?:\s*,\s*(.*))?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        const valueExpr = match[2] ? match[2].trim() : '';
+        if (valueExpr) {
+          state.qfcfg[param] = valueExpr;
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: Configure QFCFG ${param} = ${valueExpr}`;
+        } else {
+          const val = state.qfcfg[param];
+          if (val !== undefined) {
+            reply = `\r\n+QFCFG: "${param}",${val}\r\n\r\nOK\r\n`;
+            log = `Modem [Quectel]: Query QFCFG ${param} -> ${val}`;
+          } else {
+            reply = '\r\nERROR\r\n';
+            log = `Modem [Quectel]: Query QFCFG ${param} failed: not found`;
+          }
+        }
+      } else {
+        reply = '\r\nERROR\r\n';
+        log = `Modem [Quectel]: Invalid QFCFG format: ${cmd}`;
+      }
+    } else if (upperCmd.startsWith('AT+QFCFG?')) {
+      const lines = Object.keys(state.qfcfg).map(k => `+QFCFG: "${k}",${state.qfcfg[k]}`).join('\r\n');
+      reply = `\r\n${lines}\r\n\r\nOK\r\n`;
+      log = `Modem [Quectel]: Query all QFCFG`;
+    } else if (upperCmd.startsWith('AT+QCFG=')) {
+      const match = cmd.match(/AT\+QCFG="?([^",\s]+)"?(?:\s*,\s*(.*))?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        const valueExpr = match[2] ? match[2].trim() : '';
+        if (valueExpr) {
+          state.qcfg[param] = valueExpr;
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: Configure QCFG ${param} = ${valueExpr}`;
+        } else {
+          const val = state.qcfg[param];
+          if (val !== undefined) {
+            reply = `\r\n+QCFG: "${param}",${val}\r\n\r\nOK\r\n`;
+            log = `Modem [Quectel]: Query QCFG ${param} -> ${val}`;
+          } else {
+            reply = '\r\nERROR\r\n';
+            log = `Modem [Quectel]: Query QCFG ${param} failed: not found`;
+          }
+        }
+      } else {
+        reply = '\r\nERROR\r\n';
+        log = `Modem [Quectel]: Invalid QCFG format: ${cmd}`;
+      }
+    } else if (upperCmd.startsWith('AT+QCFG?')) {
+      const lines = Object.keys(state.qcfg).map(k => `+QCFG: "${k}",${state.qcfg[k]}`).join('\r\n');
+      reply = `\r\n${lines}\r\n\r\nOK\r\n`;
+      log = `Modem [Quectel]: Query all QCFG`;
+    }
+    // ── HTTP extended ──────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QHTTPCFG=')) {
+      const match = cmd.match(/AT\+QHTTPCFG="?([^",\s]+)"?(?:\s*,\s*(.*))?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        if (match[2] !== undefined) {
+          state.qhttpcfg[param] = match[2].trim();
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QHTTPCFG ${param} = ${match[2].trim()}`;
+        } else {
+          const val = state.qhttpcfg[param] ?? '0';
+          reply = `\r\n+QHTTPCFG: "${param}",${val}\r\n\r\nOK\r\n`;
+          log = `Modem [Quectel]: Query QHTTPCFG ${param} -> ${val}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QHTTPCFG: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QHTTPPUT=')) {
+      const match = upperCmd.match(/AT\+QHTTPPUT=(\d+),(\d+),(\d+)/);
+      if (match) {
+        this.q_httpputLength = parseInt(match[1], 10);
+        state.mode = 'q_httpputdata';
+        state.transparentBuffer = [];
+        reply = '\r\nCONNECT\r\n';
+        log = `Modem [Quectel]: QHTTPPUT ready, expecting ${this.q_httpputLength} bytes`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QHTTPPUT: ${cmd}`; }
+    }
+    // ── MQTT extended ──────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QMTCFG=')) {
+      const match = cmd.match(/AT\+QMTCFG="?([^",\s]+)"?(?:\s*,\s*(\d+)(?:\s*,\s*(.*))?)?/i);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QMTCFG ${match[1]} connId=${match[2] ?? '?'} val=${match[3] ?? '?'}`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QMTCFG: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QMTDISC=')) {
+      const match = upperCmd.match(/AT\+QMTDISC=(\d+)/);
+      if (match) {
+        const connId = parseInt(match[1], 10);
+        if (this.q_mqttConns[connId]) this.q_mqttConns[connId].connected = false;
+        state.mqttConnected = false;
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QMTDISC connId=${connId}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QMTDISC: ${connId},0\r\n`), log: `Modem [Quectel]: QMTDISC URC connId=${connId}` }), 50);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QMTDISC: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QMTUNS=')) {
+      const match = cmd.match(/AT\+QMTUNS=(\d+),(\d+),"([^"]+)"/i);
+      if (match) {
+        const connId = parseInt(match[1], 10);
+        const msgId = parseInt(match[2], 10);
+        const topic = match[3];
+        state.mqttSubscribedTopics = state.mqttSubscribedTopics.filter(t => t !== topic);
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QMTUNS connId=${connId} topic="${topic}"`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QMTUNS: ${connId},${msgId},0\r\n`), log: `Modem [Quectel]: QMTUNS URC unsubscribed "${topic}"` }), 50);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QMTUNS: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QMTRECV=')) {
+      reply = '\r\n+QMTRECV: 0\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QMTRECV -> no buffered messages';
+    } else if (upperCmd.startsWith('AT+QMTPING=')) {
+      const match = upperCmd.match(/AT\+QMTPING=(\d+)/);
+      if (match) {
+        const connId = parseInt(match[1], 10);
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QMTPING connId=${connId}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QMTPING: ${connId},0\r\n`), log: `Modem [Quectel]: QMTPING URC pong connId=${connId}` }), 200);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QMTPING: ${cmd}`; }
+    } else if (upperCmd === 'AT+QMTCONN?') {
+      const lines = Object.entries(this.q_mqttConns).map(([id, c]) => `+QMTCONN: ${id},${c.connected ? 3 : 2}`).join('\r\n');
+      reply = `\r\n${lines || '+QMTCONN: 0,1'}\r\n\r\nOK\r\n`;
+      log = 'Modem [Quectel]: QMTCONN state query';
+    }
+    // ── TCP/IP extended ────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QICSGP=')) {
+      const match = cmd.match(/AT\+QICSGP=(\d+),(\d+),"([^"]*)"(?:,"([^"]*)","([^"]*)")?/i);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QICSGP contextID=${match[1]} apn="${match[3]}"`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QICSGP: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QIACT=')) {
+      const match = upperCmd.match(/AT\+QIACT=(\d+)/);
+      if (match) {
+        state.pdpActive = true;
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QIACT contextID=${match[1]} -> activated`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QIACT: ${cmd}`; }
+    } else if (upperCmd === 'AT+QIACT?') {
+      const ip = state.pdpActive ? state.pdpIp : '';
+      reply = state.pdpActive ? `\r\n+QIACT: 1,1,1,"${ip}"\r\n\r\nOK\r\n` : '\r\n\r\nOK\r\n';
+      log = `Modem [Quectel]: QIACT query -> ${state.pdpActive ? ip : 'inactive'}`;
+    } else if (upperCmd.startsWith('AT+QIDEACT=')) {
+      state.pdpActive = false;
+      reply = '\r\nOK\r\n';
+      log = 'Modem [Quectel]: QIDEACT -> deactivated';
+    } else if (upperCmd.startsWith('AT+QIRD=')) {
+      const match = upperCmd.match(/AT\+QIRD=(\d+),(\d+)/);
+      if (match) {
+        const connectID = parseInt(match[1], 10);
+        const readLen = parseInt(match[2], 10);
+        const buf = state.qirdBuffer[connectID] ?? '';
+        const data = buf.substring(0, readLen);
+        state.qirdBuffer[connectID] = buf.substring(readLen);
+        if (data.length > 0) {
+          reply = `\r\n+QIRD: ${data.length}\r\n${data}\r\n\r\nOK\r\n`;
+          log = `Modem [Quectel]: QIRD connectID=${connectID} -> ${data.length} bytes`;
+        } else {
+          reply = '\r\n+QIRD: 0\r\n\r\nOK\r\n';
+          log = `Modem [Quectel]: QIRD connectID=${connectID} -> no data`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QIRD: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QISENDEX=')) {
+      const match = cmd.match(/AT\+QISENDEX=(\d+),"([0-9A-Fa-f]*)"/i);
+      if (match) {
+        const connectID = parseInt(match[1], 10);
+        const hexData = match[2];
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QISENDEX connectID=${connectID} hex="${hexData}"`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QISENDEX: ${connectID},0\r\n`), log: `Modem [Quectel]: QISENDEX URC sent` }), 50);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QISENDEX: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QILOCAL=')) {
+      const match = upperCmd.match(/AT\+QILOCAL=(\d+)/);
+      if (match) {
+        const connectID = parseInt(match[1], 10);
+        const conn = state.connections[connectID];
+        if (conn?.active) {
+          reply = `\r\n+QILOCAL: ${connectID},"${conn.type}","${state.pdpIp}",${10000 + connectID}\r\n\r\nOK\r\n`;
+          log = `Modem [Quectel]: QILOCAL connectID=${connectID} -> ${state.pdpIp}`;
+        } else {
+          reply = '\r\n+CME ERROR: 3\r\n';
+          log = `Modem [Quectel]: QILOCAL connectID=${connectID} not active`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QILOCAL: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QISTATE=')) {
+      const match = upperCmd.match(/AT\+QISTATE=(\d+)/);
+      if (match) {
+        const connectID = parseInt(match[1], 10);
+        const c = state.connections[connectID];
+        if (c?.active) {
+          reply = `\r\n+QISTATE: ${c.id},"${c.type}","${c.host}",${c.port},0,2,1\r\n\r\nOK\r\n`;
+        } else {
+          reply = '\r\n\r\nOK\r\n';
+        }
+        log = `Modem [Quectel]: QISTATE=${connectID}`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QISTATE: ${cmd}`; }
+    }
+    // ── DNS ───────────────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QDNS=')) {
+      const match = cmd.match(/AT\+QDNS=(\d+),"([^"]+)"/i);
+      if (match) {
+        const contextID = parseInt(match[1], 10);
+        const domain = match[2];
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QDNS contextID=${contextID} domain="${domain}"`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QDNS: 0,"93.184.216.34"\r\n`), log: `Modem [Quectel]: QDNS URC "${domain}" -> 93.184.216.34` }), 300);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QDNS: ${cmd}`; }
+    }
+    // ── Ping ──────────────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QPING=')) {
+      const match = cmd.match(/AT\+QPING=(\d+),"([^"]+)"(?:,(\d+),(\d+))?/i);
+      if (match) {
+        const contextID = parseInt(match[1], 10);
+        const host = match[2];
+        const pingnum = parseInt(match[4] ?? '4', 10);
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QPING contextID=${contextID} host="${host}" count=${pingnum}`;
+        let sent = 0;
+        const sendPing = () => {
+          const rtt = Math.floor(20 + Math.random() * 30);
+          state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QPING: 0,"${host}",32,${rtt},255\r\n`), log: `Modem [Quectel]: QPING reply ${sent + 1}/${pingnum} rtt=${rtt}ms` });
+          sent++;
+          if (sent < pingnum) setTimeout(sendPing, 1000);
+          else setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QPING: 1,${pingnum},${pingnum},0\r\n`), log: `Modem [Quectel]: QPING summary done` }), 1200);
+        };
+        setTimeout(sendPing, 500);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QPING: ${cmd}`; }
+    }
+    // ── NTP ───────────────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QNTP=')) {
+      const match = cmd.match(/AT\+QNTP=(\d+),"([^"]+)"(?:,(\d+))?/i);
+      if (match) {
+        const contextID = parseInt(match[1], 10);
+        const server = match[2];
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QNTP contextID=${contextID} server="${server}"`;
+        setTimeout(() => {
+          const d = new Date(Date.now() + state.clockOffsetMs);
+          const ts = `${(d.getFullYear() % 100).toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')},${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}+00`;
+          state.ntpSynced = true;
+          state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QNTP: 0,"${ts}"\r\n`), log: `Modem [Quectel]: QNTP synced -> ${ts}` });
+        }, 800);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QNTP: ${cmd}`; }
+    }
+    // ── FTP ───────────────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QFTPCFG=')) {
+      const match = cmd.match(/AT\+QFTPCFG="?([^",\s]+)"?(?:\s*,\s*(.*))?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        if (match[2]) {
+          if (param === 'account') {
+            const acct = match[2].match(/"([^"]*)","([^"]*)"/);
+            if (acct) { state.ftpUser = acct[1]; }
+          }
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QFTPCFG ${param} = ${match[2]}`;
+        } else {
+          reply = '\r\nERROR\r\n';
+          log = `Modem [Quectel]: QFTPCFG query not supported for ${param}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QFTPCFG: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QFTPOPEN=')) {
+      const match = cmd.match(/AT\+QFTPOPEN="([^"]+)",(\d+)/i);
+      if (match) {
+        state.ftpHost = match[1];
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QFTPOPEN ${match[1]}:${match[2]}`;
+        setTimeout(() => { state.ftpConnected = true; state.onAsyncResponse?.({ bytes: toBytes('\r\n+QFTPOPEN: 0,0\r\n'), log: 'Modem [Quectel]: QFTPOPEN URC connected' }); }, 300);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QFTPOPEN: ${cmd}`; }
+    } else if (upperCmd === 'AT+QFTPCLOSE') {
+      state.ftpConnected = false;
+      reply = '\r\nOK\r\n';
+      log = 'Modem [Quectel]: QFTPCLOSE';
+      setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\n+QFTPCLOSE: 0,0\r\n'), log: 'Modem [Quectel]: QFTPCLOSE URC' }), 100);
+    } else if (upperCmd.startsWith('AT+QFTPGET=')) {
+      const match = cmd.match(/AT\+QFTPGET="([^"]+)","([^"]+)"/i);
+      if (match) {
+        if (!state.ftpConnected) {
+          reply = '\r\n+CME ERROR: 3\r\n'; log = 'Modem [Quectel]: QFTPGET failed: not connected';
+        } else {
+          const remote = match[1]; const local = match[2];
+          state.files[local] = `FTP_CONTENT_OF_${remote}`;
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QFTPGET "${remote}" -> "${local}"`;
+          setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QFTPGET: 0,${state.files[local].length}\r\n`), log: `Modem [Quectel]: QFTPGET URC done` }), 500);
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QFTPGET: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QFTPPUT=')) {
+      const match = cmd.match(/AT\+QFTPPUT="([^"]+)",(\d+),(\d+)/i);
+      if (match) {
+        if (!state.ftpConnected) {
+          reply = '\r\n+CME ERROR: 3\r\n'; log = 'Modem [Quectel]: QFTPPUT failed: not connected';
+        } else {
+          this.q_ftpPutLength = parseInt(match[2], 10);
+          state.mode = 'q_ftpputdata';
+          state.transparentBuffer = [];
+          reply = '\r\nCONNECT\r\n';
+          log = `Modem [Quectel]: QFTPPUT ready, expecting ${this.q_ftpPutLength} bytes`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QFTPPUT: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QFTPSIZE=')) {
+      const match = cmd.match(/AT\+QFTPSIZE="([^"]+)"/i);
+      if (match) {
+        if (!state.ftpConnected) {
+          reply = '\r\n+CME ERROR: 3\r\n'; log = 'Modem [Quectel]: QFTPSIZE failed: not connected';
+        } else {
+          const filename = match[1];
+          const size = state.files[filename]?.length ?? 1024;
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QFTPSIZE "${filename}"`;
+          setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QFTPSIZE: 0,${size}\r\n`), log: `Modem [Quectel]: QFTPSIZE URC "${filename}" -> ${size}` }), 100);
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QFTPSIZE: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QFTPLIST=')) {
+      const match = cmd.match(/AT\+QFTPLIST="([^"]*)"/i);
+      if (match) {
+        if (!state.ftpConnected) {
+          reply = '\r\n+CME ERROR: 3\r\n'; log = 'Modem [Quectel]: QFTPLIST failed: not connected';
+        } else {
+          const path = match[1];
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QFTPLIST path="${path}"`;
+          const listing = Object.keys(state.files).map(f => `${f} ${state.files[f].length}`).join('\r\n') || 'empty.txt 0';
+          setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QFTPLIST: 0\r\n${listing}\r\n`), log: `Modem [Quectel]: QFTPLIST URC` }), 200);
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QFTPLIST: ${cmd}`; }
+    }
+    // ── SSL direct connections ─────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QSSLOPEN=')) {
+      const match = cmd.match(/AT\+QSSLOPEN=(\d+),(\d+),(\d+),"([^"]+)",(\d+),(\d+)/i);
+      if (match) {
+        const clientID = parseInt(match[3], 10);
+        const sslCtx = parseInt(match[2], 10);
+        const host = match[4];
+        const port = parseInt(match[5], 10);
+        state.sslConns[clientID] = { host, port, sslCtx, connected: false };
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QSSLOPEN clientID=${clientID} sslCtx=${sslCtx} -> ${host}:${port}`;
+        setTimeout(() => { state.sslConns[clientID].connected = true; state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QSSLOPEN: ${clientID},0\r\n`), log: `Modem [Quectel]: QSSLOPEN URC clientID=${clientID} connected` }); }, 200);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QSSLOPEN: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QSSLSEND=')) {
+      const match = upperCmd.match(/AT\+QSSLSEND=(\d+),(\d+)/);
+      if (match) {
+        this.q_sslSendConn = parseInt(match[1], 10);
+        this.q_sslSendLength = parseInt(match[2], 10);
+        state.mode = 'q_sslsenddata';
+        state.transparentBuffer = [];
+        reply = '\r\n> ';
+        log = `Modem [Quectel]: QSSLSEND clientID=${this.q_sslSendConn}, expecting ${this.q_sslSendLength} bytes`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QSSLSEND: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QSSLRECV=')) {
+      const match = upperCmd.match(/AT\+QSSLRECV=(\d+),(\d+)/);
+      if (match) {
+        const clientID = parseInt(match[1], 10);
+        reply = `\r\n+QSSLRECV: 0\r\n\r\nOK\r\n`;
+        log = `Modem [Quectel]: QSSLRECV clientID=${clientID} -> no data`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QSSLRECV: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QSSLCLOSE=')) {
+      const match = upperCmd.match(/AT\+QSSLCLOSE=(\d+)/);
+      if (match) {
+        const clientID = parseInt(match[1], 10);
+        if (state.sslConns[clientID]) state.sslConns[clientID].connected = false;
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QSSLCLOSE clientID=${clientID}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QSSLCLOSE: ${clientID},0\r\n`), log: `Modem [Quectel]: QSSLCLOSE URC clientID=${clientID}` }), 50);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QSSLCLOSE: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QSSLSTATE')) {
+      const match = upperCmd.match(/AT\+QSSLSTATE(?:=(\d+))?/);
+      const clientID = match?.[1] !== undefined ? parseInt(match[1], 10) : -1;
+      const entries = Object.entries(state.sslConns)
+        .filter(([id]) => clientID < 0 || parseInt(id) === clientID)
+        .map(([id, c]) => `+QSSLSTATE: ${id},"${c.connected ? 'Connected' : 'Closed'}","${c.host}",${c.port},${c.sslCtx}`);
+      reply = entries.length ? `\r\n${entries.join('\r\n')}\r\n\r\nOK\r\n` : '\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QSSLSTATE query';
+    }
+    // ── Power / System ────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QPOWD=')) {
+      reply = '\r\nOK\r\n';
+      log = 'Modem [Quectel]: QPOWD -> power down';
+      setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\nPOWERED DOWN\r\n'), log: 'Modem [Quectel]: QPOWD URC powered down' }), 500);
+    } else if (upperCmd.startsWith('AT+QRST=')) {
+      reply = '\r\nOK\r\n';
+      log = 'Modem [Quectel]: QRST -> restart';
+      setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\nRDY\r\n+CFUN: 1\r\n+CPIN: READY\r\n'), log: 'Modem [Quectel]: QRST URC restarted' }), 1000);
+    }
+    // ── GPS extended ──────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QGPSDEL=')) {
+      reply = '\r\nOK\r\n';
+      log = `Modem [Quectel]: QGPSDEL (${cmd})`;
+    } else if (upperCmd.startsWith('AT+QAGPS=')) {
+      reply = '\r\nOK\r\n';
+      log = `Modem [Quectel]: QAGPS set (${cmd})`;
+    }
+    // ── Network info ──────────────────────────────────────────────────────
+    else if (upperCmd === 'AT+QNWINFO') {
+      reply = '\r\n+QNWINFO: "FDD LTE","28601","LTE BAND 3",1300\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QNWINFO query';
+    } else if (upperCmd === 'AT+QSPN') {
+      reply = '\r\n+QSPN: "Turkcell","Turkcell","TCL",0,1\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QSPN query';
+    } else if (upperCmd.startsWith('AT+QENG=')) {
+      const match = upperCmd.match(/AT\+QENG=(\d+)/);
+      const mode = match ? parseInt(match[1], 10) : 0;
+      if (mode === 0) {
+        reply = '\r\n+QENG: "servingcell","NOCONN","LTE","FDD",286,01,1A2B,123,1300,3,5,5,-65,-11,-80,-7,14\r\n\r\nOK\r\n';
+      } else {
+        reply = '\r\n+QENG: "neighbourcell intra","LTE",1300,124,-67,-13,-82,-9\r\n\r\nOK\r\n';
+      }
+      log = `Modem [Quectel]: QENG mode=${mode}`;
+    } else if (upperCmd === 'AT+QCSQ') {
+      reply = '\r\n+QCSQ: "LTE",-65,-11,-80,-7\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QCSQ signal quality';
+    } else if (upperCmd === 'AT+QBAND?' || upperCmd === 'AT+QBAND') {
+      reply = '\r\n+QBAND: 1,1\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QBAND query';
+    } else if (upperCmd.startsWith('AT+QBAND=')) {
+      reply = '\r\nOK\r\n';
+      log = `Modem [Quectel]: QBAND set (${cmd})`;
+    } else if (upperCmd.startsWith('AT+QINDCFG=')) {
+      const match = cmd.match(/AT\+QINDCFG="?([^",\s]+)"?(?:\s*,\s*(\d+))?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        if (match[2] !== undefined) {
+          state.qindcfg[param] = match[2];
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QINDCFG ${param} = ${match[2]}`;
+        } else {
+          const val = state.qindcfg[param] ?? '0';
+          reply = `\r\n+QINDCFG: "${param}",${val}\r\n\r\nOK\r\n`;
+          log = `Modem [Quectel]: Query QINDCFG ${param} -> ${val}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QINDCFG: ${cmd}`; }
+    }
+    // ── MQTT status ───────────────────────────────────────────────────────
+    else if (upperCmd === 'AT+QMTSTAT?' || upperCmd === 'AT+QMTSTAT') {
+      const lines = Object.entries(this.q_mqttConns)
+        .map(([id, c]) => `+QMTSTAT: ${id},${c.connected ? 3 : 2}`).join('\r\n');
+      reply = `\r\n${lines || '+QMTSTAT: 0,1'}\r\n\r\nOK\r\n`;
+      log = 'Modem [Quectel]: QMTSTAT query';
+    }
+    // ── PDP config query ──────────────────────────────────────────────────
+    else if (upperCmd === 'AT+QICSGP?' || upperCmd.startsWith('AT+QICSGP?')) {
+      reply = '\r\n+QICSGP: 1,1,"internet","","",1\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QICSGP query';
+    }
+    // ── Slow clock / sleep mode ───────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QSCLK=')) {
+      const match = upperCmd.match(/AT\+QSCLK=(\d+)/);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QSCLK mode=${match[1]} (${match[1] === '0' ? 'disabled' : 'enabled'})`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QSCLK: ${cmd}`; }
+    } else if (upperCmd === 'AT+QSCLK?') {
+      reply = '\r\n+QSCLK: 0\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QSCLK query -> disabled';
+    }
+    // ── Default PDP context (BG95/BG96) ───────────────────────────────────
+    else if (upperCmd.startsWith('AT+QCGDEFCONT=')) {
+      const match = cmd.match(/AT\+QCGDEFCONT="([^"]+)","([^"]*)"/i);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QCGDEFCONT type="${match[1]}" apn="${match[2]}"`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QCGDEFCONT: ${cmd}`; }
+    } else if (upperCmd === 'AT+QCGDEFCONT?') {
+      reply = '\r\n+QCGDEFCONT: "IP","internet"\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QCGDEFCONT query';
+    }
+    // ── Network config ────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QNWCFG=')) {
+      const match = cmd.match(/AT\+QNWCFG="?([^",\s]+)"?(?:\s*,\s*(.*))?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        if (match[2] !== undefined) {
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QNWCFG ${param} = ${match[2]}`;
+        } else {
+          reply = `\r\n+QNWCFG: "${param}",0\r\n\r\nOK\r\n`;
+          log = `Modem [Quectel]: Query QNWCFG ${param}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QNWCFG: ${cmd}`; }
+    }
+    // ── HTTP config query (all params) ────────────────────────────────────
+    else if (upperCmd === 'AT+QHTTPCFG?') {
+      const lines = Object.entries(state.qhttpcfg).map(([k, v]) => `+QHTTPCFG: "${k}",${v}`).join('\r\n');
+      reply = `\r\n${lines}\r\n\r\nOK\r\n`;
+      log = 'Modem [Quectel]: Query all QHTTPCFG';
+    }
+    // ── GPS NMEA (alt command on some modules) ────────────────────────────
+    else if (upperCmd.startsWith('AT+QGPSNMEA=')) {
+      const match = cmd.match(/AT\+QGPSNMEA="([^"]+)"/i);
+      if (!state.gpsEnabled || !state.gpsFix) {
+        reply = '\r\n+CME ERROR: 516\r\n'; log = 'Modem [Quectel]: QGPSNMEA failed (no fix)';
+      } else if (match) {
+        const type = match[1].toUpperCase() as 'GGA' | 'RMC' | 'GSV';
+        const nmea = gpsNmea(state, type);
+        reply = `\r\n+QGPSNMEA: "${nmea}"\r\n\r\nOK\r\n`;
+        log = `Modem [Quectel]: QGPSNMEA ${type} -> ${nmea}`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QGPSNMEA: ${cmd}`; }
+    }
+    // ── CoAP (BC66 / BC660K / NB-IoT) ────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QCOAPOPEN=')) {
+      const match = upperCmd.match(/AT\+QCOAPOPEN=(\d+),(\d+)/);
+      if (match) {
+        const sessionID = parseInt(match[1], 10);
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QCOAPOPEN sessionID=${sessionID} port=${match[2]}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QCOAPOPEN: ${sessionID},0\r\n`), log: `Modem [Quectel]: QCOAPOPEN URC sessionID=${sessionID}` }), 200);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QCOAPOPEN: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QCOAPCLOSE=')) {
+      const match = upperCmd.match(/AT\+QCOAPCLOSE=(\d+)/);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QCOAPCLOSE sessionID=${match[1]}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QCOAPCLOSE: ${match[1]},0\r\n`), log: `Modem [Quectel]: QCOAPCLOSE URC` }), 100);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QCOAPCLOSE: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QCOAPGET=')) {
+      const match = cmd.match(/AT\+QCOAPGET=(\d+),"([^"]+)",(\d+),"([^"]+)"/i);
+      if (match) {
+        const sessionID = parseInt(match[1], 10);
+        const host = match[2]; const port = match[3]; const path = match[4];
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QCOAPGET sessionID=${sessionID} ${host}:${port}${path}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QCOAPNMI: ${sessionID},2,5,0,"68656C6C6F"\r\n`), log: `Modem [Quectel]: QCOAPNMI GET response` }), 500);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QCOAPGET: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QCOAPPOST=') || upperCmd.startsWith('AT+QCOAPPUT=')) {
+      const isPost = upperCmd.startsWith('AT+QCOAPPOST=');
+      const match = cmd.match(/AT\+QCOAP(?:POST|PUT)=(\d+),"([^"]+)",(\d+),"([^"]+)",(\d+),(\d+)/i);
+      if (match) {
+        const sessionID = parseInt(match[1], 10);
+        const dataLen = parseInt(match[6], 10);
+        state.mode = 'q_coapdata';
+        state.transparentBuffer = [];
+        state.postDataLength = dataLen;
+        reply = '\r\nCONNECT\r\n';
+        log = `Modem [Quectel]: QCOAP${isPost ? 'POST' : 'PUT'} sessionID=${sessionID}, expecting ${dataLen} bytes`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QCOAP${isPost ? 'POST' : 'PUT'}: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QCOAPDELETE=')) {
+      const match = cmd.match(/AT\+QCOAPDELETE=(\d+),"([^"]+)",(\d+),"([^"]+)"/i);
+      if (match) {
+        const sessionID = parseInt(match[1], 10);
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QCOAPDELETE sessionID=${sessionID}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QCOAPNMI: ${sessionID},2,2,0,""\r\n`), log: `Modem [Quectel]: QCOAPNMI DELETE response` }), 300);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QCOAPDELETE: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QCOAPCFG=')) {
+      reply = '\r\nOK\r\n';
+      log = `Modem [Quectel]: QCOAPCFG set (${cmd})`;
+    }
+    // ── LwM2M (BC66 / BC660K / NB-IoT) ───────────────────────────────────
+    else if (upperCmd.startsWith('AT+QLWM2MREG=')) {
+      const match = cmd.match(/AT\+QLWM2MREG="([^"]+)",(\d+)/i);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QLWM2MREG server="${match[1]}" lifetime=${match[2]}s`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\n+QLWM2MNMI: 0,0\r\n'), log: 'Modem [Quectel]: QLWM2M registered' }), 800);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QLWM2MREG: ${cmd}`; }
+    } else if (upperCmd === 'AT+QLWM2MDEREG') {
+      reply = '\r\nOK\r\n';
+      log = 'Modem [Quectel]: QLWM2MDEREG deregistered';
+      setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\n+QLWM2MNMI: 0,5\r\n'), log: 'Modem [Quectel]: QLWM2M deregistered URC' }), 200);
+    } else if (upperCmd === 'AT+QLWM2MUPDATE') {
+      reply = '\r\nOK\r\n';
+      log = 'Modem [Quectel]: QLWM2MUPDATE registration updated';
+      setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\n+QLWM2MNMI: 0,1\r\n'), log: 'Modem [Quectel]: QLWM2M update URC' }), 300);
+    } else if (upperCmd.startsWith('AT+QLWM2MREAD=')) {
+      const match = upperCmd.match(/AT\+QLWM2MREAD=(\d+),(\d+),(\d+)/);
+      if (match) {
+        const [, objId, instId, resId] = match;
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QLWM2MREAD /${objId}/${instId}/${resId}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QLWM2MNMI: 2,${objId},${instId},${resId},"value"\r\n`), log: `Modem [Quectel]: QLWM2MREAD URC /${objId}/${instId}/${resId}` }), 200);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QLWM2MREAD: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QLWM2MWRITE=')) {
+      const match = cmd.match(/AT\+QLWM2MWRITE=(\d+),(\d+),(\d+),"([^"]*)"/i);
+      if (match) {
+        const [, objId, instId, resId, val] = match;
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QLWM2MWRITE /${objId}/${instId}/${resId} = "${val}"`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QLWM2MNMI: 3,${objId},${instId},${resId}\r\n`), log: `Modem [Quectel]: QLWM2MWRITE URC` }), 100);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QLWM2MWRITE: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QLWM2MEXE=')) {
+      const match = upperCmd.match(/AT\+QLWM2MEXE=(\d+),(\d+),(\d+)/);
+      if (match) {
+        const [, objId, instId, resId] = match;
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QLWM2MEXE /${objId}/${instId}/${resId}`;
+        setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QLWM2MNMI: 4,${objId},${instId},${resId}\r\n`), log: `Modem [Quectel]: QLWM2MEXE URC` }), 100);
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QLWM2MEXE: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+QLWM2MCFG=')) {
+      reply = '\r\nOK\r\n';
+      log = `Modem [Quectel]: QLWM2MCFG set (${cmd})`;
+    }
+    // ── Temperature ───────────────────────────────────────────────────────
+    else if (upperCmd === 'AT+QTEMP') {
+      reply = '\r\n+QTEMP: "processor",42\r\n+QTEMP: "xo",38\r\n+QTEMP: "pa",40\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QTEMP -> processor=42°C xo=38°C pa=40°C';
+    }
+    // ── VoLTE ─────────────────────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QVOLTE=')) {
+      const match = upperCmd.match(/AT\+QVOLTE=(\d+)/);
+      if (match) {
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QVOLTE mode=${match[1]} (${match[1] === '1' ? 'enabled' : 'disabled'})`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QVOLTE: ${cmd}`; }
+    } else if (upperCmd === 'AT+QVOLTE?') {
+      reply = '\r\n+QVOLTE: 0\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QVOLTE query -> disabled';
+    }
+    // ── URC output port config ────────────────────────────────────────────
+    else if (upperCmd.startsWith('AT+QURCCFG=')) {
+      const match = cmd.match(/AT\+QURCCFG="?([^",\s]+)"?(?:\s*,\s*"?([^"\r\n]+)"?)?/i);
+      if (match) {
+        const param = match[1].toLowerCase();
+        if (match[2] !== undefined) {
+          state.qindcfg[`urc/${param}`] = match[2].replace(/"/g, '');
+          reply = '\r\nOK\r\n';
+          log = `Modem [Quectel]: QURCCFG "${param}" = "${match[2]}"`;
+        } else {
+          const val = state.qindcfg[`urc/${param}`] ?? 'usbat';
+          reply = `\r\n+QURCCFG: "${param}","${val}"\r\n\r\nOK\r\n`;
+          log = `Modem [Quectel]: Query QURCCFG "${param}" -> "${val}"`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QURCCFG: ${cmd}`; }
+    } else if (upperCmd === 'AT+QURCCFG?') {
+      const entries = Object.entries(state.qindcfg)
+        .filter(([k]) => k.startsWith('urc/'))
+        .map(([k, v]) => `+QURCCFG: "${k.slice(4)}","${v}"`).join('\r\n')
+        || '+QURCCFG: "urcport","usbat"';
+      reply = `\r\n${entries}\r\n\r\nOK\r\n`;
+      log = 'Modem [Quectel]: Query all QURCCFG';
+    }
+    // ── NB-IoT event reporting (BC66 / BC660K) ────────────────────────────
+    else if (upperCmd.startsWith('AT+QNBIOTEVENT=')) {
+      const match = upperCmd.match(/AT\+QNBIOTEVENT=(\d+)(?:,(\d+))?/);
+      if (match) {
+        const enable = match[1] === '1';
+        const eventType = match[2] ?? '0';
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QNBIOTEVENT ${enable ? 'enabled' : 'disabled'} type=${eventType}`;
+        if (enable) {
+          setTimeout(() => state.onAsyncResponse?.({
+            bytes: toBytes(`\r\n+QNBIOTEVENT: "ENTER PSM"\r\n`),
+            log: 'Modem [Quectel]: QNBIOTEVENT URC -> ENTER PSM'
+          }), 2000);
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QNBIOTEVENT: ${cmd}`; }
+    } else if (upperCmd === 'AT+QNBIOTEVENT?') {
+      reply = '\r\n+QNBIOTEVENT: 0\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QNBIOTEVENT query -> disabled';
+    }
+    // ── SIM card (Quectel specific) ───────────────────────────────────────
+    else if (upperCmd === 'AT+QSIMSTAT?' || upperCmd === 'AT+QSIMSTAT') {
+      reply = '\r\n+QSIMSTAT: 1,1\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QSIMSTAT -> SIM present and enabled';
+    } else if (upperCmd.startsWith('AT+QSIMDET=')) {
+      const match = upperCmd.match(/AT\+QSIMDET=(\d+)(?:,(\d+))?/);
+      if (match) {
+        const enable = match[1] === '1';
+        const insertLevel = match[2] ?? '0';
+        reply = '\r\nOK\r\n';
+        log = `Modem [Quectel]: QSIMDET ${enable ? 'enabled' : 'disabled'} insertLevel=${insertLevel}`;
+        if (enable) {
+          setTimeout(() => state.onAsyncResponse?.({
+            bytes: toBytes('\r\n+QSIMSTAT: 1,1\r\n'),
+            log: 'Modem [Quectel]: QSIMDET URC -> SIM inserted'
+          }), 300);
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem [Quectel]: Invalid QSIMDET: ${cmd}`; }
+    } else if (upperCmd === 'AT+QSIMDET?') {
+      reply = '\r\n+QSIMDET: 0,0\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QSIMDET query -> disabled';
+    } else if (upperCmd === 'AT+QCCID') {
+      reply = '\r\n+QCCID: 8990011234567890123\r\n\r\nOK\r\n';
+      log = 'Modem [Quectel]: QCCID -> 8990011234567890123';
+    }
+    // ── SSL config query ──────────────────────────────────────────────────
+    else if (upperCmd === 'AT+QSSLCFG?') {
+      reply = [
+        `\r\n+QSSLCFG: "sslversion",1,${state.sslVersion}`,
+        `+QSSLCFG: "authmode",1,${state.sslAuthMode}`,
+        `+QSSLCFG: "cacert",1,"${state.sslCaCert}"`,
+        `+QSSLCFG: "clientcert",1,"${state.sslClientCert}"`,
+        `+QSSLCFG: "clientkey",1,"${state.sslClientKey}"`,
+        '\r\nOK\r\n'
+      ].join('\r\n');
+      log = 'Modem [Quectel]: Query all QSSLCFG';
     } else {
       return null;
     }
@@ -1157,6 +1961,67 @@ class QuectelDialect implements ModemDialect {
         }
       }
       return { bytes: [], log: 'Modem [Quectel]: Writing file data...' };
+    }
+
+    if (mode === 'q_httpputdata') {
+      for (const b of input) {
+        state.transparentBuffer.push(b);
+        if (state.transparentBuffer.length >= this.q_httpputLength) {
+          state.postData = String.fromCharCode(...state.transparentBuffer);
+          state.transparentBuffer = [];
+          state.mode = 'command';
+          const urc = '+QHTTPPUT';
+          fetch(state.url, { method: 'PUT', headers: { 'Content-Type': state.contentType }, body: state.postData })
+            .then(async res => { const text = await res.text(); state.responseStatus = res.status; state.responseBody = text; state.onAsyncResponse?.({ bytes: toBytes(`\r\n${urc}: 0,${res.status},${text.length}\r\n`), log: `Modem [Quectel]: QHTTPPUT -> ${res.status} (${text.length} bytes)` }); })
+            .catch(err => { state.onAsyncResponse?.({ bytes: toBytes(`\r\n${urc}: 0,600,0\r\n`), log: `Modem [Quectel]: QHTTPPUT Error -> ${err.message}` }); });
+          return { bytes: toBytes('\r\nOK\r\n'), log: `Modem [Quectel]: QHTTPPUT data received (${state.postData.length} bytes)` };
+        }
+      }
+      return { bytes: [], log: 'Modem [Quectel]: Collecting PUT data...' };
+    }
+
+    if (mode === 'q_ftpputdata') {
+      for (const b of input) {
+        state.transparentBuffer.push(b);
+        if (state.transparentBuffer.length >= this.q_ftpPutLength) {
+          const data = String.fromCharCode(...state.transparentBuffer);
+          state.transparentBuffer = [];
+          state.mode = 'command';
+          setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QFTPPUT: 0,${data.length}\r\n`), log: `Modem [Quectel]: QFTPPUT URC done ${data.length} bytes` }), 300);
+          return { bytes: toBytes('\r\nOK\r\n'), log: `Modem [Quectel]: QFTPPUT data received (${data.length} bytes)` };
+        }
+      }
+      return { bytes: [], log: 'Modem [Quectel]: Collecting FTP PUT data...' };
+    }
+
+    if (mode === 'q_sslsenddata') {
+      for (const b of input) {
+        state.transparentBuffer.push(b);
+        if (state.transparentBuffer.length >= this.q_sslSendLength) {
+          const data = String.fromCharCode(...state.transparentBuffer);
+          const clientID = this.q_sslSendConn;
+          state.transparentBuffer = [];
+          state.mode = 'command';
+          this.q_sslSendConn = -1;
+          setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes(`\r\n+QSSLSEND: ${clientID},${data.length}\r\n`), log: `Modem [Quectel]: QSSLSEND URC clientID=${clientID} sent ${data.length} bytes` }), 50);
+          return { bytes: toBytes('\r\nOK\r\n'), log: `Modem [Quectel]: QSSLSEND data sent (${data.length} bytes)` };
+        }
+      }
+      return { bytes: [], log: 'Modem [Quectel]: Collecting SSL send data...' };
+    }
+
+    if (mode === 'q_coapdata') {
+      for (const b of input) {
+        state.transparentBuffer.push(b);
+        if (state.transparentBuffer.length >= state.postDataLength) {
+          const data = String.fromCharCode(...state.transparentBuffer);
+          state.transparentBuffer = [];
+          state.mode = 'command';
+          setTimeout(() => state.onAsyncResponse?.({ bytes: toBytes('\r\n+QCOAPNMI: 0,2,4,0,""\r\n'), log: `Modem [Quectel]: QCOAP POST/PUT response (${data.length} bytes sent)` }), 400);
+          return { bytes: toBytes('\r\nOK\r\n'), log: `Modem [Quectel]: CoAP data received (${data.length} bytes)` };
+        }
+      }
+      return { bytes: [], log: 'Modem [Quectel]: Collecting CoAP data...' };
     }
 
     if (mode === 'q_mqttpub') {
@@ -1313,6 +2178,27 @@ export class SimCardDriver extends PeripheralDriver {
       return { bytes: responseBytes, log: logMsg || 'Modem: Collecting SMS data...' };
     }
 
+    if (mode === 'smsstowrite') {
+      for (const b of input) {
+        if (b === 0x1A) {
+          const body = String.fromCharCode(...this.sharedState.transparentBuffer).trim();
+          this.sharedState.transparentBuffer = [];
+          this.sharedState.mode = 'command';
+          const s = this.sharedState;
+          const d = new Date(Date.now() + s.clockOffsetMs);
+          const ts = `${(d.getFullYear()%100).toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')},${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}+00`;
+          const idx = this.smsIndex++;
+          s.smsInbox.push({ index: idx, status: 'STO UNSENT', sender: this.smsPhone, timestamp: ts, body });
+          responseBytes.push(...toBytes(`\r\n+CMGW: ${idx}\r\n\r\nOK\r\n`));
+          logMsg = `Modem: CMGW stored SMS to "${this.smsPhone}" index=${idx}`;
+          break;
+        } else {
+          this.sharedState.transparentBuffer.push(b);
+        }
+      }
+      return { bytes: responseBytes, log: logMsg || 'Modem: Collecting SMS write data...' };
+    }
+
     if (mode === 'transparent') {
       for (const b of input) {
         if (b === 0x1A) {
@@ -1364,6 +2250,27 @@ export class SimCardDriver extends PeripheralDriver {
 
     if (upperCmd === 'AT') {
       reply = '\r\nOK\r\n'; log = 'Modem: AT OK';
+    } else if (upperCmd.startsWith('AT+SETVENDOR=')) {
+      const match = upperCmd.match(/AT\+SETVENDOR=(\w+)/);
+      if (match) {
+        const token = match[1];
+        const quectelModels: Record<string, string> = {
+          QUECTEL: 'EC21', BG96: 'BG96', BG95: 'BG95-M2', EC21: 'EC21',
+          EC25: 'EC25', EC200: 'EC200U', EC600: 'EC600N', BC66: 'BC66', BC660K: 'BC660K',
+        };
+        if (token === 'SIMCOM') {
+          this.setVendor('simcom');
+          reply = '\r\nOK\r\n'; log = 'Modem: Vendor switched to SIMCOM';
+        } else if (quectelModels[token]) {
+          this.setVendor('quectel');
+          this.sharedState.quectelModel = quectelModels[token];
+          reply = '\r\nOK\r\n'; log = `Modem: Vendor switched to Quectel ${quectelModels[token]}`;
+        } else {
+          reply = '\r\nERROR\r\n'; log = `Modem: Unknown vendor/model: ${token}`;
+        }
+      } else {
+        reply = '\r\nERROR\r\n'; log = `Modem: Invalid SETVENDOR: ${cmd}`;
+      }
     } else if (upperCmd === 'ATE0') {
       this.echo = false; reply = '\r\nOK\r\n'; log = 'Modem: Echo Off';
     } else if (upperCmd === 'ATE1') {
@@ -1372,10 +2279,17 @@ export class SimCardDriver extends PeripheralDriver {
       const mfr = this.dialect.vendorName === 'quectel' ? 'Quectel' : 'SIMCOM INCORPORATED';
       reply = `\r\n${mfr}\r\n\r\nOK\r\n`; log = `Modem: Manufacturer ID -> ${mfr}`;
     } else if (upperCmd === 'AT+GMM' || upperCmd === 'AT+CGMM') {
-      const model = this.dialect.vendorName === 'quectel' ? 'EC21' : 'SIM800L';
+      const model = this.dialect.vendorName === 'quectel' ? this.sharedState.quectelModel : 'SIM800L';
       reply = `\r\n${model}\r\n\r\nOK\r\n`; log = `Modem: Model ID -> ${model}`;
     } else if (upperCmd === 'AT+GMR' || upperCmd === 'AT+CGMR') {
-      const rev = this.dialect.vendorName === 'quectel' ? 'EC21EFAR06A01M4G' : 'R14.18';
+      const revMap: Record<string, string> = {
+        EC21: 'EC21EFAR06A01M4G', EC25: 'EC25EFAR06A01M4G', BG96: 'BG96MAR02A07M1G',
+        'BG95-M2': 'BG95M2LAR01A01M1G', EC200U: 'EC200UEUAAR01A01M16', EC600N: 'EC600NCNAAR01A01M16',
+        BC66: 'BC66NAR01A08', BC660K: 'BC660KGLAAR01A02',
+      };
+      const rev = this.dialect.vendorName === 'quectel'
+        ? (revMap[this.sharedState.quectelModel] ?? `${this.sharedState.quectelModel}R01A01`)
+        : 'R14.18';
       reply = `\r\n${rev}\r\n\r\nOK\r\n`; log = `Modem: Firmware revision -> ${rev}`;
     } else if (upperCmd === 'AT+GSN' || upperCmd === 'AT+CGSN') {
       reply = '\r\n867012345678901\r\n\r\nOK\r\n'; log = 'Modem: IMEI -> 867012345678901';
@@ -1385,6 +2299,62 @@ export class SimCardDriver extends PeripheralDriver {
       reply = '\r\n286011234567890\r\n\r\nOK\r\n'; log = 'Modem: IMSI -> 286011234567890';
     } else if (upperCmd === 'AT+CCID' || upperCmd === 'AT+ICCID') {
       reply = '\r\n+CCID: 8990011234567890123\r\n\r\nOK\r\n'; log = 'Modem: ICCID -> 8990011234567890123';
+    } else if (upperCmd.startsWith('AT+CSIM=')) {
+      // Generic SIM access — raw APDU
+      const match = cmd.match(/AT\+CSIM=(\d+),"([0-9A-Fa-f]+)"/i);
+      if (match) {
+        const apdu = match[2].toUpperCase();
+        const ins = apdu.substring(2, 4);
+        // Simulate common APDU responses
+        const apduResponses: Record<string, string> = {
+          'A4': '9000',           // SELECT FILE -> OK
+          'B0': '000000009000',   // READ BINARY -> 6 bytes + OK
+          'B2': '9000',           // READ RECORD -> OK
+          'D6': '9000',           // UPDATE BINARY -> OK
+          'DC': '9000',           // UPDATE RECORD -> OK
+          'C0': '9000',           // GET RESPONSE -> OK
+          'F2': '000000009000',   // STATUS -> OK
+        };
+        const sw = apduResponses[ins] ?? '6D00'; // 6D00 = INS not supported
+        reply = `\r\n+CSIM: ${sw.length},"${sw}"\r\n\r\nOK\r\n`;
+        log = `Modem: CSIM APDU=${apdu} -> SW=${sw.slice(-4)}`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CSIM: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+CRSM=')) {
+      // Restricted SIM access
+      const match = cmd.match(/AT\+CRSM=(\d+),(\d+),(\d+),(\d+),(\d+)(?:,"([0-9A-Fa-f]*)")?/i);
+      if (match) {
+        const command = parseInt(match[1], 10);
+        const fileId = parseInt(match[2], 10).toString(16).toUpperCase().padStart(4, '0');
+        const cmdNames: Record<number, string> = { 176: 'READ BINARY', 178: 'READ RECORD', 192: 'GET RESPONSE', 214: 'UPDATE BINARY', 220: 'UPDATE RECORD', 242: 'STATUS' };
+        const cmdName = cmdNames[command] ?? `CMD=${command}`;
+        // Simulate EF file responses
+        const efResponses: Record<string, string> = {
+          '2FE2': '986001099101234567890123FF9000', // EF_ICCID
+          '6F07': '2860112345678909000',            // EF_IMSI
+          '6F46': '54656C65636F6D9000',             // EF_SPN "Telecom"
+          '6F30': 'FFFFFFFFFFFFFFFFFFFFFFFF9000',   // EF_PLMNSEL
+        };
+        const data = efResponses[fileId] ?? `DEADBEEF9000`;
+        reply = `\r\n+CRSM: ${data.slice(-4, -2)},${data.slice(-2)},"${data.slice(0, -4)}"\r\n\r\nOK\r\n`;
+        log = `Modem: CRSM ${cmdName} EF=${fileId} -> ${data.slice(-4)}`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CRSM: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+CCHO=')) {
+      // Open logical channel
+      const match = cmd.match(/AT\+CCHO="([0-9A-Fa-f]+)"/i);
+      if (match) {
+        reply = '\r\n1\r\n\r\nOK\r\n';
+        log = `Modem: CCHO AID=${match[1]} -> session=1`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CCHO: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+CCHC=')) {
+      // Close logical channel
+      reply = '\r\nOK\r\n'; log = `Modem: CCHC channel closed`;
+    } else if (upperCmd.startsWith('AT+CGLA=')) {
+      // Generic logical channel access
+      const match = cmd.match(/AT\+CGLA=(\d+),(\d+),"([0-9A-Fa-f]+)"/i);
+      if (match) {
+        reply = `\r\n+CGLA: 4,"9000"\r\n\r\nOK\r\n`;
+        log = `Modem: CGLA session=${match[1]} APDU=${match[3]} -> SW=9000`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CGLA: ${cmd}`; }
     } else if (upperCmd.startsWith('AT+CMGF=')) {
       const fmatch = upperCmd.match(/AT\+CMGF=(\d+)/);
       if (fmatch) this.sharedState.smsCmgf = parseInt(fmatch[1], 10);
@@ -1400,6 +2370,10 @@ export class SimCardDriver extends PeripheralDriver {
       reply = `\r\n+CPAS: ${cpas}\r\n\r\nOK\r\n`; log = `Modem: Phone activity status -> ${cpas}`;
     } else if (upperCmd === 'AT+CSQ') {
       reply = '\r\n+CSQ: 31,99\r\n\r\nOK\r\n'; log = 'Modem: Signal Quality query';
+    } else if (upperCmd === 'AT+CESQ') {
+      // Extended signal quality: RXLEV, BER, RSCP, EcNo, RSRQ, RSRP
+      reply = '\r\n+CESQ: 99,99,255,255,13,62\r\n\r\nOK\r\n';
+      log = 'Modem: CESQ -> RSRQ=-13dB RSRP=-118dBm (LTE)';
     } else if (upperCmd.startsWith('AT+CREG=')) {
       const nm = upperCmd.match(/AT\+CREG=(\d+)/);
       if (nm) this.sharedState.cregN = parseInt(nm[1], 10);
@@ -1481,6 +2455,21 @@ export class SimCardDriver extends PeripheralDriver {
       const s = this.sharedState;
       const op = s.isRoaming ? s.roamingOperator : 'Turkcell';
       reply = `\r\n+COPS: 0,0,"${op}"\r\n\r\nOK\r\n`; log = `Modem: Operator -> ${op}${s.isRoaming ? ' (roaming)' : ''}`;
+    } else if (upperCmd.startsWith('AT+COPS=') && !upperCmd.startsWith('AT+COPS=?')) {
+      const cm = cmd.match(/AT\+COPS=(\d+)(?:,(\d+),"?([^",]*)"?)?/i);
+      if (cm) {
+        const mode = parseInt(cm[1], 10);
+        if (mode === 0) {
+          reply = '\r\nOK\r\n'; log = 'Modem: COPS -> automatic network selection';
+        } else if ((mode === 1 || mode === 4) && cm[3]) {
+          this.sharedState.roamingOperator = cm[3];
+          reply = '\r\nOK\r\n'; log = `Modem: COPS -> manual select "${cm[3]}"`;
+        } else if (mode === 2) {
+          reply = '\r\nOK\r\n'; log = 'Modem: COPS -> deregister';
+        } else {
+          reply = '\r\nOK\r\n'; log = `Modem: COPS mode=${mode}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid COPS: ${cmd}`; }
     } else if (upperCmd === 'AT+COPS=?') {
       reply = '\r\n+COPS: (1,"Turkcell","TRKC","28601",0),(1,"Vodafone TR","VODA","28602",0),(1,"Turk Telekom","TTUR","28603",0)\r\n\r\nOK\r\n';
       log = 'Modem: COPS scan -> 3 operators found';
@@ -1595,10 +2584,42 @@ export class SimCardDriver extends PeripheralDriver {
       const idx = match ? parseInt(match[1], 10) : -1;
       const before = this.sharedState.smsInbox.length;
       this.sharedState.smsInbox = this.sharedState.smsInbox.filter(m => m.index !== idx);
+      reply = '\r\nOK\r\n';
       if (this.sharedState.smsInbox.length < before) {
-        reply = '\r\nOK\r\n'; log = `Modem: CMGD deleted index=${idx}`;
+        log = `Modem: CMGD deleted index=${idx}`;
       } else {
-        reply = '\r\nERROR\r\n'; log = `Modem: CMGD index=${idx} not found`;
+        log = `Modem: CMGD index=${idx} not found (noop)`;
+      }
+    } else if (upperCmd.startsWith('AT+CMGW=')) {
+      // Write SMS to storage
+      const match = cmd.match(/AT\+CMGW="?([^",\r\n]*)"?/i);
+      const phone = match?.[1] ?? '+905550000000';
+      this.smsPhone = phone;
+      this.sharedState.mode = 'smsstowrite';
+      this.sharedState.transparentBuffer = [];
+      reply = '\r\n> '; log = `Modem: CMGW ready to write SMS to "${phone}"`;
+    } else if (upperCmd.startsWith('AT+CMSS=')) {
+      // Send stored SMS
+      const match = upperCmd.match(/AT\+CMSS=(\d+)(?:,"?([^",\r\n]*)"?)?/);
+      if (match) {
+        const idx = parseInt(match[1], 10);
+        const msg = this.sharedState.smsInbox.find(m => m.index === idx);
+        if (msg) {
+          const ref = Math.floor(Math.random() * 255) + 1;
+          msg.status = 'STO SENT';
+          reply = `\r\n+CMSS: ${ref}\r\n\r\nOK\r\n`;
+          log = `Modem: CMSS sent stored SMS index=${idx} ref=${ref}`;
+        } else {
+          reply = '\r\n+CMS ERROR: 321\r\n'; log = `Modem: CMSS index=${idx} not found`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CMSS: ${cmd}`; }
+    } else if (upperCmd === 'AT+CSCA?' || upperCmd.startsWith('AT+CSCA=')) {
+      if (upperCmd === 'AT+CSCA?') {
+        reply = '\r\n+CSCA: "+905399000000",145\r\n\r\nOK\r\n';
+        log = 'Modem: CSCA -> SMS center +905399000000';
+      } else {
+        const match = cmd.match(/AT\+CSCA="?([^",]+)"?(?:,(\d+))?/i);
+        reply = '\r\nOK\r\n'; log = `Modem: CSCA set -> ${match?.[1] ?? '?'}`;
       }
     } else if (upperCmd.startsWith('AT+CLIP=')) {
       const cm = upperCmd.match(/AT\+CLIP=(\d)/);
@@ -1640,6 +2661,47 @@ export class SimCardDriver extends PeripheralDriver {
       this.sharedState.callNumber = '';
       reply = wasActive ? '\r\nOK\r\n\r\nNO CARRIER\r\n' : '\r\nOK\r\n';
       log = wasActive ? 'Modem: Call ended' : 'Modem: ATH (no active call)';
+    } else if (upperCmd === 'AT+CHUP') {
+      const wasActive = this.sharedState.callState !== 'idle';
+      this.sharedState.callState = 'idle';
+      this.sharedState.callNumber = '';
+      reply = '\r\nOK\r\n'; log = wasActive ? 'Modem: CHUP call disconnected' : 'Modem: CHUP no active call';
+    } else if (upperCmd.startsWith('AT+VTS=')) {
+      const match = cmd.match(/AT\+VTS="?([0-9A-D*#,]+)"?/i);
+      if (match) {
+        if (this.sharedState.callState !== 'active') {
+          reply = '\r\n+CME ERROR: 3\r\n'; log = 'Modem: VTS failed, no active call';
+        } else {
+          reply = '\r\nOK\r\n'; log = `Modem: VTS DTMF "${match[1]}" sent`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid VTS: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+CCWA=')) {
+      const match = upperCmd.match(/AT\+CCWA=(\d)(?:,(\d))?/);
+      if (match) {
+        const n = match[1]; const mode = match[2];
+        if (mode === '2') {
+          reply = '\r\n+CCWA: 0,7\r\n\r\nOK\r\n'; log = 'Modem: CCWA query -> disabled';
+        } else {
+          reply = '\r\nOK\r\n'; log = `Modem: CCWA ${n === '1' ? 'enabled' : 'disabled'}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CCWA: ${cmd}`; }
+    } else if (upperCmd === 'AT+CCWA?') {
+      reply = '\r\n+CCWA: 0\r\n\r\nOK\r\n'; log = 'Modem: CCWA query -> disabled';
+    } else if (upperCmd.startsWith('AT+CCFC=')) {
+      const match = upperCmd.match(/AT\+CCFC=(\d),(\d)(?:,"?([^",\r\n]*)"?)?/);
+      if (match) {
+        const reason = match[1]; const mode = match[2];
+        if (mode === '2') {
+          reply = `\r\n+CCFC: 0,${reason}\r\n\r\nOK\r\n`; log = `Modem: CCFC query reason=${reason} -> inactive`;
+        } else {
+          reply = '\r\nOK\r\n'; log = `Modem: CCFC reason=${reason} mode=${mode} ${match[3] ? 'to=' + match[3] : ''}`;
+        }
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CCFC: ${cmd}`; }
+    } else if (upperCmd.startsWith('AT+CHLD=')) {
+      const match = upperCmd.match(/AT\+CHLD=(\d)/);
+      if (match) {
+        reply = '\r\nOK\r\n'; log = `Modem: CHLD action=${match[1]} (call hold/multiparty)`;
+      } else { reply = '\r\nERROR\r\n'; log = `Modem: Invalid CHLD: ${cmd}`; }
     } else if (upperCmd.startsWith('AT+CPSMS=') || upperCmd === 'AT+CPSMS?') {
       if (upperCmd === 'AT+CPSMS?') {
         const s = this.sharedState;
@@ -1793,6 +2855,40 @@ export class SimCardDriver extends PeripheralDriver {
       this.sharedState.transparentBuffer = [];
       reply = '\r\n> ';
       log = 'Modem: Entering TCP transparent mode, waiting for data (Ctrl+Z to send)';
+    } else if (upperCmd.startsWith('AT+CIPMUX=')) {
+      const match = upperCmd.match(/AT\+CIPMUX=(\d)/);
+      if (match) {
+        this.sharedState.cipmux = parseInt(match[1], 10);
+        reply = '\r\nOK\r\n'; log = `Modem: Multi-connection mode set to ${this.sharedState.cipmux}`;
+      } else {
+        reply = '\r\nERROR\r\n';
+      }
+    } else if (upperCmd === 'AT+CIPMUX?') {
+      reply = `\r\n+CIPMUX: ${this.sharedState.cipmux}\r\n\r\nOK\r\n`;
+      log = `Modem: Query CIPMUX -> ${this.sharedState.cipmux}`;
+    } else if (upperCmd.startsWith('AT+CIPSERVER=')) {
+      const match = upperCmd.match(/AT\+CIPSERVER=(\d),(\d+)/);
+      if (match) {
+        const modeVal = parseInt(match[1], 10);
+        const portVal = parseInt(match[2], 10);
+        this.sharedState.cipserverActive = modeVal === 1;
+        this.sharedState.cipserverPort = portVal;
+        reply = '\r\nOK\r\n';
+        log = `Modem: TCP Server ${modeVal === 1 ? 'started' : 'stopped'} on port ${portVal}`;
+      } else {
+        reply = '\r\nERROR\r\n';
+      }
+    } else if (upperCmd.startsWith('AT+CIPCLOSE')) {
+      reply = '\r\nCLOSE OK\r\n';
+      log = `Modem: Closed connection`;
+    } else if (upperCmd === 'AT+CIPSHUT') {
+      this.sharedState.pdpActive = false;
+      this.sharedState.cipserverActive = false;
+      reply = '\r\nSHUT OK\r\n';
+      log = `Modem: SHUT OK (connections closed, PDP deactivated)`;
+    } else if (upperCmd === 'AT+CIPSTATUS') {
+      reply = `\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n`;
+      log = `Modem: Query CIPSTATUS`;
     } else {
       const res = this.dialect.handleCommand(cmd, this.sharedState);
       if (res) return res;
@@ -1918,7 +3014,7 @@ export class SimCardDriver extends PeripheralDriver {
 }
 
 export class VirtualPeripheralEngine {
-  private peripherals: PeripheralDriver[] = [
+  peripherals: PeripheralDriver[] = [
     new LM75Driver(),
     new EEPROMDriver(),
     new VirtualConsoleDriver(),

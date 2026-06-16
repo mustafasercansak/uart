@@ -90,8 +90,10 @@ send_at() {
       buf+="${line}"$'\n'
     fi
     if [[ "$buf" == *"$expect"* ]]; then
-      (( PASS++ )) || true
-      return 0
+      if [[ "$expect" == "OK" || "$expect" == ">" || "$expect" == "DOWNLOAD" || "$expect" == "CONNECT" || "$expect" == "10." || "$cmd" == "AT+CIFSR" || "$buf" == *"OK"* || "$buf" == *"ERROR"* ]]; then
+        (( PASS++ )) || true
+        return 0
+      fi
     fi
     if [[ "$buf" == *"ERROR"* ]]; then
       (( FAIL++ )) || true
@@ -148,6 +150,7 @@ section() {
 run_simcom() {
   section "Basic AT"
   send_at "AT"
+  send_at "AT+SETVENDOR=SIMCOM"
   send_at "ATE0"                            # echo off for cleaner output
 
   section "Identification"
@@ -265,6 +268,7 @@ run_simcom() {
 run_quectel() {
   section "Basic AT"
   send_at "AT"
+  send_at "AT+SETVENDOR=QUECTEL"
   send_at "ATE0"
 
   section "Identification"
@@ -392,6 +396,14 @@ run_quectel() {
   section "Clock Set"
   send_at "AT+CCLK=\"26/06/15,14:30:00+12\""
   send_at "AT+CCLK?"     "+CCLK:"
+
+  section "Quectel Config (QFCFG & QCFG)"
+  send_at "AT+QFCFG=\"urc/delay\",1"
+  send_at "AT+QFCFG=\"urc/delay\"" "+QFCFG: \"urc/delay\",1"
+  send_at "AT+QFCFG?"              "+QFCFG:"
+  send_at "AT+QCFG=\"gprsurc\",0"
+  send_at "AT+QCFG=\"gprsurc\""    "+QCFG: \"gprsurc\",0"
+  send_at "AT+QCFG?"               "+QCFG:"
 
   section "Cleanup"
   send_at "AT+QFDEL=\"client.pem\""

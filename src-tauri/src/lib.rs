@@ -1,6 +1,7 @@
 #![cfg_attr(coverage, allow(unused_imports))]
 
 use serde::{Deserialize, Serialize};
+use std::ffi::CString;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 #[cfg(target_os = "linux")]
