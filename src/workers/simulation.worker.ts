@@ -179,6 +179,10 @@ self.onmessage = (event: MessageEvent) => {
       engine.simulateIncomingCall(msg.number as string | undefined);
       break;
 
+    case 'SIMULATE_INCOMING_SMS':
+      engine.simulateIncomingSms(msg.number as string, msg.text as string);
+      break;
+
     case 'SET_ROAMING':
       engine.setRoaming(msg.enabled as boolean, msg.operator as string | undefined);
       break;

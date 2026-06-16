@@ -326,7 +326,7 @@ interface RunState { groupId: string; statuses: StepStatus[]; errors: (string | 
 
 export default function AtAutomationPanel() {
   const { t } = useTranslation();
-  const { state, sendTextData, automation, clearConversation, setGpsPosition, setGpsWalkMode, simulateIncomingCall, setRoaming } = useSimulation();
+  const { state, sendTextData, automation, clearConversation, setGpsPosition, setGpsWalkMode, simulateIncomingCall, simulateIncomingSms, setRoaming } = useSimulation();
   const { conversationLogs, sequences, serialConnected, networkConnected } = state;
   const isConnected = serialConnected || networkConnected;
 
@@ -365,6 +365,11 @@ export default function AtAutomationPanel() {
   const [callExpanded, setCallExpanded] = useState(false);
   const [callNumber, setCallNumber] = useState('+905559998877');
 
+  // SMS simulator panel state
+  const [smsSimExpanded, setSmsSimExpanded] = useState(false);
+  const [smsSender, setSmsSender] = useState('+905551111222');
+  const [smsBody, setSmsBody] = useState('Merhaba, UART simulator test SMS!');
+
   // Roaming panel state
   const [roamingExpanded, setRoamingExpanded] = useState(false);
   const [roamingEnabled, setRoamingEnabled] = useState(false);
@@ -378,6 +383,8 @@ export default function AtAutomationPanel() {
   const [selectedCustomId, setSelectedCustomId] = useState<string | null>(null);
   const [customRunning, setCustomRunning] = useState(false);
   const cancelCustomRef = useRef(false);
+
+  const [panelMode, setPanelMode] = useState<'client' | 'server'>('server');
 
   // ── Preset run ──────────────────────────────────────────────────────────────
   const runPreset = useCallback(async (group: PresetGroup) => {
@@ -563,11 +570,35 @@ export default function AtAutomationPanel() {
         </span>
       </div>
 
+      {/* Mode Selector Tabs */}
+      <div className="shrink-0 flex border-b border-gray-800 bg-gray-900/35 p-1 gap-1">
+        <button
+          onClick={() => setPanelMode('server')}
+          className={`flex-1 py-1.5 text-center rounded text-[9px] font-bold uppercase tracking-wider transition-all ${
+            panelMode === 'server'
+              ? 'bg-purple-900/40 border border-purple-700/50 text-purple-300 shadow-sm'
+              : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/30 border border-transparent'
+          }`}
+        >
+          {t('atAuto.simulatorMode')}
+        </button>
+        <button
+          onClick={() => setPanelMode('client')}
+          className={`flex-1 py-1.5 text-center rounded text-[9px] font-bold uppercase tracking-wider transition-all ${
+            panelMode === 'client'
+              ? 'bg-blue-900/40 border border-blue-700/50 text-blue-300 shadow-sm'
+              : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/30 border border-transparent'
+          }`}
+        >
+          {t('atAuto.clientMode')}
+        </button>
+      </div>
+
       {/* Scrollable body */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col">
 
-        {/* ── HTTP Builder ───────────────────────────────────────────────── */}
-        <div className="shrink-0 border-b border-gray-800/50">
+        {panelMode === 'client' && (
+          <div className="shrink-0 border-b border-gray-800/50">
           {/* HTTP header / toggle */}
           <button
             onClick={() => setHttpExpanded(v => !v)}
@@ -698,8 +729,11 @@ export default function AtAutomationPanel() {
             </div>
           )}
         </div>
+        )}
 
-        {/* ── GPS Panel ──────────────────────────────────────────────── */}
+        {panelMode === 'server' && (
+          <>
+            {/* ── GPS Panel ──────────────────────────────────────────────── */}
         <div className="shrink-0 border-b border-gray-800/50">
           <button
             onClick={() => setGpsExpanded(v => !v)}
@@ -707,19 +741,18 @@ export default function AtAutomationPanel() {
           >
             <div className="flex items-center gap-2">
               <MapPin size={11} className="text-emerald-400" />
-              <span className="text-emerald-300 text-[10px] font-bold uppercase tracking-wide">GPS Konumu</span>
+              <span className="text-emerald-300 text-[10px] font-bold uppercase tracking-wide">{t('atAuto.gpsPosition')}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[8px] text-gray-500 font-mono">{parseFloat(gpsLat).toFixed(4)}, {parseFloat(gpsLon).toFixed(4)}</span>
               {gpsExpanded ? <ChevronDown size={11} className="text-gray-500" /> : <ChevronRight size={11} className="text-gray-500" />}
             </div>
           </button>
-
           {gpsExpanded && (
             <div className="px-3 pb-3 pt-2 space-y-2 bg-gray-950/30">
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">Lat</label>
+                  <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.lat')}</label>
                   <input
                     value={gpsLat}
                     onChange={e => setGpsLat(e.target.value)}
@@ -728,7 +761,7 @@ export default function AtAutomationPanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">Lon</label>
+                  <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.lon')}</label>
                   <input
                     value={gpsLon}
                     onChange={e => setGpsLon(e.target.value)}
@@ -737,7 +770,7 @@ export default function AtAutomationPanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">Alt (m)</label>
+                  <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.alt')}</label>
                   <input
                     value={gpsAlt}
                     onChange={e => setGpsAlt(e.target.value)}
@@ -749,39 +782,39 @@ export default function AtAutomationPanel() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-[8px] text-gray-500 uppercase tracking-widest">Random Walk</span>
+                  <span className="text-[8px] text-gray-500 uppercase tracking-widest">{t('atAuto.randomWalk')}</span>
                   <button
                     onClick={() => toggleGpsWalk(!gpsWalk)}
                     className={`w-8 h-4 rounded-full relative transition-colors ${gpsWalk ? 'bg-emerald-600' : 'bg-gray-800'}`}
                   >
                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${gpsWalk ? 'left-4.5' : 'left-0.5'}`} />
                   </button>
-                  {gpsWalk && <span className="text-[8px] text-emerald-500 animate-pulse">hareket ediyor</span>}
+                  {gpsWalk && <span className="text-[8px] text-emerald-500 animate-pulse">{t('atAuto.moving')}</span>}
                 </div>
                 <button
                   onClick={applyGps}
                   className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-[10px] font-bold uppercase tracking-widest transition-colors"
                 >
-                  Uygula
+                  {t('atAuto.apply')}
                 </button>
               </div>
 
               {/* Quick location presets */}
               <div>
-                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">Hızlı Konum</label>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.quickLocation')}</label>
                 <div className="flex flex-wrap gap-1">
                   {[
-                    { label: 'İstanbul', lat: '41.0082376', lon: '28.9783589', alt: '34.2' },
-                    { label: 'New York', lat: '40.7128', lon: '-74.0060', alt: '10' },
-                    { label: 'Sydney', lat: '-33.8688', lon: '151.2093', alt: '58' },
-                    { label: 'São Paulo', lat: '-23.5505', lon: '-46.6333', alt: '760' },
+                    { labelKey: 'atAuto.cities.istanbul', lat: '41.0082376', lon: '28.9783589', alt: '34.2' },
+                    { labelKey: 'atAuto.cities.newYork', lat: '40.7128', lon: '-74.0060', alt: '10' },
+                    { labelKey: 'atAuto.cities.sydney', lat: '-33.8688', lon: '151.2093', alt: '58' },
+                    { labelKey: 'atAuto.cities.saoPaulo', lat: '-23.5505', lon: '-46.6333', alt: '760' },
                   ].map(loc => (
                     <button
-                      key={loc.label}
+                      key={loc.labelKey}
                       onClick={() => { setGpsLat(loc.lat); setGpsLon(loc.lon); setGpsAlt(loc.alt); }}
                       className="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 text-[8px] transition-colors border border-gray-700/50"
                     >
-                      {loc.label}
+                      {t(loc.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -798,11 +831,11 @@ export default function AtAutomationPanel() {
           >
             <div className="flex items-center gap-2">
               <Zap size={11} className="text-amber-400" />
-              <span className="text-amber-300 text-[10px] font-bold uppercase tracking-wide">SIM PIN</span>
+              <span className="text-amber-300 text-[10px] font-bold uppercase tracking-wide">{t('atAuto.simPin')}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${pinLocked ? 'bg-red-900/60 text-red-400' : 'bg-emerald-900/60 text-emerald-400'}`}>
-                {pinLocked ? 'KİLİTLİ' : 'READY'}
+                {pinLocked ? t('atAuto.locked') : t('atAuto.ready')}
               </span>
               {pinExpanded ? <ChevronDown size={11} className="text-gray-500" /> : <ChevronRight size={11} className="text-gray-500" />}
             </div>
@@ -810,7 +843,7 @@ export default function AtAutomationPanel() {
           {pinExpanded && (
             <div className="px-3 pb-3 pt-2 space-y-2 bg-gray-950/30">
               <div>
-                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">PIN Kodu</label>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.pinCode')}</label>
                 <input
                   value={pinCode}
                   onChange={e => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
@@ -825,21 +858,21 @@ export default function AtAutomationPanel() {
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-red-900/40 border border-red-700/50 text-red-300 text-[9px] font-bold uppercase hover:bg-red-900/60 transition-colors disabled:opacity-30"
                 >
-                  SIM Kilitle
+                  {t('atAuto.simLock')}
                 </button>
                 <button
                   onClick={() => { sendTextData(`AT+CPIN=${pinCode}\r\n`); setPinLocked(false); }}
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-emerald-900/40 border border-emerald-700/50 text-emerald-300 text-[9px] font-bold uppercase hover:bg-emerald-900/60 transition-colors disabled:opacity-30"
                 >
-                  PIN Gir
+                  {t('atAuto.enterPin')}
                 </button>
                 <button
                   onClick={() => sendTextData('AT+CPIN?\r\n')}
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-gray-800 border border-gray-700/50 text-gray-300 text-[9px] font-bold uppercase hover:bg-gray-700 transition-colors disabled:opacity-30 col-span-2"
                 >
-                  AT+CPIN? Sorgula
+                  {t('atAuto.queryPinCpin')}
                 </button>
               </div>
             </div>
@@ -854,14 +887,14 @@ export default function AtAutomationPanel() {
           >
             <div className="flex items-center gap-2">
               <Phone size={11} className="text-green-400" />
-              <span className="text-green-300 text-[10px] font-bold uppercase tracking-wide">Ses Çağrısı</span>
+              <span className="text-green-300 text-[10px] font-bold uppercase tracking-wide">{t('atAuto.voiceCall')}</span>
             </div>
             {callExpanded ? <ChevronDown size={11} className="text-gray-500" /> : <ChevronRight size={11} className="text-gray-500" />}
           </button>
           {callExpanded && (
             <div className="px-3 pb-3 pt-2 space-y-2 bg-gray-950/30">
               <div>
-                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">Numara</label>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.number')}</label>
                 <input
                   value={callNumber}
                   onChange={e => setCallNumber(e.target.value)}
@@ -875,37 +908,84 @@ export default function AtAutomationPanel() {
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-green-900/40 border border-green-700/50 text-green-300 text-[9px] font-bold uppercase hover:bg-green-900/60 transition-colors disabled:opacity-30 flex items-center justify-center gap-1"
                 >
-                  <Phone size={9} /> Gelen Çağrı
+                  <Phone size={9} /> {t('atAuto.incomingCall')}
                 </button>
                 <button
                   onClick={() => sendTextData(`ATD${callNumber};\r\n`)}
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-blue-900/40 border border-blue-700/50 text-blue-300 text-[9px] font-bold uppercase hover:bg-blue-900/60 transition-colors disabled:opacity-30 flex items-center justify-center gap-1"
                 >
-                  <Phone size={9} /> Ara (ATD)
+                  <Phone size={9} /> {t('atAuto.dialAtd')}
                 </button>
                 <button
                   onClick={() => sendTextData('ATA\r\n')}
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-gray-800 border border-gray-700/50 text-gray-300 text-[9px] font-bold uppercase hover:bg-gray-700 transition-colors disabled:opacity-30"
                 >
-                  ATA (Cevapla)
+                  {t('atAuto.answerAta')}
                 </button>
                 <button
                   onClick={() => sendTextData('ATH\r\n')}
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-red-900/40 border border-red-700/50 text-red-300 text-[9px] font-bold uppercase hover:bg-red-900/60 transition-colors disabled:opacity-30 flex items-center justify-center gap-1"
                 >
-                  <PhoneOff size={9} /> ATH (Kapat)
+                  <PhoneOff size={9} /> {t('atAuto.hangupAth')}
                 </button>
                 <button
                   onClick={() => sendTextData('AT+CLCC\r\n')}
                   disabled={!isConnected}
                   className="py-1.5 rounded bg-gray-800 border border-gray-700/50 text-gray-300 text-[9px] font-bold uppercase hover:bg-gray-700 transition-colors disabled:opacity-30 col-span-2"
                 >
-                  AT+CLCC (Çağrı Listesi)
+                  {t('atAuto.callListClcc')}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── SMS Simulation Panel ─────────────────────────────────────── */}
+        <div className="shrink-0 border-b border-gray-800/50">
+          <button
+            onClick={() => setSmsSimExpanded(v => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-purple-900/10 hover:bg-purple-900/20 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare size={11} className="text-purple-400" />
+              <span className="text-purple-300 text-[10px] font-bold uppercase tracking-wide">{t('atAuto.smsSimulator')}</span>
+            </div>
+            {smsSimExpanded ? <ChevronDown size={11} className="text-gray-500" /> : <ChevronRight size={11} className="text-gray-500" />}
+          </button>
+          {smsSimExpanded && (
+            <div className="px-3 pb-3 pt-2 space-y-2 bg-gray-950/30">
+              <div>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.senderNumber')}</label>
+                <input
+                  value={smsSender}
+                  onChange={e => setSmsSender(e.target.value)}
+                  placeholder="+905551111222"
+                  className="w-full bg-gray-900 border border-gray-700/60 text-gray-200 rounded px-2 py-1.5 text-[10px] focus:outline-none focus:border-purple-600/60"
+                />
+              </div>
+              <div>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.messageContent')}</label>
+                <textarea
+                  value={smsBody}
+                  onChange={e => setSmsBody(e.target.value)}
+                  placeholder={t('atAuto.smsPlaceholder')}
+                  rows={2}
+                  className="w-full bg-gray-900 border border-gray-700/60 text-gray-200 rounded px-2 py-1.5 text-[10px] resize-none focus:outline-none focus:border-purple-600/60"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  simulateIncomingSms(smsSender || '+905551111222', smsBody || 'PING');
+                  setSmsBody('');
+                }}
+                disabled={!isConnected}
+                className="w-full py-1.5 rounded bg-purple-900/40 border border-purple-700/50 text-purple-300 text-[9px] font-bold uppercase hover:bg-purple-900/60 transition-colors disabled:opacity-30 flex items-center justify-center gap-1"
+              >
+                <MessageSquare size={9} /> {t('atAuto.simulateSms')}
+              </button>
             </div>
           )}
         </div>
@@ -918,11 +998,11 @@ export default function AtAutomationPanel() {
           >
             <div className="flex items-center gap-2">
               <Signal size={11} className="text-indigo-400" />
-              <span className="text-indigo-300 text-[10px] font-bold uppercase tracking-wide">Roaming / Hücre</span>
+              <span className="text-indigo-300 text-[10px] font-bold uppercase tracking-wide">{t('atAuto.roamingCell')}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${roamingEnabled ? 'bg-orange-900/60 text-orange-400' : 'bg-gray-800 text-gray-600'}`}>
-                {roamingEnabled ? 'ROAMING' : 'HOME'}
+                {roamingEnabled ? t('atAuto.roaming') : t('atAuto.home')}
               </span>
               {roamingExpanded ? <ChevronDown size={11} className="text-gray-500" /> : <ChevronRight size={11} className="text-gray-500" />}
             </div>
@@ -930,7 +1010,7 @@ export default function AtAutomationPanel() {
           {roamingExpanded && (
             <div className="px-3 pb-3 pt-2 space-y-2 bg-gray-950/30">
               <div>
-                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">Roaming Operatör</label>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.roamingOperator')}</label>
                 <div className="flex gap-1.5">
                   <input
                     value={roamingOperator}
@@ -946,27 +1026,27 @@ export default function AtAutomationPanel() {
                   disabled={!isConnected}
                   className="flex-1 py-1.5 rounded bg-orange-900/40 border border-orange-700/50 text-orange-300 text-[9px] font-bold uppercase hover:bg-orange-900/60 transition-colors disabled:opacity-30"
                 >
-                  Roaming Aç
+                  {t('atAuto.enableRoaming')}
                 </button>
                 <button
                   onClick={() => { setRoaming(false); setRoamingEnabled(false); }}
                   disabled={!isConnected}
                   className="flex-1 py-1.5 rounded bg-gray-800 border border-gray-700/50 text-gray-300 text-[9px] font-bold uppercase hover:bg-gray-700 transition-colors disabled:opacity-30"
                 >
-                  Home'a Dön
+                  {t('atAuto.returnHome')}
                 </button>
               </div>
               <div className="flex flex-wrap gap-1">
                 {[
-                  { label: 'Vodafone DE', op: 'Vodafone DE' },
-                  { label: 'T-Mobile US', op: 'T-Mobile US' },
-                  { label: 'Orange FR', op: 'Orange FR' },
-                  { label: 'NTT Docomo', op: 'NTT Docomo' },
+                  { labelKey: 'atAuto.operators.vodafoneDe', op: 'Vodafone DE' },
+                  { labelKey: 'atAuto.operators.tMobileUs', op: 'T-Mobile US' },
+                  { labelKey: 'atAuto.operators.orangeFr', op: 'Orange FR' },
+                  { labelKey: 'atAuto.operators.nttDocomo', op: 'NTT Docomo' },
                 ].map(p => (
-                  <button key={p.label} onClick={() => setRoamingOperator(p.op)}
+                  <button key={p.labelKey} onClick={() => setRoamingOperator(p.op)}
                     className="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 text-[8px] border border-gray-700/50 transition-colors"
                   >
-                    {p.label}
+                    {t(p.labelKey)}
                   </button>
                 ))}
               </div>
@@ -974,12 +1054,12 @@ export default function AtAutomationPanel() {
                 <button onClick={() => sendTextData('AT+CREG=2\r\n')} disabled={!isConnected}
                   className="py-1 rounded bg-gray-800 border border-gray-700/50 text-gray-400 text-[9px] uppercase hover:bg-gray-700 transition-colors disabled:opacity-30"
                 >
-                  CREG=2
+                  {t('atAuto.creg2')}
                 </button>
                 <button onClick={() => sendTextData('AT+CREG?\r\n')} disabled={!isConnected}
                   className="py-1 rounded bg-gray-800 border border-gray-700/50 text-gray-400 text-[9px] uppercase hover:bg-gray-700 transition-colors disabled:opacity-30"
                 >
-                  CREG?
+                  {t('atAuto.cregQuery')}
                 </button>
               </div>
             </div>
@@ -994,14 +1074,14 @@ export default function AtAutomationPanel() {
           >
             <div className="flex items-center gap-2">
               <MessageSquare size={11} className="text-purple-400" />
-              <span className="text-purple-300 text-[10px] font-bold uppercase tracking-wide">USSD</span>
+              <span className="text-purple-300 text-[10px] font-bold uppercase tracking-wide">{t('atAuto.ussd')}</span>
             </div>
             {ussdExpanded ? <ChevronDown size={11} className="text-gray-500" /> : <ChevronRight size={11} className="text-gray-500" />}
           </button>
           {ussdExpanded && (
             <div className="px-3 pb-3 pt-2 space-y-2 bg-gray-950/30">
               <div>
-                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">USSD Kodu</label>
+                <label className="block text-[8px] text-gray-600 uppercase tracking-widest mb-1">{t('atAuto.ussdCode')}</label>
                 <input
                   value={ussdCode}
                   onChange={e => setUssdCode(e.target.value)}
@@ -1024,21 +1104,25 @@ export default function AtAutomationPanel() {
                   disabled={!isConnected || !ussdCode.trim()}
                   className="flex-1 py-1.5 rounded bg-purple-900/40 border border-purple-700/50 text-purple-300 text-[9px] font-bold uppercase hover:bg-purple-900/60 transition-colors disabled:opacity-30"
                 >
-                  USSD Gönder
+                  {t('atAuto.sendUssd')}
                 </button>
                 <button
                   onClick={() => sendTextData('AT+CUSD=2\r\n')}
                   disabled={!isConnected}
                   className="px-3 py-1.5 rounded bg-gray-800 border border-gray-700/50 text-gray-400 text-[9px] font-bold uppercase hover:bg-gray-700 transition-colors disabled:opacity-30"
                 >
-                  İptal
+                  {t('atAuto.cancel')}
                 </button>
               </div>
             </div>
           )}
         </div>
+      </>
+    )}
 
-        {/* ── Preset sequences ──────────────────────────────────────────── */}
+        {panelMode === 'client' && (
+          <>
+            {/* ── Preset sequences ──────────────────────────────────────────── */}
         <div className="shrink-0">
           <div className="px-3 pt-2 pb-1 text-[8px] text-gray-600 uppercase tracking-widest">{t('atAuto.presets')}</div>
           {PRESETS.map(group => {
@@ -1143,6 +1227,8 @@ export default function AtAutomationPanel() {
               )}
             </div>
           </div>
+        )}
+        </>
         )}
 
         {/* ── Transcript ─────────────────────────────────────────────────── */}

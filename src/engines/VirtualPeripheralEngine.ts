@@ -1237,6 +1237,11 @@ export class SimCardDriver extends PeripheralDriver {
     this.name = `SIM Card Modem [${vendor.toUpperCase()}]`;
   }
 
+  setAsyncResponseCallback(callback: ((res: PeripheralResponse) => void) | undefined) {
+    this.onAsyncResponse = callback;
+    this.sharedState.onAsyncResponse = callback;
+  }
+
   get vendor(): ModemVendor {
     return this.dialect.vendorName;
   }
@@ -1244,6 +1249,7 @@ export class SimCardDriver extends PeripheralDriver {
   setVendor(vendor: ModemVendor) {
     this.dialect = vendor === 'quectel' ? new QuectelDialect() : new SIMComDialect();
     this.sharedState = createInitialModemState();
+    this.sharedState.onAsyncResponse = this.onAsyncResponse;
     this.rxBuffer = [];
     this.echo = true;
     this.name = `SIM Card Modem [${vendor.toUpperCase()}]`;
@@ -1831,6 +1837,18 @@ export class SimCardDriver extends PeripheralDriver {
     }
   }
 
+  simulateIncomingSms(sender = '+905551111222', body = 'Simulated SMS') {
+    const s = this.sharedState;
+    const ts = modemClock(s);
+    const msg: SmsMessage = { index: s.smsInbox.length + 1, status: 'REC UNREAD', sender, timestamp: ts, body };
+    s.smsInbox.push(msg);
+    if (s.smsCmgf === 0) {
+      s.onAsyncResponse?.({ bytes: toBytes(`\r\n+CMTI: "SM",${msg.index}\r\n`), log: `Modem: Incoming SMS URC (PDU) index=${msg.index} from ${sender}` });
+    } else {
+      s.onAsyncResponse?.({ bytes: toBytes(`\r\n+CMT: "${sender}",,"${ts}"\r\n${body}\r\n`), log: `Modem: Incoming SMS URC from ${sender}` });
+    }
+  }
+
   private scheduleIncomingSms() {
     setTimeout(() => {
       const s = this.sharedState;
@@ -1914,12 +1932,28 @@ export class VirtualPeripheralEngine {
     return (this.peripherals.find(p => p.id === 'simcard') as SimCardDriver | undefined)?.vendor ?? 'simcom';
   }
 
+  public onAsyncResponse?: (res: PeripheralResponse) => void;
+
+  setOnAsyncResponse(callback: (res: PeripheralResponse) => void) {
+    this.onAsyncResponse = callback;
+    for (const p of this.peripherals) {
+      p.onAsyncResponse = callback;
+      if (p.id === 'simcard') {
+        (p as SimCardDriver).setAsyncResponseCallback(callback);
+      }
+    }
+  }
+
   setModemVendor(vendor: ModemVendor) {
     const existing = this.peripherals.find(p => p.id === 'simcard') as SimCardDriver | undefined;
     if (existing) {
       existing.setVendor(vendor);
+      if (this.onAsyncResponse) {
+        existing.setAsyncResponseCallback(this.onAsyncResponse);
+      }
     } else {
-      this.addDriver(new SimCardDriver(vendor));
+      const driver = new SimCardDriver(vendor);
+      this.addDriver(driver);
     }
   }
 
@@ -1935,12 +1969,22 @@ export class VirtualPeripheralEngine {
     (this.peripherals.find(p => p.id === 'simcard') as SimCardDriver | undefined)?.simulateIncomingCall(number);
   }
 
+  simulateIncomingSms(number: string, text: string) {
+    (this.peripherals.find(p => p.id === 'simcard') as SimCardDriver | undefined)?.simulateIncomingSms(number, text);
+  }
+
   setRoaming(enabled: boolean, operator?: string) {
     (this.peripherals.find(p => p.id === 'simcard') as SimCardDriver | undefined)?.setRoaming(enabled, operator);
   }
 
   addDriver(driver: PeripheralDriver) {
     this.peripherals = this.peripherals.filter(p => p.id !== driver.id);
+    if (this.onAsyncResponse) {
+      driver.onAsyncResponse = this.onAsyncResponse;
+      if (driver.id === 'simcard') {
+        (driver as SimCardDriver).setAsyncResponseCallback(this.onAsyncResponse);
+      }
+    }
     this.peripherals.push(driver);
   }
 
@@ -1961,7 +2005,9 @@ export class VirtualPeripheralEngine {
     
     for (const p of this.peripherals) {
       if (p.protocol === protocol) {
-        p.onAsyncResponse = onAsyncResponse;
+        if (onAsyncResponse) {
+          p.onAsyncResponse = onAsyncResponse;
+        }
         const res = p.process(bytes);
         if (res) responses.push(res);
       }

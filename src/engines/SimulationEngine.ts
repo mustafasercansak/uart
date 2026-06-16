@@ -61,11 +61,60 @@ export class SimulationEngine {
   constructor(initialState: SimulationState) {
     this.state = initialState;
     this.peripheralEngine = new VirtualPeripheralEngine();
+    this.peripheralEngine.setOnAsyncResponse((res) => {
+      this.handlePeripheralResponse(res);
+    });
     if (!this.state.conversationLogs) {
         this.state.conversationLogs = [];
     }
     if (!this.state.exchanges) {
         this.state.exchanges = [];
+    }
+  }
+
+  public handlePeripheralResponse(res: { bytes: number[]; log: string }) {
+    if (res.log) {
+      this.onConversation?.({
+        id: uuidv4(),
+        timestamp: Date.now(),
+        type: 'match',
+        rawHex: '',
+        details: res.log
+      });
+    }
+
+    if (res.bytes.length > 0) {
+      const hex = res.bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      const asciiText = res.bytes.map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : b === 0x0D || b === 0x0A ? '' : '.').join('');
+      
+      const txEntry: ConversationEntry = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        type: 'tx',
+        rawHex: hex,
+        ...(asciiText.trim().length > 0 && { details: asciiText.trim() })
+      };
+      this.addLog(txEntry);
+
+      // Try to match with the most recent rx exchange that doesn't have a tx yet (within 2 seconds)
+      const unackedExchange = this.state.exchanges.find(e => e.rx && !e.tx && (txEntry.timestamp - e.startTime < 2000));
+      if (unackedExchange) {
+        unackedExchange.tx = txEntry;
+        unackedExchange.latencyMs = txEntry.timestamp - unackedExchange.startTime;
+        if (unackedExchange.rx) {
+          unackedExchange.isLoopbackMatch = (unackedExchange.rx.rawHex === txEntry.rawHex);
+        }
+        this.updateExchange(unackedExchange);
+      } else {
+        const txExchange: Exchange = {
+          id: uuidv4(),
+          startTime: txEntry.timestamp,
+          tx: txEntry
+        };
+        this.addExchange(txExchange);
+      }
+
+      this.onRawResponse?.(res.bytes);
     }
   }
 
@@ -166,49 +215,7 @@ export class SimulationEngine {
 
       const handleResponse = (res: { bytes: number[]; log: string }) => {
         setTimeout(() => {
-          if (res.log) {
-            this.onConversation?.({
-              id: uuidv4(),
-              timestamp: Date.now(),
-              type: 'match',
-              rawHex: '',
-              details: res.log
-            });
-          }
-
-          if (res.bytes.length > 0) {
-            const hex = res.bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-            const asciiText = res.bytes.map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : b === 0x0D || b === 0x0A ? '' : '.').join('');
-            
-            const txEntry: ConversationEntry = {
-              id: uuidv4(),
-              timestamp: Date.now(),
-              type: 'tx',
-              rawHex: hex,
-              ...(asciiText.trim().length > 0 && { details: asciiText.trim() })
-            };
-            this.addLog(txEntry);
-
-            // Try to match with the most recent rx exchange that doesn't have a tx yet (within 2 seconds)
-            const unackedExchange = this.state.exchanges.find(e => e.rx && !e.tx && (txEntry.timestamp - e.startTime < 2000));
-            if (unackedExchange) {
-              unackedExchange.tx = txEntry;
-              unackedExchange.latencyMs = txEntry.timestamp - unackedExchange.startTime;
-              if (unackedExchange.rx) {
-                unackedExchange.isLoopbackMatch = (unackedExchange.rx.rawHex === txEntry.rawHex);
-              }
-              this.updateExchange(unackedExchange);
-            } else {
-              const txExchange: Exchange = {
-                id: uuidv4(),
-                startTime: txEntry.timestamp,
-                tx: txEntry
-              };
-              this.addExchange(txExchange);
-            }
-
-            this.onRawResponse?.(res.bytes);
-          }
+          this.handlePeripheralResponse(res);
         }, 5 + Math.random() * 10);
       };
 
@@ -529,6 +536,10 @@ export class SimulationEngine {
 
   public simulateIncomingCall(number?: string) {
     this.peripheralEngine.simulateIncomingCall(number);
+  }
+
+  public simulateIncomingSms(number: string, text: string) {
+    this.peripheralEngine.simulateIncomingSms(number, text);
   }
 
   public setRoaming(enabled: boolean, operator?: string) {

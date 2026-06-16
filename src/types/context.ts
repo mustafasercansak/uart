@@ -78,5 +78,6 @@ export interface SimulationContextType {
   setGpsPosition: (lat: number, lon: number, alt: number) => void;
   setGpsWalkMode: (enabled: boolean) => void;
   simulateIncomingCall: (number?: string) => void;
+  simulateIncomingSms: (number: string, text: string) => void;
   setRoaming: (enabled: boolean, operator?: string) => void;
 }

@@ -593,6 +593,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         simulateIncomingCall: (number?: string) => {
           send({ type: 'SIMULATE_INCOMING_CALL', number });
         },
+        simulateIncomingSms: (number: string, text: string) => {
+          send({ type: 'SIMULATE_INCOMING_SMS', number, text });
+        },
         setRoaming: (enabled: boolean, operator?: string) => {
           send({ type: 'SET_ROAMING', enabled, operator });
         },
