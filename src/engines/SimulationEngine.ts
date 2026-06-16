@@ -161,8 +161,8 @@ export class SimulationEngine {
     }
 
     if (this.state.serialConnected || this.state.networkConnected) {
-      const protocol = (this.profile?.name.includes('SPI') || this.profile?.name.includes('Ethernet')) ? 'SPI' :
-                       (this.profile?.name.includes('I2C')) ? 'I2C' : 'UART';
+      const protocol = (this.profile?.name?.includes('SPI') || this.profile?.name?.includes('Ethernet')) ? 'SPI' :
+                       (this.profile?.name?.includes('I2C')) ? 'I2C' : 'UART';
 
       const handleResponse = (res: { bytes: number[]; log: string }) => {
         setTimeout(() => {

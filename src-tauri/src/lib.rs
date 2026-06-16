@@ -1,7 +1,6 @@
 #![cfg_attr(coverage, allow(unused_imports))]
 
 use serde::{Deserialize, Serialize};
-use std::ffi::CString;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 #[cfg(target_os = "linux")]
@@ -112,6 +111,7 @@ struct TcpServerState {
 
 #[cfg(not(coverage))]
 struct SocketCanState {
+    #[allow(dead_code)]
     stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
     #[cfg(target_os = "linux")]
     write_fd: Mutex<Option<RawFd>>,
@@ -707,7 +707,9 @@ fn write_tcp_server(
 
 #[cfg(not(coverage))]
 struct PtyServerState {
+    #[allow(dead_code)]
     stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    #[allow(dead_code)]
     master_fd: Arc<Mutex<Option<i32>>>,
 }
 
@@ -1413,6 +1415,7 @@ fn delete_recording(id: String) -> Result<(), String> {
 // ── SOCAT VIRTUAL PORT BRIDGE ─────────────────────────────────────────────────
 
 struct SocatState {
+    #[allow(dead_code)]
     pid: Mutex<Option<u32>>,
 }
 

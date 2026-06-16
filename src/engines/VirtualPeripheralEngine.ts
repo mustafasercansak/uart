@@ -370,6 +370,7 @@ export interface ModemSharedState {
   gpsSpeed: number;
   gpsCourse: number;
   gpsSatellites: number;
+  subscriberNumber: string;
   onAsyncResponse?: (res: PeripheralResponse) => void;
 }
 
@@ -449,6 +450,7 @@ function createInitialModemState(): ModemSharedState {
     gpsSpeed: 0.0,
     gpsCourse: 0.0,
     gpsSatellites: 7,
+    subscriberNumber: '+905552223344',
   };
 }
 
@@ -1082,7 +1084,7 @@ class QuectelDialect implements ModemDialect {
     } else if (upperCmd === 'AT+QGPSEND') {
       state.gpsEnabled = false; state.gpsFix = false;
       reply = '\r\nOK\r\n'; log = 'Modem [Quectel]: GPS powered off';
-    } else if (upperCmd.startsWith('AT+QGPSLOC=')) {
+    } else if (upperCmd.startsWith('AT+QGPSLOC')) {
       if (!state.gpsEnabled || !state.gpsFix) {
         reply = '\r\n+CME ERROR: 516\r\n';
         log = 'Modem [Quectel]: QGPSLOC failed (no fix yet)';
@@ -1371,6 +1373,8 @@ export class SimCardDriver extends PeripheralDriver {
       reply = `\r\n${rev}\r\n\r\nOK\r\n`; log = `Modem: Firmware revision -> ${rev}`;
     } else if (upperCmd === 'AT+GSN' || upperCmd === 'AT+CGSN') {
       reply = '\r\n867012345678901\r\n\r\nOK\r\n'; log = 'Modem: IMEI -> 867012345678901';
+    } else if (upperCmd === 'AT+CNUM') {
+      reply = `\r\n+CNUM: "My Number","${this.sharedState.subscriberNumber}",145\r\n\r\nOK\r\n`; log = `Modem: Subscriber number query -> ${this.sharedState.subscriberNumber}`;
     } else if (upperCmd === 'AT+CIMI') {
       reply = '\r\n286011234567890\r\n\r\nOK\r\n'; log = 'Modem: IMSI -> 286011234567890';
     } else if (upperCmd === 'AT+CCID' || upperCmd === 'AT+ICCID') {
@@ -1413,7 +1417,19 @@ export class SimCardDriver extends PeripheralDriver {
       reply = `\r\n+CEREG: ${s.cregN},${stat}${locInfo}\r\n\r\nOK\r\n`;
       log = `Modem: CEREG -> stat=${stat}${s.isRoaming ? ' (roaming)' : ''}`;
     } else if (upperCmd === 'AT+CGATT?') {
-      reply = '\r\n+CGATT: 1\r\n\r\nOK\r\n'; log = 'Modem: GPRS attachment status query';
+      reply = `\r\n+CGATT: ${this.sharedState.pdpActive ? 1 : 0}\r\n\r\nOK\r\n`; log = `Modem: GPRS attachment status query -> ${this.sharedState.pdpActive ? 'attached' : 'detached'}`;
+    } else if (upperCmd.startsWith('AT+CGATT=')) {
+      const match = upperCmd.match(/AT\+CGATT=(\d)/);
+      if (match) this.sharedState.pdpActive = match[1] === '1';
+      reply = '\r\nOK\r\n'; log = `Modem: GPRS attachment -> ${this.sharedState.pdpActive ? 'ATTACH' : 'DETACH'}`;
+    } else if (upperCmd === 'AT+CPMS?') {
+      const count = this.sharedState.smsInbox.length;
+      reply = `\r\n+CPMS: "SM",${count},50,"SM",${count},50,"SM",${count},50\r\n\r\nOK\r\n`;
+      log = `Modem: SMS storage query -> "SM" (${count}/50)`;
+    } else if (upperCmd.startsWith('AT+CPMS=')) {
+      const count = this.sharedState.smsInbox.length;
+      reply = `\r\n+CPMS: ${count},50,${count},50,${count},50\r\n\r\nOK\r\n`;
+      log = `Modem: SMS storage selected (${cmd})`;
     } else if (upperCmd.startsWith('AT+SAPBR=')) {
       reply = '\r\nOK\r\n'; log = `Modem: Bearer config command: ${cmd}`;
     } else if (upperCmd === 'AT+CPIN?') {

@@ -38,6 +38,16 @@ client.connect(port, 'localhost', async () => {
   await delay(500);
   send('AT+COPS?\r\n');
   await delay(500);
+  send('AT+CNUM\r\n');
+  await delay(500);
+  send('AT+CGATT=1\r\n');
+  await delay(500);
+  send('AT+CGATT?\r\n');
+  await delay(500);
+  send('AT+CPMS?\r\n');
+  await delay(500);
+  send('AT+CPMS="SM","SM","SM"\r\n');
+  await delay(500);
   send('AT+CGDCONT=1,"IP","internet"\r\n');
   await delay(500);
   send('AT+CIFSR\r\n');

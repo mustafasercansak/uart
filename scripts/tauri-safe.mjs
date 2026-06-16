@@ -30,11 +30,20 @@ if (process.platform === 'linux') {
 }
 
 const npxBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-const child = spawn(npxBin, ['tauri', ...args], {
-  stdio: 'inherit',
-  env,
-  shell: process.platform === 'win32',
-});
+let child;
+if (process.platform === 'win32') {
+  // Pass a single string to spawn() without args to avoid DEP0190 warning
+  child = spawn(`${npxBin} tauri ${args.join(' ')}`, {
+    stdio: 'inherit',
+    env,
+    shell: true,
+  });
+} else {
+  child = spawn(npxBin, ['tauri', ...args], {
+    stdio: 'inherit',
+    env,
+  });
+}
 
 child.on('exit', (code, signal) => {
   if (signal) {

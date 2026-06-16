@@ -265,7 +265,7 @@ describe('VirtualPeripheralEngine', () => {
 
       expect(asyncCallback).toHaveBeenCalled();
       const asyncCallArg = asyncCallback.mock.calls[0][0];
-      expect(asyncCallArg.log).toContain('HTTP Async Response -> 200');
+      expect(asyncCallArg.log).toContain('HTTP Response -> 200');
       expect(String.fromCharCode(...asyncCallArg.bytes)).toContain('+HTTPACTION: 0,200,15');
     });
 
@@ -395,6 +395,30 @@ describe('VirtualPeripheralEngine', () => {
       res = engine.processIncoming('UART', input);
       expect(res[0].log).toContain('Sent SMS to +905554443322');
       expect(String.fromCharCode(...res[0].bytes)).toContain('+CMGS:');
+    });
+
+    it('should support AT+CNUM, AT+CPMS, and AT+CGATT commands', () => {
+      // AT+CNUM
+      let res = engine.processIncoming('UART', Array.from('AT+CNUM\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('Subscriber number query');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+CNUM:');
+
+      // AT+CPMS?
+      res = engine.processIncoming('UART', Array.from('AT+CPMS?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('SMS storage query');
+      expect(String.fromCharCode(...res[0].bytes)).toContain('+CPMS: "SM"');
+
+      // AT+CPMS="SM"
+      res = engine.processIncoming('UART', Array.from('AT+CPMS="SM","SM","SM"\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('SMS storage selected');
+
+      // AT+CGATT=1
+      res = engine.processIncoming('UART', Array.from('AT+CGATT=1\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('ATTACH');
+
+      // AT+CGATT?
+      res = engine.processIncoming('UART', Array.from('AT+CGATT?\r\n').map(c => c.charCodeAt(0)));
+      expect(res[0].log).toContain('attached');
     });
   });
 });
